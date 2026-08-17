@@ -6,9 +6,11 @@ mit Sync sobald wieder online. Siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md) für
 Entscheidungen und [`ROADMAP.md`](./ROADMAP.md) für den vollständigen Ausbauplan.
 
 Aktueller Stand (Phase 0 – Foundation): Login/Registrierung + die Trainings-Tabelle
-(Satz/Wiederholungen/Gewicht/Übung) sind Ende-zu-Ende lauffähig. Übungsbibliothek mit Video,
-Plan-Rotation, Ziele, Offline-Sync, Push-Erinnerungen und Claude-API-Integration sind als
-Datenmodell bereits angelegt, aber noch ohne UI (siehe Roadmap).
+(Satz/Wiederholungen/Gewicht/Übung) sind Ende-zu-Ende lauffähig. Die Übungs-API ist ebenfalls
+fertig: volle CRUD-Verwaltung plus ein Import-Mechanismus, der Übungen aus externen, frei
+verfügbaren Datenbanken zieht und in die eigene DB schreibt (siehe unten). Plan-Rotation, Ziele,
+Offline-Sync, Push-Erinnerungen und Claude-API-Integration sind als Datenmodell bereits angelegt,
+aber noch ohne UI (siehe Roadmap).
 
 ## Stack
 
@@ -51,6 +53,28 @@ pnpm --filter frontend dev    # http://localhost:5173 (in einem zweiten Terminal
 
 Registrierung erfordert das `SETUP_TOKEN` aus der `.env` (schützt die offene Registrierung auf
 einem öffentlich erreichbaren VPS, da die App nur für dich gedacht ist).
+
+## Übungen importieren
+
+Statt Übungen von Hand zu pflegen, gibt es einen Import-Endpunkt, der einen kompletten
+Übungskatalog aus einer externen Quelle zieht und per Upsert (idempotent, anhand von
+Quelle+externer-ID) in die eigene DB schreibt — mehrfaches Ausführen legt nichts doppelt an,
+sondern aktualisiert nur:
+
+```bash
+# Verfügbare Quellen auflisten
+curl -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:3000/api/exercises/sources
+
+# Import anstoßen (aktuell: "free-exercise-db", ~870 Übungen, dauert wenige Sekunden)
+curl -X POST http://localhost:3000/api/exercises/import \
+  -H "Authorization: Bearer $ACCESS_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"source":"free-exercise-db"}'
+```
+
+Neue Quellen anbinden: `ExerciseSourceAdapter` in `backend/src/modules/exercises/sources/`
+implementieren (Interface in `sources/types.ts`) und in `sources/index.ts` registrieren — der
+Import-Endpunkt braucht dafür keine Änderung. Details und Quellen-Übersicht in
+[`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## Produktions-Deployment (eigener VPS)
 

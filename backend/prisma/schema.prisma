@@ -49,16 +49,31 @@ model RefreshToken {
 
 model Exercise {
   id          String   @id @default(uuid())
-  name        String   @unique
-  // Roadmap: execution technique description, filled in as the exercise library is built out.
+  name        String
+  // Execution technique description. For imported exercises this is the source's
+  // instructions joined into one text; edit freely afterwards.
   description String?
-  // Roadmap: short technique video.
+  // No free/open source used so far ships actual video — left for manual curation or a
+  // future source adapter that provides one.
   videoUrl    String?
+  imageUrls   String[] @default([])
+  equipment   String?
+  category    String?
+  primaryMuscles   String[] @default([])
+  secondaryMuscles String[] @default([])
+  // Provenance for idempotent re-imports, e.g. source="free-exercise-db", sourceId="3_4_Sit-Up".
+  // Manually created exercises leave both null; Postgres allows unlimited NULL/NULL pairs
+  // under a unique index, so this doesn't collide with imported rows.
+  source      String?
+  sourceId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   workoutLogs WorkoutLog[]
   goals       Goal[]
+
+  @@unique([source, sourceId])
+  @@index([name])
 }
 
 model WorkoutLog {

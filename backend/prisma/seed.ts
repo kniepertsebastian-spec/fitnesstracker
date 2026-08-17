@@ -13,12 +13,25 @@ const exercises = [
   { name: "Beinpresse", description: "Beinpresse an der Maschine." },
 ];
 
+// Manual entries are tagged source="manual" with a slug as sourceId, purely so the same
+// (source, sourceId) upsert-idempotency pattern used by imported exercises also works here.
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[üä]/g, (c) => ({ ü: "ue", ä: "ae" })[c] ?? c)
+    .replace(/ö/g, "oe")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 async function main() {
   for (const exercise of exercises) {
+    const sourceId = slugify(exercise.name);
     await prisma.exercise.upsert({
-      where: { name: exercise.name },
+      where: { source_sourceId: { source: "manual", sourceId } },
       update: {},
-      create: exercise,
+      create: { ...exercise, source: "manual", sourceId },
     });
   }
   console.log(`Seeded ${exercises.length} exercises.`);

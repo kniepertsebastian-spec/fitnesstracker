@@ -8,6 +8,7 @@ import jwtPlugin from "./plugins/jwt.plugin.js";
 import authHooks from "./modules/auth/auth.hooks.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import workoutLogRoutes from "./modules/workoutLogs/workoutLog.routes.js";
+import exerciseRoutes from "./modules/exercises/exercise.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -25,6 +26,7 @@ export function buildApp() {
   app.get("/api/health", async () => ({ status: "ok" }));
 
   app.register(authRoutes, { prefix: "/api/auth" });
+  app.register(exerciseRoutes, { prefix: "/api" });
   app.register(workoutLogRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {

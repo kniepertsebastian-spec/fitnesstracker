@@ -30,6 +30,41 @@ für Zod-Schemas/Typen, die beide Seiten brauchen.
 Caddyfile. Caddy dient das gebaute Frontend und proxied `/api/*` zum Backend, beides same-origin —
 das eliminiert CORS in Produktion komplett, was für Cookie-basierte Auth wichtig ist.
 
+## Übungs-Import (fertig)
+
+Übungen von Hand pflegen skaliert nicht — stattdessen zieht ein Adapter-Mechanismus komplette
+Kataloge aus externen, frei verfügbaren Quellen und schreibt sie idempotent (Upsert by
+`source`+`sourceId`) in die eigene DB. Jede Quelle implementiert nur ein kleines Interface
+(`backend/src/modules/exercises/sources/types.ts`):
+
+```ts
+interface ExerciseSourceAdapter {
+  name: string;
+  fetchExercises(): Promise<ImportedExercise[]>;
+}
+```
+
+und wird in `sources/index.ts` registriert — Route und Service kennen die konkrete Quelle nicht,
+sie rufen nur `POST /api/exercises/import { source: "<name>" }` auf. So lassen sich beliebig viele
+weitere Quellen ("von verschiedenen Stellen gezogen") ergänzen, ohne bestehenden Code anzufassen.
+
+**Aktuell angebundene Quelle: [free-exercise-db](https://github.com/yuhonas/free-exercise-db)**
+— ein offener, gemeinfreier Datensatz (Unlicense) mit 870+ Übungen: Name, Ausführungsschritte,
+Ziel-/Hilfsmuskeln, Equipment, Kategorie und Referenzbilder. Kein API-Key, kein Rate-Limit. Import
+via `POST /api/exercises/import {"source":"free-exercise-db"}` dauert lokal getestet ~3 Sekunden
+für den kompletten Katalog.
+
+**Bekannte Lücke: kein Video.** Weder diese noch andere kostenlos/offen recherchierten Quellen
+(z. B. wger.de, das primär Bilder liefert) stellen durchgehend Ausführungsvideos bereit. `videoUrl`
+bleibt für importierte Übungen leer — entweder manuell nachpflegen (`PATCH /api/exercises/:id`)
+oder eine künftige Quelle/Integration ergänzt das automatisiert.
+
+Manuell angelegte Übungen (`POST /api/exercises`) bekommen `source: "manual"` und eine generierte
+`sourceId`, damit dieselbe Upsert-Logik einheitlich für beide Fälle gilt. Löschen einer Übung ist
+über eine Fremdschlüssel-Prüfung abgesichert (`409 Conflict`), solange noch Workout-Logs oder Ziele
+darauf verweisen — auch weich gelöschte Logs (`deletedAt` gesetzt) zählen dabei mit, weil sie für
+den künftigen Offline-Sync als Tombstones erhalten bleiben müssen.
+
 ## Offline-first (Roadmap-Phase, Datenmodell bereits vorbereitet)
 
 Da die App explizit auf dem iPhone als installierte PWA laufen soll, scheidet die native
@@ -58,7 +93,8 @@ angelegt (auch für Modelle ohne UI in dieser Phase), damit spätere Phasen addi
 Breaking-Migrationen nötig werden:
 
 - `User`, `RefreshToken` — Auth
-- `Exercise` — Name, Beschreibung, Video-URL (Bibliothek kommt in Phase 1)
+- `Exercise` — Name, Beschreibung, Video-/Bild-URLs, Equipment, Muskelgruppen, `source`/`sourceId`
+  für idempotenten Import (Bibliotheks-UI mit Detailansicht kommt in Phase 1)
 - `WorkoutLog` — Satz/Wiederholungen/Gewicht/Übung, `clientId` für Offline-Idempotenz, Soft-Delete
 - `TrainingPlan` + `TrainingPlanPhaseHistory` — 8-Wochen-Rotation (Phase 2)
 - `Goal` — Zielsetzung (Phase 3)

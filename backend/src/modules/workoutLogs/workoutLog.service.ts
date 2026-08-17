@@ -75,7 +75,3 @@ export async function deleteWorkoutLog(prisma: PrismaClient, userId: string, id:
 
   await prisma.workoutLog.update({ where: { id }, data: { deletedAt: new Date() } });
 }
-
-export function listExercises(prisma: PrismaClient) {
-  return prisma.exercise.findMany({ orderBy: { name: "asc" } });
-}

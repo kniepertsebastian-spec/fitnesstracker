@@ -7,12 +7,16 @@
 - Auth: Registrierung (Setup-Token-geschützt), Login, Refresh-Rotation, Logout
 - Trainings-Tabelle: Satz/Wiederholungen/Gewicht/Übung, CRUD, Ende-zu-Ende lauffähig
 - Installierbare PWA-Hülle (Manifest, Icons, Service Worker mit `NetworkOnly` für `/api/**`)
+- Übungs-API: CRUD + Detailansicht-Endpunkt, pluggable Import-Mechanismus für externe Quellen
+  (`POST /api/exercises/import`), erste Quelle angebunden (free-exercise-db, 870+ Übungen)
 
-## Phase 1 — Übungsbibliothek
+## Phase 1 — Übungsbibliothek (UI)
 
-- CRUD/Verwaltungs-UI für Übungen
-- "Übung öffnen"-Detailansicht mit Beschreibung der Ausführung + Video
-- Echten Übungskatalog einpflegen (Seed erweitern oder Admin-UI)
+- Backend/API bereits fertig (siehe Phase 0) — hier fehlt nur noch die Oberfläche:
+- Browse-/Such-UI für den importierten Katalog (Filter nach Muskelgruppe/Equipment)
+- "Übung öffnen"-Detailansicht mit Beschreibung der Ausführung + Bildern
+- Video-Lücke schließen: entweder manuell pro Übung nachpflegen oder eine weitere Quelle mit
+  Video anbinden (neuer Adapter, siehe `ARCHITECTURE.md`)
 
 ## Phase 2 — Trainingsplan-Rotation
 

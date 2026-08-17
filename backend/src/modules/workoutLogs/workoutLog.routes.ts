@@ -3,7 +3,6 @@ import { createWorkoutLogSchema, updateWorkoutLogSchema } from "@fitnesstracker/
 import {
   createWorkoutLog,
   deleteWorkoutLog,
-  listExercises,
   listWorkoutLogs,
   updateWorkoutLog,
 } from "./workoutLog.service.js";
@@ -19,18 +18,6 @@ const listQuerySchema = z.object({
 
 export default async function workoutLogRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
-
-  fastify.get("/exercises", async (_request, reply) => {
-    const exercises = await listExercises(fastify.prisma);
-    return reply.send({
-      items: exercises.map((e) => ({
-        id: e.id,
-        name: e.name,
-        description: e.description,
-        videoUrl: e.videoUrl,
-      })),
-    });
-  });
 
   fastify.get("/workout-logs", async (request, reply) => {
     const filters = listQuerySchema.parse(request.query);
