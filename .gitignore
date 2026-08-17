@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.local
+.DS_Store
+pnpm-lock.yaml.bak
+backend/prisma/dev.db
+coverage/
+.vite/
+caddy_data/
+caddy_config/
+pgdata/

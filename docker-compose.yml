@@ -1,0 +1,42 @@
+# Local development. The frontend runs on the host via `pnpm --filter frontend dev` (fast
+# HMR) and is NOT containerized here; it proxies /api to the backend container below.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fitnesstracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-fitnesstracker}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fitnesstracker}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: deps
+    working_dir: /app
+    command: sh -c "pnpm --filter backend prisma:generate && pnpm --filter backend dev"
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://fitnesstracker:change-me@postgres:5432/fitnesstracker}
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - backend_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  backend_node_modules:
