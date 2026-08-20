@@ -1,9 +1,9 @@
-import type { WorkoutLogDto } from "@fitnesstracker/shared";
+import type { LocalWorkoutLog } from "../../offline/db";
 import { useDeleteWorkoutLog } from "../../hooks/useWorkoutLogs";
 
 interface Props {
-  logs: WorkoutLogDto[];
-  onEdit: (log: WorkoutLogDto) => void;
+  logs: LocalWorkoutLog[];
+  onEdit: (log: LocalWorkoutLog) => void;
 }
 
 export function WorkoutLogTable({ logs, onEdit }: Props) {
@@ -26,8 +26,15 @@ export function WorkoutLogTable({ logs, onEdit }: Props) {
       </thead>
       <tbody>
         {logs.map((log) => (
-          <tr key={log.id} className="border-b border-slate-900">
-            <td className="py-2 pr-2">{log.exerciseName}</td>
+          <tr key={log.clientId} className="border-b border-slate-900">
+            <td className="py-2 pr-2">
+              {log.exerciseName}
+              {log.id === null && (
+                <span className="ml-1 text-xs text-amber-500" title="Noch nicht synchronisiert">
+                  ⏳
+                </span>
+              )}
+            </td>
             <td className="py-2 pr-2">{log.setNumber}</td>
             <td className="py-2 pr-2">{log.reps}</td>
             <td className="py-2 pr-2">{log.weightKg}</td>
@@ -36,7 +43,7 @@ export function WorkoutLogTable({ logs, onEdit }: Props) {
                 Bearbeiten
               </button>
               <button
-                onClick={() => deleteLog.mutate(log.id)}
+                onClick={() => deleteLog.mutate(log.clientId)}
                 className="text-red-400 hover:underline"
               >
                 Löschen

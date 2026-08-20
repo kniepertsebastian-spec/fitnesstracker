@@ -43,19 +43,29 @@ export function createWorkoutLog(prisma: PrismaClient, userId: string, input: Cr
   });
 }
 
-export async function updateWorkoutLog(
-  prisma: PrismaClient,
-  userId: string,
-  id: string,
-  input: UpdateWorkoutLogInput,
-) {
-  const existing = await prisma.workoutLog.findFirst({ where: { id, userId, deletedAt: null } });
+// `idOrClientId` accepts either identifier: the offline sync queue only ever knows a row's
+// clientId (it may not have synced yet and gotten a server `id` at all), while any other caller
+// uses the server id. Both are UUIDs so the route's param validation doesn't need to change.
+async function findOwnedWorkoutLog(prisma: PrismaClient, userId: string, idOrClientId: string) {
+  const existing = await prisma.workoutLog.findFirst({
+    where: { userId, deletedAt: null, OR: [{ id: idOrClientId }, { clientId: idOrClientId }] },
+  });
   if (!existing) {
     throw new NotFoundError("Workout log not found");
   }
+  return existing;
+}
+
+export async function updateWorkoutLog(
+  prisma: PrismaClient,
+  userId: string,
+  idOrClientId: string,
+  input: UpdateWorkoutLogInput,
+) {
+  const existing = await findOwnedWorkoutLog(prisma, userId, idOrClientId);
 
   return prisma.workoutLog.update({
-    where: { id },
+    where: { id: existing.id },
     data: {
       exerciseId: input.exerciseId,
       setNumber: input.setNumber,
@@ -67,11 +77,7 @@ export async function updateWorkoutLog(
   });
 }
 
-export async function deleteWorkoutLog(prisma: PrismaClient, userId: string, id: string) {
-  const existing = await prisma.workoutLog.findFirst({ where: { id, userId, deletedAt: null } });
-  if (!existing) {
-    throw new NotFoundError("Workout log not found");
-  }
-
-  await prisma.workoutLog.update({ where: { id }, data: { deletedAt: new Date() } });
+export async function deleteWorkoutLog(prisma: PrismaClient, userId: string, idOrClientId: string) {
+  const existing = await findOwnedWorkoutLog(prisma, userId, idOrClientId);
+  await prisma.workoutLog.update({ where: { id: existing.id }, data: { deletedAt: new Date() } });
 }

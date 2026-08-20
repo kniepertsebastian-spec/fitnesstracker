@@ -150,14 +150,51 @@ CRUD über `/goals`. Die interessante Design-Frage war nicht das CRUD selbst, so
   `targetDate`, `achievedAt`. Ein Ziel "umzuwidmen" (andere Übung, anderer Typ) ist im Kern ein
   neues Ziel; dafür gibt es Löschen + Neuanlegen statt einer Sonderfall-Logik im Update-Pfad.
 
-## Offline-first (Roadmap-Phase, Datenmodell bereits vorbereitet)
+## Offline-first + Sync (fertig)
 
 Da die App explizit auf dem iPhone als installierte PWA laufen soll, scheidet die native
 Background-Sync-API des Browsers aus — sie wird von iOS Safari nicht (zuverlässig) unterstützt.
-Geplanter Ansatz: IndexedDB via Dexie.js als lokaler Store, jeder Workout-Log-Eintrag bekommt
-clientseitig eine UUID (`clientId`, bereits im Schema und in der API als Idempotenz-Schlüssel
-angelegt), ein eigener Sync-Manager beobachtet `online`/`offline`-Events und flusht die
-Mutations-Queue per Upsert-by-`clientId` zum Backend, sobald wieder eine Verbindung besteht.
+Stattdessen: IndexedDB via Dexie.js als lokaler Store (`frontend/src/offline/db.ts`), ein eigener
+Sync-Manager (`frontend/src/offline/workoutLogSync.ts`) beobachtet `online`/`offline`-Events und
+flusht die Mutations-Queue, sobald wieder eine Verbindung besteht.
+
+**Nur die Trainings-Tabelle ist offline-fähig**, nicht Übungsbibliothek/Plan/Ziele — das deckt den
+eigentlichen Anwendungsfall ("Satz protokollieren, während im Kraftraum kein Empfang ist") ohne
+den Umfang auf Daten auszuweiten, die primär zu Hause mit Verbindung durchsucht/gepflegt werden.
+
+- **`clientId` statt `id` als stabile lokale Identität.** Eine offline angelegte Zeile hat noch
+  keine Server-`id` (die vergibt Postgres erst beim ersten erfolgreichen `POST`) — trotzdem muss
+  sie sofort bearbeitbar/löschbar sein. Der lokale Cache nutzt daher durchgehend `clientId` als
+  Schlüssel (`id: string | null` bis zur Sync), und `PATCH`/`DELETE /workout-logs/:id` akzeptieren
+  jetzt zusätzlich die `clientId` als Identifier (`findOwnedWorkoutLog` in
+  `workoutLog.service.ts`) — eine kleine, gezielte Backend-Änderung, ohne die schon
+  idempotent-by-`clientId` gebaute `POST`-Route anzufassen.
+- **Mutations-Queue statt Direktschreiben**, mit Koaleszenz pro `clientId`: mehrere Edits an einer
+  noch nicht synchronisierten Zeile verschmelzen zu einer Mutation mit den aktuellsten Werten,
+  statt jeden Zwischenstand einzeln nachzuspielen (end-to-end verifiziert: Anlegen + Bearbeiten
+  offline blieb bei einer ausstehenden Mutation, der Server sah nie den Zwischenwert). Ein
+  `delete` auf eine Zeile mit noch nicht synchronisiertem `create` verwirft die Mutation komplett
+  — dem Server gibt es nichts mitzuteilen.
+- **Cache-then-network beim Lesen**: `fetchAndCacheWorkoutLogs` versucht zuerst das Netzwerk,
+  merged das Ergebnis in den Dexie-Cache (außer für Zeilen mit noch ausstehender lokaler Mutation
+  — die würde ein Hintergrund-Refresh sonst mit veralteten Serverdaten überschreiben) und liest
+  danach immer aus dem Cache. Offline heißt hier einfach: der Netzwerk-Schritt schlägt fehl, der
+  Rest der Funktion läuft unverändert weiter.
+- **Zwei Stolperfallen, die erst beim echten Offline-Testen auffielen** (nicht beim Typecheck):
+  - TanStack Query pausiert Mutations standardmäßig komplett, solange der Browser offline ist
+    (`networkMode: "online"`), statt `mutationFn` überhaupt aufzurufen — obwohl die eigenen
+    Mutation-Funktionen rein lokale Dexie-Schreibvorgänge sind und dafür keine Netzwerkverbindung
+    brauchen. Ohne `networkMode: "always"` auf den Workout-Log-Hooks wäre "offline einen Satz
+    speichern" wortwörtlich nie ausgeführt worden — kein Fehler, einfach stillschweigend nie
+    passiert.
+  - Ein `onSuccess: () => queryClient.invalidateQueries(...)` nach einer Mutation lässt
+    `mutateAsync` auf den (bei fehlendem Netz erfolglosen) Refetch warten, bevor es sich auflöst
+    — der Speichern-Dialog wäre offline hängengeblieben, statt sofort zu schließen. Der Fix:
+    Mutations aktualisieren den Query-Cache direkt aus dem lokalen Dexie-Stand
+    (`queryClient.setQueryData`, nie ein Refetch), sowohl direkt nach einer lokalen Änderung als
+    auch nach jedem Sync-Schritt im Hintergrund-Flush — dafür ist der `QueryClient` jetzt ein
+    Singleton-Modul (`frontend/src/queryClient.ts`) statt in `main.tsx` erzeugt, damit auch der
+    `online`-Event-Handler außerhalb von React darauf zugreifen kann.
 
 ## Push-Benachrichtigungen (Roadmap-Phase)
 

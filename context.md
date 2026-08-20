@@ -24,6 +24,13 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
   Gewicht/Wiederholungen (aus `WorkoutLog`-Bestwert berechnet), manueller Erreicht-Toggle für
   alle Typen — end-to-end getestet inkl. Validierung (Übung Pflichtfeld nur bei
   Gewicht/Wiederholungen)
+- **Offline-first Trainings-Tabelle**: Dexie/IndexedDB-Cache + Mutations-Queue, Sync bei
+  `online`-Event, Koaleszenz mehrfacher Edits vor der ersten Sync — end-to-end im Browser mit
+  echtem Offline-Toggle getestet (anlegen, bearbeiten, löschen offline, danach automatischer
+  Sync, Serverstand exakt geprüft). Zwei nur beim echten Offline-Test sichtbare Bugs gefunden
+  und gefixt: TanStack-Query-Mutations pausieren standardmäßig komplett, solange der Browser
+  offline ist (`networkMode: "always"` nötig), und `invalidateQueries` nach einer Mutation ließ
+  den Speichern-Dialog auf einen offline erfolglosen Refetch warten. Siehe `ARCHITECTURE.md`.
 - **Docker Compose**: lokale Entwicklung (Postgres + Backend, Frontend auf dem Host) und
   Produktion (+ Caddy, automatisches HTTPS) — Config validiert, echter `docker compose up`
   in dieser Sandbox nicht möglich (kein laufender Docker-Daemon), daher Backend/Frontend
@@ -42,10 +49,10 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
 ## Branch & Repo
 
 - Repo: `kniepertsebastian-spec/fitnesstracker`
-- Aktiver Branch: `main` (PR #1 mit der vorherigen Session bereits gemerged)
+- Aktiver Branch: `main`, lokal committed, **noch nicht gepusht**
 - Bisherige Commits: Foundation (Monorepo/Auth/Tracking-Tabelle) → Übungs-API mit Import →
-  Übungsbibliothek-UI (Phase 1) → Trainingsplan-Rotation (Phase 2) → Ziele (Phase 3) —
-  Phase 1–3 noch nicht committed, siehe unten
+  "Add exercise library UI, training plan rotation, and goals (Phases 1-3)" — Phase 4
+  (Offline-first Trainings-Tabelle) ist fertig, aber **noch nicht committed**, siehe unten
 
 ## Backend-Endpunkte (alle unter `/api`)
 
@@ -69,8 +76,8 @@ POST   /exercises/import        # { source: "free-exercise-db" }, idempotent
 
 GET    /workout-logs?from=&to=&exerciseId=
 POST   /workout-logs            # idempotent by clientId
-PATCH  /workout-logs/:id
-DELETE /workout-logs/:id        # Soft-Delete
+PATCH  /workout-logs/:id        # :id akzeptiert auch clientId (Offline-Sync vor erster Sync)
+DELETE /workout-logs/:id        # Soft-Delete, :id akzeptiert auch clientId
 
 GET    /training-plan           # legt bei Bedarf an, rotiert überfällige Phasen automatisch nach
 
@@ -101,10 +108,9 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
 - **Kein Video** in der importierten Übungsbibliothek — `free-exercise-db` liefert nur Bilder,
   keine kostenlose Quelle mit Video gefunden. `videoUrl` bleibt leer bis manuell gepflegt oder
   eine neue Quelle angebunden wird.
-- **Keine Frontend-UI** mehr offen außer Offline-Sync, Push-Erinnerungen und
-  Claude-API-Integration (Phasen 4–6) — Backend/Datenmodell dafür ist vorbereitet, siehe
-  `ROADMAP.md`. Phasen 1–3 (Übungsbibliothek, Trainingsplan-Rotation, Ziele) sind seit dieser
-  bzw. der vorherigen Session fertig, siehe oben.
+- **Keine Frontend-UI** mehr offen außer Push-Erinnerungen und Claude-API-Integration
+  (Phasen 5–6) — Backend/Datenmodell dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–4
+  (Übungsbibliothek, Trainingsplan-Rotation, Ziele, Offline-Sync) sind fertig, siehe oben.
 - **Kein Bodyweight-Tracking-Modell** — `Goal.type = BODYWEIGHT` speichert nur einen Zielwert,
   es gibt keinen Log für den tatsächlichen Körpergewichtsverlauf. Fortschritt für diesen (und
   `CUSTOM`) Ziel-Typ ist deshalb bewusst ein manueller "Als erreicht markieren"-Toggle statt
@@ -116,11 +122,16 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
   end-to-end dagegen getestet, nicht nur `docker compose config` validiert.
 - `pnpm-workspace.yaml` brauchte `allowBuilds: true` für `@prisma/client`/`bcrypt`/`esbuild`/
   `prisma`, sonst bricht `pnpm install` mit `ERR_PNPM_IGNORED_BUILDS` ab (neueres pnpm blockiert
-  Postinstall-Skripte standardmäßig) — gefixt, aber wie der Rest **noch nicht committed**.
+  Postinstall-Skripte standardmäßig) — gefixt und committed.
+- **TanStack-Query-Fallstricke bei Offline-first** (siehe `ARCHITECTURE.md` für Details): Mutations
+  mit Default-`networkMode` laufen offline nie, und `invalidateQueries` nach einer Mutation hängt
+  offline. Falls weitere Entities offline-fähig werden (aktuell nur Trainings-Tabelle), dieselben
+  zwei Fallstricke im Hinterkopf behalten.
 
 ## Nächster sinnvoller Schritt
 
-Phase 1 (Übungsbibliothek-UI), Phase 2 (Trainingsplan-Rotation) und Phase 3 (Ziele) sind fertig,
-aber **noch nicht committed** — Arbeitsverzeichnis hat uncommitted Changes (siehe `git status`).
-Erstmal committen/pushen, dann weiter mit Phase 4 (Offline-first + Sync: Dexie.js/IndexedDB,
-Mutations-Queue). Siehe `ROADMAP.md` Phase 4 für Details.
+Phase 4 (Offline-first Trainings-Tabelle) ist fertig, aber **noch nicht committed** —
+Arbeitsverzeichnis hat uncommitted Changes (siehe `git status`); Phase 1–3 sind bereits lokal
+committed, aber **noch nicht gepusht**. Erstmal Phase 4 committen und alles pushen, dann weiter
+mit Phase 5 (Push-Benachrichtigungen: VAPID-Setup, Subscription-Flow, an den
+Trainingsplan-Scheduler aus Phase 2 gekoppelt). Siehe `ROADMAP.md` Phase 5 für Details.

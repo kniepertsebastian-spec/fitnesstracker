@@ -51,12 +51,22 @@
 - UI (`/goals`): offene/erreichte Ziele getrennt, Erstellungs-Dialog mit typabhängigem
   Übungs-Auswahlfeld, Fortschrittsbalken, Erreicht-Toggle, Löschen
 
-## Phase 4 — Offline-first + Sync
+## Phase 4 — Offline-first + Sync ✅
 
-- Dexie.js (IndexedDB) als lokaler Store
-- Mutations-Queue, Sync-Manager auf Basis von `online`/`offline`-Events (kein Background-Sync-API,
-  wegen fehlender iOS-Unterstützung)
-- Konfliktauflösung über `clientId` + `updatedAt`
+- Nur die Trainings-Tabelle ist offline-fähig (der eigentliche "Satz an der Hantelbank
+  protokollieren, ohne Empfang"-Anwendungsfall) — Übungsbibliothek/Plan/Ziele bleiben
+  netzwerkgebunden, siehe `ARCHITECTURE.md` für die Begründung
+- Dexie.js (IndexedDB) als lokaler Store: `workoutLogs`-Cache (`clientId` als Primärschlüssel,
+  `id` ist `null` bis zur ersten erfolgreichen Sync) + `pendingMutations`-Queue
+- Sync-Manager auf Basis von `online`/`offline`-Events (kein Background-Sync-API, wegen
+  fehlender iOS-Unterstützung), holt beim Reconnect automatisch nach
+- Konfliktauflösung: Mehrfach-Edits an derselben (noch nicht synchronisierten) Zeile werden in
+  der Queue zu einer Mutation zusammengefasst (`clientId` als Schlüssel), statt jeden
+  Zwischenstand einzeln nachzuspielen — end-to-end getestet: Anlegen + Bearbeiten offline blieb
+  bei "1 ausstehend" statt zwei separaten Mutationen, und der Server bekam nie den
+  Zwischenwert zu sehen
+- Backend erweitert: `PATCH`/`DELETE /workout-logs/:id` akzeptieren jetzt auch die `clientId` als
+  Identifier, weil eine offline angelegte Zeile vor der ersten Sync noch keine Server-`id` hat
 
 ## Phase 5 — Push-Benachrichtigungen
 

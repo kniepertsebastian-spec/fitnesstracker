@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../../hooks/useTrainingPlan";
+import { useSyncStore } from "../../stores/syncStore";
 
 interface NavItem {
   label: string;
@@ -18,19 +19,32 @@ const NAV_ITEMS: NavItem[] = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { data: plan } = useTrainingPlan();
+  const { isOnline, pendingCount } = useSyncStore();
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
         <span className="font-semibold text-slate-100">Fitnesstracker</span>
-        {user && (
-          <button
-            onClick={() => logout()}
-            className="text-sm text-slate-400 hover:text-slate-200"
-          >
-            Abmelden
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {!isOnline && (
+            <span className="rounded-full bg-amber-950 px-2 py-0.5 text-xs text-amber-400">
+              Offline
+            </span>
+          )}
+          {pendingCount > 0 && (
+            <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+              {pendingCount} ausstehend
+            </span>
+          )}
+          {user && (
+            <button
+              onClick={() => logout()}
+              className="text-sm text-slate-400 hover:text-slate-200"
+            >
+              Abmelden
+            </button>
+          )}
+        </div>
       </header>
 
       <main className="flex-1 px-4 py-4">{children}</main>

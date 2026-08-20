@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import type { ExerciseDto, WorkoutLogDto } from "@fitnesstracker/shared";
+import type { ExerciseDto } from "@fitnesstracker/shared";
+import type { LocalWorkoutLog } from "../../offline/db";
 import { useCreateWorkoutLog, useExercises, useUpdateWorkoutLog } from "../../hooks/useWorkoutLogs";
 
 const formSchema = z.object({
@@ -16,7 +17,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface Props {
   open: boolean;
   onClose: () => void;
-  editingLog: WorkoutLogDto | null;
+  editingLog: LocalWorkoutLog | null;
 }
 
 export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
@@ -47,10 +48,11 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
   if (!open) return null;
 
   const onSubmit = async (data: FormValues) => {
+    const exerciseName = exercises?.find((e) => e.id === data.exerciseId)?.name ?? "";
     if (editingLog) {
-      await updateLog.mutateAsync({ id: editingLog.id, input: data });
+      await updateLog.mutateAsync({ clientId: editingLog.clientId, input: data, exerciseName });
     } else {
-      await createLog.mutateAsync({ ...data, clientId: crypto.randomUUID() });
+      await createLog.mutateAsync({ input: { ...data, clientId: crypto.randomUUID() }, exerciseName });
     }
     onClose();
   };

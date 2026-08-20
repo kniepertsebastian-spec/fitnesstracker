@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { WorkoutLogDto } from "@fitnesstracker/shared";
+import type { LocalWorkoutLog } from "../offline/db";
 import { AppShell } from "../components/layout/AppShell";
 import { WorkoutLogTable } from "../components/workoutLog/WorkoutLogTable";
 import { WorkoutLogFormDialog } from "../components/workoutLog/WorkoutLogFormDialog";
@@ -8,14 +8,14 @@ import { useWorkoutLogs } from "../hooks/useWorkoutLogs";
 export function WorkoutLogPage() {
   const { data: logs, isLoading } = useWorkoutLogs();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingLog, setEditingLog] = useState<WorkoutLogDto | null>(null);
+  const [editingLog, setEditingLog] = useState<LocalWorkoutLog | null>(null);
 
   const openCreate = () => {
     setEditingLog(null);
     setDialogOpen(true);
   };
 
-  const openEdit = (log: WorkoutLogDto) => {
+  const openEdit = (log: LocalWorkoutLog) => {
     setEditingLog(log);
     setDialogOpen(true);
   };

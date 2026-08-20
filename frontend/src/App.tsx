@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { LoginPage } from "./routes/LoginPage";
 import { RegisterPage } from "./routes/RegisterPage";
@@ -8,9 +9,11 @@ import { TrainingPlanPage } from "./routes/TrainingPlanPage";
 import { GoalsPage } from "./routes/GoalsPage";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { useAuthBootstrap } from "./hooks/useAuth";
+import { initWorkoutLogSync } from "./offline/workoutLogSync";
 
 export function App() {
   useAuthBootstrap();
+  useEffect(() => initWorkoutLogSync(), []);
 
   return (
     <BrowserRouter>
