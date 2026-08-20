@@ -65,6 +65,91 @@ Manuell angelegte Übungen (`POST /api/exercises`) bekommen `source: "manual"` u
 darauf verweisen — auch weich gelöschte Logs (`deletedAt` gesetzt) zählen dabei mit, weil sie für
 den künftigen Offline-Sync als Tombstones erhalten bleiben müssen.
 
+## Übungsbibliothek-UI (fertig)
+
+Browse-/Such-UI (`/exercises`) plus Detailansicht (`/exercises/:id`), aufbauend auf der in Phase 0
+gebauten Übungs-API. Ein paar Entscheidungen, die beim Umbau von "gecappte Liste" zu "durchsuchbare
+Bibliothek" getroffen wurden:
+
+- **Pagination statt hartem 200er-Cap.** `GET /exercises` akzeptierte bisher nur `search` und
+  brach nach 200 Treffern ab — für eine Bibliothek mit 870+ Einträgen wären so über zwei Drittel
+  des Katalogs für die Nutzerin unsichtbar geblieben. Jetzt liefert der Endpunkt `{ items, total }`
+  mit `page`/`pageSize` (Default weiterhin 200, damit das bestehende Übungs-Dropdown im
+  Trainings-Log-Formular — das die volle Liste ungefiltert lädt — unverändert funktioniert); die
+  Bibliotheks-UI selbst fragt bewusst kleinere Seiten (`pageSize=30`) ab und lädt per
+  "Mehr laden"-Button nach (TanStack Querys `useInfiniteQuery`). Kein automatisches
+  Infinite-Scroll, weil ein expliziter Button auf einer Liste mit potenziell 870 Einträgen weniger
+  überraschend ist als ungewolltes Nachladen beim Scrollen.
+- **Muskelgruppe/Equipment sind Freitext, kein Enum.** Beide Felder kommen aus dem
+  `free-exercise-db`-Import als beliebige Strings (`primaryMuscles`/`secondaryMuscles` als Array,
+  `equipment` als einzelner String) — ein festes Enum hätte bei jeder neuen Importquelle mit
+  abweichender Taxonomie brechen können. Die Filter-Dropdowns bekommen ihre Optionen daher nicht
+  aus einer festen Liste, sondern aus einem eigenen Endpunkt `GET /exercises/facets`, der die
+  tatsächlich in der DB vorkommenden Werte dedupliziert zurückgibt (in JS, nicht per SQL
+  `DISTINCT` — Postgres dedupliziert `DISTINCT` nicht auf Array-Elementen; bei ~870 Zeilen ist das
+  günstig genug, um es nicht zu optimieren).
+- **Muskelgruppen-Filter matcht primär ODER sekundär**, weil beim Stöbern nach z. B. "biceps" auch
+  Übungen relevant sind, bei denen der Bizeps nur unterstützend beansprucht wird (z. B. Rudern).
+  Mehrere Filter (Suche + Muskelgruppe + Equipment) kombinieren sich dagegen als UND — das
+  entspricht dem Verhalten, das man von Browse-Filtern erwartet.
+- **Detailansicht als eigene Route, kein Dialog** (anders als das Trainings-Log-Formular, das ein
+  Bottom-Sheet ist) — ein "Übung öffnen" ist eine Ansicht zum Lesen/Verweilen, keine kurze
+  Formulareingabe, und eine echte Route gibt der Nutzerin die native Zurück-Geste/den
+  Browser-Verlauf statt eines Overlays, das weggetippt werden muss.
+
+## Trainingsplan-Rotation (fertig)
+
+Die 8-Wochen-Rotation (Aufbau → Muskelausdauer → Negativ → Aufbau, immer montags) läuft über
+`GET /training-plan` plus einen eigenen Hintergrund-Tick, nicht rein UI-getrieben:
+
+- **`phaseStartedOn` ist immer ein Montag** (00:00 UTC), damit "+8 Wochen" wieder exakt auf einen
+  Montag fällt, ohne Wochentags-Drift über viele Rotationen hinweg. Ein neuer Plan startet daher
+  am Montag der aktuellen Woche, nicht am Erstellungsdatum selbst.
+- **Rotation holt beliebig viele verpasste Zyklen nach**, statt nur einmal zu prüfen — läuft der
+  Server z. B. mehrere Monate nicht, schließt `rotatePhaseIfDue` beim nächsten Tick jede
+  überfällige 8-Wochen-Periode einzeln als eigenen `TrainingPlanPhaseHistory`-Eintrag ab, bis die
+  aktuelle Phase wieder stimmt (end-to-end getestet: 10 nachgeholte Zyklen in einem Rutsch).
+- **Zwei unabhängige Auslöser statt nur "on demand"**: `GET /training-plan` rotiert lazy beim
+  Abruf (damit die UI nie eine veraltete Phase zeigt), zusätzlich läuft ein Fastify-Plugin
+  (`trainingPlan.scheduler.ts`) mit einem `setInterval`-Tick alle 6h + einmal beim Boot, der
+  alle überfälligen Pläne rotiert — unabhängig davon, ob gerade jemand die App öffnet. Das ist
+  bewusst so gebaut, weil Phase 5 (Push-Erinnerungen) an genau diesen Rotationsevent andocken
+  soll ("Erinnerung bei Trainingsplan-Wechsel"); eine rein lazy Lösung hätte dafür keinen Haken.
+- **`@@unique([trainingPlanId, startedOn])`** auf `TrainingPlanPhaseHistory` plus
+  `skipDuplicates: true` beim Insert schützt vor doppelten Verlaufs-Einträgen, falls Scheduler-Tick
+  und ein Request denselben überfälligen Zeitraum gleichzeitig rotieren — bei einer Ein-Personen-
+  App ein Rand-Rand-Fall, aber ein Unique Index ist billig genug, um ihn trotzdem nicht offen zu
+  lassen (gleiche Idempotenz-Idee wie bei `WorkoutLog.clientId` und `Exercise.source+sourceId`).
+- Kein separater "Phase manuell wechseln"-Endpunkt — die Rotation ist bewusst rein zeitgesteuert,
+  wie in der Roadmap beschrieben; ein manueller Override kann bei Bedarf später ergänzt werden.
+
+## Ziele (fertig)
+
+Vier Ziel-Arten über ein einzelnes `Goal`-Modell (`type: WEIGHT | REPS | BODYWEIGHT | CUSTOM`),
+CRUD über `/goals`. Die interessante Design-Frage war nicht das CRUD selbst, sondern wie
+"Fortschritt" pro Ziel-Art berechnet wird:
+
+- **WEIGHT/REPS sind an eine Übung gebunden** (`exerciseId` Pflichtfeld, per Zod-`refine`
+  erzwungen) und ihr Fortschritt wird **automatisch aus vorhandenen Daten hergeleitet** — der
+  bisherige Bestwert (`MAX(weightKg)` bzw. `MAX(reps)`) aus den `WorkoutLog`-Einträgen zur
+  selben Übung. Kein neues Datenmodell nötig, kein manuelles Nachtragen: die Trainings-Tabelle
+  aus Phase 0 liefert die Zahl bereits.
+- **BODYWEIGHT/CUSTOM haben keinen Ziel-Fortschritt aus vorhandenen Daten** — es gibt (bewusst)
+  kein Körpergewichts-Log in diesem Datenmodell, "Ziel: 75 kg Körpergewicht" hat also nichts,
+  wogegen automatisch verglichen werden könnte. Statt dafür eigens ein neues Tracking-Feature zu
+  bauen (das die Roadmap nicht verlangt), ist "erreicht" für diese beiden Typen ein expliziter,
+  manueller Toggle (`PATCH /goals/:id { achievedAt }`) — derselbe Endpunkt, den WEIGHT/REPS-Ziele
+  ebenfalls nutzen können, falls die berechnete Zahl mal nicht ausreicht.
+- **`achievedAt` wird nie automatisch gesetzt.** Auch wenn `currentValue >= targetValue` für ein
+  WEIGHT/REPS-Ziel, markiert die API das Ziel nicht selbst als erreicht — die UI zeigt den
+  Fortschrittsbalken nur als Signal, das "Als erreicht markieren" bleibt eine bewusste
+  Nutzer-Aktion. Ein Read-Handler, der nebenbei Schreiboperationen auslöst, wäre unerwartetes
+  Verhalten (anders als die Trainingsplan-Rotation, die ganz bewusst als zeitgesteuerter
+  Hintergrund-Prozess und nicht als Read-Nebeneffekt gebaut ist, siehe oben).
+- **Typ und Übung sind nach dem Anlegen unveränderlich** — `PATCH` erlaubt nur `targetValue`,
+  `targetDate`, `achievedAt`. Ein Ziel "umzuwidmen" (andere Übung, anderer Typ) ist im Kern ein
+  neues Ziel; dafür gibt es Löschen + Neuanlegen statt einer Sonderfall-Logik im Update-Pfad.
+
 ## Offline-first (Roadmap-Phase, Datenmodell bereits vorbereitet)
 
 Da die App explizit auf dem iPhone als installierte PWA laufen soll, scheidet die native
@@ -94,10 +179,10 @@ Breaking-Migrationen nötig werden:
 
 - `User`, `RefreshToken` — Auth
 - `Exercise` — Name, Beschreibung, Video-/Bild-URLs, Equipment, Muskelgruppen, `source`/`sourceId`
-  für idempotenten Import (Bibliotheks-UI mit Detailansicht kommt in Phase 1)
+  für idempotenten Import (Bibliotheks-UI mit Detailansicht: siehe oben, fertig)
 - `WorkoutLog` — Satz/Wiederholungen/Gewicht/Übung, `clientId` für Offline-Idempotenz, Soft-Delete
-- `TrainingPlan` + `TrainingPlanPhaseHistory` — 8-Wochen-Rotation (Phase 2)
-- `Goal` — Zielsetzung (Phase 3)
+- `TrainingPlan` + `TrainingPlanPhaseHistory` — 8-Wochen-Rotation (siehe oben, fertig)
+- `Goal` — Zielsetzung (siehe oben, fertig)
 - `PushSubscription` — Web-Push-Abos (Phase 5)
 
 ## Bekannte Stolperfallen (bereits berücksichtigt)

@@ -9,6 +9,9 @@ import authHooks from "./modules/auth/auth.hooks.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import workoutLogRoutes from "./modules/workoutLogs/workoutLog.routes.js";
 import exerciseRoutes from "./modules/exercises/exercise.routes.js";
+import trainingPlanRoutes from "./modules/trainingPlan/trainingPlan.routes.js";
+import trainingPlanScheduler from "./modules/trainingPlan/trainingPlan.scheduler.js";
+import goalRoutes from "./modules/goals/goal.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -22,12 +25,15 @@ export function buildApp() {
   app.register(corsPlugin);
   app.register(jwtPlugin);
   app.register(authHooks);
+  app.register(trainingPlanScheduler);
 
   app.get("/api/health", async () => ({ status: "ok" }));
 
   app.register(authRoutes, { prefix: "/api/auth" });
   app.register(exerciseRoutes, { prefix: "/api" });
   app.register(workoutLogRoutes, { prefix: "/api" });
+  app.register(trainingPlanRoutes, { prefix: "/api" });
+  app.register(goalRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {
     if (error instanceof ZodError) {

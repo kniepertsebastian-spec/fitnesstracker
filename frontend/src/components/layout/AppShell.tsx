@@ -1,22 +1,23 @@
 import type { ReactNode } from "react";
+import { NavLink } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../../hooks/useTrainingPlan";
 
 interface NavItem {
   label: string;
-  active: boolean;
+  to: string;
 }
 
-// Only "Log" is wired up this session; the rest are placeholders for upcoming roadmap phases
-// (exercise library, training plan rotation, goals) so the nav layout doesn't need rework later.
 const NAV_ITEMS: NavItem[] = [
-  { label: "Log", active: true },
-  { label: "Übungen", active: false },
-  { label: "Plan", active: false },
-  { label: "Ziele", active: false },
+  { label: "Log", to: "/" },
+  { label: "Übungen", to: "/exercises" },
+  { label: "Plan", to: "/plan" },
+  { label: "Ziele", to: "/goals" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
+  const { data: plan } = useTrainingPlan();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -36,14 +37,21 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav className="flex border-t border-slate-800">
         {NAV_ITEMS.map((item) => (
-          <div
+          <NavLink
             key={item.label}
-            className={`flex-1 py-3 text-center text-sm ${
-              item.active ? "text-sky-400" : "cursor-not-allowed text-slate-600"
-            }`}
+            to={item.to}
+            end={item.to === "/"}
+            className={({ isActive }) =>
+              `flex flex-1 flex-col items-center py-3 text-sm ${isActive ? "text-sky-400" : "text-slate-500 hover:text-slate-300"}`
+            }
           >
-            {item.label}
-          </div>
+            <span>{item.label}</span>
+            {item.label === "Plan" && plan && (
+              <span className="text-[10px] leading-tight text-slate-500">
+                {TRAINING_PHASE_LABELS[plan.currentPhase]}
+              </span>
+            )}
+          </NavLink>
         ))}
       </nav>
     </div>

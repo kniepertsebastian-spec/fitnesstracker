@@ -3,10 +3,10 @@ import type { CreateWorkoutLogInput, UpdateWorkoutLogInput } from "@fitnesstrack
 import {
   createWorkoutLogRequest,
   deleteWorkoutLogRequest,
-  listExercisesRequest,
   listWorkoutLogsRequest,
   updateWorkoutLogRequest,
 } from "../api/workoutLog.api";
+import { listExercisesRequest } from "../api/exercise.api";
 
 const WORKOUT_LOGS_KEY = ["workout-logs"];
 const EXERCISES_KEY = ["exercises"];

@@ -3,15 +3,68 @@ import type { CreateExerciseInput, UpdateExerciseInput } from "@fitnesstracker/s
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
 import { getSourceAdapter } from "./sources/index.js";
 
-export function listExercises(prisma: PrismaClient, filters: { search?: string }) {
-  const where: Prisma.ExerciseWhereInput = filters.search
-    ? { name: { contains: filters.search, mode: "insensitive" } }
-    : {};
+export interface ListExercisesFilters {
+  search?: string;
+  muscleGroup?: string;
+  equipment?: string;
+  page?: number;
+  pageSize?: number;
+}
 
-  // Capped rather than paginated for now: the imported catalog can run into the hundreds,
-  // and nothing in the app needs the full list at once yet (Phase 1 library UI will add
-  // proper search/pagination). Use `search` to narrow it down instead.
-  return prisma.exercise.findMany({ where, orderBy: { name: "asc" }, take: 200 });
+const DEFAULT_PAGE_SIZE = 200;
+const MAX_PAGE_SIZE = 200;
+
+export async function listExercises(prisma: PrismaClient, filters: ListExercisesFilters) {
+  const where: Prisma.ExerciseWhereInput = {
+    ...(filters.search ? { name: { contains: filters.search, mode: "insensitive" } } : {}),
+    ...(filters.muscleGroup
+      ? {
+          OR: [
+            { primaryMuscles: { has: filters.muscleGroup } },
+            { secondaryMuscles: { has: filters.muscleGroup } },
+          ],
+        }
+      : {}),
+    ...(filters.equipment
+      ? { equipment: { equals: filters.equipment, mode: "insensitive" } }
+      : {}),
+  };
+
+  const pageSize = Math.min(filters.pageSize ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  const page = filters.page ?? 1;
+
+  const [items, total] = await Promise.all([
+    prisma.exercise.findMany({
+      where,
+      orderBy: { name: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.exercise.count({ where }),
+  ]);
+
+  return { items, total };
+}
+
+// Distinct values across the array columns aren't expressible as a Prisma `distinct` (that
+// only dedupes whole rows), so pull the raw values and dedupe in JS — cheap at this catalog size.
+export async function getExerciseFacets(prisma: PrismaClient) {
+  const rows = await prisma.exercise.findMany({
+    select: { primaryMuscles: true, secondaryMuscles: true, equipment: true },
+  });
+
+  const muscleGroups = new Set<string>();
+  const equipment = new Set<string>();
+  for (const row of rows) {
+    for (const muscle of row.primaryMuscles) muscleGroups.add(muscle);
+    for (const muscle of row.secondaryMuscles) muscleGroups.add(muscle);
+    if (row.equipment) equipment.add(row.equipment);
+  }
+
+  return {
+    muscleGroups: [...muscleGroups].sort(),
+    equipment: [...equipment].sort(),
+  };
 }
 
 export async function getExerciseById(prisma: PrismaClient, id: string) {

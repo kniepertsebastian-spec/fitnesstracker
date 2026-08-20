@@ -5,12 +5,16 @@ pro Übung protokollieren, Trainingsplan-Phasen rotieren automatisch alle 8 Woch
 mit Sync sobald wieder online. Siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md) für die technischen
 Entscheidungen und [`ROADMAP.md`](./ROADMAP.md) für den vollständigen Ausbauplan.
 
-Aktueller Stand (Phase 0 – Foundation): Login/Registrierung + die Trainings-Tabelle
-(Satz/Wiederholungen/Gewicht/Übung) sind Ende-zu-Ende lauffähig. Die Übungs-API ist ebenfalls
-fertig: volle CRUD-Verwaltung plus ein Import-Mechanismus, der Übungen aus externen, frei
-verfügbaren Datenbanken zieht und in die eigene DB schreibt (siehe unten). Plan-Rotation, Ziele,
-Offline-Sync, Push-Erinnerungen und Claude-API-Integration sind als Datenmodell bereits angelegt,
-aber noch ohne UI (siehe Roadmap).
+Aktueller Stand (Phase 0–3 – Foundation, Übungsbibliothek, Trainingsplan-Rotation & Ziele):
+Login/Registrierung, die Trainings-Tabelle (Satz/Wiederholungen/Gewicht/Übung), die
+Übungsbibliothek (durchsuchen, nach Muskelgruppe/Equipment filtern, Detailansicht), die
+automatische 8-Wochen-Trainingsplan-Rotation (Aufbau → Muskelausdauer → Negativ) und Ziele
+(Gewicht/Wiederholungen pro Übung mit automatischem Fortschritt, Körpergewicht/Sonstiges mit
+manueller Erreicht-Markierung) sind Ende-zu-Ende lauffähig. Die Übungs-API liefert dafür volle
+CRUD-Verwaltung plus einen Import-Mechanismus, der Übungen aus externen, frei verfügbaren
+Datenbanken zieht und in die eigene DB schreibt (siehe unten). Offline-Sync, Push-Erinnerungen
+und Claude-API-Integration sind als Datenmodell bereits angelegt, aber noch ohne UI (siehe
+Roadmap).
 
 ## Stack
 

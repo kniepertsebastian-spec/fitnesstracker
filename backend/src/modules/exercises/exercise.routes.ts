@@ -5,6 +5,7 @@ import {
   createExercise,
   deleteExercise,
   getExerciseById,
+  getExerciseFacets,
   importExercisesFromSource,
   listExercises,
   updateExercise,
@@ -14,19 +15,30 @@ import { listSourceNames } from "./sources/index.js";
 import { HttpError } from "../../errors/httpErrors.js";
 
 const idParamSchema = z.object({ id: z.string().uuid() });
-const listQuerySchema = z.object({ search: z.string().max(200).optional() });
+const listQuerySchema = z.object({
+  search: z.string().max(200).optional(),
+  muscleGroup: z.string().max(200).optional(),
+  equipment: z.string().max(200).optional(),
+  page: z.coerce.number().int().positive().optional(),
+  pageSize: z.coerce.number().int().positive().max(200).optional(),
+});
 
 export default async function exerciseRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
 
   fastify.get("/exercises", async (request, reply) => {
     const filters = listQuerySchema.parse(request.query);
-    const exercises = await listExercises(fastify.prisma, filters);
-    return reply.send({ items: exercises.map(toExerciseDto) });
+    const { items, total } = await listExercises(fastify.prisma, filters);
+    return reply.send({ items: items.map(toExerciseDto), total });
   });
 
   fastify.get("/exercises/sources", async (_request, reply) => {
     return reply.send({ sources: listSourceNames() });
+  });
+
+  fastify.get("/exercises/facets", async (_request, reply) => {
+    const facets = await getExerciseFacets(fastify.prisma);
+    return reply.send(facets);
   });
 
   fastify.get("/exercises/:id", async (request, reply) => {

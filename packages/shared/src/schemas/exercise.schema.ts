@@ -42,3 +42,9 @@ export const importSummaryDtoSchema = z.object({
   updated: z.number().int(),
 });
 export type ImportSummaryDto = z.infer<typeof importSummaryDtoSchema>;
+
+export const exerciseFacetsDtoSchema = z.object({
+  muscleGroups: z.array(z.string()),
+  equipment: z.array(z.string()),
+});
+export type ExerciseFacetsDto = z.infer<typeof exerciseFacetsDtoSchema>;

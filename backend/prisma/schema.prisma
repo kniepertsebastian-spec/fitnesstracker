@@ -118,6 +118,9 @@ model TrainingPlanPhaseHistory {
   startedOn      DateTime
   endedOn        DateTime?
 
+  // Guards against duplicate rows if a scheduler tick and a request both rotate the same
+  // overdue period concurrently (see trainingPlan.service.ts) — each period is closed once.
+  @@unique([trainingPlanId, startedOn])
   @@index([trainingPlanId])
 }
 

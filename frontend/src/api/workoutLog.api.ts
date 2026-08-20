@@ -1,9 +1,4 @@
-import type {
-  CreateWorkoutLogInput,
-  ExerciseDto,
-  UpdateWorkoutLogInput,
-  WorkoutLogDto,
-} from "@fitnesstracker/shared";
+import type { CreateWorkoutLogInput, UpdateWorkoutLogInput, WorkoutLogDto } from "@fitnesstracker/shared";
 import { apiFetch } from "./client";
 
 export function listWorkoutLogsRequest() {
@@ -20,8 +15,4 @@ export function updateWorkoutLogRequest(id: string, input: UpdateWorkoutLogInput
 
 export function deleteWorkoutLogRequest(id: string) {
   return apiFetch<void>(`/workout-logs/${id}`, { method: "DELETE" });
-}
-
-export function listExercisesRequest() {
-  return apiFetch<{ items: ExerciseDto[] }>("/exercises");
 }

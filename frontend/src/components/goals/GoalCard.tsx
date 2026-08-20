@@ -1,0 +1,65 @@
+import type { GoalDto } from "@fitnesstracker/shared";
+import { GOAL_TYPE_LABELS, GOAL_TYPE_UNITS, useDeleteGoal, useUpdateGoal } from "../../hooks/useGoals";
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+export function GoalCard({ goal }: { goal: GoalDto }) {
+  const updateGoal = useUpdateGoal();
+  const deleteGoal = useDeleteGoal();
+
+  const achieved = !!goal.achievedAt;
+  const unit = GOAL_TYPE_UNITS[goal.type];
+  const progress =
+    goal.currentValue !== null ? Math.min(goal.currentValue / goal.targetValue, 1) : null;
+
+  const toggleAchieved = () => {
+    updateGoal.mutate({ id: goal.id, input: { achievedAt: achieved ? null : new Date().toISOString() } });
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs text-slate-500">{GOAL_TYPE_LABELS[goal.type]}</p>
+          <p className="truncate font-medium text-slate-100">
+            {goal.exerciseName ?? GOAL_TYPE_LABELS[goal.type]}
+          </p>
+          <p className="text-sm text-slate-400">
+            Ziel: {goal.targetValue} {unit}
+            {goal.currentValue !== null && (
+              <span className="text-slate-500"> · bisher {goal.currentValue} {unit}</span>
+            )}
+          </p>
+          {goal.targetDate && (
+            <p className="text-xs text-slate-600">bis {formatDate(goal.targetDate)}</p>
+          )}
+        </div>
+        <button
+          onClick={() => deleteGoal.mutate(goal.id)}
+          className="shrink-0 text-xs text-slate-600 hover:text-red-400"
+        >
+          Löschen
+        </button>
+      </div>
+
+      {progress !== null && !achieved && (
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="h-full rounded-full bg-sky-500" style={{ width: `${progress * 100}%` }} />
+        </div>
+      )}
+
+      <button
+        onClick={toggleAchieved}
+        className={`mt-3 w-full rounded-lg py-1.5 text-sm font-medium ${
+          achieved
+            ? "bg-emerald-950 text-emerald-400 hover:bg-emerald-900"
+            : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+        }`}
+      >
+        {achieved ? `✓ Erreicht am ${formatDate(goal.achievedAt as string)}` : "Als erreicht markieren"}
+      </button>
+    </div>
+  );
+}
