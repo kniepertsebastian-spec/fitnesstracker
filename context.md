@@ -43,6 +43,12 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
   Breite (iPhone SE, schmalste gängige Breite) mit echten Daten getestet — Inhalte brechen um
   oder scrollen vertikal statt Zoom-out zu erfordern. Keine Code-Änderung nötig, war bereits
   durch das mobile-first Tailwind-Design + korrekten Viewport-Meta-Tag aus Phase 0 gegeben.
+  Bottom-Nav-Schrift auf `text-xs` reduziert, als "Ernährung" als fünfter Tab dazukam.
+- **Profil & Ernährungsrechner**: `/nutrition`-UI, Mifflin-St-Jeor-Formel für BMR/TDEE +
+  Protein-Ziel nach Ziel (Abnehmen/Halten/Aufbauen), berechnete Werte nie gespeichert, immer aus
+  den Profil-Feldern neu berechnet. Statische Ernährungstipps-Liste. End-to-end getestet: beide
+  Formel-Zweige (männlich/weiblich), Persistenz, Neuberechnung nach Bearbeitung (Alter 25→31 senkte
+  BMR exakt um die erwarteten 30 kcal).
 - **Docker Compose**: lokale Entwicklung (Postgres + Backend, Frontend auf dem Host) und
   Produktion (+ Caddy, automatisches HTTPS) — Config validiert; Docker-Daemon in dieser Sandbox
   verfügbar, jede Session seit Phase 1 hat Postgres via `docker run` tatsächlich live
@@ -61,11 +67,14 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
 ## Branch & Repo
 
 - Repo: `kniepertsebastian-spec/fitnesstracker`
-- Aktiver Branch: `main`, Phasen 1–4 committed und gepusht (`dbbee42`, `dbd75cd`)
+- Aktiver Branch: `main`, Phasen 1–5 committed und gepusht (`dbbee42`, `dbd75cd`, `4d4de32`)
 - Bisherige Commits: Foundation (Monorepo/Auth/Tracking-Tabelle) → Übungs-API mit Import →
   Übungsbibliothek-UI/Trainingsplan-Rotation/Ziele (Phasen 1-3) → Offline-first Trainings-Tabelle
-  (Phase 4) — Phase 5 (Push-Benachrichtigungen) ist fertig, aber **noch nicht committed**, siehe
-  unten
+  (Phase 4) → Push-Benachrichtigungen (Phase 5) — Phase 8 (Profil & Ernährungsrechner) ist
+  fertig, aber **noch nicht committed**, siehe unten. Phasen 9–13 (Wasser-Tracking,
+  Supplement-Erinnerungen & Referenzliste, Körperkomposition, Fortschritts-Fotos, Automatische
+  Ziel-Vorschläge) sind neu in `ROADMAP.md` aufgenommen, aber noch nicht begonnen — auf
+  Nutzerwunsch angehängt, siehe `ROADMAP.md` für Details/Reihenfolge
 
 ## Backend-Endpunkte (alle unter `/api`)
 
@@ -102,6 +111,9 @@ DELETE /goals/:id
 GET    /push/vapid-public-key   # publicKey: null, falls VAPID nicht konfiguriert
 POST   /push/subscribe
 DELETE /push/subscribe
+
+GET    /profile                 # null, falls noch kein Profil angelegt
+PUT    /profile                 # immer Vollersatz, inkl. bmr/tdee/targetCalories/targetProteinG
 ```
 
 Alle Routen außer `/api/health`, `/auth/register`, `/auth/login`, `/auth/refresh` erfordern
@@ -119,6 +131,7 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
 - `TrainingPlan` + `TrainingPlanPhaseHistory` — 8-Wochen-Rotation (siehe oben, fertig)
 - `Goal` — Zielsetzung (siehe oben, fertig)
 - `PushSubscription` — Web-Push-Abos (siehe oben, fertig)
+- `Profile` — Eingaben für den Ernährungsrechner (siehe oben, fertig)
 
 ## Bekannte Lücken
 
@@ -126,7 +139,8 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
   keine kostenlose Quelle mit Video gefunden. `videoUrl` bleibt leer bis manuell gepflegt oder
   eine neue Quelle angebunden wird.
 - **Keine Frontend-UI** mehr offen außer Claude-API-Integration (Phase 6) — Backend/Datenmodell
-  dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–5 sind fertig, siehe oben.
+  dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–5 und 8 sind fertig, siehe oben. Phasen
+  9–13 sind neu geplant, aber noch nicht begonnen (kein Datenmodell dafür vorbereitet).
 - **Kein Bodyweight-Tracking-Modell** — `Goal.type = BODYWEIGHT` speichert nur einen Zielwert,
   es gibt keinen Log für den tatsächlichen Körpergewichtsverlauf. Fortschritt für diesen (und
   `CUSTOM`) Ziel-Typ ist deshalb bewusst ein manueller "Als erreicht markieren"-Toggle statt
@@ -146,9 +160,35 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
   verifiziert; die eine Lücke ist reine Umgebungs-Einschränkung, nicht App-Verhalten — bei realer
   Nutzung auf einem echten Gerät nicht relevant.
 
+## Laufende Dev-Umgebung (Stand dieser Session)
+
+Auf Nutzerwunsch läuft aktuell ein **dauerhafter** (nicht nach der Session abgebauter)
+Dev-Stack, damit die App vom eigenen Handy/Laptop im selben Netz aus geöffnet werden kann:
+
+- Postgres via `docker run` (Name `fitnesstracker-postgres-dev`, benanntes Volume
+  `fitnesstracker_dev_pgdata`, Port 5433), Backend via `tsx watch` auf Port 3001, Frontend via
+  `vite --host` auf Port 5173 — erreichbar unter `http://192.168.178.20:5173` (LAN-IP dieser
+  Maschine)
+- `frontend/vite.config.ts` zeigt deshalb aktuell auf `http://localhost:3001` statt des
+  committeten Default-Werts `3000` — **uncommitted, absichtlich**, nicht versehentlich stehen
+  gelassen. Vor einem echten Commit/Push zurück auf `3000` setzen oder bewusst draufschauen,
+  falls diese Abweichung stört.
+- Test-Login: `test@example.com` / `testpassword123`, Übungskatalog bereits importiert
+- PWA-only-Features (Installieren, Offline-Sync, Push-Subscribe) funktionieren über die
+  Klartext-LAN-URL nicht — Secure-Context-Pflicht der Browser, nicht app-seitig behebbar ohne
+  echtes HTTPS-Deployment (Phase 7)
+- **Firewall (`ufw`)** auf dieser Maschine blockiert standardmäßig externe Verbindungen zu neu
+  geöffneten Ports — der Nutzer musste `sudo ufw allow 5173/tcp` (und `3001/tcp`, `80/tcp` für
+  das separate `finanzplaner`-Projekt) selbst ausführen, da kein passwortloses `sudo` verfügbar
+  ist
+- Nebenbei auch den `finanzplaner`-Frontend-Container (`../finanzplaner/finanzplaner`,
+  `docker compose up -d --build frontend`) gebaut und gestartet, unabhängiges Projekt, Port 80
+
 ## Nächster sinnvoller Schritt
 
-Phase 5 (Push-Benachrichtigungen) ist fertig, aber **noch nicht committed** —
-Arbeitsverzeichnis hat uncommitted Changes (siehe `git status`). Erstmal committen/pushen, dann
-weiter mit Phase 6 (Claude-API-Integration: effiziente Übungsauswahl/Zielsetzung, hinter
-`CLAUDE_API_ENABLED`) oder Phase 7 (Politur & VPS-Deployment). Siehe `ROADMAP.md`.
+Phase 8 (Profil & Ernährungsrechner) ist fertig, aber **noch nicht committed** —
+Arbeitsverzeichnis hat uncommitted Changes (siehe `git status`; `frontend/vite.config.ts` bewusst
+mit angepasstem Proxy-Ziel, siehe oben). Erstmal committen/pushen (Proxy-Ziel vorher auf `3000`
+zurücksetzen oder bewusst mitcommitten), dann weiter mit Phase 9 (Wasser-Tracking) laut
+`ROADMAP.md` — oder Phase 6/7, falls der Nutzer die ursprüngliche Roadmap zuerst abschließen
+möchte.

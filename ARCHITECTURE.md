@@ -232,6 +232,31 @@ Push-Benachrichtigung aus ("Trainingsplan-Wechsel: Neue Phase: Muskelausdauer").
   kann headless/ohne Netzwerkzugriff auf Google-Infrastruktur nicht abgeschlossen werden. Auf
   einem echten Gerät/Browser mit Internetzugang betrifft das nicht.
 
+## Profil & Ernährungsrechner (fertig)
+
+Kalorien-/Proteinbedarf nach Mifflin-St-Jeor, `GET`/`PUT /profile`.
+
+- **Berechnete Werte werden nie gespeichert**, nur die Eingaben (Gewicht/Größe/Alter/Geschlecht/
+  Aktivitätslevel/Ziel). `bmr`/`tdee`/`targetCalories`/`targetProteinG` sind reine Funktionen
+  dieser Felder und werden bei jedem `GET` neu berechnet (`calculateNutrition` in
+  `profile.service.ts`) — dieselbe Überlegung wie bei der Trainingsplan-Rotation: lieber einmal
+  mehr rechnen als eine gespeicherte Zahl riskieren, die nach einer Bearbeitung nicht mehr zu den
+  Eingaben passt.
+- **`PUT` statt `PATCH`**, weil die Felder nur zusammen einen Sinn ergeben — "nur das Gewicht
+  aktualisieren" ist im Kern trotzdem ein vollständiges neues Profil, kein Teil-Update wie bei
+  `Goal.targetValue`.
+- **Mifflin-St-Jeor statt Harris-Benedict**, weil die neuere Formel in modernen Validierungsstudien
+  über einen breiteren BMI-Bereich hinweg zuverlässiger ist. Aktivitätsmultiplikatoren und die
+  Kalorien-/Protein-Anpassung pro Ziel (Abnehmen/Halten/Aufbauen) sind bewusst konservative
+  Literatur-Standardwerte (z. B. ~500 kcal Defizit fürs Abnehmen, kein aggressiveres "Fortgeschritten"-
+  Preset) — mehr Personalisierung würde hier vor allem mehr Fehlerquellen bedeuten, nicht mehr
+  Nutzen.
+- **Ernährungstipps sind eine statische, kuratierte Liste** (`frontend/src/data/nutritionTips.ts`),
+  kein Aufruf einer externen API oder der (noch deaktivierten) Claude-Integration — ehrlicher über
+  das, was es ist (feste Auswahl, keine Personalisierung), als ein API-Call vorzutäuschen, der
+  keine zusätzliche Frische/Individualisierung liefern würde. Gleiche Überlegung soll für die
+  Supplement-Referenzliste aus Phase 10 gelten.
+
 ## Claude-API-Integration (Roadmap-Phase)
 
 Für effiziente Übungsauswahl und Zielsetzung, hinter dem Flag `CLAUDE_API_ENABLED` — bleibt
@@ -250,6 +275,7 @@ Breaking-Migrationen nötig werden:
 - `TrainingPlan` + `TrainingPlanPhaseHistory` — 8-Wochen-Rotation (siehe oben, fertig)
 - `Goal` — Zielsetzung (siehe oben, fertig)
 - `PushSubscription` — Web-Push-Abos (siehe oben, fertig)
+- `Profile` — Eingaben für den Ernährungsrechner (siehe oben, fertig)
 
 ## Bekannte Stolperfallen (bereits berücksichtigt)
 

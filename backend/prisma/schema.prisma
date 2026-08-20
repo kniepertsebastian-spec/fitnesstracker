@@ -20,6 +20,25 @@ enum GoalType {
   CUSTOM
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum NutritionGoal {
+  CUT
+  MAINTAIN
+  BULK
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -33,6 +52,7 @@ model User {
   trainingPlan      TrainingPlan?
   goals             Goal[]
   pushSubscriptions PushSubscription[]
+  profile           Profile?
 }
 
 model RefreshToken {
@@ -148,4 +168,21 @@ model PushSubscription {
   p256dh    String
   auth      String
   createdAt DateTime @default(now())
+}
+
+// Inputs for the calorie/protein calculator (Mifflin-St Jeor). One profile per user, always
+// fully replaced on edit rather than partially patched — the fields are meaningless in
+// isolation from each other, so there's no "just update the goal" use case worth supporting.
+model Profile {
+  id            String        @id @default(uuid())
+  userId        String        @unique
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightKg      Decimal       @db.Decimal(5, 2)
+  heightCm      Int
+  age           Int
+  gender        Gender
+  activityLevel ActivityLevel @default(MODERATE)
+  goal          NutritionGoal @default(MAINTAIN)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }

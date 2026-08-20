@@ -14,6 +14,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Übungen", to: "/exercises" },
   { label: "Plan", to: "/plan" },
   { label: "Ziele", to: "/goals" },
+  { label: "Ernährung", to: "/nutrition" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -56,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             to={item.to}
             end={item.to === "/"}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center py-3 text-sm ${isActive ? "text-sky-400" : "text-slate-500 hover:text-slate-300"}`
+              `flex flex-1 flex-col items-center py-3 text-center text-xs ${isActive ? "text-sky-400" : "text-slate-500 hover:text-slate-300"}`
             }
           >
             <span>{item.label}</span>

@@ -98,3 +98,65 @@
 - `docker-compose.prod.yml` + Caddyfile live auf dem eigenen Server
 - Backups (Postgres-Dump-Cronjob), einfaches Monitoring/Logging
 - Lighthouse-PWA-Audit, echte App-Icons statt Platzhalter
+
+## Phase 8 — Profil & Ernährungsrechner ✅
+
+- `Profile`-Modell (1:1 mit User): Gewicht, Größe, Alter, Geschlecht, Aktivitätslevel, Ziel
+  (Abnehmen/Halten/Aufbauen), `GET`/`PUT /profile` (immer Vollersatz, kein Teil-Update — die
+  Felder ergeben nur zusammen Sinn)
+- Kalorien-/Proteinrechner nach Mifflin-St-Jeor-Formel + Aktivitätsmultiplikator, Protein-Ziel
+  nach Körpergewicht (g/kg je nach Ziel) — Standardformel, keine Sonderfälle. `bmr`/`tdee`/
+  `targetCalories`/`targetProteinG` werden nie gespeichert, sondern bei jedem `GET` aus den
+  Profil-Feldern neu berechnet, damit nach einer Bearbeitung nie ein veralteter Wert übrig
+  bleibt
+- Statische Liste unterschätzter/oft vergessener Ernährungstipps (kuratiert, kein
+  Claude-API-Aufruf — das bleibt Phase 6 vorbehalten)
+- UI (`/nutrition`, "Ernährung"-Tab in der Bottom-Nav): Formular + Tagesbedarf-Karte + Tipps-Liste
+- End-to-end getestet: beide Formel-Zweige (männlich/weiblich unterschiedliches BMR-Offset),
+  Persistenz über GET/PUT-Zyklus, Neuberechnung nach Bearbeitung eines Felds (Alter 25→31 senkte
+  BMR exakt um die erwarteten 30 kcal)
+
+## Phase 9 — Wasser-Tracking
+
+- Täglicher Wasser-Zähler (schnelles Antippen für z. B. +250ml/+500ml), Tagesziel als Vorschlag
+  aus `Profile.weightKg` abgeleitet, manuell überschreibbar
+- Reset um Mitternacht, einfacher Verlauf der letzten Tage
+
+## Phase 10 — Supplement-Erinnerungen & Referenzliste
+
+- Liste eigener Supplements mit Name + Uhrzeit, tägliche Push-Erinnerung — nutzt die
+  Push-Infrastruktur aus Phase 5 wieder, eigener Scheduler-Tick nach dem Muster von
+  `trainingPlan.scheduler.ts` für die tägliche Auslösung
+- Statische, kuratierte Referenzliste gängiger Supplements (Creatin, Whey, Koffein,
+  Beta-Alanin, Citrullin-Malat, Vitamin D, Omega-3, Ashwagandha, …): Wirkung, grobe Einordnung
+  ("wirklich wirksam" vs. "situativ" vs. "überschätzt", auf Basis gängiger
+  Studienlage/Konsens) und übliche Dosierungsempfehlung — statischer Datensatz wie die
+  Ernährungstipps aus Phase 8, kein Live-Scraping/externe API, aus denselben Gründen wie dort
+
+## Phase 11 — Körperkomposition-Tracking (manuelle Erfassung)
+
+- Manuelles Erfassen von Waagen-Werten über Zeit (Gewicht, Körperfett-%, Muskelmasse,
+  Wasseranteil etc.) als Verlauf, kein automatischer Datei-Import (siehe Entscheidung unten)
+- Kurze Erklärung pro Kennzahl (was sie bedeutet, grobe Referenzbereiche) + einfache
+  Einordnung/Trend-Anzeige gegenüber dem letzten Wert
+- **Bewusst kein automatischer Scale-Import in dieser Phase** — Dateiformate unterscheiden sich
+  stark zwischen Herstellern (Withings, Renpho, Garmin, …); manuelle Erfassung deckt den
+  Bedarf ab, ein Adapter für ein konkretes Gerät kann bei Bedarf später ergänzt werden, ähnlich
+  dem `ExerciseSourceAdapter`-Muster aus Phase 0
+
+## Phase 12 — Fortschritts-Fotos
+
+- Erinnerung (Push, wiederkehrend, z. B. wöchentlich) + Upload für Vergleichsfotos ("Spiegel-Foto")
+- Speicherung auf dem eigenen VPS-Dateisystem via Docker Volume — konsistent mit "keine externen
+  Managed-Dienste" aus `ARCHITECTURE.md`, kein S3/Cloud-Storage-Anbieter nötig
+- Nur für den eingeloggten Nutzer sichtbar; Vorher/Nachher-Ansicht zum direkten Vergleich zweier
+  Zeitpunkte
+
+## Phase 13 — Automatische Ziel-Vorschläge
+
+- Erweitert die bestehende Ziele-Funktion (Phase 3) um automatisch vorgeschlagene
+  Gewichts-Ziele pro Übung mit realistischem Zieldatum, basierend auf der bisherigen
+  `WorkoutLog`-Progression zur jeweiligen Übung
+- Deadline darf nicht unmöglich sein — Ableitung aus einer konservativen, literaturüblichen
+  Progressionsrate statt einer linearen Extrapolation der bisherigen (oft unrealistisch
+  optimistischen) Steigerungsrate

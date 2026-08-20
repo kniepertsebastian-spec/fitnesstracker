@@ -7,6 +7,7 @@ import { ExerciseLibraryPage } from "./routes/ExerciseLibraryPage";
 import { ExerciseDetailPage } from "./routes/ExerciseDetailPage";
 import { TrainingPlanPage } from "./routes/TrainingPlanPage";
 import { GoalsPage } from "./routes/GoalsPage";
+import { NutritionPage } from "./routes/NutritionPage";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { useAuthBootstrap } from "./hooks/useAuth";
 import { initWorkoutLogSync } from "./offline/workoutLogSync";
@@ -57,6 +58,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <GoalsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/nutrition"
+          element={
+            <ProtectedRoute>
+              <NutritionPage />
             </ProtectedRoute>
           }
         />

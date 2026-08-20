@@ -5,17 +5,19 @@ pro Übung protokollieren, Trainingsplan-Phasen rotieren automatisch alle 8 Woch
 mit Sync sobald wieder online. Siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md) für die technischen
 Entscheidungen und [`ROADMAP.md`](./ROADMAP.md) für den vollständigen Ausbauplan.
 
-Aktueller Stand (Phase 0–5 – Foundation, Übungsbibliothek, Trainingsplan-Rotation, Ziele,
-Offline-Sync & Push): Login/Registrierung, die Trainings-Tabelle (Satz/Wiederholungen/Gewicht/
-Übung, inklusive Offline-Nutzung mit automatischer Sync sobald wieder online), die
-Übungsbibliothek (durchsuchen, nach Muskelgruppe/Equipment filtern, Detailansicht), die
-automatische 8-Wochen-Trainingsplan-Rotation (Aufbau → Muskelausdauer → Negativ), Ziele
-(Gewicht/Wiederholungen pro Übung mit automatischem Fortschritt, Körpergewicht/Sonstiges mit
-manueller Erreicht-Markierung) und Push-Erinnerungen bei Trainingsplan-Wechsel sind
-Ende-zu-Ende lauffähig. Die Übungs-API liefert dafür volle CRUD-Verwaltung plus einen
-Import-Mechanismus, der Übungen aus externen, frei verfügbaren Datenbanken zieht und in die
-eigene DB schreibt (siehe unten). Claude-API-Integration ist als Datenmodell bereits angelegt,
-aber noch ohne UI (siehe Roadmap).
+Aktueller Stand (Phasen 0–5 + 8 – Foundation, Übungsbibliothek, Trainingsplan-Rotation, Ziele,
+Offline-Sync, Push & Ernährungsrechner): Login/Registrierung, die Trainings-Tabelle
+(Satz/Wiederholungen/Gewicht/Übung, inklusive Offline-Nutzung mit automatischer Sync sobald
+wieder online), die Übungsbibliothek (durchsuchen, nach Muskelgruppe/Equipment filtern,
+Detailansicht), die automatische 8-Wochen-Trainingsplan-Rotation (Aufbau → Muskelausdauer →
+Negativ), Ziele (Gewicht/Wiederholungen pro Übung mit automatischem Fortschritt, Körpergewicht/
+Sonstiges mit manueller Erreicht-Markierung), Push-Erinnerungen bei Trainingsplan-Wechsel und ein
+Profil-/Ernährungsrechner (Kalorien-/Proteinbedarf nach Mifflin-St-Jeor) sind Ende-zu-Ende
+lauffähig. Die Übungs-API liefert dafür volle CRUD-Verwaltung plus einen Import-Mechanismus, der
+Übungen aus externen, frei verfügbaren Datenbanken zieht und in die eigene DB schreibt (siehe
+unten). Claude-API-Integration ist als Datenmodell bereits angelegt, aber noch ohne UI; weitere
+Phasen (Wasser-Tracking, Supplements, Körperkomposition, Fortschritts-Fotos, automatische
+Ziel-Vorschläge) sind in der Roadmap ergänzt, aber noch nicht begonnen (siehe Roadmap).
 
 ## Stack
 
