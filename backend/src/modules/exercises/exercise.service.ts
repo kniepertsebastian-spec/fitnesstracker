@@ -1,0 +1,99 @@
+import type { Prisma, PrismaClient } from "@prisma/client";
+import type { CreateExerciseInput, UpdateExerciseInput } from "@fitnesstracker/shared";
+import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
+import { getSourceAdapter } from "./sources/index.js";
+
+export function listExercises(prisma: PrismaClient, filters: { search?: string }) {
+  const where: Prisma.ExerciseWhereInput = filters.search
+    ? { name: { contains: filters.search, mode: "insensitive" } }
+    : {};
+
+  // Capped rather than paginated for now: the imported catalog can run into the hundreds,
+  // and nothing in the app needs the full list at once yet (Phase 1 library UI will add
+  // proper search/pagination). Use `search` to narrow it down instead.
+  return prisma.exercise.findMany({ where, orderBy: { name: "asc" }, take: 200 });
+}
+
+export async function getExerciseById(prisma: PrismaClient, id: string) {
+  const exercise = await prisma.exercise.findUnique({ where: { id } });
+  if (!exercise) {
+    throw new NotFoundError("Exercise not found");
+  }
+  return exercise;
+}
+
+export function createExercise(prisma: PrismaClient, input: CreateExerciseInput) {
+  return prisma.exercise.create({
+    data: { ...input, source: "manual", sourceId: crypto.randomUUID() },
+  });
+}
+
+export async function updateExercise(prisma: PrismaClient, id: string, input: UpdateExerciseInput) {
+  await getExerciseById(prisma, id);
+  return prisma.exercise.update({ where: { id }, data: input });
+}
+
+export async function deleteExercise(prisma: PrismaClient, id: string) {
+  await getExerciseById(prisma, id);
+  try {
+    await prisma.exercise.delete({ where: { id } });
+  } catch (error) {
+    // FK RESTRICT from WorkoutLog/Goal — surface as a clean conflict instead of a raw 500.
+    if ((error as Prisma.PrismaClientKnownRequestError).code === "P2003") {
+      throw new ConflictError("Exercise is still referenced by workout logs or goals");
+    }
+    throw error;
+  }
+}
+
+export interface ImportSummary {
+  source: string;
+  fetched: number;
+  created: number;
+  updated: number;
+}
+
+export async function importExercisesFromSource(
+  prisma: PrismaClient,
+  sourceName: string,
+): Promise<ImportSummary> {
+  const adapter = getSourceAdapter(sourceName);
+  if (!adapter) {
+    throw new NotFoundError(`Unknown exercise source: ${sourceName}`);
+  }
+
+  const imported = await adapter.fetchExercises();
+  let created = 0;
+  let updated = 0;
+
+  for (const entry of imported) {
+    const where = { source_sourceId: { source: adapter.name, sourceId: entry.sourceId } };
+    const data = {
+      name: entry.name,
+      description: entry.description,
+      videoUrl: entry.videoUrl,
+      imageUrls: entry.imageUrls,
+      equipment: entry.equipment,
+      category: entry.category,
+      primaryMuscles: entry.primaryMuscles,
+      secondaryMuscles: entry.secondaryMuscles,
+    };
+
+    // Upsert alone doesn't report which branch it took, and comparing createdAt/updatedAt
+    // isn't reliable (createdAt is a DB-side default, updatedAt is set client-side) — so
+    // check existence explicitly instead of guessing from timestamps.
+    const existed = (await prisma.exercise.findUnique({ where })) !== null;
+    await prisma.exercise.upsert({
+      where,
+      update: data,
+      create: { source: adapter.name, sourceId: entry.sourceId, ...data },
+    });
+    if (existed) {
+      updated += 1;
+    } else {
+      created += 1;
+    }
+  }
+
+  return { source: adapter.name, fetched: imported.length, created, updated };
+}

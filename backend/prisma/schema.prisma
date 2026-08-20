@@ -1,0 +1,148 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum TrainingPhase {
+  AUFBAU
+  MUSKELAUSDAUER
+  NEGATIV
+}
+
+enum GoalType {
+  WEIGHT
+  REPS
+  BODYWEIGHT
+  CUSTOM
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens     RefreshToken[]
+  workoutLogs       WorkoutLog[]
+  trainingPlan      TrainingPlan?
+  goals             Goal[]
+  pushSubscriptions PushSubscription[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Exercise {
+  id          String   @id @default(uuid())
+  name        String
+  // Execution technique description. For imported exercises this is the source's
+  // instructions joined into one text; edit freely afterwards.
+  description String?
+  // No free/open source used so far ships actual video — left for manual curation or a
+  // future source adapter that provides one.
+  videoUrl    String?
+  imageUrls   String[] @default([])
+  equipment   String?
+  category    String?
+  primaryMuscles   String[] @default([])
+  secondaryMuscles String[] @default([])
+  // Provenance for idempotent re-imports, e.g. source="free-exercise-db", sourceId="3_4_Sit-Up".
+  // Manually created exercises leave both null; Postgres allows unlimited NULL/NULL pairs
+  // under a unique index, so this doesn't collide with imported rows.
+  source      String?
+  sourceId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workoutLogs WorkoutLog[]
+  goals       Goal[]
+
+  @@unique([source, sourceId])
+  @@index([name])
+}
+
+model WorkoutLog {
+  id          String    @id @default(uuid())
+  // Client-generated UUID, used as an idempotency key for the future offline-sync queue.
+  clientId    String    @unique
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise  @relation(fields: [exerciseId], references: [id])
+  setNumber   Int
+  reps        Int
+  weightKg    Decimal   @db.Decimal(6, 2)
+  performedAt DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  // Soft delete so offline clients can sync tombstones instead of losing deletes.
+  deletedAt   DateTime?
+
+  @@index([userId, performedAt])
+}
+
+// Roadmap: 8-week auto-rotating training focus (Aufbau -> Muskelausdauer -> Negativ -> Aufbau).
+model TrainingPlan {
+  id             String        @id @default(uuid())
+  userId         String        @unique
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentPhase   TrainingPhase @default(AUFBAU)
+  // Always a Monday; the scheduler advances the phase 8 weeks after this date.
+  phaseStartedOn DateTime
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  phaseHistory TrainingPlanPhaseHistory[]
+}
+
+model TrainingPlanPhaseHistory {
+  id             String        @id @default(uuid())
+  trainingPlanId String
+  trainingPlan   TrainingPlan  @relation(fields: [trainingPlanId], references: [id], onDelete: Cascade)
+  phase          TrainingPhase
+  startedOn      DateTime
+  endedOn        DateTime?
+
+  @@index([trainingPlanId])
+}
+
+// Roadmap: goal setting.
+model Goal {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId  String?
+  exercise    Exercise? @relation(fields: [exerciseId], references: [id])
+  type        GoalType
+  targetValue Decimal   @db.Decimal(6, 2)
+  targetDate  DateTime?
+  achievedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Roadmap: Web Push subscriptions for the 8-week plan-change reminder.
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}

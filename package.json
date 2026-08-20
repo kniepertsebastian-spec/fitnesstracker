@@ -1,0 +1,27 @@
+{
+  "name": "fitnesstracker",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "build": "pnpm --filter backend build && pnpm --filter frontend build",
+    "prisma:migrate": "pnpm --filter backend prisma:migrate",
+    "prisma:generate": "pnpm --filter backend prisma:generate",
+    "prisma:seed": "pnpm --filter backend prisma:seed",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "bcrypt",
+      "esbuild",
+      "prisma"
+    ]
+  }
+}
