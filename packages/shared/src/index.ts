@@ -6,3 +6,4 @@ export * from "./schemas/trainingPlan.schema.js";
 export * from "./schemas/goal.schema.js";
 export * from "./schemas/push.schema.js";
 export * from "./schemas/profile.schema.js";
+export * from "./schemas/water.schema.js";

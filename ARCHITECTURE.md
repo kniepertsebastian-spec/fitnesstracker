@@ -257,6 +257,32 @@ Kalorien-/Proteinbedarf nach Mifflin-St-Jeor, `GET`/`PUT /profile`.
   keine zusätzliche Frische/Individualisierung liefern würde. Gleiche Überlegung soll für die
   Supplement-Referenzliste aus Phase 10 gelten.
 
+## Wasser-Tracking (fertig)
+
+Täglicher Zähler + kurzer Verlauf, als Karte auf der bestehenden `/nutrition`-Seite statt eines
+eigenen Bottom-Nav-Tabs.
+
+- **Bottom-Nav bleibt bewusst bei fünf Einträgen gedeckelt.** Jede weitere Roadmap-Phase (9-13:
+  Wasser, Supplements, Körperkomposition, Fortschritts-Fotos, …) würde sonst einen eigenen Tab
+  beanspruchen — bei einem 375px-Bildschirm und fünf Tabs ist mit `text-xs` gerade noch Luft,
+  ein sechster/siebter Tab ginge zulasten der Lesbarkeit oder würde Zoom-out erzwingen, genau das
+  Gegenteil von der beim Mobile-Layout verfolgten Linie (siehe "Bekannte Stolperfallen"). Neue,
+  thematisch verwandte Mini-Features werden stattdessen als Karte in eine bestehende, passende
+  Seite genestet — hier: wassernah zur Ernährung.
+- **Tagesziel-Override lebt auf `Profile`, nicht in einer eigenen Tabelle.** Eine eigene
+  `WaterSettings`-Tabelle nur für ein nullable Int hätte mehr Modell-Overhead erzeugt, als es
+  wert ist; die Kehrseite ist, dass ein eigenes Wasserziel ohne bestehendes Ernährungsprofil
+  nicht gesetzt werden kann (`409 Conflict`, klar kommuniziert), weil sich sonst die
+  Pflichtfelder von `Profile` (Gewicht/Größe/Alter/Geschlecht) mit Platzhaltern hätten befüllen
+  lassen müssen, nur um das Override-Feld unterzubringen — ein schlechterer Trade als die
+  Einschränkung.
+- **`WaterLog` ist ein Tages-Running-Total, kein Event-Log.** Eine Zeile pro Nutzer und
+  Kalendertag (UTC), pro Antippen per `upsert` erhöht/verringert, statt einer Zeile pro Tipp —
+  nichts in der Roadmap braucht Zeitpunkte einzelner Schlucke, nur "wie viel heute" und ein
+  kurzer Tagesverlauf. Undo (`-250 ml`) klemmt bei 0, statt einen negativen Tageswert zuzulassen.
+- **Verlauf wird immer nullgefüllt zurückgegeben** (`getHistory` in `water.service.ts`) — exakt
+  `days` Einträge, auch für Tage ohne geloggtes Wasser, damit die Verlaufsansicht nie Lücken hat.
+
 ## Claude-API-Integration (Roadmap-Phase)
 
 Für effiziente Übungsauswahl und Zielsetzung, hinter dem Flag `CLAUDE_API_ENABLED` — bleibt

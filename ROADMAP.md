@@ -116,11 +116,20 @@
   Persistenz über GET/PUT-Zyklus, Neuberechnung nach Bearbeitung eines Felds (Alter 25→31 senkte
   BMR exakt um die erwarteten 30 kcal)
 
-## Phase 9 — Wasser-Tracking
+## Phase 9 — Wasser-Tracking ✅
 
-- Täglicher Wasser-Zähler (schnelles Antippen für z. B. +250ml/+500ml), Tagesziel als Vorschlag
-  aus `Profile.weightKg` abgeleitet, manuell überschreibbar
-- Reset um Mitternacht, einfacher Verlauf der letzten Tage
+- Täglicher Wasser-Zähler (Antippen für +100/+250/+500 ml, sowie -250 ml zum Korrigieren eines
+  Fehltipps — nie unter 0 geklemmt), `GET /water`, `POST /water/log`
+- Tagesziel als Vorschlag aus `Profile.weightKg` (35 ml/kg) abgeleitet, ohne Profil ein
+  pauschaler Standardwert (2500 ml); manuell überschreibbar über `PUT /water/target`
+  (Override lebt als `waterTargetMlOverride` auf `Profile` — setzt daher ein bestehendes Profil
+  voraus, sonst `409 Conflict`)
+- Verlauf der letzten 7 Tage, tageweise nullgefüllt (kein Loch an ruhigen Tagen)
+- UI als Karte innerhalb der bestehenden `/nutrition`-Seite statt eines eigenen Bottom-Nav-Tabs
+  — bewusste Entscheidung gegen unbegrenztes Nav-Wachstum mit jeder weiteren Phase, siehe
+  `ARCHITECTURE.md`
+- End-to-end getestet: Zielvorschlag aus Profilgewicht, Klemmen bei 0, Override setzen/löschen,
+  409 ohne Profil, Zero-Fill im Verlauf
 
 ## Phase 10 — Supplement-Erinnerungen & Referenzliste
 

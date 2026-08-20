@@ -49,6 +49,11 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
   den Profil-Feldern neu berechnet. Statische Ernährungstipps-Liste. End-to-end getestet: beide
   Formel-Zweige (männlich/weiblich), Persistenz, Neuberechnung nach Bearbeitung (Alter 25→31 senkte
   BMR exakt um die erwarteten 30 kcal).
+- **Wasser-Tracking**: Karte auf `/nutrition` (kein eigener Nav-Tab, bewusst — siehe
+  `ARCHITECTURE.md`), Antippen für ±ml, Zielvorschlag aus Profilgewicht (35 ml/kg) oder
+  Standardwert (2500 ml), manuell überschreibbar (setzt Profil voraus), nullgefüllter
+  7-Tage-Verlauf. End-to-end getestet: Zielableitung, Klemmen bei 0, Override
+  setzen/löschen, 409 ohne Profil.
 - **Docker Compose**: lokale Entwicklung (Postgres + Backend, Frontend auf dem Host) und
   Produktion (+ Caddy, automatisches HTTPS) — Config validiert; Docker-Daemon in dieser Sandbox
   verfügbar, jede Session seit Phase 1 hat Postgres via `docker run` tatsächlich live
@@ -70,11 +75,11 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
 - Aktiver Branch: `main`, Phasen 1–5 committed und gepusht (`dbbee42`, `dbd75cd`, `4d4de32`)
 - Bisherige Commits: Foundation (Monorepo/Auth/Tracking-Tabelle) → Übungs-API mit Import →
   Übungsbibliothek-UI/Trainingsplan-Rotation/Ziele (Phasen 1-3) → Offline-first Trainings-Tabelle
-  (Phase 4) → Push-Benachrichtigungen (Phase 5) — Phase 8 (Profil & Ernährungsrechner) ist
-  fertig, aber **noch nicht committed**, siehe unten. Phasen 9–13 (Wasser-Tracking,
-  Supplement-Erinnerungen & Referenzliste, Körperkomposition, Fortschritts-Fotos, Automatische
-  Ziel-Vorschläge) sind neu in `ROADMAP.md` aufgenommen, aber noch nicht begonnen — auf
-  Nutzerwunsch angehängt, siehe `ROADMAP.md` für Details/Reihenfolge
+  (Phase 4) → Push-Benachrichtigungen (Phase 5) → Profil & Ernährungsrechner (Phase 8,
+  `2f79f4a`) — Phase 9 (Wasser-Tracking) ist fertig, aber **noch nicht committed**, siehe unten.
+  Phasen 10–13 (Supplement-Erinnerungen & Referenzliste, Körperkomposition, Fortschritts-Fotos,
+  Automatische Ziel-Vorschläge) sind neu in `ROADMAP.md` aufgenommen, aber noch nicht begonnen —
+  auf Nutzerwunsch angehängt, siehe `ROADMAP.md` für Details/Reihenfolge
 
 ## Backend-Endpunkte (alle unter `/api`)
 
@@ -114,6 +119,10 @@ DELETE /push/subscribe
 
 GET    /profile                 # null, falls noch kein Profil angelegt
 PUT    /profile                 # immer Vollersatz, inkl. bmr/tdee/targetCalories/targetProteinG
+
+GET    /water                   # heute + Zielwert + 7-Tage-Verlauf (nullgefüllt)
+POST   /water/log                # { amountMl }, positiv oder negativ, bei 0 geklemmt
+PUT    /water/target             # { targetMl: number|null }, 409 falls kein Profil existiert
 ```
 
 Alle Routen außer `/api/health`, `/auth/register`, `/auth/login`, `/auth/refresh` erfordern
@@ -131,7 +140,8 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
 - `TrainingPlan` + `TrainingPlanPhaseHistory` — 8-Wochen-Rotation (siehe oben, fertig)
 - `Goal` — Zielsetzung (siehe oben, fertig)
 - `PushSubscription` — Web-Push-Abos (siehe oben, fertig)
-- `Profile` — Eingaben für den Ernährungsrechner (siehe oben, fertig)
+- `Profile` — Eingaben für den Ernährungsrechner + `waterTargetMlOverride` (siehe oben, fertig)
+- `WaterLog` — Tages-Running-Total pro Nutzer (siehe oben, fertig)
 
 ## Bekannte Lücken
 
@@ -139,8 +149,8 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
   keine kostenlose Quelle mit Video gefunden. `videoUrl` bleibt leer bis manuell gepflegt oder
   eine neue Quelle angebunden wird.
 - **Keine Frontend-UI** mehr offen außer Claude-API-Integration (Phase 6) — Backend/Datenmodell
-  dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–5 und 8 sind fertig, siehe oben. Phasen
-  9–13 sind neu geplant, aber noch nicht begonnen (kein Datenmodell dafür vorbereitet).
+  dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–5, 8 und 9 sind fertig, siehe oben. Phasen
+  10–13 sind neu geplant, aber noch nicht begonnen (kein Datenmodell dafür vorbereitet).
 - **Kein Bodyweight-Tracking-Modell** — `Goal.type = BODYWEIGHT` speichert nur einen Zielwert,
   es gibt keinen Log für den tatsächlichen Körpergewichtsverlauf. Fortschritt für diesen (und
   `CUSTOM`) Ziel-Typ ist deshalb bewusst ein manueller "Als erreicht markieren"-Toggle statt
@@ -186,9 +196,9 @@ Dev-Stack, damit die App vom eigenen Handy/Laptop im selben Netz aus geöffnet w
 
 ## Nächster sinnvoller Schritt
 
-Phase 8 (Profil & Ernährungsrechner) ist fertig, aber **noch nicht committed** —
+Phase 9 (Wasser-Tracking) ist fertig, aber **noch nicht committed** —
 Arbeitsverzeichnis hat uncommitted Changes (siehe `git status`; `frontend/vite.config.ts` bewusst
 mit angepasstem Proxy-Ziel, siehe oben). Erstmal committen/pushen (Proxy-Ziel vorher auf `3000`
-zurücksetzen oder bewusst mitcommitten), dann weiter mit Phase 9 (Wasser-Tracking) laut
-`ROADMAP.md` — oder Phase 6/7, falls der Nutzer die ursprüngliche Roadmap zuerst abschließen
-möchte.
+zurücksetzen oder bewusst mitcommitten), dann weiter mit Phase 10 (Supplement-Erinnerungen &
+Referenzliste) laut `ROADMAP.md` — oder Phase 6/7, falls der Nutzer die ursprüngliche Roadmap
+zuerst abschließen möchte.

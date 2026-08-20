@@ -53,6 +53,7 @@ model User {
   goals             Goal[]
   pushSubscriptions PushSubscription[]
   profile           Profile?
+  waterLogs         WaterLog[]
 }
 
 model RefreshToken {
@@ -183,6 +184,21 @@ model Profile {
   gender        Gender
   activityLevel ActivityLevel @default(MODERATE)
   goal          NutritionGoal @default(MAINTAIN)
+  // Overrides the weight-derived water target (35ml/kg) from Phase 9 — lives here rather than
+  // its own table since it's just one extra nullable setting, not a cluster of related fields.
+  waterTargetMlOverride Int?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+}
+
+// One row per user per calendar day (UTC) — a running total, not an event log, since nothing in
+// the roadmap needs per-glass timing, only "how much today" and a short daily history.
+model WaterLog {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date     DateTime @db.Date
+  amountMl Int      @default(0)
+
+  @@unique([userId, date])
 }

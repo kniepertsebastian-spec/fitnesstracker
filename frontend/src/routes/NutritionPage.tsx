@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { activityLevelSchema, genderSchema, nutritionGoalSchema } from "@fitnesstracker/shared";
 import { AppShell } from "../components/layout/AppShell";
+import { WaterCard } from "../components/nutrition/WaterCard";
 import { NUTRITION_TIPS } from "../data/nutritionTips";
 import {
   ACTIVITY_LEVEL_LABELS,
@@ -57,6 +58,10 @@ export function NutritionPage() {
   return (
     <AppShell>
       <h1 className="mb-4 text-xl font-semibold">Ernährung</h1>
+
+      <div className="mb-4">
+        <WaterCard />
+      </div>
 
       {isLoading ? (
         <p className="text-slate-500">Lädt…</p>
