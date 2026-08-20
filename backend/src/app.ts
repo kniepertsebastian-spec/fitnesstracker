@@ -18,6 +18,7 @@ import waterRoutes from "./modules/water/water.routes.js";
 import dailyChallengeRoutes from "./modules/dailyChallenge/dailyChallenge.routes.js";
 import supplementRoutes from "./modules/supplements/supplement.routes.js";
 import supplementScheduler from "./modules/supplements/supplement.scheduler.js";
+import bodyCompositionRoutes from "./modules/bodyComposition/bodyComposition.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -46,6 +47,7 @@ export function buildApp() {
   app.register(waterRoutes, { prefix: "/api" });
   app.register(dailyChallengeRoutes, { prefix: "/api" });
   app.register(supplementRoutes, { prefix: "/api" });
+  app.register(bodyCompositionRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {
     if (error instanceof ZodError) {

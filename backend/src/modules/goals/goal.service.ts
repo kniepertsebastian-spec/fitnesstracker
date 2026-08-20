@@ -1,6 +1,7 @@
 import type { Goal, PrismaClient } from "@prisma/client";
 import type { CreateGoalInput, UpdateGoalInput } from "@fitnesstracker/shared";
 import { NotFoundError } from "../../errors/httpErrors.js";
+import { getLatestWeightKg } from "../bodyComposition/bodyComposition.service.js";
 
 const withExercise = { include: { exercise: true } } as const;
 
@@ -60,14 +61,19 @@ export async function deleteGoal(prisma: PrismaClient, userId: string, id: strin
   await prisma.goal.delete({ where: { id } });
 }
 
-// Best value logged so far for the goal's exercise — the only kind of progress this app can
-// derive automatically, since there's no bodyweight log to compare BODYWEIGHT/CUSTOM goals
-// against. Returns null wherever there's nothing to compute from.
+// Progress this app can derive automatically, per goal type. WEIGHT/REPS use the best value
+// logged for the goal's exercise; BODYWEIGHT uses the most recent body-composition weigh-in
+// (added in Phase 11 — before that, this branch didn't exist because there was nothing to
+// compare against). CUSTOM still has no derivable source, so "achieved" stays a manual toggle.
 export async function computeCurrentValue(
   prisma: PrismaClient,
   userId: string,
   goal: Goal,
 ): Promise<number | null> {
+  if (goal.type === "BODYWEIGHT") {
+    return getLatestWeightKg(prisma, userId);
+  }
+
   if (!goal.exerciseId || (goal.type !== "WEIGHT" && goal.type !== "REPS")) {
     return null;
   }

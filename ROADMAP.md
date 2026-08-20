@@ -153,16 +153,24 @@
   verschiedenen Zeitzonen (Treffer/Nicht-Treffer/deaktiviert korrekt unterschieden), kein
   Doppel-Versand innerhalb derselben Minute, CRUD, Validierung des Zeitformats
 
-## Phase 11 — Körperkomposition-Tracking (manuelle Erfassung)
+## Phase 11 — Körperkomposition-Tracking (manuelle Erfassung) ✅
 
-- Manuelles Erfassen von Waagen-Werten über Zeit (Gewicht, Körperfett-%, Muskelmasse,
-  Wasseranteil etc.) als Verlauf, kein automatischer Datei-Import (siehe Entscheidung unten)
-- Kurze Erklärung pro Kennzahl (was sie bedeutet, grobe Referenzbereiche) + einfache
-  Einordnung/Trend-Anzeige gegenüber dem letzten Wert
+- Manuelles Erfassen von Waagen-Werten über Zeit (Gewicht Pflicht, Körperfett-%/Muskelmasse/
+  Wasseranteil optional) als Verlauf (`GET/POST/PATCH/DELETE /body-composition`), kein
+  automatischer Datei-Import (siehe Entscheidung unten)
+- Kurze Erklärung pro Kennzahl + Trend-Pfeil (↑/↓/→) gegenüber dem letzten Wert; Körperfett-%
+  zusätzlich grob kategorisiert (ACE-Fitness-Kategorien, geschlechtsabhängig — nur falls
+  Geschlecht im Ernährungsprofil hinterlegt ist, sonst keine Kategorie statt einer Vermutung)
 - **Bewusst kein automatischer Scale-Import in dieser Phase** — Dateiformate unterscheiden sich
   stark zwischen Herstellern (Withings, Renpho, Garmin, …); manuelle Erfassung deckt den
   Bedarf ab, ein Adapter für ein konkretes Gerät kann bei Bedarf später ergänzt werden, ähnlich
   dem `ExerciseSourceAdapter`-Muster aus Phase 0
+- **Schließt eine dokumentierte Lücke aus Phase 3**: `Goal.type = BODYWEIGHT` hatte bisher immer
+  `currentValue: null`, weil es keinen Körpergewichts-Log gab. `computeCurrentValue` in
+  `goal.service.ts` nutzt jetzt den letzten erfassten Wert aus dieser Phase — end-to-end
+  verifiziert (neues Gewicht erfasst → bestehendes BODYWEIGHT-Ziel zeigt sofort den aktuellen
+  Wert)
+- UI als fünfter Tab ("Körper") auf der bestehenden `/nutrition`-Seite, kein eigener Nav-Tab
 
 ## Phase 12 — Fortschritts-Fotos
 

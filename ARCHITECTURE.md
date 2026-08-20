@@ -365,7 +365,7 @@ Mit Profil-Rechner, Wasser, Supplements und Tipps/Referenz auf einer Seite gesta
 meist nur eine tatsächlich interessiert. Statt einer fünften Karte oder eines weiteren
 Bottom-Nav-Tabs (der Cap bei fünf Einträgen bleibt bestehen, siehe Wasser-Tracking-Abschnitt
 oben) gibt es jetzt eine Segmented-Control (`PageTabs`, `components/layout/PageTabs.tsx`) direkt
-unter der Überschrift, die zwischen den vier Bereichen umschaltet — nur ein Abschnitt ist
+unter der Überschrift, die zwischen den (mittlerweile fünf) Bereichen umschaltet — nur ein Abschnitt ist
 gleichzeitig sichtbar.
 
 - **Der aktive Tab ist ein URL-Query-Param (`?tab=wasser`), keine reine Komponenten-State** —
@@ -375,6 +375,27 @@ gleichzeitig sichtbar.
 - **`PageTabs` ist bewusst generisch gehalten** (Tab-Liste + aktiver Key + Change-Handler als
   Props), nicht `/nutrition`-spezifisch — falls eine andere Seite künftig ähnlich viele
   unabhängige Karten ansammelt, lässt sich dasselbe Muster ohne Kopieren wiederverwenden.
+
+## Körperkomposition-Tracking (fertig)
+
+Manuelle Waagen-Werte über Zeit, als fünfter Tab auf `/nutrition`.
+
+- **Kein Upsert-by-Day wie bei `WaterLog`** — `BodyCompositionEntry` ist ein reiner Log
+  (`POST` legt immer eine neue Zeile an), weil eine Waagen-Messung kein Tages-Running-Total ist:
+  man wiegt sich mal mehrmals am Tag, mal wochenlang gar nicht.
+- **Schließt die in Phase 3 dokumentierte Lücke bei `Goal.type = BODYWEIGHT`.** Der
+  Architektur-Hinweis aus Phase 3 begründete das fehlende `currentValue` explizit damit, dass es
+  "kein Körpergewichts-Log in diesem Datenmodell" gibt — das stimmt seit dieser Phase nicht mehr,
+  also nutzt `computeCurrentValue` in `goal.service.ts` jetzt den jeweils letzten erfassten Wert
+  aus `BodyCompositionEntry` für BODYWEIGHT-Ziele.
+- **Körperfett-Einordnung ist geschlechtsabhängig und nur bei hinterlegtem Profil sichtbar** —
+  die üblichen Fitness-Kategorien (z. B. ACE) unterscheiden sich deutlich zwischen Männern und
+  Frauen; ohne bekanntes Geschlecht lieber gar keine Kategorie zeigen als eine zu raten.
+- **Kein automatischer Scale-Import** — siehe Begründung in `ROADMAP.md` Phase 11 (Dateiformate
+  variieren stark zwischen Herstellern; ein Adapter für ein konkretes Gerät kann bei Bedarf
+  später nach dem `ExerciseSourceAdapter`-Muster aus Phase 0 ergänzt werden).
+
+## Claude-API-Integration (Roadmap-Phase)
 
 Für effiziente Übungsauswahl und Zielsetzung, hinter dem Flag `CLAUDE_API_ENABLED` — bleibt
 deaktiviert, bis ein API-Key hinterlegt ist, blockiert also nicht den Rest der Roadmap.
@@ -396,6 +417,7 @@ Breaking-Migrationen nötig werden:
 - `WaterLog` — Tages-Running-Total pro Nutzer (siehe oben, fertig)
 - `DailyChallengeItem` — Tages-Challenge-Übungen + Fortschritt (siehe oben, fertig)
 - `Supplement` — Erinnerungsliste + Zeitzone + letzter Versand (siehe oben, fertig)
+- `BodyCompositionEntry` — Waagen-Messungen als Verlauf (siehe oben, fertig)
 
 ## Bekannte Stolperfallen (bereits berücksichtigt)
 

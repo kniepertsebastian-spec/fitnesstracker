@@ -47,15 +47,16 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  refreshTokens       RefreshToken[]
-  workoutLogs         WorkoutLog[]
-  trainingPlan        TrainingPlan?
-  goals               Goal[]
-  pushSubscriptions   PushSubscription[]
-  profile             Profile?
-  waterLogs           WaterLog[]
-  dailyChallengeItems DailyChallengeItem[]
-  supplements         Supplement[]
+  refreshTokens          RefreshToken[]
+  workoutLogs            WorkoutLog[]
+  trainingPlan           TrainingPlan?
+  goals                  Goal[]
+  pushSubscriptions      PushSubscription[]
+  profile                Profile?
+  waterLogs              WaterLog[]
+  dailyChallengeItems    DailyChallengeItem[]
+  supplements            Supplement[]
+  bodyCompositionEntries BodyCompositionEntry[]
 }
 
 model RefreshToken {
@@ -240,4 +241,22 @@ model Supplement {
   lastRemindedOn String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+// One row per manual scale reading. No upsert-by-day like WaterLog — a body-comp reading is a
+// point-in-time log entry a user might take more than once a day or skip for weeks, not a daily
+// running total. Only weightKg is required; smart scales vary widely in which of the rest they
+// report at all.
+model BodyCompositionEntry {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  measuredAt       DateTime @default(now())
+  weightKg         Decimal  @db.Decimal(5, 2)
+  bodyFatPercent   Decimal? @db.Decimal(4, 1)
+  muscleMassKg     Decimal? @db.Decimal(5, 2)
+  bodyWaterPercent Decimal? @db.Decimal(4, 1)
+  createdAt        DateTime @default(now())
+
+  @@index([userId, measuredAt])
 }
