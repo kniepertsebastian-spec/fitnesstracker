@@ -54,6 +54,13 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
   Standardwert (2500 ml), manuell überschreibbar (setzt Profil voraus), nullgefüllter
   7-Tage-Verlauf. End-to-end getestet: Zielableitung, Klemmen bei 0, Override
   setzen/löschen, 409 ohne Profil.
+- **Tages-Challenge**: Karte auf `/` (Training-Log), 3 zufällige Bodyweight-Übungen aus dem
+  bereits importierten Übungskatalog (`equipment = "body only"`, Keyword-Filter gegen
+  Bank/Klimmzugstange/etc.), Zufalls-Zielwerte (10/15/20/25 Wdh.), Antippen zum Hochzählen,
+  verlinkt auf die echte Übungs-Detailseite. Zufälligkeit passiert genau einmal pro Tag
+  (`@@unique([userId, date, exerciseId])`), wiederholte Aufrufe liefern dieselbe Auswahl.
+  End-to-end getestet: Idempotenz über mehrere GETs, Wdh. hinzufügen, Übertreffen des Ziels ohne
+  Deckel, Klemmen bei 0.
 - **Docker Compose**: lokale Entwicklung (Postgres + Backend, Frontend auf dem Host) und
   Produktion (+ Caddy, automatisches HTTPS) — Config validiert; Docker-Daemon in dieser Sandbox
   verfügbar, jede Session seit Phase 1 hat Postgres via `docker run` tatsächlich live
@@ -72,14 +79,17 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
 ## Branch & Repo
 
 - Repo: `kniepertsebastian-spec/fitnesstracker`
-- Aktiver Branch: `main`, Phasen 1–5 committed und gepusht (`dbbee42`, `dbd75cd`, `4d4de32`)
+- Aktiver Branch: `main`, Phasen 1–5, 8, 9 committed und gepusht (`dbbee42`, `dbd75cd`,
+  `4d4de32`, `2f79f4a`, `5cf3cde`)
 - Bisherige Commits: Foundation (Monorepo/Auth/Tracking-Tabelle) → Übungs-API mit Import →
   Übungsbibliothek-UI/Trainingsplan-Rotation/Ziele (Phasen 1-3) → Offline-first Trainings-Tabelle
-  (Phase 4) → Push-Benachrichtigungen (Phase 5) → Profil & Ernährungsrechner (Phase 8,
-  `2f79f4a`) — Phase 9 (Wasser-Tracking) ist fertig, aber **noch nicht committed**, siehe unten.
-  Phasen 10–13 (Supplement-Erinnerungen & Referenzliste, Körperkomposition, Fortschritts-Fotos,
-  Automatische Ziel-Vorschläge) sind neu in `ROADMAP.md` aufgenommen, aber noch nicht begonnen —
-  auf Nutzerwunsch angehängt, siehe `ROADMAP.md` für Details/Reihenfolge
+  (Phase 4) → Push-Benachrichtigungen (Phase 5) → Profil & Ernährungsrechner (Phase 8) →
+  Wasser-Tracking (Phase 9) — Phase 14 (Tages-Challenge) ist fertig, aber **noch nicht
+  committed**, siehe unten. Phasen 10–13 (Supplement-Erinnerungen & Referenzliste,
+  Körperkomposition, Fortschritts-Fotos, Automatische Ziel-Vorschläge) sind geplant, aber noch
+  nicht begonnen — auf Nutzerwunsch angehängt, siehe `ROADMAP.md` für Details/Reihenfolge. Ein
+  Farbschema-/Design-Wechsel wurde ebenfalls gewünscht, laut Nutzer aber nicht eilig ("kann
+  warten") — noch keine Roadmap-Phase dafür angelegt.
 
 ## Backend-Endpunkte (alle unter `/api`)
 
@@ -123,6 +133,9 @@ PUT    /profile                 # immer Vollersatz, inkl. bmr/tdee/targetCalorie
 GET    /water                   # heute + Zielwert + 7-Tage-Verlauf (nullgefüllt)
 POST   /water/log                # { amountMl }, positiv oder negativ, bei 0 geklemmt
 PUT    /water/target             # { targetMl: number|null }, 409 falls kein Profil existiert
+
+GET    /daily-challenge                # legt bei Bedarf 3 Zufalls-Übungen für heute an
+POST   /daily-challenge/:id/reps       # { delta }, bei 0 geklemmt, kein Deckel nach oben
 ```
 
 Alle Routen außer `/api/health`, `/auth/register`, `/auth/login`, `/auth/refresh` erfordern
@@ -142,6 +155,7 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
 - `PushSubscription` — Web-Push-Abos (siehe oben, fertig)
 - `Profile` — Eingaben für den Ernährungsrechner + `waterTargetMlOverride` (siehe oben, fertig)
 - `WaterLog` — Tages-Running-Total pro Nutzer (siehe oben, fertig)
+- `DailyChallengeItem` — Tages-Challenge-Übungen + Fortschritt (siehe oben, fertig)
 
 ## Bekannte Lücken
 
@@ -149,8 +163,13 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
   keine kostenlose Quelle mit Video gefunden. `videoUrl` bleibt leer bis manuell gepflegt oder
   eine neue Quelle angebunden wird.
 - **Keine Frontend-UI** mehr offen außer Claude-API-Integration (Phase 6) — Backend/Datenmodell
-  dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–5, 8 und 9 sind fertig, siehe oben. Phasen
-  10–13 sind neu geplant, aber noch nicht begonnen (kein Datenmodell dafür vorbereitet).
+  dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–5, 8, 9 und 14 sind fertig, siehe oben.
+  Phasen 10–13 sind geplant, aber noch nicht begonnen (kein Datenmodell dafür vorbereitet).
+- **Tages-Challenge-Übungsauswahl ist unvollständig gefiltert** — `equipment = "body only"` im
+  importierten Katalog schließt nicht zuverlässig aus, dass eine Übung trotzdem eine Bank,
+  Klimmzugstange o. Ä. voraussetzt. Ein Keyword-Filter auf den Namen mildert das, ist aber eine
+  Heuristik, keine Garantie — kein Bug, absichtlich nicht weiter aufwendig gelöst, siehe
+  `ARCHITECTURE.md`.
 - **Kein Bodyweight-Tracking-Modell** — `Goal.type = BODYWEIGHT` speichert nur einen Zielwert,
   es gibt keinen Log für den tatsächlichen Körpergewichtsverlauf. Fortschritt für diesen (und
   `CUSTOM`) Ziel-Typ ist deshalb bewusst ein manueller "Als erreicht markieren"-Toggle statt
@@ -196,9 +215,11 @@ Dev-Stack, damit die App vom eigenen Handy/Laptop im selben Netz aus geöffnet w
 
 ## Nächster sinnvoller Schritt
 
-Phase 9 (Wasser-Tracking) ist fertig, aber **noch nicht committed** —
+Phase 14 (Tages-Challenge) ist fertig, aber **noch nicht committed** —
 Arbeitsverzeichnis hat uncommitted Changes (siehe `git status`; `frontend/vite.config.ts` bewusst
 mit angepasstem Proxy-Ziel, siehe oben). Erstmal committen/pushen (Proxy-Ziel vorher auf `3000`
 zurücksetzen oder bewusst mitcommitten), dann weiter mit Phase 10 (Supplement-Erinnerungen &
 Referenzliste) laut `ROADMAP.md` — oder Phase 6/7, falls der Nutzer die ursprüngliche Roadmap
-zuerst abschließen möchte.
+zuerst abschließen möchte. Offen aus dem Gespräch, aber noch ohne Roadmap-Phase: ein
+Farbschema-/Design-Wechsel (Nutzer: "kann warten", keine konkrete Richtung genannt) und eine
+beiläufige Frage zu Play-Store/App-Store-Vertrieb (nur informativ beantwortet, kein Arbeitsauftrag).

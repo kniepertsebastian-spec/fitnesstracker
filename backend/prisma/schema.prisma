@@ -52,8 +52,9 @@ model User {
   trainingPlan      TrainingPlan?
   goals             Goal[]
   pushSubscriptions PushSubscription[]
-  profile           Profile?
-  waterLogs         WaterLog[]
+  profile             Profile?
+  waterLogs           WaterLog[]
+  dailyChallengeItems DailyChallengeItem[]
 }
 
 model RefreshToken {
@@ -90,8 +91,9 @@ model Exercise {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  workoutLogs WorkoutLog[]
-  goals       Goal[]
+  workoutLogs         WorkoutLog[]
+  goals               Goal[]
+  dailyChallengeItems DailyChallengeItem[]
 
   @@unique([source, sourceId])
   @@index([name])
@@ -201,4 +203,21 @@ model WaterLog {
   amountMl Int      @default(0)
 
   @@unique([userId, date])
+}
+
+// A day's "do it anywhere, no equipment" mini-workout: a handful of exercises picked at random
+// from the imported catalog (equipment = "body only") the first time the user opens it that
+// day, each with a random rep target. Re-opening the same day returns the same set — the
+// randomness happens once per day, not on every read.
+model DailyChallengeItem {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime @db.Date
+  exerciseId    String
+  exercise      Exercise @relation(fields: [exerciseId], references: [id])
+  targetReps    Int
+  completedReps Int      @default(0)
+
+  @@unique([userId, date, exerciseId])
 }

@@ -15,6 +15,7 @@ import goalRoutes from "./modules/goals/goal.routes.js";
 import pushRoutes from "./modules/push/push.routes.js";
 import profileRoutes from "./modules/profile/profile.routes.js";
 import waterRoutes from "./modules/water/water.routes.js";
+import dailyChallengeRoutes from "./modules/dailyChallenge/dailyChallenge.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -40,6 +41,7 @@ export function buildApp() {
   app.register(pushRoutes, { prefix: "/api" });
   app.register(profileRoutes, { prefix: "/api" });
   app.register(waterRoutes, { prefix: "/api" });
+  app.register(dailyChallengeRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {
     if (error instanceof ZodError) {

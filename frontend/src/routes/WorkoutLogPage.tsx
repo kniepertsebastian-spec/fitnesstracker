@@ -3,6 +3,7 @@ import type { LocalWorkoutLog } from "../offline/db";
 import { AppShell } from "../components/layout/AppShell";
 import { WorkoutLogTable } from "../components/workoutLog/WorkoutLogTable";
 import { WorkoutLogFormDialog } from "../components/workoutLog/WorkoutLogFormDialog";
+import { DailyChallengeCard } from "../components/workoutLog/DailyChallengeCard";
 import { useWorkoutLogs } from "../hooks/useWorkoutLogs";
 
 export function WorkoutLogPage() {
@@ -30,6 +31,10 @@ export function WorkoutLogPage() {
         >
           + Satz
         </button>
+      </div>
+
+      <div className="mb-4">
+        <DailyChallengeCard />
       </div>
 
       {isLoading ? (

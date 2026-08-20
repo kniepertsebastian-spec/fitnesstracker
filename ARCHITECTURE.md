@@ -283,6 +283,34 @@ eigenen Bottom-Nav-Tabs.
 - **Verlauf wird immer nullgefüllt zurückgegeben** (`getHistory` in `water.service.ts`) — exakt
   `days` Einträge, auch für Tage ohne geloggtes Wasser, damit die Verlaufsansicht nie Lücken hat.
 
+## Tages-Challenge (fertig)
+
+Ein tägliches Mini-Workout aus 3 zufälligen Bodyweight-Übungen ("Liegestütze 0/20"), als Karte
+auf der Trainings-Log-Seite (`/`).
+
+- **Keine neue Übungs-Datenquelle** — die Auswahl kommt aus dem bereits importierten
+  `Exercise`-Katalog (`equipment = "body only"`, `category IN (strength, plyometrics)`), nicht
+  aus einer eigenen statischen Liste. Das bedeutet: mehr Auswahl (der aktuelle Katalog liefert
+  ~88 passende Übungen) und jede Challenge-Übung verlinkt auf ihre echte Detailseite
+  (`/exercises/:id`) mit Bild und Ausführungsbeschreibung — ein Nebeneffekt der Wiederverwendung,
+  kein Zusatzaufwand.
+- **Zufälligkeit passiert genau einmal pro Tag, nicht bei jedem Lesen.** `GET /daily-challenge`
+  legt beim ersten Aufruf des Tages 3 Übungen mit Zufalls-Zielwerten (10/15/20/25 Wdh.) an;
+  jeder weitere Aufruf am selben Tag liefert exakt dieselbe Auswahl zurück (`@@unique([userId,
+  date, exerciseId])` verhindert ohnehin Duplikate). Ohne das würde ein Seiten-Reload eine neue
+  Challenge auswürfeln und den bisherigen Fortschritt praktisch verwerfen.
+- **`equipment = "body only"` ist unvollständig als "wirklich überall, ohne Geräte"-Filter** —
+  einige so getaggte Übungen im importierten Katalog setzen trotzdem eine Bank, eine
+  Klimmzugstange oder Ähnliches voraus (z. B. "Bench Dips", "Hanging Pike"). Ein
+  Keyword-Filter auf den Übungsnamen (bench/hanging/wall/chair/box/step/dip) reduziert das
+  spürbar, ist aber ausdrücklich eine Bestenfalls-Heuristik, keine Garantie — eine
+  vollständige Lösung bräuchte eine manuell kuratierte Teilmenge oder ein eigenes
+  "wirklich geräte-frei"-Flag im Datenmodell, was für den Nutzen in dieser Phase nicht
+  gerechtfertigt war.
+- **Kein Deckel nach oben beim Wiederholungszähler** — mehr als das Tagesziel zu schaffen ist ein
+  gutes Ergebnis, kein Fehlerfall, im Gegensatz zum Klemmen bei 0 nach unten (ein zu großzügiges
+  Undo soll nicht in einen negativen Wert laufen).
+
 ## Claude-API-Integration (Roadmap-Phase)
 
 Für effiziente Übungsauswahl und Zielsetzung, hinter dem Flag `CLAUDE_API_ENABLED` — bleibt
@@ -301,7 +329,9 @@ Breaking-Migrationen nötig werden:
 - `TrainingPlan` + `TrainingPlanPhaseHistory` — 8-Wochen-Rotation (siehe oben, fertig)
 - `Goal` — Zielsetzung (siehe oben, fertig)
 - `PushSubscription` — Web-Push-Abos (siehe oben, fertig)
-- `Profile` — Eingaben für den Ernährungsrechner (siehe oben, fertig)
+- `Profile` — Eingaben für den Ernährungsrechner + `waterTargetMlOverride` (siehe oben, fertig)
+- `WaterLog` — Tages-Running-Total pro Nutzer (siehe oben, fertig)
+- `DailyChallengeItem` — Tages-Challenge-Übungen + Fortschritt (siehe oben, fertig)
 
 ## Bekannte Stolperfallen (bereits berücksichtigt)
 

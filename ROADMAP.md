@@ -169,3 +169,18 @@
 - Deadline darf nicht unmöglich sein — Ableitung aus einer konservativen, literaturüblichen
   Progressionsrate statt einer linearen Extrapolation der bisherigen (oft unrealistisch
   optimistischen) Steigerungsrate
+
+## Phase 14 — Tages-Challenge (Bodyweight, überall machbar) ✅
+
+- `GET /daily-challenge`: legt bei erstem Aufruf des Tages automatisch 3 zufällige Übungen mit
+  Zufalls-Zielwiederholungen an (10/15/20/25), wiederholte Aufrufe am selben Tag liefern
+  dieselbe Auswahl — kein neues Datenmodell für die Übungsauswahl nötig, gespeist aus dem
+  bereits importierten Übungskatalog (`Exercise.equipment = "body only"`,
+  `category IN (strength, plyometrics)`)
+- `POST /daily-challenge/:id/reps { delta }`: Wiederholungen antippen/hinzufügen, bei 0
+  geklemmt, kein Deckel nach oben (mehr als das Ziel ist ein gutes Ergebnis, kein Fehler)
+- Leichter Keyword-Filter auf Übungsnamen (bench/hanging/wall/chair/box/step/dip) verbessert die
+  "wirklich überall, ohne Geräte"-Passung zusätzlich zum Equipment-Tag — Bestenfalls-Heuristik,
+  keine Garantie, siehe `ARCHITECTURE.md`
+- UI als Karte auf der bestehenden `/`-Seite (Training-Log), kein eigener Nav-Tab — gleiche
+  Begründung wie beim Wasser-Tracking aus Phase 9
