@@ -131,16 +131,27 @@
 - End-to-end getestet: Zielvorschlag aus Profilgewicht, Klemmen bei 0, Override setzen/löschen,
   409 ohne Profil, Zero-Fill im Verlauf
 
-## Phase 10 — Supplement-Erinnerungen & Referenzliste
+## Phase 10 — Supplement-Erinnerungen & Referenzliste ✅
 
-- Liste eigener Supplements mit Name + Uhrzeit, tägliche Push-Erinnerung — nutzt die
-  Push-Infrastruktur aus Phase 5 wieder, eigener Scheduler-Tick nach dem Muster von
-  `trainingPlan.scheduler.ts` für die tägliche Auslösung
+- Liste eigener Supplements mit Name + Uhrzeit (`GET/POST/PATCH/DELETE /supplements`), tägliche
+  Push-Erinnerung — nutzt die Push-Infrastruktur aus Phase 5 wieder, eigener Scheduler-Tick
+  (`supplement.scheduler.ts`, jede Minute statt alle 6h wie beim Trainingsplan) nach dem Muster
+  von `trainingPlan.scheduler.ts`
+- Erinnerungs-Uhrzeit ist **lokale Wanduhrzeit in der beim Anlegen erfassten Zeitzone des
+  Browsers** (`Intl.DateTimeFormat().resolvedOptions().timeZone`), nicht UTC — eine Erinnerung
+  zur falschen Stunde wäre ein echter, spürbarer Bug, anders als die Tages-Grenzen-Unschärfe bei
+  Wasser/Trainingsplan. Backend vergleicht rein mit `Intl.DateTimeFormat`, keine
+  Zeitzonen-Bibliothek nötig
 - Statische, kuratierte Referenzliste gängiger Supplements (Creatin, Whey, Koffein,
-  Beta-Alanin, Citrullin-Malat, Vitamin D, Omega-3, Ashwagandha, …): Wirkung, grobe Einordnung
-  ("wirklich wirksam" vs. "situativ" vs. "überschätzt", auf Basis gängiger
-  Studienlage/Konsens) und übliche Dosierungsempfehlung — statischer Datensatz wie die
-  Ernährungstipps aus Phase 8, kein Live-Scraping/externe API, aus denselben Gründen wie dort
+  Beta-Alanin, Citrullin-Malat, Vitamin D, Omega-3, Ashwagandha, BCAA, pflanzliche
+  Testosteron-Booster, Fatburner, Glutamin): Wirkung, grobe Einordnung ("wirklich wirksam" vs.
+  "situativ" vs. "überschätzt", auf Basis gängiger Studienlage/Konsens) und übliche
+  Dosierungsempfehlung — statischer Datensatz wie die Ernährungstipps aus Phase 8, kein
+  Live-Scraping/externe API, aus denselben Gründen wie dort
+- UI als Karten auf der bestehenden `/nutrition`-Seite, kein eigener Nav-Tab
+- End-to-end getestet: Reminder-Matching direkt gegen die aktuelle lokale Uhrzeit in
+  verschiedenen Zeitzonen (Treffer/Nicht-Treffer/deaktiviert korrekt unterschieden), kein
+  Doppel-Versand innerhalb derselben Minute, CRUD, Validierung des Zeitformats
 
 ## Phase 11 — Körperkomposition-Tracking (manuelle Erfassung)
 

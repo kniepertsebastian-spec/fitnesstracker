@@ -311,7 +311,57 @@ auf der Trainings-Log-Seite (`/`).
   gutes Ergebnis, kein Fehlerfall, im Gegensatz zum Klemmen bei 0 nach unten (ein zu großzügiges
   Undo soll nicht in einen negativen Wert laufen).
 
-## Claude-API-Integration (Roadmap-Phase)
+## Supplement-Erinnerungen & Referenzliste (fertig)
+
+Eigene Supplement-Liste mit täglicher Push-Erinnerung zur eingestellten Uhrzeit, plus eine
+statische Referenzliste — beides als Karten auf `/nutrition`.
+
+- **Erinnerungs-Uhrzeit ist lokale Wanduhrzeit, nicht UTC — das ist die zentrale
+  Design-Entscheidung dieser Phase.** Alle anderen Tages-Grenzen in dieser App (Wasser-Reset,
+  Trainingsplan-Rotation) laufen in UTC, weil eine Verschiebung um ein paar Stunden dort niemand
+  bemerkt. Eine Supplement-Erinnerung, die zur falschen Stunde ankommt, wäre dagegen ein
+  offensichtlicher, störender Bug — das Feature existiert ja gerade, damit man es nicht vergisst,
+  zu einer bestimmten Uhrzeit. Deshalb erfasst das Frontend beim Anlegen
+  `Intl.DateTimeFormat().resolvedOptions().timeZone` (die IANA-Zeitzone des Browsers, z. B.
+  `"Europe/Berlin"`) und speichert sie zusammen mit `reminderTime` ("HH:MM" in dieser Zeitzone).
+- **Der Scheduler-Tick vergleicht rein über `Intl.DateTimeFormat`**, ohne
+  Zeitzonen-Bibliothek (`getLocalDateAndTime` in `supplement.service.ts`) — Node bringt
+  IANA-Zeitzonen-Unterstützung bereits eingebaut mit, eine zusätzliche Abhängigkeit wie
+  `date-fns-tz` wäre für "formatiere `Date` als lokale Uhrzeit in Zeitzone X" unnötig gewesen.
+  End-to-end verifiziert: eine Erinnerung, deren `reminderTime` exakt der aktuellen lokalen Zeit
+  in `Europe/Berlin` entsprach, feuerte; eine zweite mit `Asia/Tokyo` und bewusst abweichender
+  Zeit feuerte nicht; eine deaktivierte mit sonst treffender Zeit feuerte ebenfalls nicht; ein
+  zweiter Tick in derselben Minute löste keinen Doppel-Versand aus.
+- **Tick-Intervall 1 Minute statt der 6 Stunden beim Trainingsplan-Scheduler** — dort reicht
+  gröbere Auflösung, weil Rotationen nur alle 8 Wochen fällig werden und ein paar Stunden Verzug
+  irrelevant sind; eine Uhrzeit-genaue Erinnerung braucht dagegen minutengenaue Prüfung. Für eine
+  Ein-Personen-App ist ein Tick pro Minute ressourcenmäßig vernachlässigbar.
+- **`lastRemindedOn` ist ein String ("YYYY-MM-DD" in der lokalen Zeitzone), kein `DateTime
+  @db.Date`** — direkter String-Vergleich mit dem Ergebnis von `Intl.DateTimeFormat` spart eine
+  Hin- und Rück-Konvertierung zwischen Date-Objekt und Zeitzonen-lokalem Kalendertag, ohne
+  Informationsverlust, weil dieses Feld ausschließlich für den Gleichheitsvergleich "schon heute
+  erinnert?" gebraucht wird, nie für Sortierung oder Arithmetik.
+- **Supplement-Referenzliste ist statisch, kein Live-Scraping** — dieselbe Begründung wie die
+  Ernährungstipps aus Phase 8: eine ehrliche feste Liste ist besser als ein API-Call, der keine
+  echte Aktualität oder Personalisierung liefern würde.
+
+### `/nutrition` als Tab-Seite statt einer langen Karten-Kette
+
+Mit Profil-Rechner, Wasser, Supplements und Tipps/Referenz auf einer Seite gestapelt wurde
+`/nutrition` unangenehm lang zu scrollen — vier unabhängige Karten, von denen zu jedem Zeitpunkt
+meist nur eine tatsächlich interessiert. Statt einer fünften Karte oder eines weiteren
+Bottom-Nav-Tabs (der Cap bei fünf Einträgen bleibt bestehen, siehe Wasser-Tracking-Abschnitt
+oben) gibt es jetzt eine Segmented-Control (`PageTabs`, `components/layout/PageTabs.tsx`) direkt
+unter der Überschrift, die zwischen den vier Bereichen umschaltet — nur ein Abschnitt ist
+gleichzeitig sichtbar.
+
+- **Der aktive Tab ist ein URL-Query-Param (`?tab=wasser`), keine reine Komponenten-State** —
+  damit ist jeder Abschnitt direkt verlinkbar (z. B. könnte eine künftige Supplement-Push-Notification
+  direkt auf `/nutrition?tab=supplements` verweisen statt nur auf `/nutrition`) und
+  Browser-Vor-/Zurück wechselt zwischen Tabs statt zwischen Seiten.
+- **`PageTabs` ist bewusst generisch gehalten** (Tab-Liste + aktiver Key + Change-Handler als
+  Props), nicht `/nutrition`-spezifisch — falls eine andere Seite künftig ähnlich viele
+  unabhängige Karten ansammelt, lässt sich dasselbe Muster ohne Kopieren wiederverwenden.
 
 Für effiziente Übungsauswahl und Zielsetzung, hinter dem Flag `CLAUDE_API_ENABLED` — bleibt
 deaktiviert, bis ein API-Key hinterlegt ist, blockiert also nicht den Rest der Roadmap.
@@ -332,6 +382,7 @@ Breaking-Migrationen nötig werden:
 - `Profile` — Eingaben für den Ernährungsrechner + `waterTargetMlOverride` (siehe oben, fertig)
 - `WaterLog` — Tages-Running-Total pro Nutzer (siehe oben, fertig)
 - `DailyChallengeItem` — Tages-Challenge-Übungen + Fortschritt (siehe oben, fertig)
+- `Supplement` — Erinnerungsliste + Zeitzone + letzter Versand (siehe oben, fertig)
 
 ## Bekannte Stolperfallen (bereits berücksichtigt)
 

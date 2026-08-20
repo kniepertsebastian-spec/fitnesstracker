@@ -8,3 +8,4 @@ export * from "./schemas/push.schema.js";
 export * from "./schemas/profile.schema.js";
 export * from "./schemas/water.schema.js";
 export * from "./schemas/dailyChallenge.schema.js";
+export * from "./schemas/supplement.schema.js";

@@ -16,6 +16,8 @@ import pushRoutes from "./modules/push/push.routes.js";
 import profileRoutes from "./modules/profile/profile.routes.js";
 import waterRoutes from "./modules/water/water.routes.js";
 import dailyChallengeRoutes from "./modules/dailyChallenge/dailyChallenge.routes.js";
+import supplementRoutes from "./modules/supplements/supplement.routes.js";
+import supplementScheduler from "./modules/supplements/supplement.scheduler.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -30,6 +32,7 @@ export function buildApp() {
   app.register(jwtPlugin);
   app.register(authHooks);
   app.register(trainingPlanScheduler);
+  app.register(supplementScheduler);
 
   app.get("/api/health", async () => ({ status: "ok" }));
 
@@ -42,6 +45,7 @@ export function buildApp() {
   app.register(profileRoutes, { prefix: "/api" });
   app.register(waterRoutes, { prefix: "/api" });
   app.register(dailyChallengeRoutes, { prefix: "/api" });
+  app.register(supplementRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {
     if (error instanceof ZodError) {

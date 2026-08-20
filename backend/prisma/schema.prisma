@@ -47,14 +47,15 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  refreshTokens     RefreshToken[]
-  workoutLogs       WorkoutLog[]
-  trainingPlan      TrainingPlan?
-  goals             Goal[]
-  pushSubscriptions PushSubscription[]
+  refreshTokens       RefreshToken[]
+  workoutLogs         WorkoutLog[]
+  trainingPlan        TrainingPlan?
+  goals               Goal[]
+  pushSubscriptions   PushSubscription[]
   profile             Profile?
   waterLogs           WaterLog[]
   dailyChallengeItems DailyChallengeItem[]
+  supplements         Supplement[]
 }
 
 model RefreshToken {
@@ -220,4 +221,23 @@ model DailyChallengeItem {
   completedReps Int      @default(0)
 
   @@unique([userId, date, exerciseId])
+}
+
+// A daily push reminder for one supplement. `reminderTime` ("HH:MM") is local wall-clock time
+// in `timeZone` (an IANA name captured from the browser at creation), not UTC — a reminder
+// firing at the wrong hour would defeat the entire point of the feature, unlike the day-boundary
+// fuzziness elsewhere in this app (water reset, plan rotation) where nobody notices a few hours
+// of slop. `lastRemindedOn` ("YYYY-MM-DD" in that same local time) stops the scheduler from
+// sending twice on the same local day.
+model Supplement {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  reminderTime   String
+  timeZone       String
+  enabled        Boolean  @default(true)
+  lastRemindedOn String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
