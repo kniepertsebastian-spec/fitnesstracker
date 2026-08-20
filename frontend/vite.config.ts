@@ -37,6 +37,10 @@ export default defineConfig({
             handler: "NetworkOnly",
           },
         ],
+        // Adds push/notificationclick handling to the generated service worker — see
+        // public/push-sw.js for why this is a plain importScripts file instead of
+        // injectManifest.
+        importScripts: ["push-sw.js"],
       },
     }),
   ],

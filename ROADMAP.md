@@ -68,10 +68,24 @@
 - Backend erweitert: `PATCH`/`DELETE /workout-logs/:id` akzeptieren jetzt auch die `clientId` als
   Identifier, weil eine offline angelegte Zeile vor der ersten Sync noch keine Server-`id` hat
 
-## Phase 5 — Push-Benachrichtigungen
+## Phase 5 — Push-Benachrichtigungen ✅
 
-- VAPID-Setup, Subscription-Flow im Frontend
-- Erinnerung bei Trainingsplan-Wechsel (an den Scheduler aus Phase 2 gekoppelt)
+- Backend: VAPID-Setup (`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`, optional — Push
+  bleibt komplett inert ohne konfiguriertes Schlüsselpaar, gleiches Muster wie
+  `CLAUDE_API_ENABLED`), `PushSubscription`-CRUD (`GET /push/vapid-public-key`,
+  `POST`/`DELETE /push/subscribe`)
+- Erinnerung bei Trainingsplan-Wechsel: an den Scheduler aus Phase 2 gekoppelt — nur der
+  Hintergrund-Tick (`rotateAllDuePlans`) löst die Push aus, nicht das lazy Rotieren beim Öffnen
+  von `/plan` (eine Push für den eigenen gerade ausgelösten Wechsel wäre sinnlos)
+- Frontend: Subscription-Flow (`usePushSubscription`) auf der `/plan`-Seite, Service-Worker um
+  `push`/`notificationclick`-Handler erweitert (`public/push-sw.js`, per `importScripts` in den
+  von `vite-plugin-pwa` generierten SW eingebunden statt auf `injectManifest` umzustellen)
+- End-to-end getestet: VAPID-Public-Key-Endpoint, Subscribe/Unsubscribe-Speicherung, und die
+  komplette Rotation→Push-Kette (inkl. echtem Zustellversuch gegen einen absichtlich ungültigen
+  Endpoint, der korrekt aus der DB entfernt wurde). Echtes `pushManager.subscribe()` im Browser
+  ließ sich in der Sandbox nicht end-to-end verifizieren — Chromium meldet dort
+  `AbortError: Registration failed - push service not available`, weil kein echter
+  Push-Service (Google FCM) erreichbar ist; auf einem echten Gerät/Browser betrifft das nicht.
 
 ## Phase 6 — Claude-API-Integration
 

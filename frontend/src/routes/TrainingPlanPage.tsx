@@ -1,4 +1,5 @@
 import { AppShell } from "../components/layout/AppShell";
+import { PushReminderCard } from "../components/trainingPlan/PushReminderCard";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../hooks/useTrainingPlan";
 
 function formatDate(iso: string) {
@@ -27,6 +28,8 @@ export function TrainingPlanPage() {
               Seit {formatDate(plan.phaseStartedOn)} · nächster Wechsel {formatDate(plan.nextRotationOn)}
             </p>
           </div>
+
+          <PushReminderCard />
 
           <div>
             <h2 className="mb-2 text-sm font-medium text-slate-400">Verlauf</h2>

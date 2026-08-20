@@ -31,10 +31,22 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
   und gefixt: TanStack-Query-Mutations pausieren standardmäßig komplett, solange der Browser
   offline ist (`networkMode: "always"` nötig), und `invalidateQueries` nach einer Mutation ließ
   den Speichern-Dialog auf einen offline erfolglosen Refetch warten. Siehe `ARCHITECTURE.md`.
+- **Push-Benachrichtigungen**: VAPID-Setup (optional konfigurierbar, kein Boot-Fehler ohne
+  Schlüssel), Subscribe/Unsubscribe-Endpunkte, Erinnerung bei Trainingsplan-Wechsel an den
+  Scheduler aus Phase 2 gekoppelt (nur Hintergrund-Tick, nicht das lazy Rotieren), Service Worker
+  um `push`/`notificationclick` erweitert. Backend-seitig voll end-to-end getestet (Subscribe→DB,
+  Rotation→echter Zustellversuch→automatisches Entfernen einer ungültigen Subscription).
+  Browser-seitiges `pushManager.subscribe()` ließ sich in dieser Sandbox nicht komplett
+  verifizieren (Chromium: kein Zugriff auf Googles Push-Dienst) — auf einem echten Gerät nicht
+  betroffen, siehe `ARCHITECTURE.md`.
+- **Mobile Layout verifiziert**: kein horizontaler Overflow auf allen Hauptseiten bei 375px
+  Breite (iPhone SE, schmalste gängige Breite) mit echten Daten getestet — Inhalte brechen um
+  oder scrollen vertikal statt Zoom-out zu erfordern. Keine Code-Änderung nötig, war bereits
+  durch das mobile-first Tailwind-Design + korrekten Viewport-Meta-Tag aus Phase 0 gegeben.
 - **Docker Compose**: lokale Entwicklung (Postgres + Backend, Frontend auf dem Host) und
-  Produktion (+ Caddy, automatisches HTTPS) — Config validiert, echter `docker compose up`
-  in dieser Sandbox nicht möglich (kein laufender Docker-Daemon), daher Backend/Frontend
-  stattdessen direkt gegen eine lokale Postgres-Instanz getestet
+  Produktion (+ Caddy, automatisches HTTPS) — Config validiert; Docker-Daemon in dieser Sandbox
+  verfügbar, jede Session seit Phase 1 hat Postgres via `docker run` tatsächlich live
+  hochgefahren und Backend+Frontend end-to-end dagegen getestet.
 
 ## Tech-Stack
 
@@ -49,10 +61,11 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
 ## Branch & Repo
 
 - Repo: `kniepertsebastian-spec/fitnesstracker`
-- Aktiver Branch: `main`, lokal committed, **noch nicht gepusht**
+- Aktiver Branch: `main`, Phasen 1–4 committed und gepusht (`dbbee42`, `dbd75cd`)
 - Bisherige Commits: Foundation (Monorepo/Auth/Tracking-Tabelle) → Übungs-API mit Import →
-  "Add exercise library UI, training plan rotation, and goals (Phases 1-3)" — Phase 4
-  (Offline-first Trainings-Tabelle) ist fertig, aber **noch nicht committed**, siehe unten
+  Übungsbibliothek-UI/Trainingsplan-Rotation/Ziele (Phasen 1-3) → Offline-first Trainings-Tabelle
+  (Phase 4) — Phase 5 (Push-Benachrichtigungen) ist fertig, aber **noch nicht committed**, siehe
+  unten
 
 ## Backend-Endpunkte (alle unter `/api`)
 
@@ -85,6 +98,10 @@ GET    /goals
 POST   /goals                   # exerciseId Pflicht bei type WEIGHT/REPS
 PATCH  /goals/:id               # targetValue/targetDate/achievedAt
 DELETE /goals/:id
+
+GET    /push/vapid-public-key   # publicKey: null, falls VAPID nicht konfiguriert
+POST   /push/subscribe
+DELETE /push/subscribe
 ```
 
 Alle Routen außer `/api/health`, `/auth/register`, `/auth/login`, `/auth/refresh` erfordern
@@ -101,25 +118,20 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
   Soft-Delete
 - `TrainingPlan` + `TrainingPlanPhaseHistory` — 8-Wochen-Rotation (siehe oben, fertig)
 - `Goal` — Zielsetzung (siehe oben, fertig)
-- `PushSubscription` — Web-Push-Abos (noch ungenutzt)
+- `PushSubscription` — Web-Push-Abos (siehe oben, fertig)
 
 ## Bekannte Lücken
 
 - **Kein Video** in der importierten Übungsbibliothek — `free-exercise-db` liefert nur Bilder,
   keine kostenlose Quelle mit Video gefunden. `videoUrl` bleibt leer bis manuell gepflegt oder
   eine neue Quelle angebunden wird.
-- **Keine Frontend-UI** mehr offen außer Push-Erinnerungen und Claude-API-Integration
-  (Phasen 5–6) — Backend/Datenmodell dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–4
-  (Übungsbibliothek, Trainingsplan-Rotation, Ziele, Offline-Sync) sind fertig, siehe oben.
+- **Keine Frontend-UI** mehr offen außer Claude-API-Integration (Phase 6) — Backend/Datenmodell
+  dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–5 sind fertig, siehe oben.
 - **Kein Bodyweight-Tracking-Modell** — `Goal.type = BODYWEIGHT` speichert nur einen Zielwert,
   es gibt keinen Log für den tatsächlichen Körpergewichtsverlauf. Fortschritt für diesen (und
   `CUSTOM`) Ziel-Typ ist deshalb bewusst ein manueller "Als erreicht markieren"-Toggle statt
   einer berechneten Kennzahl — kein Bug, sondern absichtlich minimal gehalten, siehe
   `ARCHITECTURE.md`.
-- **Docker-Daemon** war in einer früheren Sandbox nicht verfügbar, ist es in dieser aber — jede
-  Session seit Phase 1 hat Postgres via `docker run` (Alternativ-Ports 5433/3001 wegen
-  Portkonflikten mit anderen lokalen Projekten) tatsächlich live hochgefahren und Backend+Frontend
-  end-to-end dagegen getestet, nicht nur `docker compose config` validiert.
 - `pnpm-workspace.yaml` brauchte `allowBuilds: true` für `@prisma/client`/`bcrypt`/`esbuild`/
   `prisma`, sonst bricht `pnpm install` mit `ERR_PNPM_IGNORED_BUILDS` ab (neueres pnpm blockiert
   Postinstall-Skripte standardmäßig) — gefixt und committed.
@@ -127,11 +139,16 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
   mit Default-`networkMode` laufen offline nie, und `invalidateQueries` nach einer Mutation hängt
   offline. Falls weitere Entities offline-fähig werden (aktuell nur Trainings-Tabelle), dieselben
   zwei Fallstricke im Hinterkopf behalten.
+- **Web Push lässt sich browser-seitig nicht vollständig in dieser Sandbox testen** — Chromium
+  braucht für `pushManager.subscribe()` Zugriff auf einen echten Push-Dienst (Google FCM), den es
+  in diesem Testcontainer nicht gibt (`AbortError: Registration failed - push service not
+  available`). Backend-seitig (Subscribe-Speicherung, Zustellversuch, Pruning) end-to-end
+  verifiziert; die eine Lücke ist reine Umgebungs-Einschränkung, nicht App-Verhalten — bei realer
+  Nutzung auf einem echten Gerät nicht relevant.
 
 ## Nächster sinnvoller Schritt
 
-Phase 4 (Offline-first Trainings-Tabelle) ist fertig, aber **noch nicht committed** —
-Arbeitsverzeichnis hat uncommitted Changes (siehe `git status`); Phase 1–3 sind bereits lokal
-committed, aber **noch nicht gepusht**. Erstmal Phase 4 committen und alles pushen, dann weiter
-mit Phase 5 (Push-Benachrichtigungen: VAPID-Setup, Subscription-Flow, an den
-Trainingsplan-Scheduler aus Phase 2 gekoppelt). Siehe `ROADMAP.md` Phase 5 für Details.
+Phase 5 (Push-Benachrichtigungen) ist fertig, aber **noch nicht committed** —
+Arbeitsverzeichnis hat uncommitted Changes (siehe `git status`). Erstmal committen/pushen, dann
+weiter mit Phase 6 (Claude-API-Integration: effiziente Übungsauswahl/Zielsetzung, hinter
+`CLAUDE_API_ENABLED`) oder Phase 7 (Politur & VPS-Deployment). Siehe `ROADMAP.md`.

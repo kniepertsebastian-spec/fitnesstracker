@@ -196,12 +196,41 @@ den Umfang auf Daten auszuweiten, die primär zu Hause mit Verbindung durchsucht
     Singleton-Modul (`frontend/src/queryClient.ts`) statt in `main.tsx` erzeugt, damit auch der
     `online`-Event-Handler außerhalb von React darauf zugreifen kann.
 
-## Push-Benachrichtigungen (Roadmap-Phase)
+## Push-Benachrichtigungen (fertig)
 
-Web Push mit VAPID-Keys — funktioniert auf iOS 16.4+ bei zum Homescreen hinzugefügten PWAs. Ein
-Backend-Scheduler prüft für jeden Nutzer das `phaseStartedOn`-Datum des Trainingsplans und rotiert
-die Phase automatisch 8 Wochen später, immer an einem Montag, und löst dabei eine
-Push-Benachrichtigung aus.
+Web Push mit VAPID-Keys — funktioniert auf iOS 16.4+ bei zum Homescreen hinzugefügten PWAs. Der
+Trainingsplan-Scheduler aus Phase 2 löst beim Rotieren einer überfälligen Phase eine
+Push-Benachrichtigung aus ("Trainingsplan-Wechsel: Neue Phase: Muskelausdauer").
+
+- **Push bleibt komplett inert ohne konfiguriertes VAPID-Schlüsselpaar** (`VAPID_PUBLIC_KEY` /
+  `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT`) — gleiches Muster wie `CLAUDE_API_KEY`: kein
+  Boot-Fehler, `GET /push/vapid-public-key` liefert einfach `publicKey: null`, das Frontend zeigt
+  dann "Server hat noch keinen VAPID-Schlüssel konfiguriert" statt eines kaputten Buttons.
+- **Nur der Hintergrund-Tick löst die Push aus, nicht das lazy Rotieren** beim Öffnen von
+  `/plan` (`rotateAllDuePlans` vs. `getCurrentTrainingPlan`, siehe Trainingsplan-Abschnitt oben)
+  — eine Push für einen Phasenwechsel, den man gerade selbst durch Öffnen der Seite ausgelöst
+  hat, wäre eine sinnlose Benachrichtigung über etwas, das man schon sieht.
+- **Abgelaufene Subscriptions werden automatisch entfernt**: schlägt `webpush.sendNotification`
+  mit 404/410 fehl (der Push-Service kennt den Endpoint nicht mehr — z. B. Browser-Neuinstallation
+  oder abgelaufene Registrierung), wird die `PushSubscription`-Zeile gelöscht statt bei jedem
+  künftigen Rotationsevent erneut erfolglos zugestellt zu werden. End-to-end verifiziert: eine
+  absichtlich ungültige Subscription wurde beim Zustellversuch korrekt aus der DB entfernt (der
+  Zustellversuch selbst ging als echter HTTPS-Request an Googles FCM-Infrastruktur raus).
+- **Service Worker um `push`/`notificationclick` erweitert, ohne die Cache-Strategie
+  anzufassen**: `vite-plugin-pwa`s `generateSW`-Modus (aktuell verwendet) bietet keinen Hook für
+  eigene Event-Listener im generierten Service Worker. Umstieg auf `injectManifest` hätte bedeutet,
+  die komplette Precache-Registrierung und die bestehende `NetworkOnly`-Regel für `/api/**` von
+  Hand nachzubauen — stattdessen lädt der generierte SW eine eigene, reine JS-Datei
+  (`frontend/public/push-sw.js`) per Workbox-Option `importScripts` nach; Vite kopiert sie
+  unverändert ins Build-Output, keine TypeScript-/Bundling-Pipeline nötig für dieses eine File.
+- **`pushManager.subscribe()` ließ sich in dieser Sandbox nicht live verifizieren** — Chromium
+  meldet `AbortError: Registration failed - push service not available`, weil kein echter
+  Push-Dienst (Google FCM) für die Browser-seitige Registrierung erreichbar ist. Das ist eine
+  Umgebungs-Einschränkung des Testcontainers, keine Einschränkung der App: `Notification.
+  requestPermission()`, die VAPID-Key-Konvertierung und der Request an `pushManager.subscribe()`
+  laufen nachweislich korrekt (isoliert getestet), nur die Registrierung beim echten Push-Dienst
+  kann headless/ohne Netzwerkzugriff auf Google-Infrastruktur nicht abgeschlossen werden. Auf
+  einem echten Gerät/Browser mit Internetzugang betrifft das nicht.
 
 ## Claude-API-Integration (Roadmap-Phase)
 
@@ -220,7 +249,7 @@ Breaking-Migrationen nötig werden:
 - `WorkoutLog` — Satz/Wiederholungen/Gewicht/Übung, `clientId` für Offline-Idempotenz, Soft-Delete
 - `TrainingPlan` + `TrainingPlanPhaseHistory` — 8-Wochen-Rotation (siehe oben, fertig)
 - `Goal` — Zielsetzung (siehe oben, fertig)
-- `PushSubscription` — Web-Push-Abos (Phase 5)
+- `PushSubscription` — Web-Push-Abos (siehe oben, fertig)
 
 ## Bekannte Stolperfallen (bereits berücksichtigt)
 
@@ -229,9 +258,16 @@ Breaking-Migrationen nötig werden:
 - Prisma `Decimal` wird vor der JSON-Antwort explizit in `Number` konvertiert
   (`workoutLog.types.ts`), sonst serialisiert es sich nicht sauber.
 - `POST /workout-logs` ist ein `upsert` by `clientId`, kein `create` — ein wiederholter Submit
-  (z. B. durch die künftige Offline-Sync-Queue) gibt den bestehenden Datensatz mit `200` zurück
-  statt einen Unique-Constraint-Fehler zu werfen.
+  (heute genutzt von der Offline-Sync-Queue, siehe oben) gibt den bestehenden Datensatz mit `200`
+  zurück statt einen Unique-Constraint-Fehler zu werfen.
 - Der Service Worker cached API-Antworten nie (`NetworkOnly` für `/api/**`), damit nach einem
   Deploy niemand einen veralteten Workout-Log aus dem Cache sieht.
 - iOS Safari kennt kein `beforeinstallprompt` — jede zukünftige "Installieren"-UI muss die manuelle
   Share-→-Zum-Home-Bildschirm-Anleitung zeigen, kein Chrome-Style-Install-Button.
+- **Layout passt sich per Design an die Telefonbreite an, statt Zoom-out zu erzwingen.**
+  `index.html` setzt `width=device-width, initial-scale=1` (plus `viewport-fit=cover` für die
+  iPhone-Notch), und jede Ansicht ist mobile-first mit Tailwind gebaut: Inhalte, die nicht passen,
+  brechen innerhalb ihrer Zelle um oder scrollen vertikal (natürlicher Dokument-Scroll, keine
+  fixen Höhen) statt horizontal zu überlaufen. Über alle Hauptseiten inkl. Trainings-Tabelle mit
+  echten Daten bei 375px Breite (iPhone SE, die schmalste gängige Breite) und `deviceScaleFactor:
+  3` verifiziert: `document.documentElement.scrollWidth` überschreitet nirgends `clientWidth`.

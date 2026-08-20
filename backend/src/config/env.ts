@@ -17,6 +17,11 @@ const envSchema = z.object({
     .default("false")
     .transform((val) => val === "true"),
   CLAUDE_API_KEY: z.string().optional().default(""),
+  // Push stays inert (subscribe/send both no-op) until all three are set — same "absent means
+  // disabled, not a boot-time error" pattern as CLAUDE_API_KEY above.
+  VAPID_PUBLIC_KEY: z.string().optional().default(""),
+  VAPID_PRIVATE_KEY: z.string().optional().default(""),
+  VAPID_SUBJECT: z.string().optional().default(""),
 });
 
 // Fail fast on boot rather than crashing mysteriously on the first request that needs a var.

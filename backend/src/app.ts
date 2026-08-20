@@ -12,6 +12,7 @@ import exerciseRoutes from "./modules/exercises/exercise.routes.js";
 import trainingPlanRoutes from "./modules/trainingPlan/trainingPlan.routes.js";
 import trainingPlanScheduler from "./modules/trainingPlan/trainingPlan.scheduler.js";
 import goalRoutes from "./modules/goals/goal.routes.js";
+import pushRoutes from "./modules/push/push.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -34,6 +35,7 @@ export function buildApp() {
   app.register(workoutLogRoutes, { prefix: "/api" });
   app.register(trainingPlanRoutes, { prefix: "/api" });
   app.register(goalRoutes, { prefix: "/api" });
+  app.register(pushRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {
     if (error instanceof ZodError) {

@@ -1,5 +1,6 @@
 import type { PrismaClient, TrainingPlan, TrainingPlanPhaseHistory } from "@prisma/client";
-import { TRAINING_PHASE_ROTATION } from "@fitnesstracker/shared";
+import { TRAINING_PHASE_LABELS, TRAINING_PHASE_ROTATION } from "@fitnesstracker/shared";
+import { sendNotificationToUser } from "../push/push.service.js";
 
 const ROTATION_WEEKS = 8;
 
@@ -94,6 +95,10 @@ export async function getCurrentTrainingPlan(prisma: PrismaClient, userId: strin
 
 // Scheduler tick: rotates every plan with an overdue phase. Cheap to call often — plans that
 // aren't due are filtered out in SQL before any rotation logic runs.
+//
+// The push reminder fires only from here, not from the lazy per-request rotation in
+// getCurrentTrainingPlan — a push telling you the plan changed is pointless if you're the one
+// who just triggered the rotation by opening the training-plan page yourself.
 export async function rotateAllDuePlans(prisma: PrismaClient): Promise<{ rotatedPlans: number }> {
   const cutoff = addWeeks(new Date(), -ROTATION_WEEKS);
   const duePlans = await prisma.trainingPlan.findMany({
@@ -102,8 +107,15 @@ export async function rotateAllDuePlans(prisma: PrismaClient): Promise<{ rotated
 
   let rotatedPlans = 0;
   for (const plan of duePlans) {
-    const { rotated } = await rotatePhaseIfDue(prisma, plan);
-    if (rotated) rotatedPlans += 1;
+    const { plan: updated, rotated } = await rotatePhaseIfDue(prisma, plan);
+    if (rotated) {
+      rotatedPlans += 1;
+      await sendNotificationToUser(prisma, plan.userId, {
+        title: "Trainingsplan-Wechsel",
+        body: `Neue Phase: ${TRAINING_PHASE_LABELS[updated.currentPhase]}`,
+        url: "/plan",
+      });
+    }
   }
   return { rotatedPlans };
 }
