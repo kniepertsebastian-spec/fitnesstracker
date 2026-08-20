@@ -34,13 +34,13 @@ export function DailyChallengeCard() {
                 <Link to={`/exercises/${item.exerciseId}`} className="text-sm text-slate-200 hover:underline">
                   {item.exerciseName}
                 </Link>
-                <span className={`text-sm font-medium ${done ? "text-emerald-400" : "text-sky-400"}`}>
+                <span className={`text-sm font-medium ${done ? "text-emerald-400" : "text-violet-400"}`}>
                   {item.completedReps}/{item.targetReps}
                 </span>
               </div>
               <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
                 <div
-                  className={`h-full rounded-full ${done ? "bg-emerald-500" : "bg-sky-500"}`}
+                  className={`h-full rounded-full ${done ? "bg-emerald-500" : "bg-violet-500"}`}
                   style={{ width: `${progress * 100}%` }}
                 />
               </div>

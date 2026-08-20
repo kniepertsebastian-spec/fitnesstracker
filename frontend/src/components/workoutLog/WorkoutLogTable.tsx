@@ -39,7 +39,7 @@ export function WorkoutLogTable({ logs, onEdit }: Props) {
             <td className="py-2 pr-2">{log.reps}</td>
             <td className="py-2 pr-2">{log.weightKg}</td>
             <td className="flex justify-end gap-3 py-2">
-              <button onClick={() => onEdit(log)} className="text-sky-400 hover:underline">
+              <button onClick={() => onEdit(log)} className="text-violet-400 hover:underline">
                 Bearbeiten
               </button>
               <button

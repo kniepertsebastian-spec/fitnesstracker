@@ -2,7 +2,12 @@
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ["Manrope", "system-ui", "sans-serif"],
+        heading: ["Space Grotesk", "system-ui", "sans-serif"],
+      },
+    },
   },
   plugins: [],
 };

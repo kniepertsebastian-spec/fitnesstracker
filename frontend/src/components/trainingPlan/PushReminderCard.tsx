@@ -22,7 +22,7 @@ export function PushReminderCard() {
           className={`mt-3 w-full rounded-lg py-1.5 text-sm font-medium ${
             status === "subscribed"
               ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
-              : "bg-sky-500 text-slate-950 hover:bg-sky-400"
+              : "bg-violet-500 text-slate-950 hover:bg-violet-400"
           }`}
         >
           {status === "subscribed" ? "Erinnerungen deaktivieren" : "Erinnerungen aktivieren"}

@@ -134,7 +134,7 @@ export function ProfileForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-2 rounded-lg bg-sky-500 py-2 font-medium text-slate-950 hover:bg-sky-400 disabled:opacity-50"
+          className="mt-2 rounded-lg bg-violet-500 py-2 font-medium text-slate-950 hover:bg-violet-400 disabled:opacity-50"
         >
           Speichern
         </button>
@@ -154,11 +154,11 @@ export function ProfileForm() {
             </div>
             <div>
               <p className="text-slate-500">Ziel-Kalorien</p>
-              <p className="text-lg font-semibold text-sky-400">{profile.targetCalories} kcal</p>
+              <p className="text-lg font-semibold text-violet-400">{profile.targetCalories} kcal</p>
             </div>
             <div>
               <p className="text-slate-500">Ziel-Protein</p>
-              <p className="text-lg font-semibold text-sky-400">{profile.targetProteinG} g</p>
+              <p className="text-lg font-semibold text-violet-400">{profile.targetProteinG} g</p>
             </div>
           </div>
         </div>

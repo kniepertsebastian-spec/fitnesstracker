@@ -17,6 +17,12 @@ Frontend nie aus dem Tritt geraten (ein Schema, zwei Verwendungen).
 dem Handy genutzt wird), TanStack Query fürs Server-State-Handling, React Hook Form + Zod für
 Formulare, `vite-plugin-pwa` für die installierbare PWA-Hülle (Manifest, Service Worker, Icons).
 
+**Design**: Akzentfarbe Violett (Tailwind `violet-*`, ersetzt das ursprüngliche `sky-*`) statt des
+sehr verbreiteten Slate+Blau-Defaults, `Space Grotesk` für Überschriften (`h1`-`h3`) + `Manrope`
+für Fließtext statt System-Sans überall — beide via Google Fonts in `index.html` eingebunden,
+`fontFamily.sans`/`fontFamily.heading` in `tailwind.config.js`. Bewusste Abkehr vom
+"generischen AI-Dashboard-Look" (Slate/Blau/Inter-Kombination), auf Nutzerwunsch.
+
 **Auth**: JWT-Access-Token (15 min, im Speicher gehalten, nie in localStorage) + Refresh-Token als
 httpOnly-Cookie, dessen Hash (nicht der Klartext) in der DB liegt — damit lassen sich Sessions
 serverseitig widerrufen und Refresh-Token-Reuse erkennen. Registrierung ist über ein `SETUP_TOKEN`

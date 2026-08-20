@@ -41,7 +41,7 @@ export function WaterCard() {
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
       <p className="text-sm text-slate-500">Wasser heute</p>
-      <p className="text-2xl font-semibold text-sky-400">
+      <p className="text-2xl font-semibold text-violet-400">
         {status.today.amountMl} <span className="text-base text-slate-500">/ {status.targetMl} ml</span>
       </p>
       {!status.isCustomTarget && (
@@ -49,7 +49,7 @@ export function WaterCard() {
       )}
 
       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-        <div className="h-full rounded-full bg-sky-500" style={{ width: `${progress * 100}%` }} />
+        <div className="h-full rounded-full bg-violet-500" style={{ width: `${progress * 100}%` }} />
       </div>
 
       <div className="mt-3 flex gap-2">
@@ -76,7 +76,7 @@ export function WaterCard() {
           return (
             <div key={day.date} className="flex flex-1 flex-col items-center gap-1">
               <div className="flex h-16 w-full items-end rounded bg-slate-800">
-                <div className="w-full rounded bg-sky-600" style={{ height: `${dayProgress * 100}%` }} />
+                <div className="w-full rounded bg-violet-600" style={{ height: `${dayProgress * 100}%` }} />
               </div>
               <span className="text-[10px] text-slate-600">{formatDayLabel(day.date)}</span>
             </div>

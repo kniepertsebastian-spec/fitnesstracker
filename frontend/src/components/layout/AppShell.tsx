@@ -57,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             to={item.to}
             end={item.to === "/"}
             className={({ isActive }) =>
-              `flex flex-1 flex-col items-center py-3 text-center text-xs ${isActive ? "text-sky-400" : "text-slate-500 hover:text-slate-300"}`
+              `flex flex-1 flex-col items-center py-3 text-center text-xs ${isActive ? "text-violet-400" : "text-slate-500 hover:text-slate-300"}`
             }
           >
             <span>{item.label}</span>

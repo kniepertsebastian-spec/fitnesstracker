@@ -53,7 +53,7 @@ export function SupplementCard() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => updateSupplement.mutate({ id: s.id, input: { enabled: !s.enabled } })}
-                  className="text-xs text-sky-400 hover:underline"
+                  className="text-xs text-violet-400 hover:underline"
                 >
                   {s.enabled ? "Pausieren" : "Aktivieren"}
                 </button>

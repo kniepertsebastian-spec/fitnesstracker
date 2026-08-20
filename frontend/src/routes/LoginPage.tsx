@@ -54,14 +54,14 @@ export function LoginPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-lg bg-sky-500 px-4 py-2 font-medium text-slate-950 hover:bg-sky-400 disabled:opacity-50"
+          className="rounded-lg bg-violet-500 px-4 py-2 font-medium text-slate-950 hover:bg-violet-400 disabled:opacity-50"
         >
           Anmelden
         </button>
       </form>
       <p className="mt-4 text-sm text-slate-400">
         Noch kein Konto?{" "}
-        <Link to="/register" className="text-sky-400 hover:underline">
+        <Link to="/register" className="text-violet-400 hover:underline">
           Registrieren
         </Link>
       </p>

@@ -45,7 +45,7 @@ export function ExerciseDetailPage() {
               </span>
             )}
             {exercise.primaryMuscles.map((m) => (
-              <span key={m} className="rounded-full bg-sky-950 px-3 py-1 text-sky-300">
+              <span key={m} className="rounded-full bg-violet-950 px-3 py-1 text-violet-300">
                 {m}
               </span>
             ))}
@@ -65,7 +65,7 @@ export function ExerciseDetailPage() {
               href={exercise.videoUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-sm text-sky-400 hover:text-sky-300"
+              className="text-sm text-violet-400 hover:text-violet-300"
             >
               Video ansehen ↗
             </a>

@@ -21,7 +21,7 @@ export function TrainingPlanPage() {
         <div className="flex flex-col gap-4">
           <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
             <p className="text-sm text-slate-500">Aktuelle Phase</p>
-            <p className="text-2xl font-semibold text-sky-400">
+            <p className="text-2xl font-semibold text-violet-400">
               {TRAINING_PHASE_LABELS[plan.currentPhase]}
             </p>
             <p className="mt-2 text-sm text-slate-400">

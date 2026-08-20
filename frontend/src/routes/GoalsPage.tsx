@@ -17,7 +17,7 @@ export function GoalsPage() {
         <h1 className="text-xl font-semibold">Ziele</h1>
         <button
           onClick={() => setDialogOpen(true)}
-          className="rounded-lg bg-sky-500 px-3 py-1.5 text-sm font-medium text-slate-950 hover:bg-sky-400"
+          className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-slate-950 hover:bg-violet-400"
         >
           + Ziel
         </button>

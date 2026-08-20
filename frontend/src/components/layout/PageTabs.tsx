@@ -20,7 +20,7 @@ export function PageTabs({ tabs, active, onChange }: Props) {
           key={tab.key}
           onClick={() => onChange(tab.key)}
           className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
-            active === tab.key ? "bg-sky-500 text-slate-950" : "text-slate-400 hover:text-slate-200"
+            active === tab.key ? "bg-violet-500 text-slate-950" : "text-slate-400 hover:text-slate-200"
           }`}
         >
           {tab.label}

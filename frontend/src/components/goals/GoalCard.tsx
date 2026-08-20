@@ -46,7 +46,7 @@ export function GoalCard({ goal }: { goal: GoalDto }) {
 
       {progress !== null && !achieved && (
         <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-          <div className="h-full rounded-full bg-sky-500" style={{ width: `${progress * 100}%` }} />
+          <div className="h-full rounded-full bg-violet-500" style={{ width: `${progress * 100}%` }} />
         </div>
       )}
 

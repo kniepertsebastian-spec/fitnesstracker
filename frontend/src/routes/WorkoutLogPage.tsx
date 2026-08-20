@@ -27,7 +27,7 @@ export function WorkoutLogPage() {
         <h1 className="text-xl font-semibold">Training</h1>
         <button
           onClick={openCreate}
-          className="rounded-lg bg-sky-500 px-3 py-1.5 text-sm font-medium text-slate-950 hover:bg-sky-400"
+          className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-slate-950 hover:bg-violet-400"
         >
           + Satz
         </button>

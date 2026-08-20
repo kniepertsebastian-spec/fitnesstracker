@@ -92,17 +92,16 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
 ## Branch & Repo
 
 - Repo: `kniepertsebastian-spec/fitnesstracker`
-- Aktiver Branch: `main`, Phasen 1–5, 8, 9, 14 committed und gepusht (`dbbee42`, `dbd75cd`,
-  `4d4de32`, `2f79f4a`, `5cf3cde`, `7b7aef7`)
+- Aktiver Branch: `main`, Phasen 1–5, 8, 9, 10, 14 committed und gepusht (`dbbee42`, `dbd75cd`,
+  `4d4de32`, `2f79f4a`, `5cf3cde`, `7b7aef7`, `3b07941`)
 - Bisherige Commits: Foundation (Monorepo/Auth/Tracking-Tabelle) → Übungs-API mit Import →
   Übungsbibliothek-UI/Trainingsplan-Rotation/Ziele (Phasen 1-3) → Offline-first Trainings-Tabelle
   (Phase 4) → Push-Benachrichtigungen (Phase 5) → Profil & Ernährungsrechner (Phase 8) →
-  Wasser-Tracking (Phase 9) → Tages-Challenge (Phase 14) — Phase 10
-  (Supplement-Erinnerungen & Referenzliste) ist fertig, aber **noch nicht committed**, siehe
-  unten. Phasen 11–13 (Körperkomposition, Fortschritts-Fotos, Automatische Ziel-Vorschläge) sind
-  geplant, aber noch nicht begonnen — auf Nutzerwunsch angehängt, siehe `ROADMAP.md` für
-  Details/Reihenfolge. Ein Farbschema-/Design-Wechsel wurde ebenfalls gewünscht, laut Nutzer
-  aber nicht eilig ("kann warten") — noch keine Roadmap-Phase dafür angelegt.
+  Wasser-Tracking (Phase 9) → Tages-Challenge (Phase 14) → Supplement-Erinnerungen &
+  Referenzliste + `/nutrition`-Tab-Umbau (Phase 10) — Design-Umstellung (Violett-Akzent,
+  Space Grotesk/Manrope) ist fertig, aber **noch nicht committed**, siehe unten. Phasen 11–13
+  (Körperkomposition, Fortschritts-Fotos, Automatische Ziel-Vorschläge) sind geplant, aber noch
+  nicht begonnen — auf Nutzerwunsch angehängt, siehe `ROADMAP.md` für Details/Reihenfolge.
 
 ## Backend-Endpunkte (alle unter `/api`)
 
@@ -234,11 +233,11 @@ Dev-Stack, damit die App vom eigenen Handy/Laptop im selben Netz aus geöffnet w
 
 ## Nächster sinnvoller Schritt
 
-Phase 10 (Supplement-Erinnerungen & Referenzliste) ist fertig, aber **noch nicht committed** —
-Arbeitsverzeichnis hat uncommitted Changes (siehe `git status`; `frontend/vite.config.ts` bewusst
-mit angepasstem Proxy-Ziel, siehe oben). Erstmal committen/pushen (Proxy-Ziel vorher auf `3000`
-zurücksetzen oder bewusst mitcommitten), dann weiter mit Phase 11 (Körperkomposition-Tracking,
-manuelle Erfassung) laut `ROADMAP.md` — oder Phase 6/7, falls der Nutzer die ursprüngliche
-Roadmap zuerst abschließen möchte. Offen aus dem Gespräch, aber noch ohne Roadmap-Phase: ein
-Farbschema-/Design-Wechsel (Nutzer: "kann warten", keine konkrete Richtung genannt) und eine
-beiläufige Frage zu Play-Store/App-Store-Vertrieb (nur informativ beantwortet, kein Arbeitsauftrag).
+Die Design-Umstellung (Violett-Akzent statt Sky-Blau, Space Grotesk/Manrope statt System-Sans,
+siehe `ARCHITECTURE.md`) ist fertig, aber **noch nicht committed** — Arbeitsverzeichnis hat
+uncommitted Changes (siehe `git status`; `frontend/vite.config.ts` weiterhin bewusst mit
+angepasstem Proxy-Ziel für die laufende Dev-Umgebung, siehe oben — vor einem echten Commit auf
+`3000` zurücksetzen oder bewusst mitcommitten). Danach weiter mit Phase 11
+(Körperkomposition-Tracking, manuelle Erfassung) laut `ROADMAP.md` — oder Phase 6/7, falls der
+Nutzer die ursprüngliche Roadmap zuerst abschließen möchte. Beiläufige Frage zu
+Play-Store/App-Store-Vertrieb wurde nur informativ beantwortet, kein Arbeitsauftrag.
