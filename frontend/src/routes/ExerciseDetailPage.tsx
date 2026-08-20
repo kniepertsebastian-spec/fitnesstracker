@@ -8,14 +8,14 @@ export function ExerciseDetailPage() {
 
   return (
     <AppShell>
-      <Link to="/exercises" className="mb-4 inline-block text-sm text-slate-400 hover:text-slate-200">
+      <Link to="/exercises" className="mb-4 inline-block text-sm text-ink-400 hover:text-ink-200">
         ← Übungen
       </Link>
 
       {isLoading ? (
-        <p className="text-slate-500">Lädt…</p>
+        <p className="text-ink-500">Lädt…</p>
       ) : !exercise ? (
-        <p className="text-slate-500">Übung nicht gefunden.</p>
+        <p className="text-ink-500">Übung nicht gefunden.</p>
       ) : (
         <div className="flex flex-col gap-4">
           <h1 className="text-xl font-semibold">{exercise.name}</h1>
@@ -35,12 +35,12 @@ export function ExerciseDetailPage() {
 
           <div className="flex flex-wrap gap-2 text-sm">
             {exercise.equipment && (
-              <span className="rounded-full bg-slate-800 px-3 py-1 text-slate-300">
+              <span className="rounded-full bg-ink-800 px-3 py-1 text-ink-300">
                 {exercise.equipment}
               </span>
             )}
             {exercise.category && (
-              <span className="rounded-full bg-slate-800 px-3 py-1 text-slate-300">
+              <span className="rounded-full bg-ink-800 px-3 py-1 text-ink-300">
                 {exercise.category}
               </span>
             )}
@@ -50,14 +50,14 @@ export function ExerciseDetailPage() {
               </span>
             ))}
             {exercise.secondaryMuscles.map((m) => (
-              <span key={m} className="rounded-full bg-slate-800 px-3 py-1 text-slate-400">
+              <span key={m} className="rounded-full bg-ink-800 px-3 py-1 text-ink-400">
                 {m}
               </span>
             ))}
           </div>
 
           {exercise.description && (
-            <p className="whitespace-pre-line text-slate-300">{exercise.description}</p>
+            <p className="whitespace-pre-line text-ink-300">{exercise.description}</p>
           )}
 
           {exercise.videoUrl ? (
@@ -70,7 +70,7 @@ export function ExerciseDetailPage() {
               Video ansehen ↗
             </a>
           ) : (
-            <p className="text-sm text-slate-600">Kein Video verfügbar.</p>
+            <p className="text-sm text-ink-600">Kein Video verfügbar.</p>
           )}
         </div>
       )}

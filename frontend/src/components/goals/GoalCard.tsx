@@ -19,33 +19,33 @@ export function GoalCard({ goal }: { goal: GoalDto }) {
   };
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
+    <div className="rounded-lg border border-ink-800 bg-ink-900 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs text-slate-500">{GOAL_TYPE_LABELS[goal.type]}</p>
-          <p className="truncate font-medium text-slate-100">
+          <p className="text-xs text-ink-500">{GOAL_TYPE_LABELS[goal.type]}</p>
+          <p className="truncate font-medium text-ink-100">
             {goal.exerciseName ?? GOAL_TYPE_LABELS[goal.type]}
           </p>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-ink-400">
             Ziel: {goal.targetValue} {unit}
             {goal.currentValue !== null && (
-              <span className="text-slate-500"> · bisher {goal.currentValue} {unit}</span>
+              <span className="text-ink-500"> · bisher {goal.currentValue} {unit}</span>
             )}
           </p>
           {goal.targetDate && (
-            <p className="text-xs text-slate-600">bis {formatDate(goal.targetDate)}</p>
+            <p className="text-xs text-ink-600">bis {formatDate(goal.targetDate)}</p>
           )}
         </div>
         <button
           onClick={() => deleteGoal.mutate(goal.id)}
-          className="shrink-0 text-xs text-slate-600 hover:text-red-400"
+          className="shrink-0 text-xs text-ink-600 hover:text-red-400"
         >
           Löschen
         </button>
       </div>
 
       {progress !== null && !achieved && (
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
           <div className="h-full rounded-full bg-violet-500" style={{ width: `${progress * 100}%` }} />
         </div>
       )}
@@ -55,7 +55,7 @@ export function GoalCard({ goal }: { goal: GoalDto }) {
         className={`mt-3 w-full rounded-lg py-1.5 text-sm font-medium ${
           achieved
             ? "bg-emerald-950 text-emerald-400 hover:bg-emerald-900"
-            : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+            : "bg-ink-800 text-ink-300 hover:bg-ink-700"
         }`}
       >
         {achieved ? `✓ Erreicht am ${formatDate(goal.achievedAt as string)}` : "Als erreicht markieren"}

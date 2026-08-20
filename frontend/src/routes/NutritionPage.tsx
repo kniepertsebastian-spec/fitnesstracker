@@ -35,12 +35,12 @@ export function NutritionPage() {
       {tab === "tipps" && (
         <div className="flex flex-col gap-4">
           <div>
-            <h2 className="mb-2 text-sm font-medium text-slate-400">Tipps & Tricks</h2>
+            <h2 className="mb-2 text-sm font-medium text-ink-400">Tipps & Tricks</h2>
             <ul className="flex flex-col gap-2">
               {NUTRITION_TIPS.map((tip) => (
                 <li
                   key={tip}
-                  className="rounded-lg border border-slate-800 bg-slate-900 p-3 text-sm text-slate-300"
+                  className="rounded-lg border border-ink-800 bg-ink-900 p-3 text-sm text-ink-300"
                 >
                   {tip}
                 </li>

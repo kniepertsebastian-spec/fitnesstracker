@@ -31,19 +31,19 @@ export function RegisterPage() {
       <h1 className="mb-6 text-2xl font-semibold">Registrieren</h1>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div>
-          <label className="mb-1 block text-sm text-slate-400">E-Mail</label>
+          <label className="mb-1 block text-sm text-ink-400">E-Mail</label>
           <input
             type="email"
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+            className="w-full rounded-lg border border-ink-700 bg-ink-900 px-3 py-2"
             {...register("email")}
           />
           {errors.email && <p className="mt-1 text-sm text-red-400">{errors.email.message}</p>}
         </div>
         <div>
-          <label className="mb-1 block text-sm text-slate-400">Anzeigename (optional)</label>
+          <label className="mb-1 block text-sm text-ink-400">Anzeigename (optional)</label>
           <input
             type="text"
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+            className="w-full rounded-lg border border-ink-700 bg-ink-900 px-3 py-2"
             {...register("displayName")}
           />
           {errors.displayName && (
@@ -51,10 +51,10 @@ export function RegisterPage() {
           )}
         </div>
         <div>
-          <label className="mb-1 block text-sm text-slate-400">Passwort</label>
+          <label className="mb-1 block text-sm text-ink-400">Passwort</label>
           <input
             type="password"
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+            className="w-full rounded-lg border border-ink-700 bg-ink-900 px-3 py-2"
             {...register("password")}
           />
           {errors.password && (
@@ -62,10 +62,10 @@ export function RegisterPage() {
           )}
         </div>
         <div>
-          <label className="mb-1 block text-sm text-slate-400">Setup-Token</label>
+          <label className="mb-1 block text-sm text-ink-400">Setup-Token</label>
           <input
             type="text"
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+            className="w-full rounded-lg border border-ink-700 bg-ink-900 px-3 py-2"
             {...register("setupToken")}
           />
           {errors.setupToken && (
@@ -76,12 +76,12 @@ export function RegisterPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-lg bg-violet-500 px-4 py-2 font-medium text-slate-950 hover:bg-violet-400 disabled:opacity-50"
+          className="rounded-lg bg-violet-500 px-4 py-2 font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
         >
           Registrieren
         </button>
       </form>
-      <p className="mt-4 text-sm text-slate-400">
+      <p className="mt-4 text-sm text-ink-400">
         Schon ein Konto?{" "}
         <Link to="/login" className="text-violet-400 hover:underline">
           Anmelden

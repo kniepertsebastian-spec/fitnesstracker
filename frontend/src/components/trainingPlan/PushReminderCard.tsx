@@ -6,14 +6,14 @@ export function PushReminderCard() {
   if (status === "loading" || status === "unsupported") return null;
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-      <p className="text-sm font-medium text-slate-300">Erinnerung bei Phasenwechsel</p>
-      <p className="mt-1 text-sm text-slate-500">
+    <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
+      <p className="text-sm font-medium text-ink-300">Erinnerung bei Phasenwechsel</p>
+      <p className="mt-1 text-sm text-ink-500">
         Push-Benachrichtigung, sobald der Trainingsplan automatisch in die nächste Phase wechselt.
       </p>
 
       {status === "unconfigured" ? (
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-ink-600">
           Server hat noch keinen VAPID-Schlüssel konfiguriert.
         </p>
       ) : (
@@ -21,8 +21,8 @@ export function PushReminderCard() {
           onClick={status === "subscribed" ? unsubscribe : subscribe}
           className={`mt-3 w-full rounded-lg py-1.5 text-sm font-medium ${
             status === "subscribed"
-              ? "bg-slate-800 text-slate-300 hover:bg-slate-700"
-              : "bg-violet-500 text-slate-950 hover:bg-violet-400"
+              ? "bg-ink-800 text-ink-300 hover:bg-ink-700"
+              : "bg-violet-500 text-ink-950 hover:bg-violet-400"
           }`}
         >
           {status === "subscribed" ? "Erinnerungen deaktivieren" : "Erinnerungen aktivieren"}

@@ -30,25 +30,25 @@ export function SupplementCard() {
   };
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-      <p className="mb-1 text-sm font-medium text-slate-300">Supplement-Erinnerungen</p>
-      <p className="mb-3 text-xs text-slate-500">
+    <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
+      <p className="mb-1 text-sm font-medium text-ink-300">Supplement-Erinnerungen</p>
+      <p className="mb-3 text-xs text-ink-500">
         Tägliche Push-Erinnerung zur eingestellten Uhrzeit — benötigt aktivierte
         Push-Benachrichtigungen (siehe Trainingsplan-Seite).
       </p>
 
       {isLoading ? (
-        <p className="mb-3 text-sm text-slate-500">Lädt…</p>
+        <p className="mb-3 text-sm text-ink-500">Lädt…</p>
       ) : supplements && supplements.length > 0 ? (
         <div className="mb-3 flex flex-col gap-2">
           {supplements.map((s) => (
             <div
               key={s.id}
-              className="flex items-center justify-between rounded-lg bg-slate-800 px-3 py-2 text-sm"
+              className="flex items-center justify-between rounded-lg bg-ink-800 px-3 py-2 text-sm"
             >
               <div>
-                <p className={s.enabled ? "text-slate-200" : "text-slate-500 line-through"}>{s.name}</p>
-                <p className="text-xs text-slate-500">{s.reminderTime}</p>
+                <p className={s.enabled ? "text-ink-200" : "text-ink-500 line-through"}>{s.name}</p>
+                <p className="text-xs text-ink-500">{s.reminderTime}</p>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -68,7 +68,7 @@ export function SupplementCard() {
           ))}
         </div>
       ) : (
-        <p className="mb-3 text-sm text-slate-600">Noch keine Supplements hinterlegt.</p>
+        <p className="mb-3 text-sm text-ink-600">Noch keine Supplements hinterlegt.</p>
       )}
 
       <div className="flex gap-2">
@@ -77,17 +77,17 @@ export function SupplementCard() {
           placeholder="Name (z. B. Kreatin)"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm"
+          className="min-w-0 flex-1 rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
         />
         <input
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm"
+          className="rounded-lg border border-ink-700 bg-ink-950 px-2 py-1.5 text-sm"
         />
         <button
           onClick={handleAdd}
-          className="shrink-0 rounded-lg border border-slate-700 px-3 text-sm text-slate-300 hover:bg-slate-800"
+          className="shrink-0 rounded-lg border border-ink-700 px-3 text-sm text-ink-300 hover:bg-ink-800"
         >
           +
         </button>

@@ -27,7 +27,7 @@ export function WorkoutLogPage() {
         <h1 className="text-xl font-semibold">Training</h1>
         <button
           onClick={openCreate}
-          className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-slate-950 hover:bg-violet-400"
+          className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-violet-400"
         >
           + Satz
         </button>
@@ -38,7 +38,7 @@ export function WorkoutLogPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-slate-500">Lädt…</p>
+        <p className="text-ink-500">Lädt…</p>
       ) : (
         <WorkoutLogTable logs={logs ?? []} onEdit={openEdit} />
       )}

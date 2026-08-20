@@ -10,13 +10,13 @@ export function WorkoutLogTable({ logs, onEdit }: Props) {
   const deleteLog = useDeleteWorkoutLog();
 
   if (logs.length === 0) {
-    return <p className="py-8 text-center text-slate-500">Noch keine Sätze protokolliert.</p>;
+    return <p className="py-8 text-center text-ink-500">Noch keine Sätze protokolliert.</p>;
   }
 
   return (
     <table className="w-full border-collapse text-sm">
       <thead>
-        <tr className="border-b border-slate-800 text-left text-slate-400">
+        <tr className="border-b border-ink-800 text-left text-ink-400">
           <th className="py-2 pr-2">Übung</th>
           <th className="py-2 pr-2">Satz</th>
           <th className="py-2 pr-2">Wdh.</th>
@@ -26,7 +26,7 @@ export function WorkoutLogTable({ logs, onEdit }: Props) {
       </thead>
       <tbody>
         {logs.map((log) => (
-          <tr key={log.clientId} className="border-b border-slate-900">
+          <tr key={log.clientId} className="border-b border-ink-900">
             <td className="py-2 pr-2">
               {log.exerciseName}
               {log.id === null && (

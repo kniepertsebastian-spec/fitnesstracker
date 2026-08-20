@@ -30,13 +30,13 @@ export function ExerciseLibraryPage() {
           placeholder="Übung suchen…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+          className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2 text-ink-100"
         />
         <div className="grid grid-cols-2 gap-2">
           <select
             value={muscleGroup}
             onChange={(e) => setMuscleGroup(e.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+            className="rounded-lg border border-ink-700 bg-ink-950 px-3 py-2 text-ink-100"
           >
             <option value="">Alle Muskelgruppen</option>
             {facets?.muscleGroups.map((m) => (
@@ -48,7 +48,7 @@ export function ExerciseLibraryPage() {
           <select
             value={equipment}
             onChange={(e) => setEquipment(e.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+            className="rounded-lg border border-ink-700 bg-ink-950 px-3 py-2 text-ink-100"
           >
             <option value="">Alle Equipment</option>
             {facets?.equipment.map((eq) => (
@@ -61,12 +61,12 @@ export function ExerciseLibraryPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-slate-500">Lädt…</p>
+        <p className="text-ink-500">Lädt…</p>
       ) : exercises.length === 0 ? (
-        <p className="text-slate-500">Keine Übungen gefunden.</p>
+        <p className="text-ink-500">Keine Übungen gefunden.</p>
       ) : (
         <>
-          <p className="mb-2 text-sm text-slate-500">
+          <p className="mb-2 text-sm text-ink-500">
             {exercises.length} von {total}
           </p>
           <div className="flex flex-col gap-2">
@@ -78,7 +78,7 @@ export function ExerciseLibraryPage() {
             <button
               onClick={() => fetchNextPage()}
               disabled={isFetchingNextPage}
-              className="mt-4 w-full rounded-lg border border-slate-700 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+              className="mt-4 w-full rounded-lg border border-ink-700 py-2 text-sm text-ink-300 hover:bg-ink-800 disabled:opacity-50"
             >
               {isFetchingNextPage ? "Lädt…" : "Mehr laden"}
             </button>

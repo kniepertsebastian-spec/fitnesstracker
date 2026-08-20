@@ -9,8 +9,8 @@ export function DailyChallengeCard() {
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-        <p className="text-sm text-slate-500">Tages-Challenge lädt…</p>
+      <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
+        <p className="text-sm text-ink-500">Tages-Challenge lädt…</p>
       </div>
     );
   }
@@ -20,9 +20,9 @@ export function DailyChallengeCard() {
   }
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-      <p className="mb-1 text-sm font-medium text-slate-300">Tages-Challenge</p>
-      <p className="mb-3 text-xs text-slate-500">Ohne Geräte, überall machbar.</p>
+    <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
+      <p className="mb-1 text-sm font-medium text-ink-300">Tages-Challenge</p>
+      <p className="mb-3 text-xs text-ink-500">Ohne Geräte, überall machbar.</p>
 
       <div className="flex flex-col gap-3">
         {items.map((item) => {
@@ -31,14 +31,14 @@ export function DailyChallengeCard() {
           return (
             <div key={item.id}>
               <div className="flex items-center justify-between">
-                <Link to={`/exercises/${item.exerciseId}`} className="text-sm text-slate-200 hover:underline">
+                <Link to={`/exercises/${item.exerciseId}`} className="text-sm text-ink-200 hover:underline">
                   {item.exerciseName}
                 </Link>
                 <span className={`text-sm font-medium ${done ? "text-emerald-400" : "text-violet-400"}`}>
                   {item.completedReps}/{item.targetReps}
                 </span>
               </div>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
                 <div
                   className={`h-full rounded-full ${done ? "bg-emerald-500" : "bg-violet-500"}`}
                   style={{ width: `${progress * 100}%` }}
@@ -49,7 +49,7 @@ export function DailyChallengeCard() {
                   <button
                     key={n}
                     onClick={() => addReps.mutate({ itemId: item.id, delta: n })}
-                    className="rounded-lg bg-slate-800 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700"
+                    className="rounded-lg bg-ink-800 px-2 py-1 text-xs text-ink-200 hover:bg-ink-700"
                   >
                     +{n}
                   </button>

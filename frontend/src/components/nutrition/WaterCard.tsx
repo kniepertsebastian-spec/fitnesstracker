@@ -17,8 +17,8 @@ export function WaterCard() {
 
   if (isLoading || !status) {
     return (
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-        <p className="text-sm text-slate-500">Wasser lädt…</p>
+      <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
+        <p className="text-sm text-ink-500">Wasser lädt…</p>
       </div>
     );
   }
@@ -39,16 +39,16 @@ export function WaterCard() {
   };
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-      <p className="text-sm text-slate-500">Wasser heute</p>
+    <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
+      <p className="text-sm text-ink-500">Wasser heute</p>
       <p className="text-2xl font-semibold text-violet-400">
-        {status.today.amountMl} <span className="text-base text-slate-500">/ {status.targetMl} ml</span>
+        {status.today.amountMl} <span className="text-base text-ink-500">/ {status.targetMl} ml</span>
       </p>
       {!status.isCustomTarget && (
-        <p className="text-xs text-slate-600">Vorschlag basierend auf Profil bzw. Standardwert</p>
+        <p className="text-xs text-ink-600">Vorschlag basierend auf Profil bzw. Standardwert</p>
       )}
 
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
         <div className="h-full rounded-full bg-violet-500" style={{ width: `${progress * 100}%` }} />
       </div>
 
@@ -57,14 +57,14 @@ export function WaterCard() {
           <button
             key={ml}
             onClick={() => addWater.mutate(ml)}
-            className="flex-1 rounded-lg bg-slate-800 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-700"
+            className="flex-1 rounded-lg bg-ink-800 py-1.5 text-sm font-medium text-ink-200 hover:bg-ink-700"
           >
             +{ml} ml
           </button>
         ))}
         <button
           onClick={() => addWater.mutate(-250)}
-          className="rounded-lg border border-slate-700 px-3 text-sm text-slate-400 hover:bg-slate-800"
+          className="rounded-lg border border-ink-700 px-3 text-sm text-ink-400 hover:bg-ink-800"
         >
           -250
         </button>
@@ -75,10 +75,10 @@ export function WaterCard() {
           const dayProgress = Math.min(day.amountMl / status.targetMl, 1);
           return (
             <div key={day.date} className="flex flex-1 flex-col items-center gap-1">
-              <div className="flex h-16 w-full items-end rounded bg-slate-800">
+              <div className="flex h-16 w-full items-end rounded bg-ink-800">
                 <div className="w-full rounded bg-violet-600" style={{ height: `${dayProgress * 100}%` }} />
               </div>
-              <span className="text-[10px] text-slate-600">{formatDayLabel(day.date)}</span>
+              <span className="text-[10px] text-ink-600">{formatDayLabel(day.date)}</span>
             </div>
           );
         })}
@@ -90,11 +90,11 @@ export function WaterCard() {
           placeholder="Eigenes Ziel (ml)"
           value={targetInput}
           onChange={(e) => setTargetInput(e.target.value)}
-          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm"
+          className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
         />
         <button
           onClick={handleSetTarget}
-          className="rounded-lg border border-slate-700 px-3 text-sm text-slate-300 hover:bg-slate-800"
+          className="rounded-lg border border-ink-700 px-3 text-sm text-ink-300 hover:bg-ink-800"
         >
           Setzen
         </button>

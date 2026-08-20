@@ -17,11 +17,18 @@ Frontend nie aus dem Tritt geraten (ein Schema, zwei Verwendungen).
 dem Handy genutzt wird), TanStack Query fürs Server-State-Handling, React Hook Form + Zod für
 Formulare, `vite-plugin-pwa` für die installierbare PWA-Hülle (Manifest, Service Worker, Icons).
 
-**Design**: Akzentfarbe Violett (Tailwind `violet-*`, ersetzt das ursprüngliche `sky-*`) statt des
-sehr verbreiteten Slate+Blau-Defaults, `Space Grotesk` für Überschriften (`h1`-`h3`) + `Manrope`
-für Fließtext statt System-Sans überall — beide via Google Fonts in `index.html` eingebunden,
-`fontFamily.sans`/`fontFamily.heading` in `tailwind.config.js`. Bewusste Abkehr vom
-"generischen AI-Dashboard-Look" (Slate/Blau/Inter-Kombination), auf Nutzerwunsch.
+**Design**: Akzentfarbe Violett (Tailwind `violet-*`, ersetzt das ursprüngliche `sky-*`), eigene
+`ink-*`-Neutralpalette statt Tailwinds `slate-*` als Hintergrund/Rahmen-Farbe — dieselben
+Helligkeitsstufen wie `slate` (50-950), aber mit violettem statt blaugrauem Farbton (HSL-Basis
+260° statt ~215°, siehe `tailwind.config.js`). Ein eigener, zur Akzentfarbe passender
+Neutralton wurde bewusst einer weiteren Standard-Graupalette (`zinc`/`neutral`/`stone`)
+vorgezogen — sonst bleibt es "Standard-Grau + farbiger Akzent", das generische
+Template-Muster, nur mit anderer Akzentfarbe. `Space Grotesk` für Überschriften (`h1`-`h3`) +
+`Manrope` für Fließtext statt System-Sans überall — beide via Google Fonts in `index.html`
+eingebunden, `fontFamily.sans`/`fontFamily.heading` in `tailwind.config.js`. PWA-Manifest-Farben
+(`theme_color`/`background_color`) und der `theme-color`-Meta-Tag sind auf denselben Ton
+(`#1a1622`, `ink-900`) abgestimmt. Bewusste Abkehr vom "generischen AI-Dashboard-Look"
+(Slate/Blau/Inter-Kombination), auf Nutzerwunsch.
 
 **Auth**: JWT-Access-Token (15 min, im Speicher gehalten, nie in localStorage) + Refresh-Token als
 httpOnly-Cookie, dessen Hash (nicht der Klartext) in der DB liegt — damit lassen sich Sessions
