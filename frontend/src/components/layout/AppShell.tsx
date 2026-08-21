@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [menuOpen]);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <header className="flex items-center justify-between border-b border-ink-800 px-4 py-3">
         <div className="flex items-center gap-3">
           <div ref={menuRef} className="relative">
