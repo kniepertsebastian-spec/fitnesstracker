@@ -37,6 +37,9 @@ importers:
       fastify-plugin:
         specifier: ^5.0.1
         version: 5.1.0
+      prisma:
+        specifier: ^5.20.0
+        version: 5.22.0
       web-push:
         specifier: ^3.6.7
         version: 3.6.7
@@ -56,9 +59,6 @@ importers:
       pino-pretty:
         specifier: ^11.2.2
         version: 11.3.0
-      prisma:
-        specifier: ^5.20.0
-        version: 5.22.0
       tsx:
         specifier: ^4.19.1
         version: 4.23.12
