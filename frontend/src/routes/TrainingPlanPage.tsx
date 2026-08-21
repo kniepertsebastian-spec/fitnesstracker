@@ -1,5 +1,9 @@
+import { useEffect, useState } from "react";
+import type { TrainingPhase } from "@fitnesstracker/shared";
+import { TRAINING_PHASES } from "@fitnesstracker/shared";
 import { AppShell } from "../components/layout/AppShell";
 import { PushReminderCard } from "../components/trainingPlan/PushReminderCard";
+import { PlanExerciseList } from "../components/trainingPlan/PlanExerciseList";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../hooks/useTrainingPlan";
 
 function formatDate(iso: string) {
@@ -8,6 +12,15 @@ function formatDate(iso: string) {
 
 export function TrainingPlanPage() {
   const { data: plan, isLoading } = useTrainingPlan();
+  const [selectedPhase, setSelectedPhase] = useState<TrainingPhase | null>(null);
+
+  // Default the phase tabs to whatever phase is currently active, once the plan has loaded —
+  // but only the first time, so switching tabs to plan ahead isn't reset by a background refetch.
+  useEffect(() => {
+    if (plan && selectedPhase === null) {
+      setSelectedPhase(plan.currentPhase);
+    }
+  }, [plan, selectedPhase]);
 
   return (
     <AppShell>
@@ -30,6 +43,25 @@ export function TrainingPlanPage() {
           </div>
 
           <PushReminderCard />
+
+          <div>
+            <div className="mb-2 flex gap-1 rounded-lg border border-ink-800 bg-ink-900 p-1">
+              {TRAINING_PHASES.map((phase) => (
+                <button
+                  key={phase}
+                  onClick={() => setSelectedPhase(phase)}
+                  className={`flex-1 rounded-md py-1.5 text-sm font-medium ${
+                    selectedPhase === phase
+                      ? "bg-violet-500 text-ink-950"
+                      : "text-ink-400 hover:text-ink-200"
+                  }`}
+                >
+                  {TRAINING_PHASE_LABELS[phase]}
+                </button>
+              ))}
+            </div>
+            {selectedPhase && <PlanExerciseList phase={selectedPhase} />}
+          </div>
 
           <div>
             <h2 className="mb-2 text-sm font-medium text-ink-400">Verlauf</h2>

@@ -58,6 +58,7 @@ model User {
   supplements            Supplement[]
   bodyCompositionEntries BodyCompositionEntry[]
   progressPhotos         ProgressPhoto[]
+  planExercises          PlanExercise[]
 }
 
 model RefreshToken {
@@ -97,6 +98,7 @@ model Exercise {
   workoutLogs         WorkoutLog[]
   goals               Goal[]
   dailyChallengeItems DailyChallengeItem[]
+  planExercises       PlanExercise[]
 
   @@unique([source, sourceId])
   @@index([name])
@@ -148,6 +150,27 @@ model TrainingPlanPhaseHistory {
   // overdue period concurrently (see trainingPlan.service.ts) — each period is closed once.
   @@unique([trainingPlanId, startedOn])
   @@index([trainingPlanId])
+}
+
+// An exercise assigned to a training phase (Aufbau/Muskelausdauer/Negativ) — keyed by phase, not
+// by a specific TrainingPlan rotation instance, since the same phase recurs every 8-week cycle
+// and the assigned exercises should still be there next time it comes around.
+model PlanExercise {
+  id         String        @id @default(uuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phase      TrainingPhase
+  exerciseId String
+  exercise   Exercise      @relation(fields: [exerciseId], references: [id])
+  targetSets Int?
+  targetReps Int?
+  // Manual position within the phase's list; new entries append after the current max.
+  order      Int           @default(0)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@unique([userId, phase, exerciseId])
+  @@index([userId, phase, order])
 }
 
 // Roadmap: goal setting.

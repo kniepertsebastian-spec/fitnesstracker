@@ -12,6 +12,7 @@ import workoutLogRoutes from "./modules/workoutLogs/workoutLog.routes.js";
 import exerciseRoutes from "./modules/exercises/exercise.routes.js";
 import trainingPlanRoutes from "./modules/trainingPlan/trainingPlan.routes.js";
 import trainingPlanScheduler from "./modules/trainingPlan/trainingPlan.scheduler.js";
+import planExerciseRoutes from "./modules/trainingPlan/planExercise.routes.js";
 import goalRoutes from "./modules/goals/goal.routes.js";
 import pushRoutes from "./modules/push/push.routes.js";
 import profileRoutes from "./modules/profile/profile.routes.js";
@@ -47,6 +48,7 @@ export function buildApp() {
   app.register(exerciseRoutes, { prefix: "/api" });
   app.register(workoutLogRoutes, { prefix: "/api" });
   app.register(trainingPlanRoutes, { prefix: "/api" });
+  app.register(planExerciseRoutes, { prefix: "/api" });
   app.register(goalRoutes, { prefix: "/api" });
   app.register(pushRoutes, { prefix: "/api" });
   app.register(profileRoutes, { prefix: "/api" });
