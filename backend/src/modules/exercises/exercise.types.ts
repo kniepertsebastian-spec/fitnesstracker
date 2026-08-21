@@ -4,7 +4,7 @@ import type { ExerciseDto } from "@fitnesstracker/shared";
 export function toExerciseDto(exercise: Exercise): ExerciseDto {
   return {
     id: exercise.id,
-    name: exercise.name,
+    name: exercise.nameDe ?? exercise.name,
     description: exercise.description,
     videoUrl: exercise.videoUrl,
     imageUrls: exercise.imageUrls,

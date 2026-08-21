@@ -15,20 +15,30 @@ const DEFAULT_PAGE_SIZE = 200;
 const MAX_PAGE_SIZE = 200;
 
 export async function listExercises(prisma: PrismaClient, filters: ListExercisesFilters) {
-  const where: Prisma.ExerciseWhereInput = {
-    ...(filters.search ? { name: { contains: filters.search, mode: "insensitive" } } : {}),
-    ...(filters.muscleGroup
-      ? {
-          OR: [
-            { primaryMuscles: { has: filters.muscleGroup } },
-            { secondaryMuscles: { has: filters.muscleGroup } },
-          ],
-        }
-      : {}),
-    ...(filters.equipment
-      ? { equipment: { equals: filters.equipment, mode: "insensitive" } }
-      : {}),
-  };
+  // Built as an `AND` list of clauses, not a spread object — `search` and `muscleGroup` each
+  // need their own `OR` (English name vs. German name; primary vs. secondary muscle), and a
+  // plain object spread would let the second `OR` key silently clobber the first.
+  const clauses: Prisma.ExerciseWhereInput[] = [];
+  if (filters.search) {
+    clauses.push({
+      OR: [
+        { name: { contains: filters.search, mode: "insensitive" } },
+        { nameDe: { contains: filters.search, mode: "insensitive" } },
+      ],
+    });
+  }
+  if (filters.muscleGroup) {
+    clauses.push({
+      OR: [
+        { primaryMuscles: { has: filters.muscleGroup } },
+        { secondaryMuscles: { has: filters.muscleGroup } },
+      ],
+    });
+  }
+  if (filters.equipment) {
+    clauses.push({ equipment: { equals: filters.equipment, mode: "insensitive" } });
+  }
+  const where: Prisma.ExerciseWhereInput = clauses.length ? { AND: clauses } : {};
 
   const pageSize = Math.min(filters.pageSize ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
   const page = filters.page ?? 1;
@@ -36,7 +46,10 @@ export async function listExercises(prisma: PrismaClient, filters: ListExercises
   const [items, total] = await Promise.all([
     prisma.exercise.findMany({
       where,
-      orderBy: { name: "asc" },
+      // German name is what's actually displayed (see toExerciseDto) — sort by that first so
+      // the list order matches what's on screen. Falls back to `name` for the rare manual entry
+      // with no `nameDe`.
+      orderBy: [{ nameDe: "asc" }, { name: "asc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),

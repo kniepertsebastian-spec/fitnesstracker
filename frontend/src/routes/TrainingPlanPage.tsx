@@ -4,6 +4,7 @@ import { TRAINING_PHASES } from "@fitnesstracker/shared";
 import { AppShell } from "../components/layout/AppShell";
 import { PushReminderCard } from "../components/trainingPlan/PushReminderCard";
 import { PlanExerciseList } from "../components/trainingPlan/PlanExerciseList";
+import { RecommendedSplitsSection } from "../components/trainingPlan/RecommendedSplitsSection";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../hooks/useTrainingPlan";
 
 function formatDate(iso: string) {
@@ -62,6 +63,8 @@ export function TrainingPlanPage() {
             </div>
             {selectedPhase && <PlanExerciseList phase={selectedPhase} />}
           </div>
+
+          <RecommendedSplitsSection />
 
           <div>
             <h2 className="mb-2 text-sm font-medium text-ink-400">Verlauf</h2>

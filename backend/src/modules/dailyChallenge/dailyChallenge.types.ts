@@ -7,7 +7,7 @@ export function toDailyChallengeItemDto(item: ItemWithExercise): DailyChallengeI
   return {
     id: item.id,
     exerciseId: item.exerciseId,
-    exerciseName: item.exercise.name,
+    exerciseName: item.exercise.nameDe ?? item.exercise.name,
     targetReps: item.targetReps,
     completedReps: item.completedReps,
   };

@@ -76,6 +76,10 @@ model RefreshToken {
 model Exercise {
   id          String   @id @default(uuid())
   name        String
+  // German display name, shown in the UI instead of `name` when present. Kept separate from
+  // `name` (not overwritten in place) because re-importing a source overwrites `name` from the
+  // upstream English dataset on every run — see exercise.service.ts's importExercisesFromSource.
+  nameDe      String?
   // Execution technique description. For imported exercises this is the source's
   // instructions joined into one text; edit freely afterwards.
   description String?

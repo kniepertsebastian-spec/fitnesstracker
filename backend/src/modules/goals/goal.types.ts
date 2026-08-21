@@ -9,7 +9,7 @@ export function toGoalDto(goal: GoalWithExercise, currentValue: number | null): 
     id: goal.id,
     type: goal.type,
     exerciseId: goal.exerciseId,
-    exerciseName: goal.exercise?.name ?? null,
+    exerciseName: goal.exercise ? (goal.exercise.nameDe ?? goal.exercise.name) : null,
     // Prisma.Decimal doesn't serialize to a plain JSON number on its own — convert explicitly.
     targetValue: Number(goal.targetValue),
     targetDate: goal.targetDate ? goal.targetDate.toISOString() : null,

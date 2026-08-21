@@ -8,7 +8,7 @@ export function toWorkoutLogDto(log: WorkoutLogWithExercise): WorkoutLogDto {
     id: log.id,
     clientId: log.clientId,
     exerciseId: log.exerciseId,
-    exerciseName: log.exercise.name,
+    exerciseName: log.exercise.nameDe ?? log.exercise.name,
     setNumber: log.setNumber,
     reps: log.reps,
     // Prisma.Decimal doesn't serialize to a plain JSON number on its own — convert explicitly.

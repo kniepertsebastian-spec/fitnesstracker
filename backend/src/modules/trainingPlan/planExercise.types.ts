@@ -6,7 +6,7 @@ export function toPlanExerciseDto(entry: PlanExercise & { exercise: Exercise }):
     id: entry.id,
     phase: entry.phase,
     exerciseId: entry.exerciseId,
-    exerciseName: entry.exercise.name,
+    exerciseName: entry.exercise.nameDe ?? entry.exercise.name,
     targetSets: entry.targetSets,
     targetReps: entry.targetReps,
     order: entry.order,

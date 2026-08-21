@@ -55,7 +55,7 @@ export async function getGoalSuggestions(
   const exercises = await prisma.exercise.findMany({
     where: { id: { in: candidates.map((c) => c.exerciseId) } },
   });
-  const exerciseNameById = new Map(exercises.map((e) => [e.id, e.name]));
+  const exerciseNameById = new Map(exercises.map((e) => [e.id, e.nameDe ?? e.name]));
 
   const now = Date.now();
   return candidates.map((c) => {
