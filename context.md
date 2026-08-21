@@ -83,6 +83,17 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
   BODYWEIGHT-Ziel zeigt sofort den aktuellen Wert).
 - **Design (Violett-Akzent + Space Grotesk/Manrope + eigene `ink`-Neutralpalette)**: siehe
   `ARCHITECTURE.md` — committed, siehe unten.
+- **Automatische Ziel-Vorschläge**: neue "Vorschläge"-Sektion oben auf `/goals` — bis zu 5
+  vorgeschlagene WEIGHT-Ziele für Übungen mit ≥ 3 geloggten Sätzen und ohne bereits offenes
+  WEIGHT-Ziel dafür, Zielwert = Bestwert + 5 % (min. +1 kg, auf 0,5 kg gerundet), Zieldatum aus
+  einer festen konservativen Rate (0,25 kg/Woche) statt linearer Extrapolation der eigenen
+  (oft durch Anfänger-Anfangsgewinne unrealistisch optimistischen) Historie. Ein-Klick
+  "Übernehmen" ruft einfach das bestehende `POST /goals` mit den Vorschlagswerten auf; der
+  Vorschlag verschwindet danach automatisch aus der Liste. End-to-end getestet: Vorschlag aus 3
+  geloggten Sätzen korrekt berechnet (Bestwert 65 kg → Ziel 68,5 kg, Zieldatum 14 Wochen später),
+  Mindest-Satzanzahl-Filter (1 Satz erzeugt keinen Vorschlag), Ausschluss nach Annahme
+  (Vorschlag verschwindet, sobald das Ziel existiert), Browser-UI (Karte, Übernehmen-Button,
+  Ziel erscheint danach in der normalen Zielliste mit Fortschrittsbalken).
 - **Fortschritts-Fotos**: neuer Abschnitt im "Körper"-Tab auf `/nutrition` — Upload (Kamera
   direkt via `capture="environment"` oder Dateiauswahl), Galerie mit Lösch-Funktion,
   Vorher/Nachher-Vergleich über zwei Auswahllisten. Dateien liegen auf der Platte unter
@@ -112,18 +123,18 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
 ## Branch & Repo
 
 - Repo: `kniepertsebastian-spec/fitnesstracker`
-- Aktiver Branch: `main`, Phasen 1–5, 8, 9, 10, 11, 14 + Design (Violett/Fonts/ink-Palette)
+- Aktiver Branch: `main`, Phasen 1–5, 8, 9, 10, 11, 12, 14 + Design (Violett/Fonts/ink-Palette)
   committed und gepusht (`dbbee42`, `dbd75cd`, `4d4de32`, `2f79f4a`, `5cf3cde`, `7b7aef7`,
-  `3b07941`, `6fb2b9b`, `2b80d54`, `db44828`)
+  `3b07941`, `6fb2b9b`, `2b80d54`, `db44828`, `e879225`)
 - Bisherige Commits: Foundation (Monorepo/Auth/Tracking-Tabelle) → Übungs-API mit Import →
   Übungsbibliothek-UI/Trainingsplan-Rotation/Ziele (Phasen 1-3) → Offline-first Trainings-Tabelle
   (Phase 4) → Push-Benachrichtigungen (Phase 5) → Profil & Ernährungsrechner (Phase 8) →
   Wasser-Tracking (Phase 9) → Tages-Challenge (Phase 14) → Supplement-Erinnerungen &
   Referenzliste + `/nutrition`-Tab-Umbau (Phase 10) → Design-Umstellung (Violett-Akzent,
-  Space Grotesk/Manrope, eigene `ink`-Neutralpalette) → Körperkomposition-Tracking (Phase 11) —
-  Phase 12 (Fortschritts-Fotos) ist fertig, aber **noch nicht committed**, siehe unten. Phase 13
-  (Automatische Ziel-Vorschläge) ist geplant, aber noch nicht begonnen — auf Nutzerwunsch
-  angehängt, siehe `ROADMAP.md` für Details/Reihenfolge. **Mehrsprachigkeit** (DE/EN/ES/NL/RU)
+  Space Grotesk/Manrope, eigene `ink`-Neutralpalette) → Körperkomposition-Tracking (Phase 11) →
+  Fortschritts-Fotos (Phase 12) — Phase 13 (Automatische Ziel-Vorschläge) ist fertig, aber
+  **noch nicht committed**, siehe unten. Danach sind nur noch Phase 6 (Claude-API-UI) und
+  Phase 7 (Politur & VPS-Deployment) offen. **Mehrsprachigkeit** (DE/EN/ES/NL/RU)
   wurde ebenfalls angefragt, laut Nutzer aber nicht eilig ("kann warten") — noch nicht begonnen,
   keine Roadmap-Phase dafür angelegt. Größerer Umbau: praktisch jede Komponente hat aktuell
   hartcodierten deutschen Text direkt im JSX, plus mehrere Absätze Fließtext (Ernährungstipps,
@@ -159,6 +170,7 @@ DELETE /workout-logs/:id        # Soft-Delete, :id akzeptiert auch clientId
 GET    /training-plan           # legt bei Bedarf an, rotiert überfällige Phasen automatisch nach
 
 GET    /goals
+GET    /goals/suggestions       # bis zu 5 vorgeschlagene WEIGHT-Ziele (siehe Phase 13)
 POST   /goals                   # exerciseId Pflicht bei type WEIGHT/REPS
 PATCH  /goals/:id               # targetValue/targetDate/achievedAt
 DELETE /goals/:id
@@ -221,9 +233,8 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
   keine kostenlose Quelle mit Video gefunden. `videoUrl` bleibt leer bis manuell gepflegt oder
   eine neue Quelle angebunden wird.
 - **Keine Frontend-UI** mehr offen außer Claude-API-Integration (Phase 6) — Backend/Datenmodell
-  dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–5, 8, 9, 10, 11, 12 und 14 sind fertig,
-  siehe oben. Phase 13 ist geplant, aber noch nicht begonnen (kein Datenmodell dafür
-  vorbereitet).
+  dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–5, 8, 9, 10, 11, 12, 13 und 14 sind fertig,
+  siehe oben. Nur noch Phase 6 (Claude-API-UI) und Phase 7 (Politur & VPS-Deployment) offen.
 - **Tages-Challenge-Übungsauswahl ist unvollständig gefiltert** — `equipment = "body only"` im
   importierten Katalog schließt nicht zuverlässig aus, dass eine Übung trotzdem eine Bank,
   Klimmzugstange o. Ä. voraussetzt. Ein Keyword-Filter auf den Namen mildert das, ist aber eine
@@ -275,12 +286,12 @@ Dev-Stack, damit die App vom eigenen Handy/Laptop im selben Netz aus geöffnet w
 
 ## Nächster sinnvoller Schritt
 
-Phase 12 (Fortschritts-Fotos) ist fertig, aber **noch nicht committed** —
+Phase 13 (Automatische Ziel-Vorschläge) ist fertig, aber **noch nicht committed** —
 Arbeitsverzeichnis hat uncommitted Changes (siehe `git status`; `frontend/vite.config.ts`
 weiterhin bewusst mit angepasstem Proxy-Ziel für die laufende Dev-Umgebung, siehe unten — vor
-einem echten Commit auf `3000` zurücksetzen oder bewusst mitcommitten). Danach weiter mit
-Phase 13 (Automatische Ziel-Vorschläge) laut `ROADMAP.md` — oder Phase 6/7, falls der Nutzer die
-ursprüngliche Roadmap zuerst abschließen möchte. Mehrsprachigkeit (DE/EN/ES/NL/RU) ist
-angefragt, aber explizit zurückgestellt ("kann warten") — nicht von selbst anfangen, erst wenn
-der Nutzer danach fragt. Beiläufige Frage zu Play-Store/App-Store-Vertrieb wurde nur informativ
-beantwortet, kein Arbeitsauftrag.
+einem echten Commit auf `3000` zurücksetzen oder bewusst mitcommitten). Damit ist die gesamte
+auf Nutzerwunsch angehängte Feature-Liste (Phasen 8–14) fertig — nur noch Phase 6 (Claude-API-UI)
+und Phase 7 (Politur & VPS-Deployment) aus der ursprünglichen Roadmap sind offen. Mehrsprachigkeit
+(DE/EN/ES/NL/RU) ist angefragt, aber explizit zurückgestellt ("kann warten") — nicht von selbst
+anfangen, erst wenn der Nutzer danach fragt. Beiläufige Frage zu Play-Store/App-Store-Vertrieb
+wurde nur informativ beantwortet, kein Arbeitsauftrag.

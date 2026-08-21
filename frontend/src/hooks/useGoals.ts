@@ -3,11 +3,15 @@ import type { CreateGoalInput, GoalType, UpdateGoalInput } from "@fitnesstracker
 import {
   createGoalRequest,
   deleteGoalRequest,
+  listGoalSuggestionsRequest,
   listGoalsRequest,
   updateGoalRequest,
 } from "../api/goal.api";
 
 const GOALS_KEY = ["goals"];
+// Deliberately not nested under GOALS_KEY — TanStack Query's invalidation matches by prefix, so
+// a shared prefix would make the second invalidateQueries call below redundant with the first.
+const GOAL_SUGGESTIONS_KEY = ["goal-suggestions"];
 
 export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   WEIGHT: "Gewicht (Übung)",
@@ -30,11 +34,24 @@ export function useGoals() {
   });
 }
 
+export function useGoalSuggestions() {
+  return useQuery({
+    queryKey: GOAL_SUGGESTIONS_KEY,
+    queryFn: () => listGoalSuggestionsRequest().then((r) => r.items),
+  });
+}
+
 export function useCreateGoal() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateGoalInput) => createGoalRequest(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: GOALS_KEY }),
+    // A new WEIGHT goal can make its exercise ineligible for a suggestion (already-open-goal
+    // exclusion in getGoalSuggestions), so the suggestions list needs a refresh too, not just
+    // the goals list.
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: GOALS_KEY });
+      queryClient.invalidateQueries({ queryKey: GOAL_SUGGESTIONS_KEY });
+    },
   });
 }
 

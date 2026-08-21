@@ -163,6 +163,37 @@ CRUD über `/goals`. Die interessante Design-Frage war nicht das CRUD selbst, so
   `targetDate`, `achievedAt`. Ein Ziel "umzuwidmen" (andere Übung, anderer Typ) ist im Kern ein
   neues Ziel; dafür gibt es Löschen + Neuanlegen statt einer Sonderfall-Logik im Update-Pfad.
 
+## Automatische Ziel-Vorschläge (fertig)
+
+Erweitert die Ziele-Funktion um `GET /goals/suggestions` — bis zu 5 vorgeschlagene WEIGHT-Ziele
+für Übungen, die der Nutzer tatsächlich trainiert.
+
+- **Feste konservative Progressionsrate statt linearer Extrapolation der eigenen Historie.** Die
+  naheliegendste Herangehensweise wäre, die Steigerungsrate aus den eigenen `WorkoutLog`-Daten
+  zu berechnen (Regression über die bisherigen Bestwerte) und linear fortzuschreiben. Das wurde
+  bewusst verworfen: die ersten Wochen/Monate beim Krafttraining zeigen typischerweise
+  "Anfänger-Anfangsgewinne" (schnelle Steigerungen, die sich nicht halten lassen) — eine lineare
+  Extrapolation davon würde ein unrealistisch nahes Zieldatum vorschlagen und damit genau das
+  Problem erzeugen, das die Roadmap explizit vermeiden wollte ("Deadline darf nicht unmöglich
+  sein"). Stattdessen: eine feste, literaturüblich konservative Rate von 0,25 kg/Woche
+  (≈ 1 kg/Monat) für alle Übungen — einfacher als eine Übungskategorie-spezifische Modellierung
+  (Grundübung vs. Isolationsübung), aber sicher auf der vorsichtigen Seite, ähnlich wie die
+  bewusst einfachen Formeln bei Mifflin-St-Jeor (BMR) oder dem 35-ml/kg-Wasserziel an anderer
+  Stelle in dieser App.
+- **Mindestens 3 geloggte Sätze pro Übung, bevor überhaupt ein Vorschlag entsteht.** Ein einzelner
+  ungewöhnlich schwerer (oder leichter) Satz sollte nicht die Grundlage für ein automatisch
+  generiertes Ziel sein — ohne dieses Minimum würde ein einmaliger Testversuch mit hohem Gewicht
+  sofort einen (falsch) sehr ambitionierten Vorschlag erzeugen.
+- **Bereits offene WEIGHT-Ziele für dieselbe Übung schließen einen Vorschlag aus**, um Dopplungen
+  zu vermeiden — sonst würde derselbe Vorschlag jedes Mal neu erscheinen, obwohl der Nutzer
+  bereits ein Ziel dafür gesetzt hat.
+- **Kein eigener "Vorschlag annehmen"-Endpunkt und kein Tracking, welche Vorschläge schon gezeigt
+  wurden.** Ein Vorschlag ist reine, zustandslos berechnete Anzeige-Information; "annehmen"
+  bedeutet einfach, die vorgeschlagenen Werte an das bestehende `POST /goals` zu schicken — genau
+  wie ein manuell eingetragenes Ziel. Der Vorschlag verschwindet danach von selbst aus der Liste,
+  weil jetzt ein offenes WEIGHT-Ziel für diese Übung existiert (siehe Punkt oben) — kein
+  Extra-Zustand nötig, den man sonst mit dem echten Ziel synchron halten müsste.
+
 ## Offline-first + Sync (fertig)
 
 Da die App explizit auf dem iPhone als installierte PWA laufen soll, scheidet die native

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AppShell } from "../components/layout/AppShell";
 import { GoalCard } from "../components/goals/GoalCard";
 import { GoalFormDialog } from "../components/goals/GoalFormDialog";
+import { GoalSuggestionsCard } from "../components/goals/GoalSuggestionsCard";
 import { useGoals } from "../hooks/useGoals";
 
 export function GoalsPage() {
@@ -22,6 +23,8 @@ export function GoalsPage() {
           + Ziel
         </button>
       </div>
+
+      <GoalSuggestionsCard />
 
       {isLoading ? (
         <p className="text-ink-500">Lädt…</p>

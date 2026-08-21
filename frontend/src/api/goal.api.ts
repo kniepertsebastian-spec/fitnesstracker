@@ -1,8 +1,12 @@
-import type { CreateGoalInput, GoalDto, UpdateGoalInput } from "@fitnesstracker/shared";
+import type { CreateGoalInput, GoalDto, GoalSuggestionDto, UpdateGoalInput } from "@fitnesstracker/shared";
 import { apiFetch } from "./client";
 
 export function listGoalsRequest() {
   return apiFetch<{ items: GoalDto[] }>("/goals");
+}
+
+export function listGoalSuggestionsRequest() {
+  return apiFetch<{ items: GoalSuggestionDto[] }>("/goals/suggestions");
 }
 
 export function createGoalRequest(input: CreateGoalInput) {

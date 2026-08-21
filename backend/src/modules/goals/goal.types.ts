@@ -1,5 +1,6 @@
 import type { Exercise, Goal } from "@prisma/client";
-import type { GoalDto } from "@fitnesstracker/shared";
+import type { GoalDto, GoalSuggestionDto } from "@fitnesstracker/shared";
+import type { GoalSuggestion } from "./goalSuggestion.service.js";
 
 type GoalWithExercise = Goal & { exercise: Exercise | null };
 
@@ -16,5 +17,15 @@ export function toGoalDto(goal: GoalWithExercise, currentValue: number | null): 
     currentValue,
     createdAt: goal.createdAt.toISOString(),
     updatedAt: goal.updatedAt.toISOString(),
+  };
+}
+
+export function toGoalSuggestionDto(suggestion: GoalSuggestion): GoalSuggestionDto {
+  return {
+    exerciseId: suggestion.exerciseId,
+    exerciseName: suggestion.exerciseName,
+    currentBestKg: suggestion.currentBestKg,
+    suggestedTargetKg: suggestion.suggestedTargetKg,
+    suggestedTargetDate: suggestion.suggestedTargetDate.toISOString(),
   };
 }

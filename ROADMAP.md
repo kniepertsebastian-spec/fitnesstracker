@@ -202,14 +202,24 @@
 - UI als eigener Abschnitt innerhalb des bestehenden "Körper"-Tabs auf `/nutrition` (neben
   `BodyCompositionCard`), kein neuer Tab und kein neuer Bottom-Nav-Eintrag
 
-## Phase 13 — Automatische Ziel-Vorschläge
+## Phase 13 — Automatische Ziel-Vorschläge ✅
 
-- Erweitert die bestehende Ziele-Funktion (Phase 3) um automatisch vorgeschlagene
-  Gewichts-Ziele pro Übung mit realistischem Zieldatum, basierend auf der bisherigen
-  `WorkoutLog`-Progression zur jeweiligen Übung
-- Deadline darf nicht unmöglich sein — Ableitung aus einer konservativen, literaturüblichen
-  Progressionsrate statt einer linearen Extrapolation der bisherigen (oft unrealistisch
-  optimistischen) Steigerungsrate
+- `GET /goals/suggestions`: bis zu 5 vorgeschlagene WEIGHT-Ziele, eins pro trainierter Übung —
+  nur für Übungen mit mindestens 3 geloggten Sätzen (gegen Vorschläge aus einem einzelnen
+  Zufallstreffer) und ohne bereits offenes WEIGHT-Ziel für dieselbe Übung (keine Dopplungen),
+  sortiert nach zuletzt trainiert
+- Zielwert: bisheriger Bestwert (`_max(weightKg)`) + 5 % Steigerung, mindestens +1 kg, gerundet
+  auf 0,5 kg — damit auch leichte Isolationsübungen einen sinnvollen Zielwert statt einer
+  Nullrunde bekommen
+- Zieldatum **bewusst nicht** aus der linearen Extrapolation der bisherigen (oft durch
+  Anfänger-Anfangsgewinne unrealistisch optimistischen) Steigerungsrate abgeleitet, sondern aus
+  einer festen, konservativen, literaturüblichen Progressionsrate von 0,25 kg/Woche
+  (≈ 1 kg/Monat) — siehe `ARCHITECTURE.md` für die Begründung
+- Kein eigener "Vorschlag annehmen"-Endpunkt — ein Vorschlag wird einfach über das bestehende
+  `POST /goals` mit den vorgeschlagenen Werten übernommen; danach verschwindet er automatisch aus
+  der Vorschlagsliste (weil jetzt ein offenes WEIGHT-Ziel für diese Übung existiert)
+- UI: neue "Vorschläge"-Sektion oberhalb der bestehenden Zielliste auf `/goals`, mit
+  Ein-Klick-"Übernehmen"-Button pro Vorschlag
 
 ## Phase 14 — Tages-Challenge (Bodyweight, überall machbar) ✅
 

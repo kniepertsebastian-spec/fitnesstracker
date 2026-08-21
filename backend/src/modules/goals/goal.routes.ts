@@ -2,7 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { createGoalSchema, updateGoalSchema } from "@fitnesstracker/shared";
 import { computeCurrentValue, createGoal, deleteGoal, listGoals, updateGoal } from "./goal.service.js";
-import { toGoalDto } from "./goal.types.js";
+import { getGoalSuggestions } from "./goalSuggestion.service.js";
+import { toGoalDto, toGoalSuggestionDto } from "./goal.types.js";
 import { HttpError } from "../../errors/httpErrors.js";
 
 const idParamSchema = z.object({ id: z.string().uuid() });
@@ -19,6 +20,11 @@ export default async function goalRoutes(fastify: FastifyInstance) {
       }),
     );
     return reply.send({ items });
+  });
+
+  fastify.get("/goals/suggestions", async (request, reply) => {
+    const suggestions = await getGoalSuggestions(fastify.prisma, request.user.sub);
+    return reply.send({ items: suggestions.map(toGoalSuggestionDto) });
   });
 
   fastify.post("/goals", async (request, reply) => {

@@ -41,3 +41,14 @@ export const updateGoalSchema = z.object({
   achievedAt: z.string().datetime().nullable().optional(),
 });
 export type UpdateGoalInput = z.infer<typeof updateGoalSchema>;
+
+// An automatically derived candidate WEIGHT goal for an exercise the user has actually been
+// training — not a goal itself until the user explicitly adopts it via the normal POST /goals.
+export const goalSuggestionDtoSchema = z.object({
+  exerciseId: z.string().uuid(),
+  exerciseName: z.string(),
+  currentBestKg: z.number(),
+  suggestedTargetKg: z.number(),
+  suggestedTargetDate: z.string(),
+});
+export type GoalSuggestionDto = z.infer<typeof goalSuggestionDtoSchema>;
