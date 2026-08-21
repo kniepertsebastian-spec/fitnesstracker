@@ -496,7 +496,7 @@ Drei-Strich-Dropdown").
   weiterhin neben "Plan" — reine Verschiebung der bestehenden Elemente in ein neues Layout, keine
   Funktionsänderung.
 
-## Mini-PC-Deployment (Phase 7, in Arbeit)
+## Mini-PC-Deployment (Phase 7, deployed — DNS-Propagation ausstehend)
 
 Statt eines eigenen VPS läuft die Produktion auf einem privaten Mini-PC im Heimnetz
 (Hostname `pwa01`, Debian 13, hinter Router-NAT) — derselbe Rechner soll insgesamt vier PWAs
@@ -526,7 +526,34 @@ hosten, nicht nur diese. Das hat zwei Konsequenzen gegenüber der ursprüngliche
   überhaupt zu berühren.
 - **Dedizierter Deploy-User `claude` auf dem Mini-PC** (Mitglied der `docker`-Gruppe, kein
   `sudo`), damit Claude Code das Deployment direkt per SSH durchführen/prüfen kann. Zugangsdaten
-  liegen außerhalb des Repos, siehe `context.md`.
+  liegen außerhalb des Repos, siehe `context.md`. Repo-Zugriff selbst läuft über einen separaten,
+  read-only GitHub Deploy Key (nicht den persönlichen Zugang des Nutzers) — ein eigener Key pro
+  Repo, damit ein kompromittierter Mini-PC nie mehr als Lesezugriff auf ein einzelnes Repo hätte.
+- **Vier reale Bugs beim allerersten echten Prod-Docker-Build gefunden** — vorheriges "Config
+  validiert" in früheren Sessions hatte nie tatsächlich `docker compose -f
+  docker-compose.prod.yml up --build` laufen lassen, nur den lokalen Dev-Stack. Alle vier
+  gefixt und committed, festgehalten hier, weil sie beim Onboarding der nächsten drei PWAs
+  (siehe `/home/basti/addURLtotree.md`) mit hoher Wahrscheinlichkeit identisch wieder auftreten:
+  1. `prisma`-CLI stand in `devDependencies` statt `dependencies` — der Runtime-Stage-Install
+     läuft mit `--prod`, wirft Dev-Deps weg, `pnpm prisma:deploy` im Boot-`CMD` fand das Binary
+     nicht mehr.
+  2. Alpine-Basis-Image hatte kein `openssl` installiert — Prismas Engine-Binaries linken
+     dynamisch gegen libssl, das Alpine nicht mitbringt (Node bringt nur sein eigenes, statisch
+     gelinktes OpenSSL mit, das anderen Prozessen nicht hilft). Fix: `RUN apk add --no-cache
+     openssl` in der `base`-Stage.
+  3. Der `--prod`-Install im Runtime-Stage ist ein **frischer** Install (übernimmt nicht die
+     `node_modules` der Build-Stage), und `@prisma/client`s eigenes Postinstall-Skript findet das
+     Schema in diesem Monorepo-Layout nicht automatisch — der generierte Client fehlte zur
+     Laufzeit komplett ("`@prisma/client did not initialize yet`"). Fix: `prisma generate`
+     explizit im Boot-`CMD`, nicht nur `migrate deploy`.
+  4. `packages/shared`s `package.json` zeigte `main`/`exports` direkt auf rohe `.ts`-Quellen
+     (`./src/index.ts`) mit intern `.js`-referenzierten Imports — funktioniert nur unter
+     TS-bewussten Loadern (`tsx` im Dev, Vite im Frontend-Build), bricht unter reinem `node`
+     (Prod-Backend-Container) mit `ERR_MODULE_NOT_FOUND`, weil die referenzierte `.js`-Datei nie
+     existierte. Fix: `packages/shared` bekommt einen echten `tsc`-Build (`main`/`types`/`exports`
+     zeigen jetzt auf `./dist/`), eingebunden in beide Dockerfiles und die Root-`dev`/`build`-
+     Skripte, damit das für Backend, Frontend und lokale Entwicklung gleichermaßen automatisch
+     passiert.
 
 ## Claude-API-Integration (Roadmap-Phase)
 

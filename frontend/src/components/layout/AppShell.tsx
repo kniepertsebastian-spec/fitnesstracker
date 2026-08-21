@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../../hooks/useTrainingPlan";
 import { useSyncStore } from "../../stores/syncStore";
+import { InstallButton } from "./InstallButton";
 
 interface NavItem {
   label: string;
@@ -98,6 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <div className="flex items-center gap-3">
+          <InstallButton />
           {!isOnline && (
             <span className="rounded-full bg-amber-950 px-2 py-0.5 text-xs text-amber-400">
               Offline
