@@ -13,3 +13,4 @@ caddy_data/
 caddy_config/
 pgdata/
 backend/uploads/
+context.md

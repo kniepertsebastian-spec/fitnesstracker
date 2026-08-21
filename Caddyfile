@@ -1,4 +1,8 @@
-{$DOMAIN} {
+# Plain HTTP: TLS is terminated at Cloudflare's edge, and the connection from the
+# cloudflared tunnel to this container stays inside the host's Docker network. No public
+# port is bound to this container, so there's nothing here for Caddy's automatic HTTPS
+# (Let's Encrypt) to do — an internet-facing hostname would just fail ACME validation.
+:80 {
 	handle /api/* {
 		reverse_proxy backend:3000
 	}

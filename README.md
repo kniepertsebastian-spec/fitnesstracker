@@ -91,17 +91,24 @@ implementieren (Interface in `sources/types.ts`) und in `sources/index.ts` regis
 Import-Endpunkt braucht dafür keine Änderung. Details und Quellen-Übersicht in
 [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
-## Produktions-Deployment (eigener VPS)
+## Produktions-Deployment (Mini-PC hinter Cloudflare Tunnel)
+
+Läuft neben mehreren anderen PWAs auf derselben Maschine, deshalb kein VPS mit eigenem
+Caddy auf Port 80/443, sondern ein geteilter Cloudflare Tunnel als Edge (Details/Begründung in
+`ARCHITECTURE.md` und `context.md`): Caddy in diesem Repo dient nur noch same-origin
+Frontend+API und lauscht rein intern auf `:80` im gemeinsamen Docker-Netzwerk `edge` — TLS
+terminiert bei Cloudflare, nicht hier.
 
 ```bash
-cp .env.example .env   # echte Secrets + DOMAIN setzen
+docker network create edge   # einmalig pro Maschine, wird von allen PWAs geteilt
+cp .env.example .env         # echte Secrets + DOMAIN setzen (die volle Subdomain, z. B. fitness.example.com)
 docker build --target export -f frontend/Dockerfile --output frontend/dist .
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Caddy holt automatisch ein Let's-Encrypt-Zertifikat für `DOMAIN` und dient sowohl das gebaute
-Frontend als auch die API (`/api/*` → Backend) same-origin, damit Cookie-basierte Auth ohne CORS
-funktioniert. Vor dem Deploy: DNS-A-Record auf den VPS zeigen lassen, Ports 80/443 offen.
+Voraussetzung: ein separat laufender `cloudflared`-Container (nicht Teil dieses Repos, eine
+Ebene darüber für alle PWAs gemeinsam) mit einer Public-Hostname-Route von `DOMAIN` auf
+`http://fitnesstracker-caddy:80`. Kein DNS-A-Record, kein offener Port am Router nötig.
 
 ## Nützliche Skripte
 

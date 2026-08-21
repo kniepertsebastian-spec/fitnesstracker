@@ -39,9 +39,11 @@ gedacht ist.
 **Monorepo**: pnpm Workspaces (`backend/`, `frontend/`, `packages/shared/`) — ein Schema-Package
 für Zod-Schemas/Typen, die beide Seiten brauchen.
 
-**Reverse Proxy: Caddy statt Nginx** — automatisches HTTPS via Let's Encrypt aus einem 5-Zeilen
-Caddyfile. Caddy dient das gebaute Frontend und proxied `/api/*` zum Backend, beides same-origin —
-das eliminiert CORS in Produktion komplett, was für Cookie-basierte Auth wichtig ist.
+**Reverse Proxy: Caddy statt Nginx** — dient das gebaute Frontend und proxied `/api/*` zum
+Backend, beides same-origin, was CORS in Produktion komplett eliminiert (wichtig für
+Cookie-basierte Auth). Läuft seit dem Mini-PC-Deployment (Phase 7, siehe unten) rein intern auf
+`:80` ohne eigenes ACME/HTTPS — TLS terminiert bei Cloudflare, nicht bei Caddy, siehe
+"Mini-PC-Deployment" weiter unten.
 
 ## Übungs-Import (fertig)
 
@@ -493,6 +495,38 @@ Drei-Strich-Dropdown").
   Violett-Farbe wie vorher in der Bottom-Nav) und die Trainingsplan-Phase (z. B. "Aufbau") steht
   weiterhin neben "Plan" — reine Verschiebung der bestehenden Elemente in ein neues Layout, keine
   Funktionsänderung.
+
+## Mini-PC-Deployment (Phase 7, in Arbeit)
+
+Statt eines eigenen VPS läuft die Produktion auf einem privaten Mini-PC im Heimnetz
+(Hostname `pwa01`, Debian 13, hinter Router-NAT) — derselbe Rechner soll insgesamt vier PWAs
+hosten, nicht nur diese. Das hat zwei Konsequenzen gegenüber der ursprünglichen
+"ein VPS, ein Caddy, Ports 80/443 direkt gebunden"-Annahme:
+
+- **Geteilter Edge-Reverse-Proxy statt eigenem Caddy pro App auf 80/443.** Nur ein Prozess kann
+  Host-Port 80/443 belegen; vier unabhängige `docker-compose.prod.yml`-Stacks mit jeweils eigenem
+  Caddy auf denselben Host-Ports würden kollidieren. Dieses Repos Caddy bleibt (dient weiterhin
+  same-origin Frontend+API, siehe oben), bindet aber keine Host-Ports mehr, sondern lauscht nur
+  noch auf `:80` innerhalb eines geteilten externen Docker-Netzwerks namens `edge`
+  (`docker network create edge`, einmalig pro Maschine, außerhalb dieses Repos angelegt). Jede der
+  vier Apps bekommt einen `container_name` (hier: `fitnesstracker-caddy`), über den sie im
+  `edge`-Netz adressierbar ist.
+- **Cloudflare Tunnel statt Port-Forwarding/DNS-A-Record.** Der Mini-PC hängt hinter einem
+  Heimrouter (NAT, keine feste öffentliche IP) — Port-Forwarding wäre fragil (dynamische IP,
+  potenzielles CGNAT) und würde die Heim-IP offenlegen. Ein `cloudflared`-Container (nicht Teil
+  dieses Repos, eine Ebene darüber, gemeinsam für alle vier PWAs) hält stattdessen eine
+  ausgehende Verbindung zu Cloudflare offen; TLS terminiert bei Cloudflare, nicht auf dem Mini-PC.
+  Cloudflares "Public Hostname"-Routing bildet `<subdomain>.<domain>` auf
+  `http://fitnesstracker-caddy:80` im `edge`-Netz ab — kein offener Inbound-Port am Router nötig.
+  Deshalb auch keine eigene ACME/Let's-Encrypt-Logik mehr in diesem Repos Caddyfile (siehe oben).
+- **Host-Firewall (`ufw`) trotzdem sinnvoll**, obwohl der Tunnel keinen Inbound-Port braucht:
+  Verteidigung in der Tiefe für alles andere auf der Maschine (z. B. versehentlich exponierte
+  Dev-Ports). Da nichts außer dem Tunnel-Container selbst einen Host-Port published, kann `ufw`
+  hier `default deny incoming` + `allow` nur für SSH fahren, ohne den öffentlichen Zugriffspfad
+  überhaupt zu berühren.
+- **Dedizierter Deploy-User `claude` auf dem Mini-PC** (Mitglied der `docker`-Gruppe, kein
+  `sudo`), damit Claude Code das Deployment direkt per SSH durchführen/prüfen kann. Zugangsdaten
+  liegen außerhalb des Repos, siehe `context.md`.
 
 ## Claude-API-Integration (Roadmap-Phase)
 

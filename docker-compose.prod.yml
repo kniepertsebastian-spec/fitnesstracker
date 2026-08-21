@@ -1,6 +1,10 @@
-# VPS deployment. Build the frontend once (`docker build --target export -f frontend/Dockerfile
-# --output frontend/dist .`) before `docker compose -f docker-compose.prod.yml up -d` — Caddy
-# serves that directory directly. Only Caddy's 80/443 are published to the host.
+# Mini-PC deployment behind a shared Cloudflare Tunnel (this box runs several PWAs, so no
+# single app owns host ports 80/443 — see context.md). Build the frontend once
+# (`docker build --target export -f frontend/Dockerfile --output frontend/dist .`) before
+# `docker compose -f docker-compose.prod.yml up -d --build`. Caddy publishes nothing to the
+# host; it's only reachable from the shared `edge` network, where the `cloudflared` container
+# (managed separately, outside this repo — see context.md) routes
+# `${DOMAIN}` to it by container name.
 services:
   postgres:
     image: postgres:16-alpine
@@ -39,17 +43,18 @@ services:
 
   caddy:
     image: caddy:2-alpine
+    container_name: fitnesstracker-caddy
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
+    # No `ports:` — not published to the host. Reached only via the `edge` network by
+    # the shared cloudflared tunnel, using the container name above.
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./frontend/dist:/srv/frontend:ro
       - caddy_data:/data
       - caddy_config:/config
-    environment:
-      DOMAIN: ${DOMAIN:?}
+    networks:
+      - default
+      - edge
     depends_on:
       - backend
 
@@ -58,3 +63,8 @@ volumes:
   caddy_data:
   caddy_config:
   uploads:
+
+networks:
+  default:
+  edge:
+    external: true
