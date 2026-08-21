@@ -14,6 +14,7 @@ FROM deps AS build
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY frontend frontend
+RUN pnpm --filter @fitnesstracker/shared build
 RUN pnpm --filter frontend build
 
 FROM scratch AS export

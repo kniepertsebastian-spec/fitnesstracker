@@ -17,6 +17,7 @@ FROM deps AS build
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY backend backend
+RUN pnpm --filter @fitnesstracker/shared build
 RUN pnpm --filter backend prisma:generate
 RUN pnpm --filter backend build
 

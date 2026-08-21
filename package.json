@@ -6,9 +6,10 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev:backend": "pnpm --filter backend dev",
-    "dev:frontend": "pnpm --filter frontend dev",
-    "build": "pnpm --filter backend build && pnpm --filter frontend build",
+    "build:shared": "pnpm --filter @fitnesstracker/shared build",
+    "dev:backend": "pnpm run build:shared && pnpm --filter backend dev",
+    "dev:frontend": "pnpm run build:shared && pnpm --filter frontend dev",
+    "build": "pnpm run build:shared && pnpm --filter backend build && pnpm --filter frontend build",
     "prisma:migrate": "pnpm --filter backend prisma:migrate",
     "prisma:generate": "pnpm --filter backend prisma:generate",
     "prisma:seed": "pnpm --filter backend prisma:seed",
