@@ -83,6 +83,17 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
   BODYWEIGHT-Ziel zeigt sofort den aktuellen Wert).
 - **Design (Violett-Akzent + Space Grotesk/Manrope + eigene `ink`-Neutralpalette)**: siehe
   `ARCHITECTURE.md` — committed, siehe unten.
+- **Fortschritts-Fotos**: neuer Abschnitt im "Körper"-Tab auf `/nutrition` — Upload (Kamera
+  direkt via `capture="environment"` oder Dateiauswahl), Galerie mit Lösch-Funktion,
+  Vorher/Nachher-Vergleich über zwei Auswahllisten. Dateien liegen auf der Platte unter
+  `UPLOADS_DIR` (nie über eine öffentliche URL erreichbar, nur über eine authentifizierte
+  Stream-Route), Frontend zeigt sie über authentifizierte Blob-Fetches an. Wöchentliche
+  Push-Erinnerung (täglicher Scheduler-Tick, feuert ab 7 Tagen seit dem letzten Foto). End-to-end
+  getestet: Upload/Abruf/Löschen per curl (inkl. Byte-für-Byte-Vergleich der hoch- und
+  heruntergeladenen Datei, 401 ohne Auth, 404 bei fremder ID, Mime-Type-Ablehnung,
+  Datei-Löschung von der Platte), Erinnerungs-Logik direkt gegen ein rückdatiertes Test-Foto
+  verifiziert (10 Tage alt → als überfällig erkannt), Browser-UI per Playwright (Upload, Galerie
+  mit echten Bildern, Vorher/Nachher-Ansicht, Löschen, kein horizontaler Overflow bei 375px).
 - **Docker Compose**: lokale Entwicklung (Postgres + Backend, Frontend auf dem Host) und
   Produktion (+ Caddy, automatisches HTTPS) — Config validiert; Docker-Daemon in dieser Sandbox
   verfügbar, jede Session seit Phase 1 hat Postgres via `docker run` tatsächlich live
@@ -101,17 +112,17 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
 ## Branch & Repo
 
 - Repo: `kniepertsebastian-spec/fitnesstracker`
-- Aktiver Branch: `main`, Phasen 1–5, 8, 9, 10, 14 + Design (Violett/Fonts/ink-Palette) committed
-  und gepusht (`dbbee42`, `dbd75cd`, `4d4de32`, `2f79f4a`, `5cf3cde`, `7b7aef7`, `3b07941`,
-  `6fb2b9b`, `2b80d54`)
+- Aktiver Branch: `main`, Phasen 1–5, 8, 9, 10, 11, 14 + Design (Violett/Fonts/ink-Palette)
+  committed und gepusht (`dbbee42`, `dbd75cd`, `4d4de32`, `2f79f4a`, `5cf3cde`, `7b7aef7`,
+  `3b07941`, `6fb2b9b`, `2b80d54`, `db44828`)
 - Bisherige Commits: Foundation (Monorepo/Auth/Tracking-Tabelle) → Übungs-API mit Import →
   Übungsbibliothek-UI/Trainingsplan-Rotation/Ziele (Phasen 1-3) → Offline-first Trainings-Tabelle
   (Phase 4) → Push-Benachrichtigungen (Phase 5) → Profil & Ernährungsrechner (Phase 8) →
   Wasser-Tracking (Phase 9) → Tages-Challenge (Phase 14) → Supplement-Erinnerungen &
   Referenzliste + `/nutrition`-Tab-Umbau (Phase 10) → Design-Umstellung (Violett-Akzent,
-  Space Grotesk/Manrope, eigene `ink`-Neutralpalette) — Phase 11 (Körperkomposition-Tracking)
-  ist fertig, aber **noch nicht committed**, siehe unten. Phasen 12–13 (Fortschritts-Fotos,
-  Automatische Ziel-Vorschläge) sind geplant, aber noch nicht begonnen — auf Nutzerwunsch
+  Space Grotesk/Manrope, eigene `ink`-Neutralpalette) → Körperkomposition-Tracking (Phase 11) —
+  Phase 12 (Fortschritts-Fotos) ist fertig, aber **noch nicht committed**, siehe unten. Phase 13
+  (Automatische Ziel-Vorschläge) ist geplant, aber noch nicht begonnen — auf Nutzerwunsch
   angehängt, siehe `ROADMAP.md` für Details/Reihenfolge. **Mehrsprachigkeit** (DE/EN/ES/NL/RU)
   wurde ebenfalls angefragt, laut Nutzer aber nicht eilig ("kann warten") — noch nicht begonnen,
   keine Roadmap-Phase dafür angelegt. Größerer Umbau: praktisch jede Komponente hat aktuell
@@ -175,6 +186,11 @@ GET    /body-composition               # letzte 60 Messungen, neueste zuerst
 POST   /body-composition               # weightKg Pflicht, Rest optional
 PATCH  /body-composition/:id
 DELETE /body-composition/:id
+
+GET    /progress-photos                # Metadaten-Liste, neueste zuerst — nie Dateiname/Pfad
+POST   /progress-photos                # multipart, Feld "file" (+ optional "takenAt")
+GET    /progress-photos/:id/file       # authentifizierter Datei-Stream, 404 bei fremder ID
+DELETE /progress-photos/:id            # löscht DB-Zeile + Datei auf der Platte
 ```
 
 Alle Routen außer `/api/health`, `/auth/register`, `/auth/login`, `/auth/refresh` erfordern
@@ -197,6 +213,7 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
 - `DailyChallengeItem` — Tages-Challenge-Übungen + Fortschritt (siehe oben, fertig)
 - `Supplement` — Erinnerungsliste + Zeitzone + letzter Versand (siehe oben, fertig)
 - `BodyCompositionEntry` — Waagen-Messungen als Verlauf (siehe oben, fertig)
+- `ProgressPhoto` — Metadaten für auf der Platte gespeicherte Vergleichsfotos (siehe oben, fertig)
 
 ## Bekannte Lücken
 
@@ -204,8 +221,9 @@ Vollständig für die gesamte Roadmap angelegt, auch wo noch keine UI existiert:
   keine kostenlose Quelle mit Video gefunden. `videoUrl` bleibt leer bis manuell gepflegt oder
   eine neue Quelle angebunden wird.
 - **Keine Frontend-UI** mehr offen außer Claude-API-Integration (Phase 6) — Backend/Datenmodell
-  dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–5, 8, 9, 10, 11 und 14 sind fertig, siehe
-  oben. Phasen 12–13 sind geplant, aber noch nicht begonnen (kein Datenmodell dafür vorbereitet).
+  dafür ist vorbereitet, siehe `ROADMAP.md`. Phasen 1–5, 8, 9, 10, 11, 12 und 14 sind fertig,
+  siehe oben. Phase 13 ist geplant, aber noch nicht begonnen (kein Datenmodell dafür
+  vorbereitet).
 - **Tages-Challenge-Übungsauswahl ist unvollständig gefiltert** — `equipment = "body only"` im
   importierten Katalog schließt nicht zuverlässig aus, dass eine Übung trotzdem eine Bank,
   Klimmzugstange o. Ä. voraussetzt. Ein Keyword-Filter auf den Namen mildert das, ist aber eine
@@ -257,11 +275,11 @@ Dev-Stack, damit die App vom eigenen Handy/Laptop im selben Netz aus geöffnet w
 
 ## Nächster sinnvoller Schritt
 
-Phase 11 (Körperkomposition-Tracking) ist fertig, aber **noch nicht committed** —
+Phase 12 (Fortschritts-Fotos) ist fertig, aber **noch nicht committed** —
 Arbeitsverzeichnis hat uncommitted Changes (siehe `git status`; `frontend/vite.config.ts`
 weiterhin bewusst mit angepasstem Proxy-Ziel für die laufende Dev-Umgebung, siehe unten — vor
 einem echten Commit auf `3000` zurücksetzen oder bewusst mitcommitten). Danach weiter mit
-Phase 12 (Fortschritts-Fotos) laut `ROADMAP.md` — oder Phase 6/7, falls der Nutzer die
+Phase 13 (Automatische Ziel-Vorschläge) laut `ROADMAP.md` — oder Phase 6/7, falls der Nutzer die
 ursprüngliche Roadmap zuerst abschließen möchte. Mehrsprachigkeit (DE/EN/ES/NL/RU) ist
 angefragt, aber explizit zurückgestellt ("kann warten") — nicht von selbst anfangen, erst wenn
 der Nutzer danach fragt. Beiläufige Frage zu Play-Store/App-Store-Vertrieb wurde nur informativ

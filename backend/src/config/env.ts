@@ -22,6 +22,9 @@ const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional().default(""),
   VAPID_PRIVATE_KEY: z.string().optional().default(""),
   VAPID_SUBJECT: z.string().optional().default(""),
+  // Resolved relative to the backend package's cwd (matches every other relative path in this
+  // project, e.g. the prisma schema/migrations paths above).
+  UPLOADS_DIR: z.string().min(1).default("./uploads"),
 });
 
 // Fail fast on boot rather than crashing mysteriously on the first request that needs a var.

@@ -172,13 +172,35 @@
   Wert)
 - UI als fünfter Tab ("Körper") auf der bestehenden `/nutrition`-Seite, kein eigener Nav-Tab
 
-## Phase 12 — Fortschritts-Fotos
+## Phase 12 — Fortschritts-Fotos ✅
 
-- Erinnerung (Push, wiederkehrend, z. B. wöchentlich) + Upload für Vergleichsfotos ("Spiegel-Foto")
+- `POST /progress-photos` (multipart, `@fastify/multipart`, 10MB-Limit, jpeg/png/webp): Datei
+  landet unter `UPLOADS_DIR` (Default `./uploads`, relativ zum Backend-Package) mit
+  generiertem UUID-Dateinamen; optionales `takenAt`-Feld überschreibt den Server-Zeitstempel
+  (z. B. für ein nachträglich importiertes altes Foto)
+- `GET /progress-photos`: Metadaten-Liste (nur `id` + `takenAt`) — der Dateiname/Pfad ist nie im
+  DTO enthalten und wird nur intern zum Auflösen des Pfads benutzt
+- `GET /progress-photos/:id/file`: authentifizierter Stream der Bilddatei nach
+  Eigentümer-Check (404 bei fremder/ungültiger ID) — bewusst keine öffentliche
+  Static-File-Route, da es sich um private Körperfotos handelt
+- `DELETE /progress-photos/:id`: entfernt DB-Zeile und Datei auf der Platte
 - Speicherung auf dem eigenen VPS-Dateisystem via Docker Volume — konsistent mit "keine externen
-  Managed-Dienste" aus `ARCHITECTURE.md`, kein S3/Cloud-Storage-Anbieter nötig
-- Nur für den eingeloggten Nutzer sichtbar; Vorher/Nachher-Ansicht zum direkten Vergleich zweier
-  Zeitpunkte
+  Managed-Dienste" aus `ARCHITECTURE.md`, kein S3/Cloud-Storage-Anbieter nötig; in
+  `docker-compose.prod.yml` als neues benanntes Volume `uploads:/app/backend/uploads`
+  (Dev-Compose braucht das nicht, da dort das ganze Repo gebindmountet ist)
+- Wöchentliche Push-Erinnerung: täglicher Scheduler-Tick prüft pro Nutzer, ob das neueste Foto
+  (oder — falls noch keins existiert — das Account-Erstelldatum) ≥ 7 Tage zurückliegt; kein
+  eigenes "zuletzt erinnert"-Feld nötig, die Erinnerung wiederholt sich dann bewusst an jedem
+  weiteren Tag bis zum nächsten Upload (anders als die exakt-einmal-täglich-Regel der
+  Supplement-Erinnerung aus Phase 10, hier reicht die grobe Wochen-Kadenz)
+- Nur für den eingeloggten Nutzer sichtbar; Vorher/Nachher-Ansicht (zwei Dropdowns) zum direkten
+  Vergleich zweier Zeitpunkte, nebeneinander dargestellt
+- Frontend holt jedes Bild als authentifizierten Blob (`apiFetchBlob` in `client.ts`) und zeigt
+  es über `URL.createObjectURL()` an, da ein normales `<img src>` den Bearer-Token nicht
+  mitschicken kann — Upload läuft über eine neue `apiUpload`-Helper-Funktion (FormData statt
+  JSON-Body), beide mit dem gleichen 401-Refresh-Retry wie `apiFetch`
+- UI als eigener Abschnitt innerhalb des bestehenden "Körper"-Tabs auf `/nutrition` (neben
+  `BodyCompositionCard`), kein neuer Tab und kein neuer Bottom-Nav-Eintrag
 
 ## Phase 13 — Automatische Ziel-Vorschläge
 

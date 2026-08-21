@@ -1,4 +1,5 @@
 import Fastify, { type FastifyError } from "fastify";
+import multipart from "@fastify/multipart";
 import { ZodError } from "zod";
 import { env } from "./config/env.js";
 import prismaPlugin from "./plugins/prisma.plugin.js";
@@ -19,6 +20,8 @@ import dailyChallengeRoutes from "./modules/dailyChallenge/dailyChallenge.routes
 import supplementRoutes from "./modules/supplements/supplement.routes.js";
 import supplementScheduler from "./modules/supplements/supplement.scheduler.js";
 import bodyCompositionRoutes from "./modules/bodyComposition/bodyComposition.routes.js";
+import progressPhotoRoutes from "./modules/progressPhotos/progressPhoto.routes.js";
+import progressPhotoScheduler from "./modules/progressPhotos/progressPhoto.scheduler.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -31,9 +34,12 @@ export function buildApp() {
   app.register(cookiePlugin);
   app.register(corsPlugin);
   app.register(jwtPlugin);
+  // 10MB per file — plenty for a phone photo, small enough to keep disk usage sane on the VPS.
+  app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
   app.register(authHooks);
   app.register(trainingPlanScheduler);
   app.register(supplementScheduler);
+  app.register(progressPhotoScheduler);
 
   app.get("/api/health", async () => ({ status: "ok" }));
 
@@ -48,6 +54,7 @@ export function buildApp() {
   app.register(dailyChallengeRoutes, { prefix: "/api" });
   app.register(supplementRoutes, { prefix: "/api" });
   app.register(bodyCompositionRoutes, { prefix: "/api" });
+  app.register(progressPhotoRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {
     if (error instanceof ZodError) {

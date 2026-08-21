@@ -395,6 +395,42 @@ Manuelle Waagen-Werte über Zeit, als fünfter Tab auf `/nutrition`.
   variieren stark zwischen Herstellern; ein Adapter für ein konkretes Gerät kann bei Bedarf
   später nach dem `ExerciseSourceAdapter`-Muster aus Phase 0 ergänzt werden).
 
+## Fortschritts-Fotos (fertig)
+
+Private "Spiegel-Fotos" zum Vorher/Nachher-Vergleich, als eigener Abschnitt im "Körper"-Tab auf
+`/nutrition`, neben `BodyCompositionCard`.
+
+- **Speicherung auf dem eigenen VPS-Dateisystem statt Cloud-Storage** — die Roadmap schließt
+  explizit externe Managed-Dienste aus (siehe "Warum dieser Stack" oben); `@fastify/multipart`
+  nimmt den Upload entgegen, die Datei landet unter `UPLOADS_DIR` (Default `./uploads`, relativ
+  zum Backend-Package-cwd — konsistent mit jedem anderen relativen Pfad in diesem Projekt, z. B.
+  den Prisma-Migrations-Pfaden) mit einem generierten UUID-Dateinamen statt dem
+  Original-Dateinamen. In Produktion braucht das ein eigenes benanntes Docker-Volume
+  (`uploads:/app/backend/uploads` in `docker-compose.prod.yml`), da der Prod-Container — anders
+  als der Dev-Container — das Repo nicht bindmountet; ohne dieses Volume würden Fotos bei jedem
+  Deploy verloren gehen, genau wie `pgdata` für Postgres.
+- **Authentifizierte Serving-Route statt öffentlichem Static-Verzeichnis.** `GET
+  /progress-photos/:id/file` prüft Eigentümerschaft vor dem Streamen (404 statt 403 bei fremder
+  ID, um nicht zu verraten, dass die ID überhaupt existiert) — ein `express.static`-artiger
+  öffentlicher Pfad wäre hier falsch, weil jeder mit der URL sonst private Körperfotos sehen
+  könnte. Das DTO (`ProgressPhotoDto`) enthält deshalb auch nie den Dateinamen oder Pfad, nur
+  `id` + `takenAt`.
+- **Frontend braucht authentifizierte Blob-Fetches statt `<img src="/api/...">`.** Ein normales
+  `<img>`-Tag kann keinen `Authorization`-Header mitschicken; `ProgressPhotoImage.tsx` holt das
+  Bild stattdessen über eine neue `apiFetchBlob()`-Funktion in `client.ts` und zeigt es via
+  `URL.createObjectURL()` an, mit Revoke beim Unmount/ID-Wechsel gegen Object-URL-Leaks. Der
+  Upload selbst läuft über eine ebenfalls neue `apiUpload()`-Funktion (FormData-Body statt
+  JSON, kein `Content-Type`-Header von Hand gesetzt, damit der Browser die Multipart-Boundary
+  korrekt setzt) — beide neuen Funktionen teilen sich denselben 401-Refresh-Retry wie `apiFetch`.
+- **Erinnerungs-Kadenz aus dem neuesten Foto abgeleitet, kein eigenes Tracking-Feld.** Der
+  tägliche Scheduler-Tick (`progressPhoto.scheduler.ts`, nach dem Muster aus
+  `supplement.scheduler.ts`) vergleicht für jeden Nutzer `takenAt` des neuesten Fotos (oder
+  `User.createdAt`, falls noch keins existiert) gegen "≥ 7 Tage her". Bewusst kein
+  `lastRemindedOn`-Feld wie bei Supplements: einmal überfällig, wiederholt sich die Erinnerung
+  an jedem weiteren Tag bis zum nächsten Upload — für eine wöchentliche Kadenz reicht das, im
+  Gegensatz zur exakten Einmal-pro-Tag-Anforderung eines Supplement-Reminders zu einer festen
+  Uhrzeit.
+
 ## Claude-API-Integration (Roadmap-Phase)
 
 Für effiziente Übungsauswahl und Zielsetzung, hinter dem Flag `CLAUDE_API_ENABLED` — bleibt
@@ -418,6 +454,7 @@ Breaking-Migrationen nötig werden:
 - `DailyChallengeItem` — Tages-Challenge-Übungen + Fortschritt (siehe oben, fertig)
 - `Supplement` — Erinnerungsliste + Zeitzone + letzter Versand (siehe oben, fertig)
 - `BodyCompositionEntry` — Waagen-Messungen als Verlauf (siehe oben, fertig)
+- `ProgressPhoto` — Metadaten für auf der Platte gespeicherte Vergleichsfotos (siehe oben, fertig)
 
 ## Bekannte Stolperfallen (bereits berücksichtigt)
 

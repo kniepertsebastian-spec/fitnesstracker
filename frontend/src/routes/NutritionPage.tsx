@@ -6,6 +6,7 @@ import { WaterCard } from "../components/nutrition/WaterCard";
 import { SupplementCard } from "../components/nutrition/SupplementCard";
 import { SupplementReferenceList } from "../components/nutrition/SupplementReferenceList";
 import { BodyCompositionCard } from "../components/nutrition/BodyCompositionCard";
+import { ProgressPhotosCard } from "../components/nutrition/ProgressPhotosCard";
 import { NUTRITION_TIPS } from "../data/nutritionTips";
 
 const TABS = [
@@ -33,7 +34,15 @@ export function NutritionPage() {
 
       {tab === "rechner" && <ProfileForm />}
       {tab === "wasser" && <WaterCard />}
-      {tab === "koerper" && <BodyCompositionCard />}
+      {tab === "koerper" && (
+        <div className="flex flex-col gap-6">
+          <BodyCompositionCard />
+          <div>
+            <h2 className="mb-2 text-sm font-medium text-ink-400">Fortschritts-Fotos</h2>
+            <ProgressPhotosCard />
+          </div>
+        </div>
+      )}
       {tab === "supplements" && <SupplementCard />}
       {tab === "tipps" && (
         <div className="flex flex-col gap-4">

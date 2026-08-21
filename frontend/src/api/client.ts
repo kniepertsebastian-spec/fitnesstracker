@@ -73,3 +73,52 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   return res.json();
 }
+
+export async function apiUpload<T>(path: string, formData: FormData, skipAuthRetry = false): Promise<T> {
+  const accessToken = useAuthStore.getState().accessToken;
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    credentials: "include",
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    body: formData,
+  });
+
+  if (res.status === 401 && !skipAuthRetry) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return apiUpload<T>(path, formData, true);
+    }
+    useAuthStore.getState().clearSession();
+  }
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ message: res.statusText }));
+    throw new ApiError(res.status, data.message ?? "Request failed");
+  }
+
+  return res.json();
+}
+
+export async function apiFetchBlob(path: string, skipAuthRetry = false): Promise<Blob> {
+  const accessToken = useAuthStore.getState().accessToken;
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    credentials: "include",
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  });
+
+  if (res.status === 401 && !skipAuthRetry) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return apiFetchBlob(path, true);
+    }
+    useAuthStore.getState().clearSession();
+  }
+
+  if (!res.ok) {
+    throw new ApiError(res.status, res.statusText);
+  }
+
+  return res.blob();
+}

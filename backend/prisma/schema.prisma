@@ -57,6 +57,7 @@ model User {
   dailyChallengeItems    DailyChallengeItem[]
   supplements            Supplement[]
   bodyCompositionEntries BodyCompositionEntry[]
+  progressPhotos         ProgressPhoto[]
 }
 
 model RefreshToken {
@@ -259,4 +260,21 @@ model BodyCompositionEntry {
   createdAt        DateTime @default(now())
 
   @@index([userId, measuredAt])
+}
+
+// A private "mirror photo" for visual before/after comparison. The file itself lives on disk
+// under UPLOADS_DIR (own VPS filesystem, no cloud storage per ARCHITECTURE.md) — this row is
+// just the metadata plus the generated filename used to locate it. Never exposed directly —
+// always served through the authenticated /progress-photos/:id/file route since these are
+// private body photos, not public assets.
+model ProgressPhoto {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename  String
+  mimeType  String
+  takenAt   DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([userId, takenAt])
 }

@@ -12,3 +12,4 @@ coverage/
 caddy_data/
 caddy_config/
 pgdata/
+backend/uploads/
