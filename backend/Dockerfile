@@ -31,4 +31,9 @@ COPY --from=build /app/backend/prisma backend/prisma
 RUN pnpm install --frozen-lockfile --prod
 WORKDIR /app/backend
 EXPOSE 3000
-CMD ["sh", "-c", "pnpm prisma:deploy && node dist/server.js"]
+# The --prod install above is a fresh one (doesn't reuse the build stage's node_modules), and
+# @prisma/client's own postinstall can't auto-locate the schema in this monorepo layout, so the
+# generated client binding never lands here — regenerate it explicitly before every start,
+# alongside the existing migrate-on-boot step (schema is already correct, so this is fast and
+# fully offline: no engine binaries need downloading).
+CMD ["sh", "-c", "pnpm prisma:generate && pnpm prisma:deploy && node dist/server.js"]
