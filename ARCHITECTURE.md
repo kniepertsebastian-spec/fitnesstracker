@@ -306,13 +306,16 @@ Kalorien-/Proteinbedarf nach Mifflin-St-Jeor, `GET`/`PUT /profile`.
 Täglicher Zähler + kurzer Verlauf, als Karte auf der bestehenden `/nutrition`-Seite statt eines
 eigenen Bottom-Nav-Tabs.
 
-- **Bottom-Nav bleibt bewusst bei fünf Einträgen gedeckelt.** Jede weitere Roadmap-Phase (9-13:
-  Wasser, Supplements, Körperkomposition, Fortschritts-Fotos, …) würde sonst einen eigenen Tab
-  beanspruchen — bei einem 375px-Bildschirm und fünf Tabs ist mit `text-xs` gerade noch Luft,
-  ein sechster/siebter Tab ginge zulasten der Lesbarkeit oder würde Zoom-out erzwingen, genau das
-  Gegenteil von der beim Mobile-Layout verfolgten Linie (siehe "Bekannte Stolperfallen"). Neue,
-  thematisch verwandte Mini-Features werden stattdessen als Karte in eine bestehende, passende
-  Seite genestet — hier: wassernah zur Ernährung.
+- **Bottom-Nav blieb bewusst bei fünf Einträgen gedeckelt** (historische Entscheidung — die
+  Bottom-Nav selbst wurde später durch ein Hamburger-Menü ersetzt, siehe
+  "Navigation: Hamburger-Menü statt Bottom-Nav" weiter unten; die hier getroffene
+  Karten-statt-Tab-Strukturentscheidung gilt aber unverändert weiter). Jede weitere Roadmap-Phase
+  (9-13: Wasser, Supplements, Körperkomposition, Fortschritts-Fotos, …) hätte sonst einen eigenen
+  Tab beansprucht — bei einem 375px-Bildschirm und fünf Tabs war mit `text-xs` gerade noch Luft,
+  ein sechster/siebter Tab wäre zulasten der Lesbarkeit gegangen oder hätte Zoom-out erzwungen,
+  genau das Gegenteil von der beim Mobile-Layout verfolgten Linie (siehe "Bekannte
+  Stolperfallen"). Neue, thematisch verwandte Mini-Features wurden stattdessen als Karte in eine
+  bestehende, passende Seite genestet — hier: wassernah zur Ernährung.
 - **Tagesziel-Override lebt auf `Profile`, nicht in einer eigenen Tabelle.** Eine eigene
   `WaterSettings`-Tabelle nur für ein nullable Int hätte mehr Modell-Overhead erzeugt, als es
   wert ist; die Kehrseite ist, dass ein eigenes Wasserziel ohne bestehendes Ernährungsprofil
@@ -394,8 +397,8 @@ statische Referenzliste — beides als Karten auf `/nutrition`.
 Mit Profil-Rechner, Wasser, Supplements und Tipps/Referenz auf einer Seite gestapelt wurde
 `/nutrition` unangenehm lang zu scrollen — vier unabhängige Karten, von denen zu jedem Zeitpunkt
 meist nur eine tatsächlich interessiert. Statt einer fünften Karte oder eines weiteren
-Bottom-Nav-Tabs (der Cap bei fünf Einträgen bleibt bestehen, siehe Wasser-Tracking-Abschnitt
-oben) gibt es jetzt eine Segmented-Control (`PageTabs`, `components/layout/PageTabs.tsx`) direkt
+Bottom-Nav-Tabs (der Cap bei fünf Einträgen galt zu diesem Zeitpunkt noch, siehe
+Wasser-Tracking-Abschnitt oben) gibt es jetzt eine Segmented-Control (`PageTabs`, `components/layout/PageTabs.tsx`) direkt
 unter der Überschrift, die zwischen den (mittlerweile fünf) Bereichen umschaltet — nur ein Abschnitt ist
 gleichzeitig sichtbar.
 
@@ -461,6 +464,35 @@ Private "Spiegel-Fotos" zum Vorher/Nachher-Vergleich, als eigener Abschnitt im "
   an jedem weiteren Tag bis zum nächsten Upload — für eine wöchentliche Kadenz reicht das, im
   Gegensatz zur exakten Einmal-pro-Tag-Anforderung eines Supplement-Reminders zu einer festen
   Uhrzeit.
+
+## Navigation: Hamburger-Menü statt Bottom-Nav (fertig)
+
+Die feste Bottom-Nav-Leiste (fünf Tabs, siehe historische Begründung im
+Wasser-Tracking-Abschnitt oben) wurde durch ein Hamburger-Menü oben links ersetzt, auf
+Nutzerwunsch ("warum sind die Kapitel unten? setze diese nach oben oder in ein
+Drei-Strich-Dropdown").
+
+- **Drei-Strich-Dropdown statt fester Tab-Leiste oben** — dem Nutzer explizit als Alternative
+  zur Wahl gestellt (siehe Frage/Antwort in der Session); ein Dropdown hält den Header schlank
+  und gibt der eigentlichen Seite mehr vertikalen Platz, eine feste horizontale Tab-Leiste hätte
+  auf 375px-Breite mit fünf Labels erneut denselben Platzdruck erzeugt, der ursprünglich zum
+  Fünf-Tabs-Cap der alten Bottom-Nav geführt hatte.
+- **Der historische "Bottom-Nav bleibt bei fünf Einträgen gedeckelt"-Grund (siehe
+  Wasser-Tracking-Abschnitt) gilt mechanisch nicht mehr** — ein Dropdown-Menü hat kein
+  Breiten-Problem bei mehr Einträgen. Die bereits getroffenen Entscheidungen, Wasser/Supplements/
+  Körperkomposition/Fortschritts-Fotos als Karten bzw. `/nutrition`-Tabs statt eigener
+  Top-Level-Seiten zu bauen, wurden trotzdem **nicht** rückgängig gemacht: die inhaltliche
+  Bündelung ("alles rund um Ernährung an einem Ort") ist weiterhin die bessere Informations­
+  architektur, unabhängig vom Platzargument, das sie ursprünglich mit ausgelöst hat.
+  `PageTabs` innerhalb von `/nutrition` bleibt unverändert bestehen.
+- **Menü schließt automatisch bei Navigation, Klick außerhalb und Escape** — kein Zustand, den
+  man sonst versehentlich offen stehen lassen könnte; State lebt lokal in `AppShell.tsx`
+  (`useState` + ein `mousedown`-Listener auf `document`), kein globaler Store nötig für ein rein
+  UI-lokales offen/geschlossen.
+- **Der aktive Menüpunkt wird weiterhin hervorgehoben** (`NavLink`s `isActive`, gleiche
+  Violett-Farbe wie vorher in der Bottom-Nav) und die Trainingsplan-Phase (z. B. "Aufbau") steht
+  weiterhin neben "Plan" — reine Verschiebung der bestehenden Elemente in ein neues Layout, keine
+  Funktionsänderung.
 
 ## Claude-API-Integration (Roadmap-Phase)
 

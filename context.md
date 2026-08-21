@@ -83,6 +83,13 @@ Begründung der Stack-Wahl siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md), für of
   BODYWEIGHT-Ziel zeigt sofort den aktuellen Wert).
 - **Design (Violett-Akzent + Space Grotesk/Manrope + eigene `ink`-Neutralpalette)**: siehe
   `ARCHITECTURE.md` — committed, siehe unten.
+- **Navigation umgebaut**: feste Bottom-Nav-Leiste (fünf Tabs) ersetzt durch ein
+  Hamburger-Menü oben links (`AppShell.tsx`) — auf Nutzerwunsch, schließt automatisch bei
+  Navigation/Klick außerhalb/Escape, aktiver Menüpunkt weiterhin violett hervorgehoben,
+  Trainingsplan-Phase weiterhin neben "Plan" sichtbar. Kein neues Datenmodell, reines
+  Frontend-Layout. End-to-end per Playwright getestet: Öffnen/Schließen, Navigation aus dem Menü
+  heraus, Auto-Close bei Routenwechsel und bei Klick außerhalb, kein horizontaler Overflow bei
+  375px.
 - **Automatische Ziel-Vorschläge**: neue "Vorschläge"-Sektion oben auf `/goals` — bis zu 5
   vorgeschlagene WEIGHT-Ziele für Übungen mit ≥ 3 geloggten Sätzen und ohne bereits offenes
   WEIGHT-Ziel dafür, Zielwert = Bestwert + 5 % (min. +1 kg, auf 0,5 kg gerundet), Zieldatum aus
