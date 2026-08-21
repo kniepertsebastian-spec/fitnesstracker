@@ -1,5 +1,10 @@
 FROM node:22-alpine AS base
 WORKDIR /app
+# Prisma's query/schema engine binaries dynamically link against OpenSSL, which the alpine
+# base image doesn't ship by default (Node bundles its own, statically linked, which doesn't
+# help other binaries) — without this, prisma commands fail at runtime with an engine load
+# error, not a helpful message (see https://pris.ly/d/openssl for Prisma's own Alpine note).
+RUN apk add --no-cache openssl
 RUN corepack enable
 
 FROM base AS deps
