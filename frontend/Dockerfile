@@ -18,4 +18,8 @@ RUN pnpm --filter @fitnesstracker/shared build
 RUN pnpm --filter frontend build
 
 FROM scratch AS export
-COPY --from=build /app/frontend/dist /dist
+# Copy to the export stage's root, not /dist — `docker build --output frontend/dist .` dumps
+# this stage's root filesystem into that host directory, so copying to /dist here would nest
+# the actual build output one level too deep (frontend/dist/dist/index.html), which is exactly
+# where Caddy's volume mount (./frontend/dist:/srv/frontend) would never find it.
+COPY --from=build /app/frontend/dist /
