@@ -36,10 +36,8 @@ function playDefaultBeep() {
   });
 }
 
-// Set to e.g. "/sounds/timer-end.mp3" once a custom sound file is dropped into
-// frontend/public/sounds/ — falls back to the synthesized beep until then, and also if the
-// file fails to load/play for any reason.
-const CUSTOM_SOUND_URL: string | null = null;
+// Falls back to the synthesized beep if this file ever fails to load/play.
+const CUSTOM_SOUND_URL: string | null = "/sounds/timer-end.mp3";
 
 export function playTimerEndSound() {
   if (CUSTOM_SOUND_URL) {
