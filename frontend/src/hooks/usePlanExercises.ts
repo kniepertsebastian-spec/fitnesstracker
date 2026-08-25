@@ -9,10 +9,11 @@ import {
 
 const planExercisesKey = (phase: TrainingPhase) => ["plan-exercises", phase];
 
-export function usePlanExercises(phase: TrainingPhase) {
+export function usePlanExercises(phase: TrainingPhase, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: planExercisesKey(phase),
     queryFn: () => listPlanExercisesRequest(phase).then((r) => r.items),
+    enabled: options?.enabled ?? true,
   });
 }
 

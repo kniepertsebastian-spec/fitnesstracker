@@ -1,13 +1,25 @@
 import type {
   CreatePlanExerciseInput,
   PlanExerciseDto,
+  PlanExportFormat,
+  PlanImportResult,
   TrainingPhase,
   UpdatePlanExerciseInput,
 } from "@fitnesstracker/shared";
-import { apiFetch } from "./client";
+import { apiFetch, apiFetchBlob, apiUpload } from "./client";
 
 export function listPlanExercisesRequest(phase: TrainingPhase) {
   return apiFetch<{ items: PlanExerciseDto[] }>(`/plan-exercises?phase=${phase}`);
+}
+
+export function exportPlanExercisesRequest(format: PlanExportFormat) {
+  return apiFetchBlob(`/plan-exercises/export?format=${format}`);
+}
+
+export function importPlanExercisesRequest(file: File, format: PlanExportFormat) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiUpload<PlanImportResult>(`/plan-exercises/import?format=${format}`, formData);
 }
 
 export function createPlanExerciseRequest(input: CreatePlanExerciseInput) {

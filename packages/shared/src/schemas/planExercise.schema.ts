@@ -28,3 +28,16 @@ export const updatePlanExerciseSchema = z.object({
   order: z.number().int().optional(),
 });
 export type UpdatePlanExerciseInput = z.infer<typeof updatePlanExerciseSchema>;
+
+// Portable plan formats for export/import — CSV/JSON/XML are the three most common
+// spreadsheet/interchange formats, hand-rolled without a parser dependency since the row shape
+// is small and fixed (see backend planExport.format.ts).
+export const planExportFormatSchema = z.enum(["csv", "json", "xml"]);
+export type PlanExportFormat = z.infer<typeof planExportFormatSchema>;
+
+export const planImportResultSchema = z.object({
+  created: z.number().int(),
+  updated: z.number().int(),
+  errors: z.array(z.string()),
+});
+export type PlanImportResult = z.infer<typeof planImportResultSchema>;
