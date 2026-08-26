@@ -4,6 +4,7 @@ import { AppShell } from "../components/layout/AppShell";
 import { WorkoutLogTable } from "../components/workoutLog/WorkoutLogTable";
 import { WorkoutLogFormDialog } from "../components/workoutLog/WorkoutLogFormDialog";
 import { DailyChallengeCard } from "../components/workoutLog/DailyChallengeCard";
+import { CurrentPlanCard } from "../components/workoutLog/CurrentPlanCard";
 import { useWorkoutLogs } from "../hooks/useWorkoutLogs";
 
 export function WorkoutLogPage() {
@@ -33,8 +34,9 @@ export function WorkoutLogPage() {
         </button>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col gap-4">
         <DailyChallengeCard />
+        <CurrentPlanCard />
       </div>
 
       {isLoading ? (

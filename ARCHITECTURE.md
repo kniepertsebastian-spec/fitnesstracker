@@ -467,6 +467,49 @@ Private "Spiegel-Fotos" zum Vorher/Nachher-Vergleich, als eigener Abschnitt im "
   Gegensatz zur exakten Einmal-pro-Tag-Anforderung eines Supplement-Reminders zu einer festen
   Uhrzeit.
 
+## Plan auf der Startseite & Plan-Export/Import (fertig)
+
+- **`CurrentPlanCard` wiederverwendet bestehende Hooks statt neuer Endpunkte.** Die Karte auf `/`
+  lädt einfach `useTrainingPlan()` (für `currentPhase`) und `usePlanExercises(currentPhase)` (für
+  die zugewiesenen Übungen) — dieselben Hooks, die auch `/plan` benutzt. `usePlanExercises` bekam
+  dafür einen optionalen `{ enabled }`-Parameter, weil die Phase erst nach dem Laden des Plans
+  bekannt ist und die Query bis dahin nicht feuern soll (React-Hooks-Regeln verbieten einen
+  bedingten Hook-Aufruf). Rendert `null`, solange kein Plan oder keine Übungen vorhanden sind —
+  gleiches Muster wie `DailyChallengeCard`.
+- **Export liefert immer den ganzen Plan (alle drei Phasen), nicht nur die gerade offene.** "Meinen
+  Plan exportieren" heißt die komplette Rotation sichern, nicht zufällig nur die Phase, die im
+  UI-Tab gerade ausgewählt ist.
+- **Kein CSV-/XML-Parser als Dependency.** Das Zeilenformat ist klein und fest (`phase`,
+  `exerciseName`, `targetSets`, `targetReps`, `order`) — ein waschechter XML-Parser (mit DTD-/
+  Entity-Handling) wäre für fünf flache Tags sowohl unnötiger Umfang als auch unnötige
+  XXE-Angriffsfläche. Stattdessen liest `planExport.format.ts` XML per Tag-Extraktion
+  (`<entry>…</entry>`-Blöcke, dann simple Regex pro Feld) und CSV per eigenem
+  Zeichen-für-Zeichen-Tokenizer (nicht zeilenbasiertes Split, damit ein Feld mit eingebettetem
+  Newline die Zeilenzuordnung nicht durcheinanderbringt) — beide mit Escaping/Unescaping für
+  Sonderzeichen (`&`, `<`, `>`, `"`, Komma, Newline), end-to-end gegen Übungsnamen mit Kommas,
+  Anführungszeichen, `&` und Umlauten getestet.
+- **Import matched Übungen über den Namen, nicht über `exerciseId`.** Eine UUID aus einem Export
+  ist beim erneuten Import (auf derselben oder einer anderen Instanz) nicht zuverlässig gültig;
+  der Name (zuerst `nameDe`, sonst `name`, ohne Groß-/Kleinschreibung) ist die einzige stabile
+  Referenz auf den bestehenden, kuratierten Übungskatalog. Bewusst **kein** automatisches Anlegen
+  unbekannter Übungen beim Import — der Katalog soll kuratiert bleiben, ein Tippfehler im Namen
+  soll nicht klammheimlich eine neue Übung erzeugen. Stattdessen landet jede nicht gefundene Zeile
+  als Klartext-Fehlermeldung in der Import-Antwort (`{ created, updated, errors }`), der Rest der
+  Datei wird trotzdem verarbeitet — ein Format- oder Tippfehler in einer Zeile soll nicht den
+  ganzen Import verwerfen.
+- **Bestehende Phase/Übung-Kombinationen werden nur in `targetSets`/`targetReps` aktualisiert, nie
+  in `order`** — sonst würde ein erneuter Import (z. B. eines älteren Backups) die aktuelle
+  Reihenfolge der Übungen durcheinanderwürfeln, obwohl der Nutzer nur Ziel-Sätze/-Wiederholungen
+  ändern wollte. Neue Einträge übernehmen dagegen die relative Reihenfolge aus der `order`-Spalte
+  der Importdatei (Sortierung vor dem Einfügen) und werden ans Ende der jeweiligen Phase
+  angehängt — gleiche Anhänge-Logik wie beim manuellen Anlegen über `createPlanExercise`.
+- **Export/Import teilen sich einen `format`-Query-Parameter statt getrennter Routen pro Format**
+  (`GET /plan-exercises/export?format=…`, `POST /plan-exercises/import?format=…`) — ein Format ist
+  eine Variante derselben Operation, keine eigene Ressource. Import läuft über
+  `@fastify/multipart` (bereits global registriert für die Fortschritts-Fotos aus Phase 12),
+  Download im Frontend über denselben `apiFetchBlob`-Mechanismus wie beim Foto-Abruf plus einem
+  clientseitig erzeugten Object-URL-Link zum Auslösen des Browser-Downloads.
+
 ## Navigation: Hamburger-Menü statt Bottom-Nav (fertig)
 
 Die feste Bottom-Nav-Leiste (fünf Tabs, siehe historische Begründung im

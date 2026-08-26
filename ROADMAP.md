@@ -235,3 +235,22 @@
   keine Garantie, siehe `ARCHITECTURE.md`
 - UI als Karte auf der bestehenden `/`-Seite (Training-Log), kein eigener Nav-Tab — gleiche
   Begründung wie beim Wasser-Tracking aus Phase 9
+
+## Phase 15 — Plan auf der Startseite & Plan-Export/Import ✅
+
+- `/`-Seite (Training-Log) zeigt jetzt eine Karte mit den Übungen der aktuell aktiven
+  Trainingsplan-Phase direkt unter der Tages-Challenge, mit Link zurück zur `/plan`-Seite — der
+  Plan war bisher nur auf `/plan` sichtbar, obwohl die Startseite die Seite ist, die täglich
+  zuerst geöffnet wird
+- `GET /plan-exercises/export` (Query-Param `format=csv|json|xml`) exportiert den kompletten Plan
+  (alle drei Phasen) als Datei; `POST /plan-exercises/import` (gleicher `format`-Parameter,
+  Datei-Upload) liest dieselben drei Formate wieder ein — Import unterstützt genau die Formate,
+  die auch exportiert werden können, wie gefordert
+- Import matched Übungen anhand ihres Namens (deutsch oder englisch, ohne Groß-/Kleinschreibung)
+  gegen den bestehenden Übungskatalog, statt eine `exerciseId` zu erwarten — die ist zwischen
+  einem Export und einem späteren Import (oder einer anderen Instanz) nicht stabil. Unbekannte
+  Namen werden übersprungen und als Fehlermeldung zurückgegeben, statt den ganzen Import
+  abzubrechen; bereits vorhandene Phase/Übung-Kombinationen werden aktualisiert (Sätze/
+  Wiederholungen), neue angehängt
+- Kein CSV/XML-Parser als Abhängigkeit — bei drei festen, flachen Feldern lohnt sich das nicht;
+  siehe `ARCHITECTURE.md` für die Details der Eigenimplementierung
