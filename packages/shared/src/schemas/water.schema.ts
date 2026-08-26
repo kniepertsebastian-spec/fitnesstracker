@@ -20,7 +20,7 @@ export type WaterDayDto = z.infer<typeof waterDayDtoSchema>;
 export const waterStatusDtoSchema = z.object({
   today: waterDayDtoSchema,
   targetMl: z.number().int(),
-  // True targetMl came from Profile.waterTargetMlOverride rather than the weight-derived
+  // True targetMl came from User.waterTargetMlOverride rather than the weight-derived
   // suggestion or the no-profile fallback — lets the UI say so without guessing.
   isCustomTarget: z.boolean(),
   history: z.array(waterDayDtoSchema),

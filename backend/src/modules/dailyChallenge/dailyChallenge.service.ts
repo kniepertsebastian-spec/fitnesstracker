@@ -22,6 +22,18 @@ function randomTarget(): number {
   return POSSIBLE_TARGETS[Math.floor(Math.random() * POSSIBLE_TARGETS.length)];
 }
 
+// `sort(() => Math.random() - 0.5)` is not a uniform shuffle (V8's sort doesn't call the
+// comparator the right number of times for every permutation to be equally likely) — Fisher-Yates
+// is the standard correct algorithm.
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 async function pickRandomExerciseIds(prisma: PrismaClient, count: number): Promise<string[]> {
   const candidates = await prisma.exercise.findMany({
     where: { equipment: "body only", category: { in: ["strength", "plyometrics"] } },
@@ -32,8 +44,9 @@ async function pickRandomExerciseIds(prisma: PrismaClient, count: number): Promi
   );
   const pool = filtered.length >= count ? filtered : candidates;
 
-  const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count).map((ex) => ex.id);
+  return shuffle(pool)
+    .slice(0, count)
+    .map((ex) => ex.id);
 }
 
 const withExercise = { include: { exercise: true } } as const;

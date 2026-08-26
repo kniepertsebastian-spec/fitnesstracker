@@ -63,7 +63,10 @@ export async function checkAndSendReminders(prisma: PrismaClient): Promise<{ sen
       // Invalid/unknown timezone string — skip this one rather than crashing the whole tick.
       continue;
     }
-    if (local.time !== supplement.reminderTime) continue;
+    // `>=` rather than an exact match: if the event loop stalls for a few seconds around the
+    // target minute (e.g. 07:59:58 -> 08:00:02 on the next tick), an exact `===` would miss the
+    // reminder for the whole day. `lastRemindedOn` still guarantees at most one send per local day.
+    if (local.time < supplement.reminderTime) continue;
     if (supplement.lastRemindedOn === local.day) continue;
 
     await sendNotificationToUser(prisma, supplement.userId, {

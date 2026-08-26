@@ -510,6 +510,60 @@ Private "Spiegel-Fotos" zum Vorher/Nachher-Vergleich, als eigener Abschnitt im "
   Download im Frontend über denselben `apiFetchBlob`-Mechanismus wie beim Foto-Abruf plus einem
   clientseitig erzeugten Object-URL-Link zum Auslösen des Browser-Downloads.
 
+## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
+
+Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen
+Features, sondern Härtung bestehender Mechanismen.
+
+- **Supplement-Erinnerung: `>=` statt `===` gegen die lokale Uhrzeit.** Ein exakter
+  String-Vergleich (`local.time === reminderTime`) verpasst die Erinnerung komplett, sobald der
+  minütliche Tick durch Event-Loop-Last mal eine Minute überspringt (z. B. `07:59` → `08:01`
+  ohne dazwischenliegenden `08:00`-Tick). `local.time >= reminderTime` fängt das ab;
+  `lastRemindedOn !== local.day` (unverändert aus Phase 10) bleibt die alleinige Garantie für
+  "höchstens einmal pro Tag" — ein nachträglicher Tick am selben Tag sendet nicht erneut, egal
+  wie oft `>=` danach noch zutrifft.
+- **Postgres-Advisory-Locks statt Redis für die drei Scheduler.** Alle drei
+  `setInterval`-Scheduler (`trainingPlan`, `supplement`, `progressPhoto`) liefen bisher
+  unbedingt — bei mehr als einer Backend-Instanz (mehrere Container, Node-Cluster) hätte jede
+  Instanz unabhängig denselben Tick ausgeführt und doppelte Push-Benachrichtigungen verschickt.
+  Die Roadmap nannte zwei Optionen (Redis-Locks oder ein dedizierter Worker-Container) — beide
+  hätten neue Infrastruktur bedeutet, die dem Rest der App widerspricht (siehe "Warum dieser
+  Stack": bewusst keine externen Managed-Dienste, eine Person pflegt das Projekt). Postgres ist
+  bereits die einzige Ressource, die alle Instanzen ohnehin teilen, also übernimmt
+  `pg_try_advisory_lock`/`pg_advisory_unlock` (`backend/src/lib/schedulerLock.ts`) die Rolle des
+  verteilten Mutex — nicht-blockierend: eine Instanz, die den Lock nicht bekommt, überspringt
+  diesen Tick komplett statt zu warten, der nächste Tick (60s-6h später, je nach Scheduler)
+  versucht es erneut. Jeder Scheduler hat einen eigenen festen `bigint`-Lock-Key, damit sich die
+  drei Scheduler nicht gegenseitig blockieren. End-to-end mit zwei parallelen
+  `PrismaClient`-Verbindungen verifiziert (simuliert zwei Backend-Instanzen): der zweite,
+  überlappende Aufruf wurde übersprungen, ein dritter nach Freigabe des Locks lief normal.
+- **`@fastify/rate-limit`, `global: false`, nur auf `/auth/login` und `/auth/register`.** Vorher
+  gab es keinerlei Brute-Force-Schutz auf API-Ebene für die beiden credential-relevanten Routen.
+  `global: false` beim Registrieren heißt: jede andere Route bleibt komplett unlimitiert, nur
+  Routen mit explizitem `config: { rateLimit }` sind betroffen — bewusst opt-in statt einer
+  globalen Grenze, die z. B. das Offline-Sync-Retry-Verhalten aus Phase 4 hätte treffen können.
+  5 Requests/Minute (In-Memory-Store, ausreichend für eine Single-Instance-App wie hier) ist
+  großzügig genug für einen legitimen Login-Versuch mit Tippfehler, aber eng genug, um
+  automatisiertes Durchprobieren spürbar zu bremsen. End-to-end getestet: 6. Anfrage innerhalb
+  einer Minute liefert `429`, `/api/health` bleibt bei denselben acht Anfragen unlimitiert.
+- **Fisher-Yates (Knuth) statt `sort(() => Math.random() - 0.5)`** für die
+  Tages-Challenge-Übungsauswahl aus Phase 14 — Letzteres ist ein bekanntes Anti-Pattern (V8s
+  Sort-Implementierung ruft den Komparator nicht für jede Permutation gleich oft auf, das Ergebnis
+  ist keine Gleichverteilung). Die neue `shuffle()`-Funktion iteriert einmal rückwärts und
+  vertauscht jedes Element mit einem zufälligen vorherigen — über 200.000 simulierte Läufe zeigt
+  jede Position eine Trefferquote innerhalb von ±1 % des Erwartungswerts.
+- **`waterTargetMlOverride` von `Profile` auf `User` verschoben.** Vorher warf
+  `setTargetOverride` einen `409 Conflict`, wenn noch kein `Profile` existierte — ein eigenes
+  Wasserziel setzen zu wollen hat aber inhaltlich nichts mit Gewicht/Größe/Alter/Geschlecht zu
+  tun, die für ein vollständiges `Profile` Pflichtfelder sind (siehe Phase 8). `User` existiert
+  dagegen immer für einen eingeloggten Nutzer, also lebt das Override-Feld jetzt dort (Migration
+  `20260826190000_move_water_target_to_user`, bestehende Werte per `UPDATE ... FROM` übernommen,
+  bevor die alte Spalte gelöscht wird). `setTargetOverride` braucht dadurch keinen
+  Existenz-Check und keinen Fehlerpfad mehr — der `try/catch` in `water.routes.ts` fiel
+  ersatzlos weg. `getTargetMl` liest jetzt `User` (Override) und `Profile` (gewichtsbasierter
+  Vorschlag) parallel per `Promise.all`, statt wie vorher nur `Profile`. End-to-end verifiziert:
+  `PUT /water/target` liefert `200`/`isCustomTarget: true`, obwohl `GET /profile` `null` liefert.
+
 ## Navigation: Hamburger-Menü statt Bottom-Nav (fertig)
 
 Die feste Bottom-Nav-Leiste (fünf Tabs, siehe historische Begründung im
