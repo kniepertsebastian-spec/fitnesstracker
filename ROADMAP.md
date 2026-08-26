@@ -254,3 +254,27 @@
   Wiederholungen), neue angehängt
 - Kein CSV/XML-Parser als Abhängigkeit — bei drei festen, flachen Feldern lohnt sich das nicht;
   siehe `ARCHITECTURE.md` für die Details der Eigenimplementierung
+
+<!-- ROADMAP_FITNESSTRACKER.md -->
+# Roadmap & Refactoring: Fitnesstracker
+
+### 16. Robustheit & Scheduler
+- [ ] **Timing-Drift bei Supplement-Erinnerungen abfangen**
+  - **Problem:** In `supplement.service.ts` (`checkAndSendReminders`) prüft die Bedingung exakt auf `local.time === supplement.reminderTime`[cite: 4]. Blockiert der Event-Loop für wenige Sekunden und der Tick springt von z. B. `07:59:58` auf `08:00:02`, wird die Benachrichtigung für diesen Tag komplett verpasst.
+  - **Lösung:** Prüfung auf `local.time >= supplement.reminderTime` umstellen und über `supplement.lastRemindedOn !== local.day` sicherstellen, dass die Nachricht pro Tag genau einmal feuert.
+- [ ] **Distributed Locks für In-Memory Scheduler**
+  - **Problem:** Die Scheduler (`trainingPlan`, `supplement`, `progressPhoto`) laufen als einfache `setInterval`-Timer im Fastify-Prozess[cite: 4]. Bei mehreren Containern oder Node-Cluster-Instanzen würden Push-Nachrichten mehrfach an Nutzer versendet.
+  - **Lösung:** Verteilte Locks via Redis einbauen oder die Scheduler-Logik in einen dedizierten Worker-Container auslagern.
+
+### 17. Security & APIs
+- [ ] **Rate-Limiting für sensible Auth-Routen**
+  - **Problem:** Auf `/api/auth/login` und `/api/auth/register` existiert bisher kein Brute-Force-Schutz auf Netzwerk-/API-Ebene[cite: 4].
+  - **Lösung:** `@fastify/rate-limit` registrieren und auf Auth-Routen auf max. 5 Requests pro Minute limitieren.
+
+### 18. Logik & Benutzerfreundlichkeit
+- [ ] **Mathematisch korrekte Gleichverteilung bei Daily Challenges**
+  - **Problem:** In `dailyChallenge.service.ts` wird `sort(() => Math.random() - 0.5)` für die Übungsauswahl genutzt[cite: 4]. Das führt in der V8-Engine zu einer statistisch ungleichmäßigen Verteilung.
+  - **Lösung:** Einen standardkonformen Fisher-Yates (Knuth) Shuffle implementieren.
+- [ ] **Entkopplung des Wasserziels vom Ernährungsprofil**
+  - **Problem:** In `water.service.ts` (`setTargetOverride`) wirft das Backend einen `ConflictError`, wenn der User noch kein `Profile` mit Körpermaßen angelegt hat[cite: 4].
+  - **Lösung:** Ein benutzerdefiniertes Wasserziel unabhängig vom vollständigen Ernährungsprofil speichern oder einen Default-Fallback erlauben.
