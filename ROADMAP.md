@@ -259,22 +259,27 @@
 # Roadmap & Refactoring: Fitnesstracker
 
 ### 16. Robustheit & Scheduler
-- [ ] **Timing-Drift bei Supplement-Erinnerungen abfangen**
+- [x] **Timing-Drift bei Supplement-Erinnerungen abfangen**
   - **Problem:** In `supplement.service.ts` (`checkAndSendReminders`) prüft die Bedingung exakt auf `local.time === supplement.reminderTime`[cite: 4]. Blockiert der Event-Loop für wenige Sekunden und der Tick springt von z. B. `07:59:58` auf `08:00:02`, wird die Benachrichtigung für diesen Tag komplett verpasst.
   - **Lösung:** Prüfung auf `local.time >= supplement.reminderTime` umstellen und über `supplement.lastRemindedOn !== local.day` sicherstellen, dass die Nachricht pro Tag genau einmal feuert.
-- [ ] **Distributed Locks für In-Memory Scheduler**
+  - **Umsetzung:** Wie beschrieben umgestellt; end-to-end mit einer absichtlich in die Vergangenheit gesetzten `reminderTime` verifiziert (`sent: 1`, `lastRemindedOn` gesetzt, zweiter Lauf `sent: 0`, kein Doppel-Versand).
+- [x] **Distributed Locks für In-Memory Scheduler**
   - **Problem:** Die Scheduler (`trainingPlan`, `supplement`, `progressPhoto`) laufen als einfache `setInterval`-Timer im Fastify-Prozess[cite: 4]. Bei mehreren Containern oder Node-Cluster-Instanzen würden Push-Nachrichten mehrfach an Nutzer versendet.
   - **Lösung:** Verteilte Locks via Redis einbauen oder die Scheduler-Logik in einen dedizierten Worker-Container auslagern.
+  - **Umsetzung:** Postgres-Advisory-Locks (`pg_try_advisory_lock`/`pg_advisory_unlock`, `backend/src/lib/schedulerLock.ts`) statt Redis — Postgres ist ohnehin die einzige zwischen allen Backend-Instanzen geteilte Ressource, kein zusätzlicher Dienst nötig. Jeder Scheduler hat einen eigenen, festen Lock-Key; ein Tick, der den Lock nicht bekommt, überspringt diesen Durchlauf non-blocking statt zu warten. End-to-end mit zwei parallelen `PrismaClient`-Instanzen verifiziert: der zweite, überlappende Aufruf wurde übersprungen, ein dritter nach Freigabe lief wieder normal.
 
 ### 17. Security & APIs
-- [ ] **Rate-Limiting für sensible Auth-Routen**
+- [x] **Rate-Limiting für sensible Auth-Routen**
   - **Problem:** Auf `/api/auth/login` und `/api/auth/register` existiert bisher kein Brute-Force-Schutz auf Netzwerk-/API-Ebene[cite: 4].
   - **Lösung:** `@fastify/rate-limit` registrieren und auf Auth-Routen auf max. 5 Requests pro Minute limitieren.
+  - **Umsetzung:** Wie beschrieben, `global: false` (nur `/auth/login` und `/auth/register` betroffen, per `config: { rateLimit }` auf der Route). End-to-end getestet: 6. Anfrage innerhalb einer Minute liefert `429`, andere Routen (`/health`) bleiben unlimitiert.
 
 ### 18. Logik & Benutzerfreundlichkeit
-- [ ] **Mathematisch korrekte Gleichverteilung bei Daily Challenges**
+- [x] **Mathematisch korrekte Gleichverteilung bei Daily Challenges**
   - **Problem:** In `dailyChallenge.service.ts` wird `sort(() => Math.random() - 0.5)` für die Übungsauswahl genutzt[cite: 4]. Das führt in der V8-Engine zu einer statistisch ungleichmäßigen Verteilung.
   - **Lösung:** Einen standardkonformen Fisher-Yates (Knuth) Shuffle implementieren.
-- [ ] **Entkopplung des Wasserziels vom Ernährungsprofil**
+  - **Umsetzung:** Wie beschrieben; über 200.000 Testläufe zeigt jede Position eine annähernd gleichverteilte Trefferquote (± 1 %), statt der bekannten Verzerrung von `sort(() => Math.random() - 0.5)`.
+- [x] **Entkopplung des Wasserziels vom Ernährungsprofil**
   - **Problem:** In `water.service.ts` (`setTargetOverride`) wirft das Backend einen `ConflictError`, wenn der User noch kein `Profile` mit Körpermaßen angelegt hat[cite: 4].
   - **Lösung:** Ein benutzerdefiniertes Wasserziel unabhängig vom vollständigen Ernährungsprofil speichern oder einen Default-Fallback erlauben.
+  - **Umsetzung:** `waterTargetMlOverride` von `Profile` auf `User` verschoben (Migration `20260826190000_move_water_target_to_user`, bestehende Werte übernommen) — `User` existiert immer für einen eingeloggten Nutzer, ein eigenes Wasserziel braucht damit kein Ernährungsprofil mit Gewicht/Größe/Alter/Geschlecht mehr. End-to-end verifiziert: `PUT /water/target` liefert `200`/`isCustomTarget: true` ganz ohne vorhandenes `Profile`.

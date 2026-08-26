@@ -1,5 +1,4 @@
 import type { PrismaClient } from "@prisma/client";
-import { ConflictError } from "../../errors/httpErrors.js";
 
 // A commonly cited general guideline (35ml per kg bodyweight/day) — used only when the user
 // hasn't set an explicit override, and only as a starting suggestion, not a medical claim.
@@ -17,9 +16,12 @@ export interface TargetInfo {
 }
 
 export async function getTargetMl(prisma: PrismaClient, userId: string): Promise<TargetInfo> {
-  const profile = await prisma.profile.findUnique({ where: { userId } });
-  if (profile?.waterTargetMlOverride) {
-    return { targetMl: profile.waterTargetMlOverride, isCustomTarget: true };
+  const [user, profile] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId } }),
+    prisma.profile.findUnique({ where: { userId } }),
+  ]);
+  if (user?.waterTargetMlOverride) {
+    return { targetMl: user.waterTargetMlOverride, isCustomTarget: true };
   }
   if (profile) {
     return { targetMl: Math.round(Number(profile.weightKg) * ML_PER_KG_SUGGESTION), isCustomTarget: false };
@@ -27,15 +29,11 @@ export async function getTargetMl(prisma: PrismaClient, userId: string): Promise
   return { targetMl: DEFAULT_TARGET_ML, isCustomTarget: false };
 }
 
-// A custom target is stored on Profile, so it requires one to already exist — creating a bare
-// Profile row just to hold this one field would mean fabricating the required nutrition fields
-// (weight/height/age/gender) with meaningless placeholder values.
+// Stored on `User` (which always exists once authenticated), not `Profile` — a custom water
+// target shouldn't require first filling in a full nutrition profile (weight/height/age/gender)
+// that has nothing to do with wanting a specific daily water goal.
 export async function setTargetOverride(prisma: PrismaClient, userId: string, targetMl: number | null) {
-  const profile = await prisma.profile.findUnique({ where: { userId } });
-  if (!profile) {
-    throw new ConflictError("A nutrition profile is required before setting a custom water target");
-  }
-  await prisma.profile.update({ where: { userId }, data: { waterTargetMlOverride: targetMl } });
+  await prisma.user.update({ where: { id: userId }, data: { waterTargetMlOverride: targetMl } });
 }
 
 // Clamped at 0 rather than allowing a negative running total — an over-eager "undo" tap

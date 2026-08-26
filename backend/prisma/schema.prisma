@@ -44,6 +44,10 @@ model User {
   email        String   @unique
   passwordHash String
   displayName  String?
+  // Overrides the weight-derived water target (35ml/kg) from Phase 9. Lives on `User`, not
+  // `Profile`, so a custom water target can be set without first filling in a full nutrition
+  // profile (weight/height/age/gender) — see ROADMAP.md Phase 18 / ARCHITECTURE.md.
+  waterTargetMlOverride Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -216,9 +220,6 @@ model Profile {
   gender        Gender
   activityLevel ActivityLevel @default(MODERATE)
   goal          NutritionGoal @default(MAINTAIN)
-  // Overrides the weight-derived water target (35ml/kg) from Phase 9 — lives here rather than
-  // its own table since it's just one extra nullable setting, not a cluster of related fields.
-  waterTargetMlOverride Int?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }

@@ -1,5 +1,6 @@
 import Fastify, { type FastifyError } from "fastify";
 import multipart from "@fastify/multipart";
+import rateLimit from "@fastify/rate-limit";
 import { ZodError } from "zod";
 import { env } from "./config/env.js";
 import prismaPlugin from "./plugins/prisma.plugin.js";
@@ -37,6 +38,11 @@ export function buildApp() {
   app.register(jwtPlugin);
   // 10MB per file — plenty for a phone photo, small enough to keep disk usage sane on the VPS.
   app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
+  // `global: false` — only routes that opt in via `config: { rateLimit }` (login/register) are
+  // limited; every other route is unaffected. In-memory store is fine for a single backend
+  // instance; if that ever changes, this needs a shared store (e.g. Redis), same as the
+  // scheduler locks in lib/schedulerLock.ts.
+  app.register(rateLimit, { global: false });
   app.register(authHooks);
   app.register(trainingPlanScheduler);
   app.register(supplementScheduler);
