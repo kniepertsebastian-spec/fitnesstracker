@@ -282,4 +282,47 @@
 - [x] **Entkopplung des Wasserziels vom Ernährungsprofil**
   - **Problem:** In `water.service.ts` (`setTargetOverride`) wirft das Backend einen `ConflictError`, wenn der User noch kein `Profile` mit Körpermaßen angelegt hat[cite: 4].
   - **Lösung:** Ein benutzerdefiniertes Wasserziel unabhängig vom vollständigen Ernährungsprofil speichern oder einen Default-Fallback erlauben.
-  - **Umsetzung:** `waterTargetMlOverride` von `Profile` auf `User` verschoben (Migration `20260826190000_move_water_target_to_user`, bestehende Werte übernommen) — `User` existiert immer für einen eingeloggten Nutzer, ein eigenes Wasserziel braucht damit kein Ernährungsprofil mit Gewicht/Größe/Alter/Geschlecht mehr. End-to-end verifiziert: `PUT /water/target` liefert `200`/`isCustomTarget: true` ganz ohne vorhandenes `Profile`.
+  - **Umsetzung:** `waterTargetMlOverride` von `Profile` auf `User` verschoben (Migration `20260826190000_move_water_target_to_user`, bestehende Werte übernommen) — `User` existiert immer für einen eingeloggten Nutzer, ein eigenes Wasserziel braucht damit kein Ernährungsprofil mit Gewicht/Größe/Alter/Geschlecht mehr. End-to-end verifiziert: `PUT /water/target` liefert `200`/`isCustomTarget: true` ganz ohne vorhandenes `Profile`
+
+
+<!-- ROADMAP_FITNESSTRACKER_FEATURES.md -->
+# Feature-Roadmap: Fitnesstracker
+
+---
+
+## Phase 19: KI-Trainingsplan-Generator (BYOK – Bring Your Own Key)
+
+- [ ] **Multi-Provider KI-Schnittstelle**
+  - **Konzept:** Einstellungsbereich in der PWA zur flexiblen Auswahl und Hinterlegung eines API-Keys (Google Gemini Free Tier, OpenAI ChatGPT, Groq, OpenRouter).
+  - **Umsetzung:** Universeller API-Client im Fastify-Backend (OpenAI-kompatibles Schema), der Requests an den gewählten Endpunkt leitet. API-Keys werden mit AES-256-GCM verschlüsselt in der Datenbank gespeichert.
+
+- [ ] **Catalog-Constraint & Structured JSON Output**
+  - **Konzept:** Verhindert Halluzinationen von nicht vorhandenen oder im Gym nicht durchführbaren Übungen.
+  - **Umsetzung:** Das Backend übergibt dem Prompt die Liste aller in der Datenbank vorhandenen Übungs-IDs und Namen (`Exercise.id`, `Exercise.nameDe`)[span_0](start_span)[span_0](end_span). Per Structured Outputs (JSON Schema) wird das exakte Format für `PlanExercise` (`exerciseId`, `targetSets`, `targetReps`, `order`) erzwungen, über Zod validiert und per DB-Transaktion in die Datenbank geschrieben[span_1](start_span)[span_1](end_span).
+
+- [ ] **Warm-Start vs. Cold-Start Prompt-Pipeline**
+  - **Warm-Start (Bestehende Nutzer):** Automatische Injektion des Profils (`Profile` mit Ziel, Gewicht, Größe, Alter) sowie der Trainingshistorie und Bestleistungen der letzten 8 Wochen (`WorkoutLog`) als Kontext[span_2](start_span)[span_2](end_span).
+  - **Cold-Start (Neue Nutzer):** Ein kompakter 4-Schritte-Modal fragt Trainingsfrequenz, verfügbares Equipment (Homegym/Kurzhanteln/Vollstudio), Erfahrungsgrad und körperliche Einschränkungen ab.
+
+- [ ] **8-Wochen-Phasen-Alignment im System-Prompt**
+  - **Konzept:** Vorgabe der Trainingsparameter passend zur aktuell anstehenden Phase des 8-Wochen-Rotations-Schedulers (`TrainingPhase`)[span_3](start_span)[span_3](end_span):
+    - `AUFBAU`: Hypertrophie (3–4 Sätze, 8–12 Wdh., RIR 1–2)[span_4](start_span)[span_4](end_span).
+    - `MUSKELAUSDAUER`: Kraftausdauer & Laktattoleranz (3 Sätze, 15–25 Wdh., kurze Pausen)[span_5](start_span)[span_5](end_span).
+    - `NEGATIV`: Exzentrische Überlastung & Kraft (4–5 Sätze, 4–6 Wdh., 3–4 Sek. Negativbewegung)[span_6](start_span)[span_6](end_span).
+
+---
+
+## Phase 20: Workout-Komfort, Analyse & Tracking
+
+- [ ] **Automatischer Satzpausen-Timer mit Haptik & Audio**
+  - **Konzept:** Nach jedem gespeicherten Satz (`POST /workout-logs`) startet in der PWA automatisch ein konfigurierbarer Rest-Timer (z. B. 90 s / 180 s) mit Vibrationsfeedback (`navigator.vibrate`) und Audiosignal[span_7](start_span)[span_7](end_span).
+
+- [ ] **Ghost-Overlay für Fortschrittsfotos**
+  - **Konzept:** Beim Öffnen der Kamera für ein neues `ProgressPhoto` wird das vorherige Foto halbtransparent über den Live-Kamerasucher gelegt, um Pose, Abstand und Bildausschnitt exakt abzugleichen[span_8](start_span)[span_8](end_span).
+
+- [ ] **RIR / RPE Tracking & 1RM-Rechner**
+  - **Konzept:** Zusätzliches Erfassen der verbleibenden Wiederholungen (Reps in Reserve, RIR) pro Satz. Automatische Berechnung des geschätzten 1-Rep-Maximums (1RM nach Epley/Brzycki) und Vorgabe einer Aufwärmpyramide.
+
+- [ ] **Supersatz- & Drop-Set-Grouping**
+  - **Konzept:** Einführung eines `supersetGroupId`-Feldes in `WorkoutLog`, um zusammengehörige Übungen im Workout-Flow visuell zu bündeln und gemeinsame Satzpausen zu steuern[span_9](start_span)[span_9](end_span).
+|.
