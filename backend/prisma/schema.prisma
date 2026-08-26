@@ -39,6 +39,15 @@ enum NutritionGoal {
   BULK
 }
 
+// Roadmap Phase 19: BYOK AI training plan generator. All four are called through the same
+// OpenAI-compatible chat-completions shape — see aiPlanGenerator/aiClient.ts.
+enum AiProvider {
+  GEMINI
+  OPENAI
+  GROQ
+  OPENROUTER
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -63,6 +72,23 @@ model User {
   bodyCompositionEntries BodyCompositionEntry[]
   progressPhotos         ProgressPhoto[]
   planExercises          PlanExercise[]
+  aiProviderSetting      AiProviderSetting?
+}
+
+// One active BYOK provider config per user — "flexible Auswahl und Hinterlegung eines API-Keys"
+// means switching providers by re-saving this row, not managing several keys at once.
+model AiProviderSetting {
+  id              String     @id @default(uuid())
+  userId          String     @unique
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        AiProvider
+  // AES-256-GCM ciphertext ("iv:authTag:ciphertext", all hex) — see lib/crypto.ts. Never
+  // decrypted for a response body, only used server-side to call the provider.
+  encryptedApiKey String
+  // Optional override of the provider's default model (see aiClient.ts's PROVIDER_CONFIG).
+  model           String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 }
 
 model RefreshToken {
@@ -123,13 +149,21 @@ model WorkoutLog {
   setNumber   Int
   reps        Int
   weightKg    Decimal   @db.Decimal(6, 2)
+  // Reps In Reserve at the end of the set (0 = to failure). Optional — most historical rows and
+  // casual logging won't set it; only used to compute a more informed 1RM estimate client-side.
+  rir         Int?
   performedAt DateTime  @default(now())
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   // Soft delete so offline clients can sync tombstones instead of losing deletes.
   deletedAt   DateTime?
+  // Client-generated UUID shared by sets logged as one superset/drop-set round — same
+  // client-owns-the-id pattern as `clientId`, since grouping is decided at log time on the
+  // client, not inferred after the fact from timestamps.
+  supersetGroupId String?
 
   @@index([userId, performedAt])
+  @@index([userId, supersetGroupId])
 }
 
 // Roadmap: 8-week auto-rotating training focus (Aufbau -> Muskelausdauer -> Negativ -> Aufbau).

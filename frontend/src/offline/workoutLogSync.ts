@@ -99,6 +99,8 @@ export async function createWorkoutLogLocal(input: CreateWorkoutLogInput, exerci
     setNumber: input.setNumber,
     reps: input.reps,
     weightKg: input.weightKg,
+    rir: input.rir ?? null,
+    supersetGroupId: input.supersetGroupId ?? null,
     performedAt: input.performedAt ?? now,
     createdAt: now,
     updatedAt: now,

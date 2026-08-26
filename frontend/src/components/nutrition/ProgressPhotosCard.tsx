@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from "react";
 import { ApiError } from "../../api/client";
 import { useDeleteProgressPhoto, useProgressPhotos, useUploadProgressPhoto } from "../../hooks/useProgressPhotos";
 import { ProgressPhotoImage } from "./ProgressPhotoImage";
+import { ProgressPhotoCamera } from "./ProgressPhotoCamera";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -15,11 +16,10 @@ export function ProgressPhotosCard() {
   const [error, setError] = useState<string | null>(null);
   const [beforeId, setBeforeId] = useState("");
   const [afterId, setAfterId] = useState("");
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraUnavailable, setCameraUnavailable] = useState<string | null>(null);
 
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
+  const uploadFile = async (file: File) => {
     setError(null);
     try {
       await upload.mutateAsync({ file });
@@ -28,25 +28,61 @@ export function ProgressPhotosCard() {
     }
   };
 
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    await uploadFile(file);
+  };
+
   const items = photos ?? [];
   const before = items.find((p) => p.id === beforeId);
   const after = items.find((p) => p.id === afterId);
 
   return (
     <div className="flex flex-col gap-4">
+      {cameraOpen && (
+        <ProgressPhotoCamera
+          latestPhotoId={items[0]?.id ?? null}
+          onCancel={() => setCameraOpen(false)}
+          onCapture={async (file) => {
+            setCameraOpen(false);
+            await uploadFile(file);
+          }}
+          onUnavailable={(reason) => {
+            setCameraOpen(false);
+            setCameraUnavailable(reason);
+          }}
+        />
+      )}
+
       <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
         <p className="mb-2 text-sm font-medium text-ink-300">Neues Vergleichsfoto</p>
-        <label className="flex w-full cursor-pointer items-center justify-center rounded-lg border border-dashed border-ink-700 bg-ink-950 py-4 text-sm text-ink-400 hover:border-violet-500">
-          {upload.isPending ? "Lädt hoch…" : "Foto aufnehmen oder auswählen"}
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleFileChange}
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setCameraUnavailable(null);
+              setCameraOpen(true);
+            }}
             disabled={upload.isPending}
-          />
-        </label>
+            className="flex-1 rounded-lg border border-dashed border-ink-700 bg-ink-950 py-4 text-sm text-ink-400 hover:border-violet-500 disabled:opacity-50"
+          >
+            {upload.isPending ? "Lädt hoch…" : "Kamera mit Vorher-Vergleich"}
+          </button>
+          <label className="flex cursor-pointer items-center justify-center rounded-lg border border-ink-700 bg-ink-950 px-4 text-sm text-ink-400 hover:border-violet-500">
+            Datei
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={upload.isPending}
+            />
+          </label>
+        </div>
+        {cameraUnavailable && (
+          <p className="mt-1 text-xs text-amber-500">{cameraUnavailable} Nutze stattdessen "Datei".</p>
+        )}
         {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
       </div>
 

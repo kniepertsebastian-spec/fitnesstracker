@@ -290,39 +290,45 @@
 
 ---
 
-## Phase 19: KI-Trainingsplan-Generator (BYOK – Bring Your Own Key)
+## Phase 19: KI-Trainingsplan-Generator (BYOK – Bring Your Own Key) ✅
 
-- [ ] **Multi-Provider KI-Schnittstelle**
+- [x] **Multi-Provider KI-Schnittstelle**
   - **Konzept:** Einstellungsbereich in der PWA zur flexiblen Auswahl und Hinterlegung eines API-Keys (Google Gemini Free Tier, OpenAI ChatGPT, Groq, OpenRouter).
   - **Umsetzung:** Universeller API-Client im Fastify-Backend (OpenAI-kompatibles Schema), der Requests an den gewählten Endpunkt leitet. API-Keys werden mit AES-256-GCM verschlüsselt in der Datenbank gespeichert.
+  - **Umgesetzt:** `GET/PUT/DELETE /ai-settings` (nie der entschlüsselte Key in der Antwort) + `aiClient.ts` mit einer Provider-Konfiguration (Base-URL/Default-Modell) für alle vier Anbieter, alle über dieselbe OpenAI-kompatible Chat-Completions-Form. Verschlüsselung über einen neuen, optionalen `AI_SETTINGS_ENCRYPTION_KEY` (gleiches "inert ohne Config"-Muster wie VAPID/`CLAUDE_API_KEY`). End-to-end verifiziert: Verschlüsselung/Entschlüsselung round-trip, falscher Schlüssel wird abgelehnt, `GET /ai-settings` liefert nie den Klartext-Key, echter HTTP-Request an einen realen Anbieter wurde vom Sandbox-Netzwerk korrekt mit `502` abgefangen statt den Server abstürzen zu lassen.
 
-- [ ] **Catalog-Constraint & Structured JSON Output**
+- [x] **Catalog-Constraint & Structured JSON Output**
   - **Konzept:** Verhindert Halluzinationen von nicht vorhandenen oder im Gym nicht durchführbaren Übungen.
-  - **Umsetzung:** Das Backend übergibt dem Prompt die Liste aller in der Datenbank vorhandenen Übungs-IDs und Namen (`Exercise.id`, `Exercise.nameDe`)[span_0](start_span)[span_0](end_span). Per Structured Outputs (JSON Schema) wird das exakte Format für `PlanExercise` (`exerciseId`, `targetSets`, `targetReps`, `order`) erzwungen, über Zod validiert und per DB-Transaktion in die Datenbank geschrieben[span_1](start_span)[span_1](end_span).
+  - **Umsetzung:** Das Backend übergibt dem Prompt die Liste aller in der Datenbank vorhandenen Übungs-IDs und Namen (`Exercise.id`, `Exercise.nameDe`). Per Structured Outputs (JSON Schema) wird das exakte Format für `PlanExercise` (`exerciseId`, `targetSets`, `targetReps`, `order`) erzwungen, über Zod validiert und per DB-Transaktion in die Datenbank geschrieben.
+  - **Umgesetzt:** `response_format: { type: "json_object" }` (breiter unterstützt als striktes `json_schema` über alle vier Anbieter hinweg) plus eine Zod-Validierung der geparsten Antwort als eigentliche Durchsetzungsebene — genau wie gefordert. Zusätzliche Verteidigungslinie: jede `exerciseId` wird gegen die Menge der tatsächlich im Prompt angebotenen Katalog-IDs geprüft, auch eine syntaktisch gültige aber halluzinierte UUID wird verworfen. End-to-end mit einem lokalen Stub-Provider getestet: eine gemischte Antwort (1 echte + 1 erfundene ID) behält nur die echte; eine kaputte (Nicht-JSON) Antwort wird sauber abgelehnt, ohne die DB anzufassen.
 
-- [ ] **Warm-Start vs. Cold-Start Prompt-Pipeline**
-  - **Warm-Start (Bestehende Nutzer):** Automatische Injektion des Profils (`Profile` mit Ziel, Gewicht, Größe, Alter) sowie der Trainingshistorie und Bestleistungen der letzten 8 Wochen (`WorkoutLog`) als Kontext[span_2](start_span)[span_2](end_span).
+- [x] **Warm-Start vs. Cold-Start Prompt-Pipeline**
+  - **Warm-Start (Bestehende Nutzer):** Automatische Injektion des Profils (`Profile` mit Ziel, Gewicht, Größe, Alter) sowie der Trainingshistorie und Bestleistungen der letzten 8 Wochen (`WorkoutLog`) als Kontext.
   - **Cold-Start (Neue Nutzer):** Ein kompakter 4-Schritte-Modal fragt Trainingsfrequenz, verfügbares Equipment (Homegym/Kurzhanteln/Vollstudio), Erfahrungsgrad und körperliche Einschränkungen ab.
+  - **Umgesetzt:** `hasEnoughHistory` (≥5 geloggte Sätze) entscheidet serverseitig, welcher Pfad gilt — ein erster `POST /ai/generate-plan` ohne `coldStart` liefert bei zu wenig Historie `{ status: "needs_cold_start" }` statt eines Fehlers, das Frontend öffnet daraufhin `ColdStartModal` (4 Schritte mit Fortschrittsanzeige) und ruft mit den Antworten erneut auf. End-to-end verifiziert: frischer Nutzer ohne Historie bekommt `needs_cold_start`, derselbe Aufruf mit explizitem `coldStart` generiert trotzdem.
 
-- [ ] **8-Wochen-Phasen-Alignment im System-Prompt**
-  - **Konzept:** Vorgabe der Trainingsparameter passend zur aktuell anstehenden Phase des 8-Wochen-Rotations-Schedulers (`TrainingPhase`)[span_3](start_span)[span_3](end_span):
-    - `AUFBAU`: Hypertrophie (3–4 Sätze, 8–12 Wdh., RIR 1–2)[span_4](start_span)[span_4](end_span).
-    - `MUSKELAUSDAUER`: Kraftausdauer & Laktattoleranz (3 Sätze, 15–25 Wdh., kurze Pausen)[span_5](start_span)[span_5](end_span).
-    - `NEGATIV`: Exzentrische Überlastung & Kraft (4–5 Sätze, 4–6 Wdh., 3–4 Sek. Negativbewegung)[span_6](start_span)[span_6](end_span).
+- [x] **8-Wochen-Phasen-Alignment im System-Prompt**
+  - **Konzept:** Vorgabe der Trainingsparameter passend zur aktuell anstehenden Phase des 8-Wochen-Rotations-Schedulers (`TrainingPhase`):
+    - `AUFBAU`: Hypertrophie (3–4 Sätze, 8–12 Wdh., RIR 1–2).
+    - `MUSKELAUSDAUER`: Kraftausdauer & Laktattoleranz (3 Sätze, 15–25 Wdh., kurze Pausen).
+    - `NEGATIV`: Exzentrische Überlastung & Kraft (4–5 Sätze, 4–6 Wdh., 3–4 Sek. Negativbewegung).
+  - **Umgesetzt:** `PHASE_GUIDANCE` in `promptBuilder.ts`, wortwörtlich diese drei Vorgaben, direkt in den System-Prompt eingebettet.
 
----
+## Phase 20: Workout-Komfort, Analyse & Tracking ✅
 
-## Phase 20: Workout-Komfort, Analyse & Tracking
+- [x] **Automatischer Satzpausen-Timer mit Haptik & Audio**
+  - **Konzept:** Nach jedem gespeicherten Satz (`POST /workout-logs`) startet in der PWA automatisch ein konfigurierbarer Rest-Timer (z. B. 90 s / 180 s) mit Vibrationsfeedback (`navigator.vibrate`) und Audiosignal.
+  - **Umgesetzt:** `timerStore` bekam `autoStartEnabled`/`autoStartSeconds` (per `zustand/persist` in `localStorage`, reine Geräte-Einstellung, keine Server-Daten), umschaltbar direkt im `RestTimerWidget`. `WorkoutLogFormDialog` startet den Timer nur bei einem neu gespeicherten Satz (nicht beim Bearbeiten). Vibration/Sound existierten schon aus dem manuellen Timer und werden unverändert wiederverwendet. End-to-end im Browser getestet: Satz speichern mit aktiviertem Auto-Start ließ den Timer sichtbar runterzählen.
 
-- [ ] **Automatischer Satzpausen-Timer mit Haptik & Audio**
-  - **Konzept:** Nach jedem gespeicherten Satz (`POST /workout-logs`) startet in der PWA automatisch ein konfigurierbarer Rest-Timer (z. B. 90 s / 180 s) mit Vibrationsfeedback (`navigator.vibrate`) und Audiosignal[span_7](start_span)[span_7](end_span).
+- [x] **Ghost-Overlay für Fortschrittsfotos**
+  - **Konzept:** Beim Öffnen der Kamera für ein neues `ProgressPhoto` wird das vorherige Foto halbtransparent über den Live-Kamerasucher gelegt, um Pose, Abstand und Bildausschnitt exakt abzugleichen.
+  - **Umgesetzt:** Neue `ProgressPhotoCamera`-Komponente (`getUserMedia` + `<video>`-Live-Vorschau + das letzte Foto als `opacity`-geregeltes `<img>` darüber, mit Schieberegler), Aufnahme per Canvas-Snapshot statt nativer Kamera-UI (nur so ist der Overlay überhaupt möglich). Fällt bei verweigerter/fehlender Kamera automatisch auf den bestehenden Datei-Upload zurück. End-to-end mit Chromiums `--use-fake-device-for-media-stream` verifiziert: Live-Vorschau, sichtbarer Overlay bei vorhandenem Vorher-Foto, Aufnahme→Upload→Galerie, und der Fallback-Pfad ganz ohne Kamera-Flag (echte Verweigerung/kein Gerät) zeigt die erwartete Fallback-Meldung statt abzustürzen.
 
-- [ ] **Ghost-Overlay für Fortschrittsfotos**
-  - **Konzept:** Beim Öffnen der Kamera für ein neues `ProgressPhoto` wird das vorherige Foto halbtransparent über den Live-Kamerasucher gelegt, um Pose, Abstand und Bildausschnitt exakt abzugleichen[span_8](start_span)[span_8](end_span).
-
-- [ ] **RIR / RPE Tracking & 1RM-Rechner**
+- [x] **RIR / RPE Tracking & 1RM-Rechner**
   - **Konzept:** Zusätzliches Erfassen der verbleibenden Wiederholungen (Reps in Reserve, RIR) pro Satz. Automatische Berechnung des geschätzten 1-Rep-Maximums (1RM nach Epley/Brzycki) und Vorgabe einer Aufwärmpyramide.
+  - **Umgesetzt:** `WorkoutLog.rir` (nullable, Migration `20260826200000_add_workout_log_rir_and_superset`), RIR-Eingabefeld im Log-Formular. `estimateOneRepMax` mittelt Epley und Brzycki (rein clientseitig, keine neue Datenspeicherung), als Subtitle-Zeile unter dem Übungsnamen in der Tabelle statt einer eigenen Spalte (siehe unten). `buildWarmupPyramid` schlägt 40/60/80/90 % des eingegebenen Zielgewichts vor, aufklappbar im Formular.
 
-- [ ] **Supersatz- & Drop-Set-Grouping**
-  - **Konzept:** Einführung eines `supersetGroupId`-Feldes in `WorkoutLog`, um zusammengehörige Übungen im Workout-Flow visuell zu bündeln und gemeinsame Satzpausen zu steuern[span_9](start_span)[span_9](end_span).
-|.
+- [x] **Supersatz- & Drop-Set-Grouping**
+  - **Konzept:** Einführung eines `supersetGroupId`-Feldes in `WorkoutLog`, um zusammengehörige Übungen im Workout-Flow visuell zu bündeln und gemeinsame Satzpausen zu steuern.
+  - **Umgesetzt:** `WorkoutLog.supersetGroupId` (client-generierte UUID, gleiches Muster wie `clientId`), im Formular als "Einzeln / Neue Gruppe / Zu letzter" wählbar. Tabelle bündelt optisch über einen deterministisch aus der Gruppen-ID abgeleiteten farbigen linken Rahmen. **Bewusst nicht umgesetzt:** eine automatische Unterdrückung des Auto-Timers innerhalb einer laufenden Superset-Runde — das Grouping ist rein visuell, gemeinsame Pausensteuerung bleibt die bestehende manuelle Pause-Taste, statt eine "wie viele Übungen hat diese Gruppe" -Heuristik zu erfinden, die die Roadmap nicht spezifiziert.
+  - **Layout-Korrektur unterwegs gefunden:** zwei zusätzliche Tabellenspalten (RIR, ≈1RM) verursachten horizontalen Overflow bei 375px Breite (per Playwright verifiziert) — entgegen der in `ARCHITECTURE.md` dokumentierten "nie horizontal überlaufen"-Regel. Gelöst, indem beide Werte in die Subtitle-Zeile der bestehenden "Übung"-Spalte wandern statt eigene Spalten zu bekommen; danach kein Overflow mehr (`scrollWidth === clientWidth` bei 375px verifiziert).

@@ -24,6 +24,8 @@ import supplementScheduler from "./modules/supplements/supplement.scheduler.js";
 import bodyCompositionRoutes from "./modules/bodyComposition/bodyComposition.routes.js";
 import progressPhotoRoutes from "./modules/progressPhotos/progressPhoto.routes.js";
 import progressPhotoScheduler from "./modules/progressPhotos/progressPhoto.scheduler.js";
+import aiSettingsRoutes from "./modules/aiSettings/aiSettings.routes.js";
+import aiPlanGeneratorRoutes from "./modules/aiPlanGenerator/aiPlanGenerator.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -63,6 +65,8 @@ export function buildApp() {
   app.register(supplementRoutes, { prefix: "/api" });
   app.register(bodyCompositionRoutes, { prefix: "/api" });
   app.register(progressPhotoRoutes, { prefix: "/api" });
+  app.register(aiSettingsRoutes, { prefix: "/api" });
+  app.register(aiPlanGeneratorRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {
     if (error instanceof ZodError) {

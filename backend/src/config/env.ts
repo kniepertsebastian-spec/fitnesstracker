@@ -25,6 +25,17 @@ const envSchema = z.object({
   // Resolved relative to the backend package's cwd (matches every other relative path in this
   // project, e.g. the prisma schema/migrations paths above).
   UPLOADS_DIR: z.string().min(1).default("./uploads"),
+  // Master key (32 bytes, hex-encoded = 64 chars) for encrypting BYOK AI provider API keys at
+  // rest (Phase 19). Same "absent means disabled, not a boot-time error" pattern as VAPID/
+  // CLAUDE_API_KEY above — the AI settings routes respond with a clear "not configured" instead
+  // of crashing the whole backend over a feature nobody has to use.
+  AI_SETTINGS_ENCRYPTION_KEY: z
+    .string()
+    .optional()
+    .default("")
+    .refine((val) => val === "" || /^[0-9a-fA-F]{64}$/.test(val), {
+      message: "AI_SETTINGS_ENCRYPTION_KEY must be 64 hex characters (32 bytes) when set",
+    }),
 });
 
 // Fail fast on boot rather than crashing mysteriously on the first request that needs a var.
