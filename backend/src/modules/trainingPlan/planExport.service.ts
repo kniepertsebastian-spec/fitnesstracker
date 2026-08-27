@@ -103,8 +103,12 @@ export async function importPlanExercises(
       continue;
     }
 
-    const existing = await prisma.planExercise.findUnique({
-      where: { userId_phase_exerciseId: { userId, phase: row.phase, exerciseId } },
+    // Import/export doesn't carry `dayLabel` (a CSV/JSON/XML row has no day column) — imported
+    // entries are treated the same as manually added ones, ungrouped (`dayLabel: null`).
+    // `findFirst` rather than `findUnique`: Prisma's compound-unique-input type doesn't accept
+    // `null` for a nullable field even though the underlying index does.
+    const existing = await prisma.planExercise.findFirst({
+      where: { userId, phase: row.phase, exerciseId, dayLabel: null },
     });
 
     if (existing) {

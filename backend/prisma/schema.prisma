@@ -206,12 +206,18 @@ model PlanExercise {
   exercise   Exercise      @relation(fields: [exerciseId], references: [id])
   targetSets Int?
   targetReps Int?
-  // Manual position within the phase's list; new entries append after the current max.
+  // Manual position within the phase's list; new entries append after the current max. For
+  // AI-generated entries this is the position within `dayLabel`, not a global index across the
+  // whole phase.
   order      Int           @default(0)
+  // Which split day (e.g. "Push (Brust, Schultern, Trizeps)") this entry belongs to — set only
+  // by the AI plan generator for a multi-day split. Null for manually added entries and for a
+  // single-day ("Ganzkörper") plan, which has nothing to group by.
+  dayLabel   String?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
-  @@unique([userId, phase, exerciseId])
+  @@unique([userId, phase, exerciseId, dayLabel])
   @@index([userId, phase, order])
 }
 

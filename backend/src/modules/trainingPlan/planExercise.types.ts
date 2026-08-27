@@ -10,6 +10,7 @@ export function toPlanExerciseDto(entry: PlanExercise & { exercise: Exercise }):
     targetSets: entry.targetSets,
     targetReps: entry.targetReps,
     order: entry.order,
+    dayLabel: entry.dayLabel,
     createdAt: entry.createdAt.toISOString(),
     updatedAt: entry.updatedAt.toISOString(),
   };

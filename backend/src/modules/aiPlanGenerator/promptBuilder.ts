@@ -26,8 +26,60 @@ const PHASE_GUIDANCE: Record<TrainingPhase, string> = {
     "langsame Negativbewegung pro Wiederholung.",
 };
 
-const EXERCISES_PER_PLAN = 6;
+// Per split day, not a total — a 3-day Push/Pull/Legs plan gets 18 exercises (6 per day), not 6
+// for the whole week. Matches how a real training split actually reads.
+const EXERCISES_PER_DAY = 6;
 const MAX_CATALOG_ENTRIES = 150;
+
+// Same day-naming as `frontend/src/data/recommendedSplits.ts`'s RECOMMENDED_SPLITS, so a
+// generated plan reads consistently with the app's own curated split templates. Repeated day
+// types within a week (e.g. two Push days) get an A/B suffix so they're distinct `dayLabel`s —
+// PlanExercise's unique index is (userId, phase, exerciseId, dayLabel), so two same-named days
+// would otherwise collide if the same exercise got picked for both.
+const SPLIT_TEMPLATES: Record<number, string[]> = {
+  1: ["Ganzkörper"],
+  2: ["Oberkörper", "Unterkörper"],
+  3: ["Push (Brust, Schultern, Trizeps)", "Pull (Rücken, Bizeps)", "Legs (Beine)"],
+  4: ["Oberkörper A", "Unterkörper A", "Oberkörper B", "Unterkörper B"],
+  5: ["Brust", "Rücken", "Beine", "Schultern", "Arme"],
+  6: [
+    "Push A (Brust, Schultern, Trizeps)",
+    "Pull A (Rücken, Bizeps)",
+    "Beine A",
+    "Push B (Brust, Schultern, Trizeps)",
+    "Pull B (Rücken, Bizeps)",
+    "Beine B",
+  ],
+};
+
+// Resolves a weekly training frequency to a concrete split — the actual fix for "3x/week
+// generated one full-body day of 6 exercises instead of a 3-day Push/Pull/Legs split": the
+// frequency answer from the cold-start modal was collected but never used to shape the plan
+// structure, only mentioned as a line of prompt context the model was free to ignore.
+export function resolveSplitDays(frequencyPerWeek: number): string[] {
+  const clamped = Math.min(6, Math.max(1, Math.round(frequencyPerWeek)));
+  return SPLIT_TEMPLATES[clamped];
+}
+
+const RECENT_FREQUENCY_WINDOW_MS = 28 * 24 * 60 * 60 * 1000; // 4 weeks
+const DEFAULT_WARM_START_FREQUENCY = 3;
+
+// Warm-start users were never asked "how often do you train" (that's cold-start-only), so the
+// split structure is instead derived from how often they actually log — distinct calendar days
+// with at least one set over the last 4 weeks, averaged per week.
+export async function estimateWeeklyFrequency(prisma: PrismaClient, userId: string): Promise<number> {
+  const logs = await prisma.workoutLog.findMany({
+    where: {
+      userId,
+      deletedAt: null,
+      performedAt: { gte: new Date(Date.now() - RECENT_FREQUENCY_WINDOW_MS) },
+    },
+    select: { performedAt: true },
+  });
+  const distinctDays = new Set(logs.map((l) => l.performedAt.toISOString().slice(0, 10)));
+  if (distinctDays.size === 0) return DEFAULT_WARM_START_FREQUENCY;
+  return Math.min(6, Math.max(1, Math.round(distinctDays.size / 4)));
+}
 // Roadmap's exercise categories the generator is allowed to draw from — same "real, trainable
 // movements" set the daily-challenge/plan-exercise features already scope themselves to.
 const GENERATOR_CATEGORIES = ["strength", "plyometrics", "olympic weightlifting", "strongman"];
@@ -170,21 +222,30 @@ export function buildColdStartContext(input: ColdStartInput): string {
   );
 }
 
-export function buildSystemPrompt(phase: TrainingPhase, catalog: CatalogEntry[]): string {
+export function buildSystemPrompt(phase: TrainingPhase, catalog: CatalogEntry[], splitDays: string[]): string {
   const catalogLines = catalog
     .map((c) => `${c.id} | ${c.name} | ${c.equipment ?? "-"} | ${c.primaryMuscles.join(",") || "-"}`)
     .join("\n");
+  const dayList = splitDays.map((d) => `"${d}"`).join(", ");
+  const totalExercises = splitDays.length * EXERCISES_PER_DAY;
+
+  const splitInstruction =
+    splitDays.length === 1
+      ? `Es wird an einem Tag pro Trainingszyklus trainiert ("${splitDays[0]}") — wähle Übungen für den ganzen Körper.`
+      : `Es wird an ${splitDays.length} verschiedenen Tagen pro Trainingszyklus trainiert. Jeder Tag hat einen eigenen Fokus, erkennbar am Namen: ${dayList}. Wähle für jeden Tag Übungen, die zu genau diesem Fokus passen (z. B. bei einem "Push"-Tag nur drückende Bewegungen für Brust/Schultern/Trizeps, bei "Beine" nur Bein-Übungen) — kein Tag darf Übungen eines anderen Tages enthalten.`;
 
   return `Du bist ein erfahrener Fitness-Trainer-Assistent, der einen Trainingsplan für die Phase "${phase}" erstellt.
 
 Phasen-Vorgabe: ${PHASE_GUIDANCE[phase]}
+
+Trainingsplan-Struktur: ${splitInstruction}
 
 WICHTIG — Übungsauswahl: Wähle AUSSCHLIESSLICH Übungen aus der folgenden Liste (Format: ID | Name | Equipment | Muskelgruppen). Verwende niemals eine ID, die nicht in dieser Liste steht, und erfinde keine neuen Übungen — nur die exakten IDs aus der Liste sind gültig.
 
 ${catalogLines}
 
 Antworte AUSSCHLIESSLICH mit validem JSON in exakt diesem Format, ohne Freitext davor oder danach:
-{"items": [{"exerciseId": "<ID aus der Liste oben>", "targetSets": <Zahl>, "targetReps": <Zahl>, "order": <Zahl ab 0>}]}
+{"items": [{"day": "<einer der Tage: ${dayList}>", "exerciseId": "<ID aus der Liste oben>", "targetSets": <Zahl>, "targetReps": <Zahl>, "order": <Zahl ab 0, neu beginnend pro Tag>}]}
 
-Wähle genau ${EXERCISES_PER_PLAN} passende, abwechslungsreiche Übungen für unterschiedliche Muskelgruppen, mit targetSets/targetReps passend zur Phasen-Vorgabe oben.`;
+Wähle für JEDEN der ${splitDays.length} Tage genau ${EXERCISES_PER_DAY} passende Übungen für dessen Fokus (insgesamt genau ${totalExercises} Einträge), mit targetSets/targetReps passend zur Phasen-Vorgabe oben. Das Feld "day" muss exakt einem der oben genannten Tagesnamen entsprechen.`;
 }

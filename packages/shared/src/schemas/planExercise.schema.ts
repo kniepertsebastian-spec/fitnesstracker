@@ -9,6 +9,9 @@ export const planExerciseDtoSchema = z.object({
   targetSets: z.number().int().nullable(),
   targetReps: z.number().int().nullable(),
   order: z.number().int(),
+  // Which split day (e.g. "Push (Brust, Schultern, Trizeps)") this entry belongs to — set by the
+  // AI plan generator for a multi-day split, null for manually added entries.
+  dayLabel: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
