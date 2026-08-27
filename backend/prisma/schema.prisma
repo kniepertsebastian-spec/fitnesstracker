@@ -48,6 +48,13 @@ enum AiProvider {
   OPENROUTER
 }
 
+enum CardioMachine {
+  TREADMILL
+  BIKE
+  STEPPER
+  STAIRMASTER
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -73,6 +80,7 @@ model User {
   progressPhotos         ProgressPhoto[]
   planExercises          PlanExercise[]
   aiProviderSetting      AiProviderSetting?
+  cardioLogs             CardioLog[]
 }
 
 // One active BYOK provider config per user — "flexible Auswahl und Hinterlegung eines API-Keys"
@@ -345,4 +353,27 @@ model ProgressPhoto {
   createdAt DateTime @default(now())
 
   @@index([userId, takenAt])
+}
+
+// Optional cardio tracking, separate from PlanExercise/WorkoutLog since a cardio session has a
+// completely different shape (machine + level/intensity/duration, not sets/reps/weight against
+// a catalog Exercise) — a free-form addition alongside the strength plan, not slotted into it.
+model CardioLog {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  machine         CardioMachine
+  // Resistance/incline level on the machine — free-form small int, no fixed scale across
+  // machines/brands.
+  level           Int?
+  // Deliberately a string, not a number: what "intensity" means varies by machine (km/h, watts,
+  // an incline %, or just "mittel") — no single numeric unit fits all four.
+  intensity       String
+  durationMinutes Int
+  performedAt     DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  @@index([userId, performedAt])
 }

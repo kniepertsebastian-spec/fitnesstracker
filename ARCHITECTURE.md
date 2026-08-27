@@ -664,6 +664,64 @@ weiterhin über den separaten "+ Satz"-Dialog. Der Wunsch: der Plan selbst soll 
   grün) — bestätigt, dass die `.every()`-Regel korrekt mit dem neuen Tagebuch-Signal
   zusammenspielt.
 
+## Cardio-Tracking & entzerrte Plan-Seite (Phase 21, fertig)
+
+- **`CardioLog` ist bewusst ein eigenes, einfaches Modell — keine Erweiterung von
+  `WorkoutLog`/`PlanExercise`.** Eine Cardio-Einheit hat eine völlig andere Form (Gerät +
+  Stufe/Intensität/Dauer statt Sätze/Wiederholungen/Gewicht gegen eine Katalog-`Exercise`) und
+  ist nicht Teil des Split-Plans — sie in `WorkoutLog` zu pressen hätte `exerciseId` (Pflichtfeld,
+  zeigt auf den Kraft-Übungskatalog) und `reps`/`weightKg` für ein Konzept überladen, für das sie
+  nicht gedacht sind. `machine` ist ein eigenes Enum (`TREADMILL`/`BIKE`/`STEPPER`/`STAIRMASTER`),
+  `intensity` bewusst ein String statt einer Zahl — was "Intensität" bedeutet, ist je Gerät
+  verschieden (km/h, Watt, Steigungs-%, oder einfach "mittel"), kein einzelnes numerisches Feld
+  passt für alle vier. Soft-Delete (`deletedAt`) nach demselben Muster wie `WorkoutLog`.
+- **Kein Offline-Sync, anders als `WorkoutLog`.** Cardio ist eine optionale Zusatzfunktion ohne
+  die Kritikalität von "Satz beim Training ohne Netz loggen", die die IndexedDB-Sync-Queue in
+  `offline/workoutLogSync.ts` überhaupt erst rechtfertigt. `useCardioLogs.ts` ist deshalb ein
+  gewöhnlicher React-Query-Hook direkt gegen `/cardio-logs` (gleiches Muster wie
+  `useBodyComposition.ts`), keine Dexie-Anbindung.
+- **`GET /cardio-logs` liefert immer nur "heute" (UTC-Kalendertag), kein Datumsfilter.** Es gibt
+  (noch) keine Cardio-Historienansicht — die Dashboard-Karte braucht nur den aktuellen Tag, ein
+  generischer `from`/`to`-Parameter wie bei `/workout-logs` wäre für diesen einen Anwendungsfall
+  unnötige Fläche.
+- **Ein Dropdown für "Übung" statt vier Spalten, eine pro Gerät.** Wörtliche Anforderung: "damit
+  man nur eine Spalte und keine 3 leeren hat" — `CardioLogCard` zeigt eine Tabelle mit
+  Übung/Stufe/Intensität/Zeit, wobei "Übung" ein natives `<select>` mit den vier Geräten ist,
+  keine eigene Spalte pro Gerät. Jede Zeile ist unabhängig speicherbar (Häkchen-Button, kein
+  "nächste Übung"-Sprung wie im Kraft-Tagebuch — Cardio-Einträge sind nicht sequenziert), "Add
+  row" hängt eine weitere leere Zeile an, damit zwei Geräte in einer Session getrennt getrackt
+  werden können. Gespeicherte Zeilen werden gesperrt angezeigt (Gerät, Stufe, Intensität, Dauer)
+  mit einem Lösch-Button — anders als beim Kraft-Tagebuch gibt es hier keine separate Log-Tabelle
+  darunter, über die man einen Fehler korrigieren könnte, daher übernimmt der Lösch-Button diese
+  Rolle direkt in der Karte.
+- **`DraftCardioRow`/`SavedCardioRow` als eigene Komponenten statt Inline-Fragmente in einer
+  `.map()`.** Genau wie `DiaryRow` in `CurrentPlanCard.tsx` — ein React-Fragment mit `key` direkt
+  in einer `.map()`-Callback-Funktion zu verwenden funktioniert nicht (`key` muss am äußersten
+  von `map()` zurückgegebenen Element sitzen), eine benannte Komponente mit `key` auf dem
+  Komponenten-Aufruf ist der etablierte Weg dafür in dieser Codebase.
+- End-to-end verifiziert (400px und 375px): kein horizontales Overflow, Ausfüllen + Speichern
+  einer "Fahrrad"-Zeile (Stufe 5, "25 km/h", 20 min) erzeugt eine gesperrte Zeile mit korrekten
+  Werten, "Add row" hängt eine weitere leere Zeile an, Speichern ohne Intensität/Zeit zeigt die
+  Inline-Fehlermeldung statt zu speichern, Löschen entfernt den Eintrag wieder.
+
+- **`/plan` in zwei Seiten aufgeteilt, weil sie mit manueller Übungsliste, KI-Generator und
+  Export/Import überladen war.** Generieren und Exportieren/Importieren sind seltene, bewusste
+  Aktionen (keine Werte, die man beim täglichen Training im Blick hat) — sie leben jetzt auf einer
+  eigenen Route `/plan/generate` (`PlanGenerateExportPage`), erreichbar über einen Link oben
+  rechts auf `/plan`. `/plan` selbst behält Phasenübersicht, Push-Erinnerung, die editierbare
+  Übungsliste mit dem Tage-Dropdown (aus Nachbesserung 2 oben) und den Phasen-Verlauf.
+- **`PhaseTabs` als gemeinsame Komponente statt zweier Kopien.** Beide Seiten brauchen denselben
+  Drei-Wege-Tab-Umschalter (Aufbau/Muskelausdauer/Negativ), der jeweils eine andere darunter
+  liegende Ansicht (Übungsliste vs. KI-Generator) steuert — anders als bei den drei ähnlichen
+  Codezeilen, die die Projekt-Richtlinie bewusst nicht in eine Abstraktion zieht, ist das hier ein
+  in sich geschlossenes, mehrfach identisch benötigtes Widget, das sich lohnt auszulagern.
+  `PlanExportImportCard` bekam keinen Phasen-Bezug — sie exportiert wie zuvor immer den ganzen
+  Plan (alle drei Phasen), unabhängig vom gerade gewählten Tab.
+- End-to-end verifiziert: `/plan` zeigt keine KI-Provider-Auswahl mehr, `/plan/generate` zeigt
+  KI-Generator und Export/Import korrekt an, beide Seiten laden denselben Plan über den
+  bestehenden `useTrainingPlan`-Hook (React-Query-Cache, kein doppelter Netzwerk-Request beim
+  Wechsel zwischen den Seiten).
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen
@@ -834,6 +892,8 @@ Breaking-Migrationen nötig werden:
 - `ProgressPhoto` — Metadaten für auf der Platte gespeicherte Vergleichsfotos (siehe oben, fertig)
 - `AiProviderSetting` — BYOK-Anbieter/verschlüsselter API-Key/Modell-Override pro Nutzer (siehe
   Phase 19, fertig)
+- `CardioLog` — Gerät/Stufe/Intensität/Dauer, Soft-Delete, kein Bezug zu `PlanExercise` (siehe
+  Phase 21, fertig)
 
 ## Bekannte Stolperfallen (bereits berücksichtigt)
 
