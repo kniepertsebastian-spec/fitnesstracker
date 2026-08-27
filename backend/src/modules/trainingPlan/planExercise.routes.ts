@@ -16,6 +16,7 @@ import {
 import { toPlanExerciseDto } from "./planExercise.types.js";
 import { parseCsv, parseJson, parseXml, rowsToCsv, rowsToJson, rowsToXml } from "./planExport.format.js";
 import { exportPlanExercises, importPlanExercises } from "./planExport.service.js";
+import { getWeeklyPlanStatus } from "./planWeekStatus.service.js";
 import { HttpError } from "../../errors/httpErrors.js";
 
 const idParamSchema = z.object({ id: z.string().uuid() });
@@ -35,6 +36,13 @@ export default async function planExerciseRoutes(fastify: FastifyInstance) {
     const { phase } = phaseQuerySchema.parse(request.query);
     const entries = await listPlanExercises(fastify.prisma, request.user.sub, phase);
     return reply.send({ items: entries.map(toPlanExerciseDto) });
+  });
+
+  // Drives the dashboard's progressive day unlock — see planWeekStatus.service.ts.
+  fastify.get("/plan-exercises/week-status", async (request, reply) => {
+    const { phase } = phaseQuerySchema.parse(request.query);
+    const status = await getWeeklyPlanStatus(fastify.prisma, request.user.sub, phase);
+    return reply.send(status);
   });
 
   // Exports the whole plan (all three phases), not just the currently selected one — "export my

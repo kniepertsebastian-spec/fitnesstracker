@@ -566,14 +566,103 @@ Woche angegeben war, weil nichts die Frequenz verbindlich in eine Tagesstruktur 
   weiß) die Einträge automatisch in korrekter Tages-Reihenfolge, ohne dass die Leseseite
   angefasst werden musste. Eine alphabetische Sortierung nach `dayLabel` wäre falsch gewesen
   (z. B. "Legs" vor "Push" alphabetisch, aber Push soll zuerst kommen).
-- **`PlanExerciseList` gruppiert die Anzeige jetzt nach `dayLabel`** (Überschrift pro Tag in
-  Split-Reihenfolge, manuell hinzugefügte/ungruppierte Einträge als letzter, überschriftsloser
-  Block), und die Auf/Ab-Pfeile zum manuellen Umsortieren wirken jetzt nur noch innerhalb des
-  jeweiligen Tages, nicht mehr über Tagesgrenzen hinweg.
 - End-to-end gegen einen lokalen Stub-Provider verifiziert: 3×/Woche erzeugt exakt Push/Pull/Legs
   mit korrekter Tages-Reihenfolge (inkl. Wiederverwendung derselben Übung auf zwei Tagen), 1×/
   Woche bleibt ungruppiert, ein vom Modell erfundener Tagesname wird verworfen, und die aus
   simulierten Logs geschätzte Frequenz traf den erwarteten Split.
+
+### Nachbesserung 2: Tage-Dropdown auf `/plan` & wöchentlicher Fortschritt auf dem Dashboard
+
+Die Tage steckten korrekt in der Datenbank, aber `/plan` zeigte sie erst als eine durchgehende,
+mit Überschriften unterteilte Liste an statt einzeln umschaltbar — und das Dashboard zeigte
+weiterhin alle 18 Übungen auf einmal, ohne erkennbar zu machen, welcher Tag als nächstes dran ist.
+
+- **`PlanExerciseList` bekam ein natives `<select>`-Dropdown statt gestapelter Überschriften**
+  (nur wenn `dayGroups.length > 1` — ein Ein-Tages-Plan zeigt weiterhin einfach seine flache
+  Liste). Die Auswahl ist auf einen Index geklemmt statt bei jedem Rerender auf 0 zurückgesetzt,
+  damit ein Nachgenerieren mit weniger Tagen als vorher die aktuelle Auswahl nicht willkürlich
+  springen lässt. Die Auf/Ab-Pfeile zum manuellen Umsortieren wirken jetzt nur noch innerhalb des
+  gewählten Tages, nicht mehr über Tagesgrenzen hinweg.
+- **`GET /plan-exercises/week-status` (`planWeekStatus.service.ts`) ist reiner Lesezugriff, kein
+  gespeicherter Zustand.** Ob ein Split-Tag "diese Woche trainiert" wurde, wird bei jedem Aufruf
+  frisch aus den `WorkoutLog`-Einträgen seit Montag 00:00 UTC berechnet (gleiche
+  UTC-Kalendertag-Konvention wie Wasser-Reset/Tages-Challenge) — kein `WeeklyProgress`-Modell,
+  kein Cronjob, kein manueller Montags-Reset nötig: sobald eine neue Woche beginnt, liefert die
+  Abfrage automatisch "noch nichts trainiert", weil die Logs der Vorwoche außerhalb des
+  Zeitfensters liegen.
+- **Ein Tag galt zunächst als trainiert, sobald irgendeine seiner geplanten Übungen diese Woche
+  geloggt wurde — nicht erst, wenn alle sechs es wurden** (Begründung: ein Training weicht in der
+  Praxis fast immer leicht vom Plan ab). Diese Regel wurde in Nachbesserung 3 auf "alle Übungen"
+  verschärft, siehe dort.
+- **`activeDayIndex`** ist der Index des ersten noch offenen Tages in der Split-Reihenfolge, oder
+  `null`, wenn alle Tage dieser Woche erledigt sind. `CurrentPlanCard` zeigt dementsprechend genau
+  einen Tag mit seinen Übungen (plus einer schmalen Fortschrittsleiste: grün = erledigt, violett =
+  aktueller Tag, grau = offen) oder bei `null` eine Erfolgsmeldung statt einer Übungsliste. Ein
+  Ein-Tages-Plan (`Ganzkörper`) hat nichts zu "fortschreiten" und liefert immer `activeDayIndex: 0`
+  ohne Wochen-Berechnung — exakt das bisherige Verhalten vor diesem Feature.
+- **Zwei Query-Keys, die sich nicht gegenseitig invalidieren.** `["plan-exercises", phase]` und
+  `["plan-exercises", "week-status", phase]` teilen sich kein gemeinsames Präfix (unterschiedliche
+  Werte an derselben Array-Position), React Querys Standard-Präfix-Invalidierung erwischt also nie
+  beide gleichzeitig — jede Mutation, die den Plan einer Phase ändert (manuelles Anlegen/Ändern/
+  Löschen, KI-Generieren), muss beide Keys explizit invalidieren.
+- **Ein echter Bug unterwegs gefunden: das Speichern eines Satzes aktualisierte den
+  Wochen-Status gar nicht.** `offline/workoutLogSync.ts` kennt die `plan-exercises`-Query-Keys
+  gar nicht — es aktualisiert nur den `workout-logs`-Cache. Live im Browser reproduziert: nach dem
+  Loggen der Tag-1-Übung blieb die Dashboard-Karte auf Tag 1 stehen, bis die Seite neu geladen
+  wurde. Fix: `syncQueryCache()` (bereits der zentrale Punkt, der nach jedem lokalen Schreiben und
+  jedem Hintergrund-Sync-Schritt läuft, siehe Offline-Sync-Abschnitt oben) invalidiert jetzt
+  zusätzlich `["plan-exercises", "week-status"]` präfixweise über alle drei Phasen — welche Phase
+  gerade "aktuell" ist, muss dieser Funktion dafür nicht bekannt sein.
+- End-to-end verifiziert: frischer 3-Tage-Split zeigt Tag 1, das Loggen einer Tag-1-Übung schaltet
+  sofort (auch live im Browser, nach dem Bugfix oben) auf Tag 2 um, nach allen drei Tagen
+  erscheint die Erfolgsmeldung, und künstliches Verschieben aller Logs in die Vorwoche setzt
+  korrekt auf Tag 1 zurück.
+
+### Nachbesserung 3: Plan als Tagebuch
+
+Bisher zeigte `CurrentPlanCard` den aktiven Tag nur als reine Übungsliste an — geloggt wurde
+weiterhin über den separaten "+ Satz"-Dialog. Der Wunsch: der Plan selbst soll ausfüllbar sein
+(Übung, Sätze, Wdh., Gewicht, Ende-Checkbox), und ein Häkchen bei "Ende" soll direkt zur nächsten
+Übung springen.
+
+- **Die Tabelle schreibt echte `WorkoutLog`-Einträge, kein separates Häkchen-Feld.** Ein
+  Häkchen bei "Ende" ruft für jeden in "Sätze" eingegebenen Wert einmal `createLog.mutateAsync`
+  auf (`setNumber` von 1 bis `sets`, gleiches `clientId`/Offline-Sync-Muster wie der bestehende
+  "+ Satz"-Dialog) — der Tagebuch-Eintrag *ist* der Log-Eintrag, keine Kopie oder ein
+  Zusatzsystem daneben. Sätze/Wdh./Gewicht sind bewusst einfache `<input type="number">`-Felder
+  ohne eigene Validierungsbibliothek (kein React-Hook-Form/Zod-Formular für eine derart kleine,
+  inline editierbare Zeile) — eine simple Ganzzahl-/Positiv-Prüfung vor dem Schreiben, mit
+  Inline-Fehlermeldung statt eines Toasts.
+- **Kein Entfernen des Häkchens.** Eine Zeile sperrt sich nach dem Abhaken dauerhaft
+  (`done`-State, kein Zurück) — ein versehentliches Doppel-Antippen soll keine doppelten Sätze
+  erzeugen können. Korrekturen laufen bewusst über die bestehende Bearbeiten-/Löschen-Funktion
+  der Log-Tabelle darunter, denselben Weg wie bei jedem anderen geloggten Satz, statt einen
+  zweiten Korrekturmechanismus nur fürs Tagebuch zu bauen.
+- **`loggedThisWeek` pro `PlanExercise`** (neues, nicht persistiertes Feld in
+  `planDiaryExerciseDtoSchema`, serverseitig in `getWeeklyPlanStatus` aus denselben
+  `WorkoutLog`-Einträgen berechnet, die auch `activeDayIndex` treiben) lässt eine Zeile nach
+  einem Reload sofort als "erledigt" anzeigen, ohne dass das Frontend die Wochen-Grenze
+  (Montag 00:00 UTC) selbst nachbilden müsste — dieselbe serverseitige Quelle der Wahrheit wie
+  beim Tages-Fortschritt.
+- **Tag-Abschluss-Regel von "mindestens eine Übung" auf "alle Übungen" verschärft
+  (`.every()` statt `.some()` in `planWeekStatus.service.ts`).** Das Tagebuch liefert jetzt ein
+  präzises Pro-Übung-Signal ("diese Übung wurde erledigt"), im Gegensatz zur vorherigen
+  Unsicherheit, ob ein einzelner geloggter Satz einen ganzen Tag repräsentiert. Wer weiterhin
+  frei über den klassischen "+ Satz"-Dialog loggt statt über das Tagebuch, muss dafür einmal
+  jede geplante Übung des Tages abdecken — dieselbe Schwelle wie beim Tagebuch-Pfad, kein
+  bevorzugter Weg.
+- **Fokus-Sprung zur nächsten Zeile über eine Ref-Liste** (`rowRefs` in `CurrentPlanCard`, ein
+  `HTMLInputElement`-Array indiziert nach Zeilenposition) statt eines State-getriebenen
+  "aktive Zeile"-Konzepts — nach erfolgreichem Abhaken ruft die Zeile einfach `onDone()` auf,
+  die Karte fokussiert das "Sätze"-Feld der nächsten Zeile per `ref.focus()`. Kein Scroll-Effekt
+  nötig, weil bei sechs Übungen pro Tag alle Zeilen ohnehin ohne Scrollen sichtbar sind.
+- End-to-end im Browser verifiziert (400px und 375px Breite): Tabelle rendert korrekt, kein
+  horizontales Overflow bei 375px (`scrollWidth === clientWidth`, gleiche Prüfmethode wie beim
+  RIR/1RM-Fix oben), Ausfüllen von "Bench Press" (2 Sätze, 8 Wdh., 40 kg) und Abhaken erzeugt
+  exakt zwei neue Zeilen in der Log-Tabelle darunter, sperrt die Tagebuch-Zeile, und das
+  Dashboard springt ohne Reload sofort von "Push" auf "Pull" (erster Fortschrittspunkt wird
+  grün) — bestätigt, dass die `.every()`-Regel korrekt mit dem neuen Tagebuch-Signal
+  zusammenspielt.
 
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
