@@ -13,3 +13,4 @@ export * from "./schemas/supplement.schema.js";
 export * from "./schemas/bodyComposition.schema.js";
 export * from "./schemas/progressPhoto.schema.js";
 export * from "./schemas/aiPlanGenerator.schema.js";
+export * from "./schemas/cardioLog.schema.js";

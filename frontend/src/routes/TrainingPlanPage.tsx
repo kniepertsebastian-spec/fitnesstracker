@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import type { TrainingPhase } from "@fitnesstracker/shared";
-import { TRAINING_PHASES } from "@fitnesstracker/shared";
 import { AppShell } from "../components/layout/AppShell";
 import { PushReminderCard } from "../components/trainingPlan/PushReminderCard";
-import { PlanExportImportCard } from "../components/trainingPlan/PlanExportImportCard";
-import { AiPlanGeneratorCard } from "../components/trainingPlan/AiPlanGeneratorCard";
 import { PlanExerciseList } from "../components/trainingPlan/PlanExerciseList";
+import { PhaseTabs } from "../components/trainingPlan/PhaseTabs";
 import { RecommendedSplitsSection } from "../components/trainingPlan/RecommendedSplitsSection";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../hooks/useTrainingPlan";
 
@@ -27,7 +26,12 @@ export function TrainingPlanPage() {
 
   return (
     <AppShell>
-      <h1 className="mb-4 text-xl font-semibold">Trainingsplan</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Trainingsplan</h1>
+        <Link to="/plan/generate" className="text-xs text-violet-400 hover:underline">
+          Generieren &amp; Exportieren
+        </Link>
+      </div>
 
       {isLoading ? (
         <p className="text-ink-500">Lädt…</p>
@@ -47,29 +51,8 @@ export function TrainingPlanPage() {
 
           <PushReminderCard />
 
-          <PlanExportImportCard />
-
           <div>
-            <div className="mb-2 flex gap-1 rounded-lg border border-ink-800 bg-ink-900 p-1">
-              {TRAINING_PHASES.map((phase) => (
-                <button
-                  key={phase}
-                  onClick={() => setSelectedPhase(phase)}
-                  className={`flex-1 rounded-md py-1.5 text-sm font-medium ${
-                    selectedPhase === phase
-                      ? "bg-violet-500 text-ink-950"
-                      : "text-ink-400 hover:text-ink-200"
-                  }`}
-                >
-                  {TRAINING_PHASE_LABELS[phase]}
-                </button>
-              ))}
-            </div>
-            {selectedPhase && (
-              <div className="mb-4">
-                <AiPlanGeneratorCard phase={selectedPhase} />
-              </div>
-            )}
+            {selectedPhase && <PhaseTabs selected={selectedPhase} onSelect={setSelectedPhase} />}
             {selectedPhase && <PlanExerciseList phase={selectedPhase} />}
           </div>
 
