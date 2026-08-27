@@ -54,19 +54,9 @@ export async function getWeeklyPlanStatus(
 
   const groups = groupByDayLabel(entries);
 
-  // A single group (Ganzkörper, or a flat manually-curated phase with no AI split at all) has
-  // nothing to progress through — always "active", no weekly completion tracking to compute.
-  if (groups.length <= 1) {
-    return {
-      days: groups.map((g) => ({
-        dayLabel: g.dayLabel,
-        exercises: g.entries.map(toPlanExerciseDto),
-        completed: false,
-      })),
-      activeDayIndex: 0,
-    };
-  }
-
+  // Always computed, even for a single-day plan — the plan diary (CurrentPlanCard.tsx) needs
+  // "already logged this week" per exercise regardless of whether there's a multi-day split to
+  // progress through, so a reload doesn't ask you to re-log something you already did.
   const weekStart = currentWeekMondayUtc();
   const trainedThisWeek = await prisma.workoutLog.findMany({
     where: { userId, deletedAt: null, performedAt: { gte: weekStart } },
@@ -74,13 +64,33 @@ export async function getWeeklyPlanStatus(
   });
   const trainedExerciseIds = new Set(trainedThisWeek.map((w) => w.exerciseId));
 
-  // A day counts as trained once *any* of its planned exercises was logged this week — not all
-  // of them. Real sessions skip an exercise or two; requiring every single one would make a day
-  // that was clearly trained show up as incomplete for a trivial reason.
+  const toDiaryExercise = (entry: EntryWithExercise) => ({
+    ...toPlanExerciseDto(entry),
+    loggedThisWeek: trainedExerciseIds.has(entry.exerciseId),
+  });
+
+  // A single group (Ganzkörper, or a flat manually-curated phase with no AI split at all) has
+  // nothing to progress through — always "active", no weekly completion tracking to compute.
+  if (groups.length <= 1) {
+    return {
+      days: groups.map((g) => ({
+        dayLabel: g.dayLabel,
+        exercises: g.entries.map(toDiaryExercise),
+        completed: false,
+      })),
+      activeDayIndex: 0,
+    };
+  }
+
+  // A day counts as trained once *every* one of its planned exercises has a log this week — the
+  // per-exercise "Ende" checkbox in the plan diary is an explicit, precise "I did this one"
+  // signal, so there's no reason to fall back to a looser "at least one" heuristic; someone still
+  // logging free-form via the classic dialog just needs to cover every exercise the same way to
+  // advance, which is the same bar either path has to clear.
   const days = groups.map((g) => ({
     dayLabel: g.dayLabel,
-    exercises: g.entries.map(toPlanExerciseDto),
-    completed: g.entries.some((e) => trainedExerciseIds.has(e.exerciseId)),
+    exercises: g.entries.map(toDiaryExercise),
+    completed: g.entries.every((e) => trainedExerciseIds.has(e.exerciseId)),
   }));
 
   const firstIncomplete = days.findIndex((d) => !d.completed);

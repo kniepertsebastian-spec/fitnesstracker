@@ -45,11 +45,19 @@ export const planImportResultSchema = z.object({
 });
 export type PlanImportResult = z.infer<typeof planImportResultSchema>;
 
+// A plan exercise plus whether it already has a WorkoutLog entry this week — lets the plan
+// diary (CurrentPlanCard) show a row as already-locked after a reload without the frontend
+// having to re-derive "this week" itself; that boundary is computed once, server-side.
+export const planDiaryExerciseDtoSchema = planExerciseDtoSchema.extend({
+  loggedThisWeek: z.boolean(),
+});
+export type PlanDiaryExerciseDto = z.infer<typeof planDiaryExerciseDtoSchema>;
+
 // One split day's exercises plus whether it's been trained this week (Mon-Sun) — see
 // planWeekStatus.service.ts for how "trained" is decided.
 export const planDayStatusDtoSchema = z.object({
   dayLabel: z.string().nullable(),
-  exercises: z.array(planExerciseDtoSchema),
+  exercises: z.array(planDiaryExerciseDtoSchema),
   completed: z.boolean(),
 });
 export type PlanDayStatusDto = z.infer<typeof planDayStatusDtoSchema>;

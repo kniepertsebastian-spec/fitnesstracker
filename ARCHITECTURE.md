@@ -590,10 +590,10 @@ weiterhin alle 18 Übungen auf einmal, ohne erkennbar zu machen, welcher Tag als
   kein Cronjob, kein manueller Montags-Reset nötig: sobald eine neue Woche beginnt, liefert die
   Abfrage automatisch "noch nichts trainiert", weil die Logs der Vorwoche außerhalb des
   Zeitfensters liegen.
-- **Ein Tag gilt als trainiert, sobald irgendeine seiner geplanten Übungen diese Woche geloggt
-  wurde — nicht erst, wenn alle sechs es wurden.** Ein Training weicht in der Praxis fast immer
-  leicht vom Plan ab (eine Übung ausgelassen, durch eine andere ersetzt); eine "alle sechs"-Regel
-  hätte einen offensichtlich absolvierten Tag aus einem trivialen Grund als offen markiert.
+- **Ein Tag galt zunächst als trainiert, sobald irgendeine seiner geplanten Übungen diese Woche
+  geloggt wurde — nicht erst, wenn alle sechs es wurden** (Begründung: ein Training weicht in der
+  Praxis fast immer leicht vom Plan ab). Diese Regel wurde in Nachbesserung 3 auf "alle Übungen"
+  verschärft, siehe dort.
 - **`activeDayIndex`** ist der Index des ersten noch offenen Tages in der Split-Reihenfolge, oder
   `null`, wenn alle Tage dieser Woche erledigt sind. `CurrentPlanCard` zeigt dementsprechend genau
   einen Tag mit seinen Übungen (plus einer schmalen Fortschrittsleiste: grün = erledigt, violett =
@@ -617,6 +617,52 @@ weiterhin alle 18 Übungen auf einmal, ohne erkennbar zu machen, welcher Tag als
   sofort (auch live im Browser, nach dem Bugfix oben) auf Tag 2 um, nach allen drei Tagen
   erscheint die Erfolgsmeldung, und künstliches Verschieben aller Logs in die Vorwoche setzt
   korrekt auf Tag 1 zurück.
+
+### Nachbesserung 3: Plan als Tagebuch
+
+Bisher zeigte `CurrentPlanCard` den aktiven Tag nur als reine Übungsliste an — geloggt wurde
+weiterhin über den separaten "+ Satz"-Dialog. Der Wunsch: der Plan selbst soll ausfüllbar sein
+(Übung, Sätze, Wdh., Gewicht, Ende-Checkbox), und ein Häkchen bei "Ende" soll direkt zur nächsten
+Übung springen.
+
+- **Die Tabelle schreibt echte `WorkoutLog`-Einträge, kein separates Häkchen-Feld.** Ein
+  Häkchen bei "Ende" ruft für jeden in "Sätze" eingegebenen Wert einmal `createLog.mutateAsync`
+  auf (`setNumber` von 1 bis `sets`, gleiches `clientId`/Offline-Sync-Muster wie der bestehende
+  "+ Satz"-Dialog) — der Tagebuch-Eintrag *ist* der Log-Eintrag, keine Kopie oder ein
+  Zusatzsystem daneben. Sätze/Wdh./Gewicht sind bewusst einfache `<input type="number">`-Felder
+  ohne eigene Validierungsbibliothek (kein React-Hook-Form/Zod-Formular für eine derart kleine,
+  inline editierbare Zeile) — eine simple Ganzzahl-/Positiv-Prüfung vor dem Schreiben, mit
+  Inline-Fehlermeldung statt eines Toasts.
+- **Kein Entfernen des Häkchens.** Eine Zeile sperrt sich nach dem Abhaken dauerhaft
+  (`done`-State, kein Zurück) — ein versehentliches Doppel-Antippen soll keine doppelten Sätze
+  erzeugen können. Korrekturen laufen bewusst über die bestehende Bearbeiten-/Löschen-Funktion
+  der Log-Tabelle darunter, denselben Weg wie bei jedem anderen geloggten Satz, statt einen
+  zweiten Korrekturmechanismus nur fürs Tagebuch zu bauen.
+- **`loggedThisWeek` pro `PlanExercise`** (neues, nicht persistiertes Feld in
+  `planDiaryExerciseDtoSchema`, serverseitig in `getWeeklyPlanStatus` aus denselben
+  `WorkoutLog`-Einträgen berechnet, die auch `activeDayIndex` treiben) lässt eine Zeile nach
+  einem Reload sofort als "erledigt" anzeigen, ohne dass das Frontend die Wochen-Grenze
+  (Montag 00:00 UTC) selbst nachbilden müsste — dieselbe serverseitige Quelle der Wahrheit wie
+  beim Tages-Fortschritt.
+- **Tag-Abschluss-Regel von "mindestens eine Übung" auf "alle Übungen" verschärft
+  (`.every()` statt `.some()` in `planWeekStatus.service.ts`).** Das Tagebuch liefert jetzt ein
+  präzises Pro-Übung-Signal ("diese Übung wurde erledigt"), im Gegensatz zur vorherigen
+  Unsicherheit, ob ein einzelner geloggter Satz einen ganzen Tag repräsentiert. Wer weiterhin
+  frei über den klassischen "+ Satz"-Dialog loggt statt über das Tagebuch, muss dafür einmal
+  jede geplante Übung des Tages abdecken — dieselbe Schwelle wie beim Tagebuch-Pfad, kein
+  bevorzugter Weg.
+- **Fokus-Sprung zur nächsten Zeile über eine Ref-Liste** (`rowRefs` in `CurrentPlanCard`, ein
+  `HTMLInputElement`-Array indiziert nach Zeilenposition) statt eines State-getriebenen
+  "aktive Zeile"-Konzepts — nach erfolgreichem Abhaken ruft die Zeile einfach `onDone()` auf,
+  die Karte fokussiert das "Sätze"-Feld der nächsten Zeile per `ref.focus()`. Kein Scroll-Effekt
+  nötig, weil bei sechs Übungen pro Tag alle Zeilen ohnehin ohne Scrollen sichtbar sind.
+- End-to-end im Browser verifiziert (400px und 375px Breite): Tabelle rendert korrekt, kein
+  horizontales Overflow bei 375px (`scrollWidth === clientWidth`, gleiche Prüfmethode wie beim
+  RIR/1RM-Fix oben), Ausfüllen von "Bench Press" (2 Sätze, 8 Wdh., 40 kg) und Abhaken erzeugt
+  exakt zwei neue Zeilen in der Log-Tabelle darunter, sperrt die Tagebuch-Zeile, und das
+  Dashboard springt ohne Reload sofort von "Push" auf "Pull" (erster Fortschrittspunkt wird
+  grün) — bestätigt, dass die `.every()`-Regel korrekt mit dem neuen Tagebuch-Signal
+  zusammenspielt.
 
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
