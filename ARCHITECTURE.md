@@ -527,8 +527,53 @@ Private "Spiegel-Fotos" zum Vorher/Nachher-Vergleich, als eigener Abschnitt im "
 - **Katalog-Auswahl für den Prompt ist gedeckelt und kontextabhängig, nicht der volle 870+-Übungskatalog.** `selectCatalogSubset` filtert beim Cold-Start nach Kategorie (`strength`/`plyometrics`/`olympic weightlifting`/`strongman`) und dem im 4-Schritte-Modal gewählten Equipment (Homegym/Kurzhanteln/Vollstudio → passende `Exercise.equipment`-Tags, "Vollstudio" = kein Filter). Beim Warm-Start werden zuerst die tatsächlich vom Nutzer trainierten Übungen aufgenommen (nach Häufigkeit sortiert, in JS statt per Prisma-`orderBy` auf einem Aggregat — robuster als sich auf eine unsichere Aggregat-`orderBy`-Syntax zu verlassen), aufgefüllt bis zu einem Deckel von 150 Einträgen mit allgemeinen Kraft-/Plyo-Übungen — genug Vielfalt für einen vollständigen Plan, auch wenn jemand bisher nur 2-3 verschiedene Übungen geloggt hat.
 - **Warm-Start vs. Cold-Start wird serverseitig entschieden (≥5 geloggte Sätze), nicht vom Frontend geraten.** Ein erster `POST /ai/generate-plan`-Aufruf ohne `coldStart`-Feld liefert bei zu wenig Historie `{ status: "needs_cold_start" }` als normale (kein Fehler-)Antwort — das Frontend öffnet daraufhin `ColdStartModal` (Trainingsfrequenz, Equipment, Erfahrungsgrad, Einschränkungen als vierteiliger Schritt-für-Schritt-Wizard) und ruft mit den Antworten erneut auf. Warm-Start injiziert stattdessen das Ernährungsprofil (falls vorhanden) und die Bestleistungen der letzten 8 Wochen (`workoutLog.groupBy` mit `_max`, gleiche Aggregat-Technik wie `goalSuggestion.service.ts`) als Kontext.
 - **Phasen-Alignment ist eine feste Konstante (`PHASE_GUIDANCE`), keine dynamische Berechnung** — dieselben Satz-/Wiederholungs-/RIR-Vorgaben pro Trainingsphase, die die Roadmap explizit vorgibt, direkt in den System-Prompt eingebettet. Konsistent mit der 8-Wochen-Rotation aus Phase 2 (`AUFBAU`/`MUSKELAUSDAUER`/`NEGATIV`), keine neue Phasen-Taxonomie.
-- **Generieren ersetzt den Plan der gewählten Phase komplett, statt anzuhängen.** Eine Transaktion löscht zuerst alle bestehenden `PlanExercise`-Einträge der Phase und legt die validierten, neu sortierten Einträge (0..n-1, sortiert nach dem vom Modell vorgeschlagenen `order`-Feld) an — "einen Plan generieren" bedeutet einen frischen Plan für diese Phase, nicht ein Vermischen mit vorher manuell kuratierten Übungen. Schlägt die Validierung fehl (kaputtes JSON, kein gültiger Katalog-Treffer), wird die Transaktion nie gestartet — die Phase bleibt unverändert, end-to-end verifiziert (Zähler vor/nach einer absichtlich fehlschlagenden Anfrage identisch).
+- **Generieren ersetzt den Plan der gewählten Phase komplett, statt anzuhängen.** Eine Transaktion löscht zuerst alle bestehenden `PlanExercise`-Einträge der Phase und legt die validierten Einträge neu an — "einen Plan generieren" bedeutet einen frischen Plan für diese Phase, nicht ein Vermischen mit vorher manuell kuratierten Übungen. Schlägt die Validierung fehl (kaputtes JSON, kein gültiger Katalog-Treffer), wird die Transaktion nie gestartet — die Phase bleibt unverändert, end-to-end verifiziert (Zähler vor/nach einer absichtlich fehlschlagenden Anfrage identisch).
 - **Ein `baseUrlOverride`-Parameter in `callChatCompletion`/`generatePlan` existiert ausschließlich für Tests.** Ohne echten API-Key ließe sich die komplette Pipeline (Verschlüsselung → Katalog-Auswahl → Prompt-Bau → Antwort-Parsing → Zod-Validierung → Transaktion) sonst nicht end-to-end verifizieren. Ein lokaler Stub-HTTP-Server stand für einen echten Anbieter ein; Produktionscode setzt diesen Parameter nie. Ein echter HTTP-Request an einen realen Anbieter wurde zusätzlich einmal bewusst nicht gemockt: das Sandbox-Netzwerk blockierte ihn korrekt mit `403 Host not in allowlist`, was `aiClient.ts` sauber als `502 AiProviderError` weiterreichte, statt den Server abstürzen zu lassen — eine zufällige, aber willkommene Verifikation des Fehlerpfads gegen einen echten (wenn auch blockierten) Netzwerk-Request.
+
+### Nachbesserung: Mehrtägige Splits statt einem flachen Ganzkörper-Tag
+
+Erste Praxisnutzung zeigte: die in Schritt 1 des Cold-Start-Modals abgefragte Trainingsfrequenz
+landete zwar im Prompt-Kontext, aber nur als beiläufiger Kontext-Satz — das Modell erzeugte
+trotzdem oft einen einzigen Ganzkörper-Tag mit 6 Übungen, unabhängig davon, ob 1× oder 6× pro
+Woche angegeben war, weil nichts die Frequenz verbindlich in eine Tagesstruktur übersetzte.
+
+- **`resolveSplitDays(frequencyPerWeek)` übersetzt die Frequenz jetzt fest in eine Split-Struktur**
+  (`promptBuilder.ts`): 1× Ganzkörper, 2× Ober-/Unterkörper, 3× Push/Pull/Legs, 4× Ober-/
+  Unterkörper A+B, 5× Bro-Split (Brust/Rücken/Beine/Schultern/Arme), 6× Push/Pull/Legs A+B —
+  Namen absichtlich identisch mit den kuratierten Splits in
+  `frontend/src/data/recommendedSplits.ts`/`RecommendedSplitsSection`, damit ein generierter
+  Plan genauso benannt ist wie die App ihre eigenen Vorlagen nennt. Wiederholte Tagestypen
+  innerhalb einer Woche (z. B. zwei Push-Tage bei 6×) bekommen A/B-Suffixe, damit `dayLabel`
+  innerhalb einer Phase eindeutig bleibt.
+- **Warm-Start-Nutzer wurden nie nach der Frequenz gefragt** (das ist reine Cold-Start-Frage) —
+  `estimateWeeklyFrequency` schätzt sie stattdessen aus der tatsächlichen Log-Kadenz der letzten
+  4 Wochen (Anzahl unterschiedlicher Kalendertage mit mindestens einem Satz, gerundet, geklemmt
+  1-6, Default 3 ohne jedes Signal).
+- **`PlanExercise.dayLabel`** (neue Migration `20260827120000_add_plan_exercise_day_label`) hält
+  fest, zu welchem Split-Tag ein Eintrag gehört — `null` für manuell hinzugefügte Einträge und
+  für Ein-Tages-Pläne ("Ganzkörper"), die nichts zu gruppieren haben. Der bestehende Unique Index
+  wurde von `(userId, phase, exerciseId)` auf `(userId, phase, exerciseId, dayLabel)` erweitert,
+  damit dieselbe Übung auf verschiedenen Tagen derselben Phase erscheinen darf (z. B. eine
+  Grundübung sowohl am Push- als auch am Legs-Tag), aber nicht zweimal am selben Tag. Zwei
+  Stellen mussten für die neue Compound-Key-Form angepasst werden (`planExercise.service.ts`s
+  manueller Duplikat-Check, `planExport.service.ts`s Import-Abgleich) — beide nutzen jetzt
+  `findFirst({ dayLabel: null })` statt `findUnique` auf dem Compound Key, weil Prismas
+  generierter Compound-Unique-Input-Typ `null` für ein nullable Feld nicht akzeptiert, obwohl der
+  zugrundeliegende Index es sehr wohl tut (bekannte Prisma-Einschränkung, keine Absicht der DB).
+- **`order` bleibt ein einziger, über den ganzen Schreibvorgang durchlaufender Zähler** (tagweise
+  aufsteigend), statt pro Tag wieder bei 0 zu beginnen — dadurch liefert die bereits bestehende
+  `listPlanExercises`-Route (ein einfaches `ORDER BY order ASC`, das nichts von Split-Tagen
+  weiß) die Einträge automatisch in korrekter Tages-Reihenfolge, ohne dass die Leseseite
+  angefasst werden musste. Eine alphabetische Sortierung nach `dayLabel` wäre falsch gewesen
+  (z. B. "Legs" vor "Push" alphabetisch, aber Push soll zuerst kommen).
+- **`PlanExerciseList` gruppiert die Anzeige jetzt nach `dayLabel`** (Überschrift pro Tag in
+  Split-Reihenfolge, manuell hinzugefügte/ungruppierte Einträge als letzter, überschriftsloser
+  Block), und die Auf/Ab-Pfeile zum manuellen Umsortieren wirken jetzt nur noch innerhalb des
+  jeweiligen Tages, nicht mehr über Tagesgrenzen hinweg.
+- End-to-end gegen einen lokalen Stub-Provider verifiziert: 3×/Woche erzeugt exakt Push/Pull/Legs
+  mit korrekter Tages-Reihenfolge (inkl. Wiederverwendung derselben Übung auf zwei Tagen), 1×/
+  Woche bleibt ungruppiert, ein vom Modell erfundener Tagesname wird verworfen, und die aus
+  simulierten Logs geschätzte Frequenz traf den erwarteten Split.
 
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 

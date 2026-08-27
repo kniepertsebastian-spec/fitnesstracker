@@ -22,8 +22,14 @@ export async function createPlanExercise(
     throw new NotFoundError("Exercise not found");
   }
 
-  const existing = await prisma.planExercise.findUnique({
-    where: { userId_phase_exerciseId: { userId, phase: input.phase, exerciseId: input.exerciseId } },
+  // Manually added entries are never grouped under a split day — `dayLabel: null` here matches
+  // the compound unique index (userId, phase, exerciseId, dayLabel) that also allows the AI
+  // generator to put the same exercise on more than one split day. `findFirst` rather than
+  // `findUnique`: Prisma's compound-unique-input type doesn't accept `null` for a nullable
+  // field even though the underlying index does, and at most one row can match this combination
+  // anyway (the same unique index guarantees it).
+  const existing = await prisma.planExercise.findFirst({
+    where: { userId, phase: input.phase, exerciseId: input.exerciseId, dayLabel: null },
   });
   if (existing) {
     throw new ConflictError("Exercise already assigned to this phase");

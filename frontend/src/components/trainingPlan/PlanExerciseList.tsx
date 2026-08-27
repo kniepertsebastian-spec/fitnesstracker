@@ -58,20 +58,40 @@ function PlanExerciseRow({
   );
 }
 
+// Groups entries by `dayLabel` in first-seen order (already sorted by the backend to match the
+// split's actual day sequence — see aiPlanGenerator.service.ts), keeping the up/down move
+// semantics per group so reordering only ever swaps within the same day. Entries without a
+// dayLabel (manually added, or a single-day "Ganzkörper" plan) render as one ungrouped list.
+function groupByDay(entries: PlanExerciseDto[]): { dayLabel: string | null; entries: PlanExerciseDto[] }[] {
+  const groups: { dayLabel: string | null; entries: PlanExerciseDto[] }[] = [];
+  const indexByLabel = new Map<string | null, number>();
+  for (const entry of entries) {
+    let idx = indexByLabel.get(entry.dayLabel);
+    if (idx === undefined) {
+      idx = groups.length;
+      indexByLabel.set(entry.dayLabel, idx);
+      groups.push({ dayLabel: entry.dayLabel, entries: [] });
+    }
+    groups[idx].entries.push(entry);
+  }
+  return groups;
+}
+
 export function PlanExerciseList({ phase }: { phase: TrainingPhase }) {
   const { data: entries, isLoading } = usePlanExercises(phase);
   const updatePlanExercise = useUpdatePlanExercise(phase);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const handleMove = (entry: PlanExerciseDto, direction: "up" | "down") => {
-    if (!entries) return;
-    const index = entries.findIndex((e) => e.id === entry.id);
+  const handleMove = (group: PlanExerciseDto[], entry: PlanExerciseDto, direction: "up" | "down") => {
+    const index = group.findIndex((e) => e.id === entry.id);
     const neighborIndex = direction === "up" ? index - 1 : index + 1;
-    const neighbor = entries[neighborIndex];
+    const neighbor = group[neighborIndex];
     if (!neighbor) return;
     updatePlanExercise.mutate({ id: entry.id, input: { order: neighbor.order } });
     updatePlanExercise.mutate({ id: neighbor.id, input: { order: entry.order } });
   };
+
+  const dayGroups = entries ? groupByDay(entries) : [];
 
   return (
     <div>
@@ -90,15 +110,26 @@ export function PlanExerciseList({ phase }: { phase: TrainingPhase }) {
       ) : !entries || entries.length === 0 ? (
         <p className="text-sm text-ink-600">Noch keine Übungen für diese Phase.</p>
       ) : (
-        <div className="flex flex-col gap-2">
-          {entries.map((entry, index) => (
-            <PlanExerciseRow
-              key={entry.id}
-              entry={entry}
-              isFirst={index === 0}
-              isLast={index === entries.length - 1}
-              onMove={handleMove}
-            />
+        <div className="flex flex-col gap-4">
+          {dayGroups.map((group) => (
+            <div key={group.dayLabel ?? "__ungrouped"}>
+              {group.dayLabel && (
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-violet-400">
+                  {group.dayLabel}
+                </h3>
+              )}
+              <div className="flex flex-col gap-2">
+                {group.entries.map((entry, index) => (
+                  <PlanExerciseRow
+                    key={entry.id}
+                    entry={entry}
+                    isFirst={index === 0}
+                    isLast={index === group.entries.length - 1}
+                    onMove={(e, direction) => handleMove(group.entries, e, direction)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
