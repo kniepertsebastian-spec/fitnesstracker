@@ -64,6 +64,10 @@ async function readCachedWorkoutLogs(): Promise<LocalWorkoutLog[]> {
 // works even when nothing in the React tree triggered it (the online-event flush in particular).
 async function syncQueryCache() {
   queryClient.setQueryData(WORKOUT_LOGS_QUERY_KEY, await readCachedWorkoutLogs());
+  // A logged/edited/deleted set can change which split day counts as "trained this week" (see
+  // planWeekStatus.service.ts) — invalidate across all three phases rather than trying to know
+  // which one is "current" from here; the query is cheap and rarely open in more than one tab.
+  queryClient.invalidateQueries({ queryKey: ["plan-exercises", "week-status"] });
 }
 
 // Cache-then-network read: tries the API first and merges the result into the local cache

@@ -5,11 +5,16 @@ import type {
   PlanImportResult,
   TrainingPhase,
   UpdatePlanExerciseInput,
+  WeeklyPlanStatusDto,
 } from "@fitnesstracker/shared";
 import { apiFetch, apiFetchBlob, apiUpload } from "./client";
 
 export function listPlanExercisesRequest(phase: TrainingPhase) {
   return apiFetch<{ items: PlanExerciseDto[] }>(`/plan-exercises?phase=${phase}`);
+}
+
+export function getWeeklyPlanStatusRequest(phase: TrainingPhase) {
+  return apiFetch<WeeklyPlanStatusDto>(`/plan-exercises/week-status?phase=${phase}`);
 }
 
 export function exportPlanExercisesRequest(format: PlanExportFormat) {

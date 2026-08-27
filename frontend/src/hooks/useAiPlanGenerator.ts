@@ -9,6 +9,7 @@ export function useGeneratePlan() {
     onSuccess: (result, variables) => {
       if (result.status === "generated") {
         queryClient.invalidateQueries({ queryKey: ["plan-exercises", variables.phase] });
+        queryClient.invalidateQueries({ queryKey: ["plan-exercises", "week-status", variables.phase] });
       }
     },
   });

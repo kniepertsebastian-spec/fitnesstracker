@@ -81,6 +81,7 @@ export function PlanExerciseList({ phase }: { phase: TrainingPhase }) {
   const { data: entries, isLoading } = usePlanExercises(phase);
   const updatePlanExercise = useUpdatePlanExercise(phase);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState(0);
 
   const handleMove = (group: PlanExerciseDto[], entry: PlanExerciseDto, direction: "up" | "down") => {
     const index = group.findIndex((e) => e.id === entry.id);
@@ -92,6 +93,11 @@ export function PlanExerciseList({ phase }: { phase: TrainingPhase }) {
   };
 
   const dayGroups = entries ? groupByDay(entries) : [];
+  const isSplit = dayGroups.length > 1;
+  // Clamp rather than reset to 0 on every render — a regenerated plan with fewer days than
+  // before shouldn't silently jump the selection, only pull it back in range if it's now invalid.
+  const activeIndex = Math.min(selectedDay, Math.max(0, dayGroups.length - 1));
+  const activeGroup = dayGroups[activeIndex];
 
   return (
     <div>
@@ -110,27 +116,32 @@ export function PlanExerciseList({ phase }: { phase: TrainingPhase }) {
       ) : !entries || entries.length === 0 ? (
         <p className="text-sm text-ink-600">Noch keine Übungen für diese Phase.</p>
       ) : (
-        <div className="flex flex-col gap-4">
-          {dayGroups.map((group) => (
-            <div key={group.dayLabel ?? "__ungrouped"}>
-              {group.dayLabel && (
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-violet-400">
-                  {group.dayLabel}
-                </h3>
-              )}
-              <div className="flex flex-col gap-2">
-                {group.entries.map((entry, index) => (
-                  <PlanExerciseRow
-                    key={entry.id}
-                    entry={entry}
-                    isFirst={index === 0}
-                    isLast={index === group.entries.length - 1}
-                    onMove={(e, direction) => handleMove(group.entries, e, direction)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+        <div>
+          {isSplit && (
+            <select
+              value={activeIndex}
+              onChange={(e) => setSelectedDay(Number(e.target.value))}
+              className="mb-3 w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2 text-sm font-medium text-ink-100"
+            >
+              {dayGroups.map((group, index) => (
+                <option key={index} value={index}>
+                  {group.dayLabel ?? `Tag ${index + 1}`}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <div className="flex flex-col gap-2">
+            {activeGroup?.entries.map((entry, index) => (
+              <PlanExerciseRow
+                key={entry.id}
+                entry={entry}
+                isFirst={index === 0}
+                isLast={index === activeGroup.entries.length - 1}
+                onMove={(e, direction) => handleMove(activeGroup.entries, e, direction)}
+              />
+            ))}
+          </div>
         </div>
       )}
 

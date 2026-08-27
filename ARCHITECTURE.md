@@ -566,14 +566,57 @@ Woche angegeben war, weil nichts die Frequenz verbindlich in eine Tagesstruktur 
   weiß) die Einträge automatisch in korrekter Tages-Reihenfolge, ohne dass die Leseseite
   angefasst werden musste. Eine alphabetische Sortierung nach `dayLabel` wäre falsch gewesen
   (z. B. "Legs" vor "Push" alphabetisch, aber Push soll zuerst kommen).
-- **`PlanExerciseList` gruppiert die Anzeige jetzt nach `dayLabel`** (Überschrift pro Tag in
-  Split-Reihenfolge, manuell hinzugefügte/ungruppierte Einträge als letzter, überschriftsloser
-  Block), und die Auf/Ab-Pfeile zum manuellen Umsortieren wirken jetzt nur noch innerhalb des
-  jeweiligen Tages, nicht mehr über Tagesgrenzen hinweg.
 - End-to-end gegen einen lokalen Stub-Provider verifiziert: 3×/Woche erzeugt exakt Push/Pull/Legs
   mit korrekter Tages-Reihenfolge (inkl. Wiederverwendung derselben Übung auf zwei Tagen), 1×/
   Woche bleibt ungruppiert, ein vom Modell erfundener Tagesname wird verworfen, und die aus
   simulierten Logs geschätzte Frequenz traf den erwarteten Split.
+
+### Nachbesserung 2: Tage-Dropdown auf `/plan` & wöchentlicher Fortschritt auf dem Dashboard
+
+Die Tage steckten korrekt in der Datenbank, aber `/plan` zeigte sie erst als eine durchgehende,
+mit Überschriften unterteilte Liste an statt einzeln umschaltbar — und das Dashboard zeigte
+weiterhin alle 18 Übungen auf einmal, ohne erkennbar zu machen, welcher Tag als nächstes dran ist.
+
+- **`PlanExerciseList` bekam ein natives `<select>`-Dropdown statt gestapelter Überschriften**
+  (nur wenn `dayGroups.length > 1` — ein Ein-Tages-Plan zeigt weiterhin einfach seine flache
+  Liste). Die Auswahl ist auf einen Index geklemmt statt bei jedem Rerender auf 0 zurückgesetzt,
+  damit ein Nachgenerieren mit weniger Tagen als vorher die aktuelle Auswahl nicht willkürlich
+  springen lässt. Die Auf/Ab-Pfeile zum manuellen Umsortieren wirken jetzt nur noch innerhalb des
+  gewählten Tages, nicht mehr über Tagesgrenzen hinweg.
+- **`GET /plan-exercises/week-status` (`planWeekStatus.service.ts`) ist reiner Lesezugriff, kein
+  gespeicherter Zustand.** Ob ein Split-Tag "diese Woche trainiert" wurde, wird bei jedem Aufruf
+  frisch aus den `WorkoutLog`-Einträgen seit Montag 00:00 UTC berechnet (gleiche
+  UTC-Kalendertag-Konvention wie Wasser-Reset/Tages-Challenge) — kein `WeeklyProgress`-Modell,
+  kein Cronjob, kein manueller Montags-Reset nötig: sobald eine neue Woche beginnt, liefert die
+  Abfrage automatisch "noch nichts trainiert", weil die Logs der Vorwoche außerhalb des
+  Zeitfensters liegen.
+- **Ein Tag gilt als trainiert, sobald irgendeine seiner geplanten Übungen diese Woche geloggt
+  wurde — nicht erst, wenn alle sechs es wurden.** Ein Training weicht in der Praxis fast immer
+  leicht vom Plan ab (eine Übung ausgelassen, durch eine andere ersetzt); eine "alle sechs"-Regel
+  hätte einen offensichtlich absolvierten Tag aus einem trivialen Grund als offen markiert.
+- **`activeDayIndex`** ist der Index des ersten noch offenen Tages in der Split-Reihenfolge, oder
+  `null`, wenn alle Tage dieser Woche erledigt sind. `CurrentPlanCard` zeigt dementsprechend genau
+  einen Tag mit seinen Übungen (plus einer schmalen Fortschrittsleiste: grün = erledigt, violett =
+  aktueller Tag, grau = offen) oder bei `null` eine Erfolgsmeldung statt einer Übungsliste. Ein
+  Ein-Tages-Plan (`Ganzkörper`) hat nichts zu "fortschreiten" und liefert immer `activeDayIndex: 0`
+  ohne Wochen-Berechnung — exakt das bisherige Verhalten vor diesem Feature.
+- **Zwei Query-Keys, die sich nicht gegenseitig invalidieren.** `["plan-exercises", phase]` und
+  `["plan-exercises", "week-status", phase]` teilen sich kein gemeinsames Präfix (unterschiedliche
+  Werte an derselben Array-Position), React Querys Standard-Präfix-Invalidierung erwischt also nie
+  beide gleichzeitig — jede Mutation, die den Plan einer Phase ändert (manuelles Anlegen/Ändern/
+  Löschen, KI-Generieren), muss beide Keys explizit invalidieren.
+- **Ein echter Bug unterwegs gefunden: das Speichern eines Satzes aktualisierte den
+  Wochen-Status gar nicht.** `offline/workoutLogSync.ts` kennt die `plan-exercises`-Query-Keys
+  gar nicht — es aktualisiert nur den `workout-logs`-Cache. Live im Browser reproduziert: nach dem
+  Loggen der Tag-1-Übung blieb die Dashboard-Karte auf Tag 1 stehen, bis die Seite neu geladen
+  wurde. Fix: `syncQueryCache()` (bereits der zentrale Punkt, der nach jedem lokalen Schreiben und
+  jedem Hintergrund-Sync-Schritt läuft, siehe Offline-Sync-Abschnitt oben) invalidiert jetzt
+  zusätzlich `["plan-exercises", "week-status"]` präfixweise über alle drei Phasen — welche Phase
+  gerade "aktuell" ist, muss dieser Funktion dafür nicht bekannt sein.
+- End-to-end verifiziert: frischer 3-Tage-Split zeigt Tag 1, das Loggen einer Tag-1-Übung schaltet
+  sofort (auch live im Browser, nach dem Bugfix oben) auf Tag 2 um, nach allen drei Tagen
+  erscheint die Erfolgsmeldung, und künstliches Verschieben aller Logs in die Vorwoche setzt
+  korrekt auf Tag 1 zurück.
 
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 

@@ -44,3 +44,21 @@ export const planImportResultSchema = z.object({
   errors: z.array(z.string()),
 });
 export type PlanImportResult = z.infer<typeof planImportResultSchema>;
+
+// One split day's exercises plus whether it's been trained this week (Mon-Sun) — see
+// planWeekStatus.service.ts for how "trained" is decided.
+export const planDayStatusDtoSchema = z.object({
+  dayLabel: z.string().nullable(),
+  exercises: z.array(planExerciseDtoSchema),
+  completed: z.boolean(),
+});
+export type PlanDayStatusDto = z.infer<typeof planDayStatusDtoSchema>;
+
+export const weeklyPlanStatusDtoSchema = z.object({
+  // In split sequence (day 1, day 2, ...), not DB insertion order.
+  days: z.array(planDayStatusDtoSchema),
+  // Index into `days` of the day to show as "today's workout" — the first not-yet-completed
+  // day this week. Null once every day in the split has been trained this week.
+  activeDayIndex: z.number().int().nullable(),
+});
+export type WeeklyPlanStatusDto = z.infer<typeof weeklyPlanStatusDtoSchema>;
