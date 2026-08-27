@@ -4,6 +4,7 @@ import { TRAINING_PHASES } from "@fitnesstracker/shared";
 import { AppShell } from "../components/layout/AppShell";
 import { PushReminderCard } from "../components/trainingPlan/PushReminderCard";
 import { PlanExportImportCard } from "../components/trainingPlan/PlanExportImportCard";
+import { AiPlanGeneratorCard } from "../components/trainingPlan/AiPlanGeneratorCard";
 import { PlanExerciseList } from "../components/trainingPlan/PlanExerciseList";
 import { RecommendedSplitsSection } from "../components/trainingPlan/RecommendedSplitsSection";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../hooks/useTrainingPlan";
@@ -64,6 +65,11 @@ export function TrainingPlanPage() {
                 </button>
               ))}
             </div>
+            {selectedPhase && (
+              <div className="mb-4">
+                <AiPlanGeneratorCard phase={selectedPhase} />
+              </div>
+            )}
             {selectedPhase && <PlanExerciseList phase={selectedPhase} />}
           </div>
 

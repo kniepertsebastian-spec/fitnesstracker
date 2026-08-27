@@ -11,7 +11,18 @@ function formatTime(totalSeconds: number) {
 }
 
 export function RestTimerWidget() {
-  const { remainingSeconds, totalSeconds, isRunning, start, pause, resume, reset } = useTimerStore();
+  const {
+    remainingSeconds,
+    totalSeconds,
+    isRunning,
+    start,
+    pause,
+    resume,
+    reset,
+    autoStartEnabled,
+    autoStartSeconds,
+    setAutoStart,
+  } = useTimerStore();
   const [expanded, setExpanded] = useState(false);
   const [customSeconds, setCustomSeconds] = useState("90");
 
@@ -81,6 +92,29 @@ export function RestTimerWidget() {
             Start
           </button>
         </div>
+
+        <label className="mt-3 flex items-center justify-between border-t border-ink-800 pt-3 text-sm text-ink-300">
+          <span>Automatisch nach jedem Satz starten</span>
+          <input
+            type="checkbox"
+            checked={autoStartEnabled}
+            onChange={(event) => setAutoStart(event.target.checked)}
+            className="h-4 w-4 accent-violet-500"
+          />
+        </label>
+        {autoStartEnabled && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs text-ink-500">Dauer</span>
+            <input
+              type="number"
+              min={1}
+              value={autoStartSeconds}
+              onChange={(event) => setAutoStart(true, Number(event.target.value))}
+              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1 text-sm"
+            />
+            <span className="text-xs text-ink-500">s</span>
+          </div>
+        )}
       </div>
     );
   }
