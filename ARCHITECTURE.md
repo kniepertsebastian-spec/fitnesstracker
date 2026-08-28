@@ -977,6 +977,57 @@ bereits solide.
   auf dem Server vorhanden, nur ohne aktuelle UI, bis die separate Historie-Ansicht gebaut ist);
   kein horizontaler Overflow bei 375px.
 
+## Fortschrittsansicht (Phase 28, fertig — zweiter roadmap2.md-P1-Punkt)
+
+- **Reine Frontend-Aggregation, kein neuer Backend-Code.** `useBodyCompositionEntries()` und
+  `useWorkoutLogs()` laden bereits die komplette (praktisch relevante) Historie — Body-Composition
+  begrenzt auf die letzten 60 Einträge server-seitig (`HISTORY_LIMIT`, aus einer früheren Phase,
+  hier nicht angetastet), Workout-Logs vollständig über den bestehenden Offline-First-Cache
+  (`offline/workoutLogSync.ts`). `/progress` filtert diese bereits geladenen Daten clientseitig
+  nach dem gewählten Zeitraum (`lib/progressRange.ts`), genau wie das Dashboard seine Log-Tabelle
+  clientseitig auf "heute" filtert (Phase 27) — kein neuer `from`/`to`-Request nötig, obwohl die
+  Backend-Route das theoretisch unterstützt (`GET /workout-logs?from=&to=`), weil die Daten für
+  eine Ein-Personen-App ohnehin klein genug sind, um komplett im Client zu leben.
+- **`Sparkline.tsx` ist eine selbstgebaute SVG-Polyline statt eines Chart-Dependencies.** Eine
+  einzelne Trendlinie über eine Handvoll Datenpunkte (Gewichtsverlauf) braucht keine Bibliothek
+  wie Recharts/D3 — eine `viewBox`-skalierte `<polyline>` mit simpler Min/Max-Normalisierung ist
+  ein paar Zeilen Mathematik und kostet null zusätzliches Bundle-Gewicht, konsistent mit dem
+  bisherigen Muster dieser App (hand-gerollte CSV/XML-Parser statt Bibliotheken, siehe Plan-
+  Export/Import weiter oben).
+- **`RangeTabs`** ist visuell identisch zu `trainingPlan/PhaseTabs`, aber eine eigene, kleinere
+  Komponente statt Wiederverwendung — andere Optionsmenge (4 Zeiträume vs. 3 Phasen), anderer
+  Werttyp (`ProgressRange` vs. `TrainingPhase`), eine gemeinsame generische Tab-Komponente hätte
+  hier über Typparameter mehr Komplexität eingeführt, als die paar wiederholten Zeilen JSX
+  gekostet hätten.
+- **`StrengthProgressCard` sortiert nach zuletzt trainiert, nicht nach absolutem Rekord.** Der
+  gezeigte Wert pro Übung ist zwar der beste Satz (höchstes geschätztes 1RM, per
+  `estimateOneRepMax` aus Phase 20) *innerhalb des gewählten Zeitraums* — aber welche Übungen
+  überhaupt in der (auf sechs Einträge gedeckelten) Liste erscheinen, richtet sich nach der
+  zuletzt trainierten zuerst. Eine reine "härtester Lift zuerst"-Sortierung hätte bei einer Ein-
+  Personen-App mit wechselndem Fokus schnell dazu geführt, dass eine seit Monaten nicht mehr
+  trainierte Übung oben in der "Fortschritt"-Ansicht klebt — das Ziel dieser Karte ist "woran
+  arbeitest du gerade", keine All-Time-Bestenliste.
+- **1RM-Vergleich statt reinem Gewichtsvergleich, um den "besten Satz" zu bestimmen.** Ein
+  5kg-Satz mit 20 Wiederholungen kann strengths-mäßig mehr wert sein als 5kg mit 1 Wiederholung,
+  obwohl die reine Gewichtszahl identisch aussähe — `estimateOneRepMax` normalisiert das, statt
+  naiv nach `weightKg` zu sortieren.
+- **Neutrale Trend-Pfeile beim Gewicht, keine Gut/Schlecht-Farbcodierung.** Eine Gewichtszunahme
+  grün oder rot zu markieren wäre eine unbegründete Wertung — für einen Nutzer im Muskelaufbau ist
+  Zunahme das Ziel, für einen anderen genau nicht. Gleiche neutrale ↑/↓/→-Konvention wie
+  `BodyCompositionCard`s bereits bestehender `trendArrow`-Helper, hier für Konsistenz repliziert
+  statt importiert (zwei Komponenten in unterschiedlichen Feature-Bereichen, keine gemeinsame
+  Abhängigkeit, die es rechtfertigen würde, sie zusammenzuziehen).
+- **`VolumeProgressCard`s Vorperioden-Vergleich ist bei "Gesamt" bewusst leer, kein Sonderfall im
+  UI.** `previousRangeCutoffs` liefert für `"all"` `null`, die Karte prüft das und rendert den
+  Trend-Absatz dann einfach nicht — es gibt keine sinnvolle "Periode davor", wenn die aktuelle
+  Periode bereits alles seit Anfang an umfasst.
+- End-to-end verifiziert (simulierte ~200 Tage Körperkomposition- und Trainingshistorie): Sparkline
+  zeigt den korrekten Trend, Kraft-Karte listet alle vier trainierten Übungen mit korrektem
+  Gewicht/Wdh./≈1RM, Volumen-Karte zeigt plausible Summen samt Vorperioden-Trend; Umschalten
+  zwischen "3 Monate" und "Gesamt" ändert alle drei Karten korrekt und lässt den Vorperioden-Trend
+  bei "Gesamt" korrekt verschwinden; kein horizontaler Overflow bei 375px; "Fortschritt" ist im
+  Hamburger-Menü erreichbar.
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen

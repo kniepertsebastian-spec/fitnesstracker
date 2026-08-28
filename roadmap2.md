@@ -11,7 +11,7 @@ Fitnesstracker – TODO vor Hardening
 🟠 P1 – Wichtig
 
 ☑ Dashboard finalisieren – Heutiges Training, Fortschritt und Ziele übersichtlich. (Log-Tabelle auf heute begrenzt, kompakte Ziele-Karte mit Fortschrittsbalken ergänzt — siehe ARCHITECTURE.md/ROADMAP.md.)
-☐ Fortschrittsansicht abrunden – Gewicht, Körperdaten, Kraft, Volumen, PRs und Zeiträume.
+☑ Fortschrittsansicht abrunden – Gewicht, Körperdaten, Kraft, Volumen, PRs und Zeiträume. (Neue Seite `/progress` mit Zeitraum-Filter, reine Frontend-Auswertung bestehender Daten — siehe ARCHITECTURE.md/ROADMAP.md.)
 ☐ Progress-Fotos komplettieren – Aufnahme, Upload, Datum, Galerie und Vorher/Nachher.
 ☐ Push-Einstellungen fertigstellen – Erinnerungen individuell aktivierbar und konfigurierbar.
 ☐ Workout-Historie vervollständigen – Vergangene Trainings ansehen und bearbeiten.

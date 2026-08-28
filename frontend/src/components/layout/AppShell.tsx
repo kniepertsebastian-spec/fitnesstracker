@@ -15,6 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Log", to: "/" },
   { label: "Übungen", to: "/exercises" },
   { label: "Plan", to: "/plan" },
+  { label: "Fortschritt", to: "/progress" },
   { label: "Ziele", to: "/goals" },
   { label: "Ernährung", to: "/nutrition" },
 ];
