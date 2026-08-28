@@ -2,7 +2,7 @@ Fitnesstracker – TODO vor Hardening
 
 🔴 P0 – Kritisch
 
-☐ Trainingsablauf vollständig machen – Start, Sätze, Pause, Abbruch, Fortsetzen und Abschluss zuverlässig.
+☑ Trainingsablauf vollständig machen – Start, Sätze, Pause, Abbruch, Fortsetzen und Abschluss zuverlässig. (Als Buttons umgesetzt, offline-fähig wie das Satz-Logging — siehe ARCHITECTURE.md/ROADMAP.md.)
 ☐ Trainingsplan & Rotation finalisieren – Phasenwechsel, 8-Wochen-Zyklus, Pausen und Neustart eindeutig.
 ☐ Progressionslogik festlegen – Klare Regeln für Steigerung, Fehlversuche und Deloads.
 ☐ Offline-Sync fachlich fertigstellen – Offline-Trainings zuverlässig und vollständig synchronisieren.

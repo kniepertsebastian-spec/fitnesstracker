@@ -55,6 +55,13 @@ enum CardioMachine {
   STAIRMASTER
 }
 
+enum WorkoutSessionStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ABORTED
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
@@ -81,6 +88,7 @@ model User {
   planExercises          PlanExercise[]
   aiProviderSetting      AiProviderSetting?
   cardioLogs             CardioLog[]
+  workoutSessions        WorkoutSession[]
 }
 
 // One active BYOK provider config per user — "flexible Auswahl und Hinterlegung eines API-Keys"
@@ -376,4 +384,25 @@ model CardioLog {
   deletedAt       DateTime?
 
   @@index([userId, performedAt])
+}
+
+// A lightweight lifecycle wrapper around a gym visit — Start/Pause/Fortsetzen/Abbrechen/
+// Abschließen as buttons on the dashboard. Deliberately not linked to WorkoutLog rows (no
+// sessionId there): logging a set stays independent of whether a session is open, so this is a
+// parallel, optional tracker rather than a gate in front of the existing logging flow. Offline
+// support mirrors WorkoutLog (clientId as the idempotency key, same offline-sync queue pattern
+// in the frontend) since a session is started/paused/finished at the gym exactly like a set is
+// logged there — same connectivity story.
+model WorkoutSession {
+  id        String               @id @default(uuid())
+  clientId  String               @unique
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    WorkoutSessionStatus @default(ACTIVE)
+  startedAt DateTime             @default(now())
+  endedAt   DateTime?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([userId, status])
 }

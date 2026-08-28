@@ -12,10 +12,12 @@ import { NutritionPage } from "./routes/NutritionPage";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { useAuthBootstrap } from "./hooks/useAuth";
 import { initWorkoutLogSync } from "./offline/workoutLogSync";
+import { initWorkoutSessionSync } from "./offline/workoutSessionSync";
 
 export function App() {
   useAuthBootstrap();
   useEffect(() => initWorkoutLogSync(), []);
+  useEffect(() => initWorkoutSessionSync(), []);
 
   return (
     <BrowserRouter>

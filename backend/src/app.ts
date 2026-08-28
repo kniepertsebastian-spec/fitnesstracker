@@ -27,6 +27,7 @@ import progressPhotoScheduler from "./modules/progressPhotos/progressPhoto.sched
 import aiSettingsRoutes from "./modules/aiSettings/aiSettings.routes.js";
 import aiPlanGeneratorRoutes from "./modules/aiPlanGenerator/aiPlanGenerator.routes.js";
 import cardioLogRoutes from "./modules/cardioLogs/cardioLog.routes.js";
+import workoutSessionRoutes from "./modules/workoutSessions/workoutSession.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -69,6 +70,7 @@ export function buildApp() {
   app.register(aiSettingsRoutes, { prefix: "/api" });
   app.register(aiPlanGeneratorRoutes, { prefix: "/api" });
   app.register(cardioLogRoutes, { prefix: "/api" });
+  app.register(workoutSessionRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {
     if (error instanceof ZodError) {

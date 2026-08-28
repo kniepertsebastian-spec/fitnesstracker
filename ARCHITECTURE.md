@@ -722,6 +722,53 @@ weiterhin über den separaten "+ Satz"-Dialog. Der Wunsch: der Plan selbst soll 
   bestehenden `useTrainingPlan`-Hook (React-Query-Cache, kein doppelter Netzwerk-Request beim
   Wechsel zwischen den Seiten).
 
+## Trainingsablauf: Start/Pause/Fortsetzen/Abbrechen/Abschließen (Phase 22, fertig)
+
+- **`WorkoutSession` bewusst nicht mit `WorkoutLog` verknüpft — kein `sessionId`-Feld dort.**
+  Ursprünglich aus `roadmap2.md`, dann bewusst vereinfacht: reicht als Buttons, ohne das
+  bestehende "+ Satz" umzubauen. Eine Session ist ein paralleler, optionaler Lifecycle-Tracker,
+  keine Voraussetzung fürs Loggen — ein Satz lässt sich weiterhin jederzeit loggen, unabhängig
+  davon, ob gerade eine Session offen ist. Das hält die Änderung rein additiv: nichts an der
+  bestehenden, gut getesteten Log-Logik musste angefasst werden.
+  - `status` ist ein Enum (`ACTIVE`/`PAUSED`/`COMPLETED`/`ABORTED`), `endedAt` wird serverseitig
+    gesetzt, sobald `status` auf einen der beiden Terminalzustände wechselt — nie vom Client
+    direkt geschickt. Es gibt bewusst keine serverseitige Zustandsautomat-Validierung (z. B.
+    "PAUSED → ACTIVE ist ok, COMPLETED → ACTIVE nicht") — das Frontend bietet ohnehin nur
+    gültige Übergänge als Buttons an, eine zusätzliche Prüfschicht hätte für den gewünschten
+    schlanken Umfang keinen echten Wert gebracht.
+  - Höchstens eine offene Session (`ACTIVE`/`PAUSED`) gleichzeitig pro Nutzer — nicht per
+    DB-Constraint erzwungen, sondern dadurch, dass das Frontend "Training starten" nur zeigt,
+    wenn es lokal keine offene Session kennt. `GET /workout-sessions/open` sortiert nach
+    `updatedAt desc` als Sicherheitsnetz, falls diese Invariante doch mal verletzt wird (z. B.
+    zwei Geräte gleichzeitig).
+- **Eigene, kleinere Offline-Sync-Queue statt Erweiterung von `workoutLogSync.ts`.** Eine
+  Session braucht offline exakt dieselbe Grundmechanik wie ein Satz (lokal-zuerst schreiben,
+  `clientId` als Idempotenz-Schlüssel, eine Mutation-Queue, die bei `online` synchron
+  nacheinander abgearbeitet wird), aber nur zwei Operationen (`create` fürs Starten, `update`
+  für jeden Status-Wechsel — nie `delete`, eine Session wird nie gelöscht, nur beendet). Statt
+  die bestehende, funktionierende `pendingMutations`-Queue um einen Entitätstyp zu erweitern
+  (Risiko: ein Bug dort träfe auch das Satz-Logging), bekam `WorkoutSession` eine eigene, parallele
+  Queue: neue Dexie-Tabellen `workoutSessions`/`pendingSessionMutations` (Dexie-Version 2 in
+  `offline/db.ts` — `version(2).stores(...)`, keine Migration bestehender Felder nötig, nur neue
+  Tabellen), eigenes `offline/workoutSessionSync.ts` mit demselben Aufbau wie
+  `workoutLogSync.ts` (lokal schreiben → Queue einreihen → `syncSessionQueryCache` → Flush
+  versuchen), aber ohne den `delete`-Zweig und ohne die "mehrere Zeilen"-Sortierung, weil es nur
+  eine relevante lokale Zeile gibt (die gerade offene Session). Eigene `online`/`offline`-Listener
+  in `initWorkoutSessionSync()`, separat von `initWorkoutLogSync()` registriert — beide sind
+  billig und unabhängig, kein Grund, Session-Flushes durch das Log-Sync-Modul zu fädeln.
+  `LocalWorkoutSession` folgt demselben `id: string | null`-Muster wie `LocalWorkoutLog` — offline
+  gestartet ist sofort voll bedienbar (Pause/Abbrechen/Abschließen funktionieren, bevor der Server
+  je eine `id` vergeben hat).
+- **`WorkoutSessionBar` als einfache Button-Reihe, keine laufende Dauer-Anzeige.** Zeigt nur
+  Status + Startzeit (`seit HH:MM`) statt eines live hochzählenden Timers — für den gewünschten
+  schlanken Umfang reicht ein statischer Zeitstempel, ein `setInterval`-getriebener Countdown
+  hätte zusätzliche Komplexität (Aufräumen bei Unmount, Hintergrund-Tab-Drosselung) ohne
+  angefragten Mehrwert bedeutet.
+- End-to-end verifiziert: Start → Pause → Reload (Server-Persistenz bestätigt) → Fortsetzen;
+  offline Abbrechen aktualisiert die UI sofort, offline eine neue Session starten ebenso; nach
+  Reconnect + Reload ist die offline gestartete Session serverseitig vorhanden; kein horizontaler
+  Overflow bei 375px mit allen drei Aktions-Buttons gleichzeitig sichtbar.
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen
@@ -894,6 +941,8 @@ Breaking-Migrationen nötig werden:
   Phase 19, fertig)
 - `CardioLog` — Gerät/Stufe/Intensität/Dauer, Soft-Delete, kein Bezug zu `PlanExercise` (siehe
   Phase 21, fertig)
+- `WorkoutSession` — Start/Pause/Fortsetzen/Abbrechen/Abschließen-Lifecycle, `clientId` für
+  Offline-Idempotenz wie `WorkoutLog`, kein Bezug zu `WorkoutLog` (siehe Phase 22, fertig)
 
 ## Bekannte Stolperfallen (bereits berücksichtigt)
 
