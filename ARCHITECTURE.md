@@ -806,6 +806,58 @@ weiterhin über den separaten "+ Satz"-Dialog. Der Wunsch: der Plan selbst soll 
   Fortsetzen zeigt wieder ein nächstes Wechsel-Datum; Phase neu starten setzt "Seit" korrekt auf
   den aktuellen Montag zurück; kein horizontaler Overflow bei 375px mit allen Buttons sichtbar.
 
+## Progressionslogik: Steigerung, Fehlversuche, Deloads (Phase 24, fertig)
+
+- **Aufbau und Negativ progressieren über Gewicht, nur Muskelausdauer über Wiederholungen —**
+  **eine bewusste Korrektur unterwegs.** Der erste Zuschnitt ("nur Aufbau übers Gewicht,
+  Ausdauer/Negativ eher mehr Wiederholungen") widersprach der bereits bestehenden
+  Phasen-Definition in `promptBuilder.ts`s `PHASE_GUIDANCE`: Negativ ist mit 4-6 Wiederholungen
+  (exzentrische Überlastung, nahe am Maximalgewicht) der niedrigste Wiederholungsbereich aller
+  drei Phasen, nicht ein hochrepetitiver Ausdauer-Fokus — "mehr Wiederholungen" als
+  Progressionsziel hätte dem eigentlichen Trainingsreiz dieser Phase widersprochen. Auf Rückfrage
+  progressiert Negativ jetzt wie Aufbau übers Gewicht; `mode = phase === "MUSKELAUSDAUER" ?
+  "reps" : "weight"` in `computeProgression` (`planWeekStatus.service.ts`) hält diese Entscheidung
+  an einer Stelle fest.
+- **Progression braucht die volle Log-Historie einer Übung, nicht nur "diese Woche".** Anders als
+  `loggedThisWeek` (Nachbesserung 2/3 oben, bewusst auf die aktuelle Woche begrenzt) muss ein
+  Fortschritts-Vorschlag die letzten tatsächlich geloggten Sätze sehen, auch wenn die letzte
+  Einheit für diese Übung vor mehr als einer Woche lag. `fetchRecentSetsByExercise` fragt deshalb
+  für jede Übung des aktiven Tages separat `take: 2` ab (parallel via `Promise.all`), sortiert
+  nach `performedAt desc, setNumber desc` — bewusst pro Übung statt einer einzigen, über alle
+  Übungen gedeckelten Abfrage: bei ungleich verteiltem Logging (eine Übung viel seltener trainiert
+  als eine andere) würde eine gemeinsame `take`-Grenze die selten trainierte Übung sonst leer oder
+  mit falscher (zu alter) Historie zurückgeben.
+- **Ziel-Wiederholungen kommen aus `PlanExercise.targetReps`, mit einem Phasen-Default als
+  Fallback (Aufbau 10, Muskelausdauer 20, Negativ 5)** — Mittelwerte aus `PHASE_GUIDANCE`s
+  Wiederholungsbereichen, für Übungen, die manuell ohne explizites Ziel angelegt wurden.
+- **Drei klare Regeln, unabhängig vom Modus:** Ziel erreicht → Steigerung (Gewichts-Modus: +2,5kg
+  beim gleichen Wiederholungsziel; Wiederholungs-Modus: +2 Wiederholungen beim gleichen Gewicht).
+  Ziel verfehlt ("Fehlversuch") → unverändert nochmal (gleiches Gewicht bzw. gleiches
+  Wiederholungsziel). Zweimal in Folge beim exakt gleichen Gewicht verfehlt → Deload, 10 % runter,
+  auf 2,5kg gerundet (`Math.round(kg / 2.5) * 2.5`) — überschreibt in beiden Modi sowohl den
+  Gewichts- als auch den Wiederholungsvorschlag (Wiederholungsziel fällt beim Deload zurück auf
+  den Basiswert, nicht auf eine Fortsetzung der zuletzt verfehlten Zahl).
+  Kein Vorschlag (`progression: null`), solange noch nichts für diese Übung geloggt wurde — kein
+  erfundener Startwert.
+- **Vorschlag füllt die Tagebuch-Felder vor, statt nur informativ danebenzustehen.** `DiaryRow`
+  initialisiert `reps`/`weightKg` direkt aus `entry.progression` (sonst leer wie bisher) — wer
+  einfach nur "Ende" abhakt, trainiert automatisch nach der berechneten Regel, ohne selbst
+  nachzurechnen oder abzutippen; eine kurze Subtitle-Zeile unter dem Übungsnamen ("↑ 62.5kg",
+  "= 40kg", "Deload → 35kg", grün/grau/amber je nach Fall) zeigt zusätzlich, warum. Gleiches
+  Subtitle-Zeilen-Muster wie beim RIR/1RM-Fix (Phase 20) und `loggedThisWeek` — Zusatzinfo unter
+  dem Namen statt einer weiteren Tabellenspalte.
+- **Dabei eine echte UI-Lücke gefunden: das kg-Feld schnitt vorausgefüllte Nachkommawerte visuell
+  ab.** Ein Vorschlag wie "62.5" erschien im ursprünglich schmalen Feld (`w-11`, 44px) nur als
+  "62" — der tatsächliche `<input>`-Wert war korrekt (per `evaluate()` bestätigt), nur nicht
+  vollständig sichtbar, ein Problem, das vor der Progression kaum auftrat, weil das Feld zuvor
+  fast immer leer startete. Behoben durch Verbreiterung auf `w-14`; bei 375px weiterhin kein
+  horizontaler Overflow.
+- End-to-end verifiziert (Skript direkt gegen `getWeeklyPlanStatus` sowie live im Browser): zwei
+  Fehlversuche beim selben Gewicht lösen den erwarteten Deload aus (40kg → 35kg), ein erreichtes
+  Ziel schlägt korrekt eine Gewichtssteigerung vor (20kg → 22,5kg bzw. 60kg → 62,5kg),
+  Muskelausdauer schlägt bei erreichtem Ziel eine Wiederholungssteigerung statt einer
+  Gewichtssteigerung vor, eine Übung ohne jede Historie zeigt weiterhin leere Felder.
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen

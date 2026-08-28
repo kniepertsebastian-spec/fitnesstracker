@@ -45,11 +45,29 @@ export const planImportResultSchema = z.object({
 });
 export type PlanImportResult = z.infer<typeof planImportResultSchema>;
 
+// Progression suggestion for one exercise, derived from its most recently logged sets — see
+// planWeekStatus.service.ts's computeProgression for the rules. "weight" mode (Aufbau/Negativ)
+// suggests the next weight to lift at the same rep target; "reps" mode (Muskelausdauer) suggests
+// the next rep count at the same weight. Absent when nothing has ever been logged for this
+// exercise yet — there's nothing to progress from.
+export const progressionSuggestionSchema = z.object({
+  mode: z.enum(["weight", "reps"]),
+  lastWeightKg: z.number(),
+  lastReps: z.number().int(),
+  targetReps: z.number().int(),
+  hitTarget: z.boolean(),
+  deloadSuggested: z.boolean(),
+  suggestedWeightKg: z.number(),
+  suggestedReps: z.number().int(),
+});
+export type ProgressionSuggestion = z.infer<typeof progressionSuggestionSchema>;
+
 // A plan exercise plus whether it already has a WorkoutLog entry this week — lets the plan
 // diary (CurrentPlanCard) show a row as already-locked after a reload without the frontend
 // having to re-derive "this week" itself; that boundary is computed once, server-side.
 export const planDiaryExerciseDtoSchema = planExerciseDtoSchema.extend({
   loggedThisWeek: z.boolean(),
+  progression: progressionSuggestionSchema.nullable(),
 });
 export type PlanDiaryExerciseDto = z.infer<typeof planDiaryExerciseDtoSchema>;
 
