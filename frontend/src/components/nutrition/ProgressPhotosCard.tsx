@@ -8,6 +8,10 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function todayDateInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function ProgressPhotosCard() {
   const { data: photos, isLoading } = useProgressPhotos();
   const upload = useUploadProgressPhoto();
@@ -18,11 +22,17 @@ export function ProgressPhotosCard() {
   const [afterId, setAfterId] = useState("");
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraUnavailable, setCameraUnavailable] = useState<string | null>(null);
+  // Defaults to today but stays editable — the backend/upload plumbing already accepted a custom
+  // `takenAt` (see progressPhoto.routes.ts), but no UI ever exposed it, so backdating an older
+  // photo (e.g. importing a phone's camera roll history) was impossible even though the pieces
+  // to support it already existed.
+  const [takenAt, setTakenAt] = useState(todayDateInputValue);
 
   const uploadFile = async (file: File) => {
     setError(null);
     try {
-      await upload.mutateAsync({ file });
+      await upload.mutateAsync({ file, takenAt: takenAt ? new Date(takenAt).toISOString() : undefined });
+      setTakenAt(todayDateInputValue());
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Konnte nicht hochgeladen werden.");
     }
@@ -58,6 +68,16 @@ export function ProgressPhotosCard() {
 
       <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
         <p className="mb-2 text-sm font-medium text-ink-300">Neues Vergleichsfoto</p>
+        <div className="mb-2">
+          <label className="mb-1 block text-xs text-ink-500">Datum</label>
+          <input
+            type="date"
+            value={takenAt}
+            max={todayDateInputValue()}
+            onChange={(e) => setTakenAt(e.target.value)}
+            className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+          />
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => {
