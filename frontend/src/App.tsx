@@ -6,6 +6,7 @@ import { WorkoutLogPage } from "./routes/WorkoutLogPage";
 import { ExerciseLibraryPage } from "./routes/ExerciseLibraryPage";
 import { ExerciseDetailPage } from "./routes/ExerciseDetailPage";
 import { TrainingPlanPage } from "./routes/TrainingPlanPage";
+import { PlanGenerateExportPage } from "./routes/PlanGenerateExportPage";
 import { GoalsPage } from "./routes/GoalsPage";
 import { NutritionPage } from "./routes/NutritionPage";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
@@ -50,6 +51,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <TrainingPlanPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/plan/generate"
+          element={
+            <ProtectedRoute>
+              <PlanGenerateExportPage />
             </ProtectedRoute>
           }
         />
