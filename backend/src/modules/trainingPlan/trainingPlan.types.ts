@@ -3,13 +3,14 @@ import type { TrainingPlanDto } from "@fitnesstracker/shared";
 
 export function toTrainingPlanDto(
   plan: TrainingPlan,
-  nextRotationOn: Date,
+  nextRotationOn: Date | null,
   history: TrainingPlanPhaseHistory[],
 ): TrainingPlanDto {
   return {
     currentPhase: plan.currentPhase,
     phaseStartedOn: plan.phaseStartedOn.toISOString(),
-    nextRotationOn: nextRotationOn.toISOString(),
+    nextRotationOn: nextRotationOn ? nextRotationOn.toISOString() : null,
+    pausedAt: plan.pausedAt ? plan.pausedAt.toISOString() : null,
     history: history.map((entry) => ({
       id: entry.id,
       phase: entry.phase,

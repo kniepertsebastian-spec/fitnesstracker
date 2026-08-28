@@ -39,7 +39,9 @@ export async function getOrCreateTrainingPlan(
 
 export interface RotationResult {
   plan: TrainingPlan;
-  nextRotationOn: Date;
+  // Null while the plan is paused — there's nothing due to compute since the clock isn't
+  // advancing.
+  nextRotationOn: Date | null;
   rotated: boolean;
 }
 
@@ -50,6 +52,10 @@ export async function rotatePhaseIfDue(
   prisma: PrismaClient,
   plan: TrainingPlan,
 ): Promise<RotationResult> {
+  if (plan.pausedAt) {
+    return { plan, nextRotationOn: null, rotated: false };
+  }
+
   const now = new Date();
   let currentPhase = plan.currentPhase;
   let phaseStartedOn = plan.phaseStartedOn;
@@ -102,7 +108,7 @@ export async function getCurrentTrainingPlan(prisma: PrismaClient, userId: strin
 export async function rotateAllDuePlans(prisma: PrismaClient): Promise<{ rotatedPlans: number }> {
   const cutoff = addWeeks(new Date(), -ROTATION_WEEKS);
   const duePlans = await prisma.trainingPlan.findMany({
-    where: { phaseStartedOn: { lte: cutoff } },
+    where: { phaseStartedOn: { lte: cutoff }, pausedAt: null },
   });
 
   let rotatedPlans = 0;
@@ -118,4 +124,40 @@ export async function rotateAllDuePlans(prisma: PrismaClient): Promise<{ rotated
     }
   }
   return { rotatedPlans };
+}
+
+// Idempotent no-op if already paused — pressing "Pausieren" twice shouldn't reset pausedAt to a
+// later time and silently extend the pause.
+export async function pauseTrainingPlan(prisma: PrismaClient, userId: string) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  if (plan.pausedAt) return plan;
+  return prisma.trainingPlan.update({ where: { id: plan.id }, data: { pausedAt: new Date() } });
+}
+
+// Shifts `phaseStartedOn` forward by exactly how long the plan was paused, so the remaining
+// time-to-rotation is preserved rather than the pause silently eating into the 8-week cycle —
+// e.g. paused after 2 weeks, resumed a month later, the next rotation is still 6 weeks out from
+// today, not "already overdue".
+export async function resumeTrainingPlan(prisma: PrismaClient, userId: string) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  if (!plan.pausedAt) return plan;
+  const pausedForMs = Date.now() - plan.pausedAt.getTime();
+  return prisma.trainingPlan.update({
+    where: { id: plan.id },
+    data: {
+      pausedAt: null,
+      phaseStartedOn: new Date(plan.phaseStartedOn.getTime() + pausedForMs),
+    },
+  });
+}
+
+// Explicit "start this phase over" — resets the 8-week clock to today without changing
+// `currentPhase` or touching phase history (no phase was actually completed). Also clears any
+// pause, since restarting implies picking training back up.
+export async function restartCurrentPhase(prisma: PrismaClient, userId: string) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  return prisma.trainingPlan.update({
+    where: { id: plan.id },
+    data: { phaseStartedOn: mostRecentMonday(new Date()), pausedAt: null },
+  });
 }
