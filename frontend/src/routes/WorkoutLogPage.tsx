@@ -6,11 +6,28 @@ import { WorkoutLogFormDialog } from "../components/workoutLog/WorkoutLogFormDia
 import { DailyChallengeCard } from "../components/workoutLog/DailyChallengeCard";
 import { CurrentPlanCard } from "../components/workoutLog/CurrentPlanCard";
 import { CardioLogCard } from "../components/workoutLog/CardioLogCard";
+import { GoalsProgressCard } from "../components/workoutLog/GoalsProgressCard";
 import { WorkoutSessionBar } from "../components/workoutLog/WorkoutSessionBar";
 import { useWorkoutLogs } from "../hooks/useWorkoutLogs";
 
+// Same UTC-calendar-day convention as water/daily-challenge/cardio elsewhere in the app.
+function isToday(performedAt: string): boolean {
+  const d = new Date(performedAt);
+  const now = new Date();
+  return (
+    d.getUTCFullYear() === now.getUTCFullYear() &&
+    d.getUTCMonth() === now.getUTCMonth() &&
+    d.getUTCDate() === now.getUTCDate()
+  );
+}
+
 export function WorkoutLogPage() {
   const { data: logs, isLoading } = useWorkoutLogs();
+  // Dashboard is "today's training" — the full log history is unbounded and quickly turns the
+  // page into a scroll-forever list mixed in with the day's cards above it. Full history stays
+  // available via each set's own edit/delete controls, just scoped down here; browsing past days
+  // belongs to the separate history view, not this page.
+  const todaysLogs = (logs ?? []).filter((log) => isToday(log.performedAt));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<LocalWorkoutLog | null>(null);
 
@@ -42,12 +59,14 @@ export function WorkoutLogPage() {
         <DailyChallengeCard />
         <CurrentPlanCard />
         <CardioLogCard />
+        <GoalsProgressCard />
       </div>
 
+      <h2 className="mb-2 text-sm font-medium text-ink-400">Heute</h2>
       {isLoading ? (
         <p className="text-ink-500">Lädt…</p>
       ) : (
-        <WorkoutLogTable logs={logs ?? []} onEdit={openEdit} />
+        <WorkoutLogTable logs={todaysLogs} onEdit={openEdit} />
       )}
 
       <WorkoutLogFormDialog
