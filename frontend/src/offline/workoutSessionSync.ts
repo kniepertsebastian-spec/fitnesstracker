@@ -7,6 +7,7 @@ import {
 import { ApiError } from "../api/client";
 import { queryClient } from "../queryClient";
 import { offlineDb, type LocalWorkoutSession, type MutationOp } from "./db";
+import { refreshSyncCounts } from "./syncCounts";
 
 export const WORKOUT_SESSION_QUERY_KEY = ["workout-session", "open"];
 
@@ -30,6 +31,8 @@ async function enqueueSessionMutation(clientId: string, op: MutationOp, payload:
 
     await offlineDb.pendingSessionMutations.add({ clientId, op, payload, queuedAt });
   });
+
+  await refreshSyncCounts();
 }
 
 // Local-only read of whichever session is currently open (ACTIVE/PAUSED) — at most one in normal
@@ -129,29 +132,49 @@ export async function flushPendingSessionMutations() {
       } catch (error) {
         if (error instanceof ApiError) {
           console.error("Dropping unsyncable workout session mutation", next, error);
+          await offlineDb.failedMutations.add({
+            kind: "workoutSession",
+            clientId: next.clientId,
+            op: next.op,
+            reason: error.message,
+            failedAt: new Date().toISOString(),
+          });
           await offlineDb.pendingSessionMutations.delete(next.id as number);
           continue;
         }
+        // Network failure — stop for now; the periodic retry and the next online event both
+        // pick the rest of the queue back up.
         break;
       }
     }
   } finally {
     flushing = false;
+    await refreshSyncCounts();
     await syncSessionQueryCache();
   }
 }
 
 let listenersInitialized = false;
 
+const RETRY_INTERVAL_MS = 60_000;
+
 // Called once on app boot, alongside initWorkoutLogSync — its own online/offline listeners are
 // cheap and independent, no reason to thread session-flush calls through the log sync module.
+// Same periodic-retry rationale as workoutLogSync.ts: an 'online' event only fires on an actual
+// offline→online transition, not on recovery from a transient failure while nominally online.
 export function initWorkoutSessionSync() {
   if (listenersInitialized) return;
   listenersInitialized = true;
+
+  void refreshSyncCounts();
 
   window.addEventListener("online", () => void flushPendingSessionMutations());
 
   if (navigator.onLine) {
     void flushPendingSessionMutations();
   }
+
+  setInterval(() => {
+    if (navigator.onLine) void flushPendingSessionMutations();
+  }, RETRY_INTERVAL_MS);
 }

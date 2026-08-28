@@ -858,6 +858,49 @@ weiterhin über den separaten "+ Satz"-Dialog. Der Wunsch: der Plan selbst soll 
   Muskelausdauer schlägt bei erreichtem Ziel eine Wiederholungssteigerung statt einer
   Gewichtssteigerung vor, eine Übung ohne jede Historie zeigt weiterhin leere Felder.
 
+## Offline-Sync fachlich fertiggestellt (Phase 25, fertig)
+
+Ein Review der bestehenden Offline-Sync-Mechanik (Phase 4 fürs Satz-Logging, Phase 22 fürs
+Session-Lifecycle) gegen `roadmap2.md`s "zuverlässig und vollständig synchronisieren" ergab drei
+konkrete Lücken, keine grundsätzliche Neu-Architektur — die Grundmechanik (lokal-zuerst
+schreiben, `clientId` als Idempotenz-Schlüssel, geordnete Mutation-Queue, Sync bei Reconnect) war
+bereits solide.
+
+- **`offline/syncCounts.ts` als gemeinsame Quelle der Wahrheit fürs Sync-Badge, statt jedes Modul
+  pflegt seine eigene Hälfte.** Die Session-Queue (`pendingSessionMutations`) rief bisher nie
+  irgendeine `useSyncStore`-Funktion auf — offline gestartete/pausierte/beendete Sessions waren
+  für das "X ausstehend"-Badge in `AppShell` komplett unsichtbar, obwohl sie zuverlässig in ihrer
+  eigenen Queue lagen. `refreshSyncCounts()` summiert jetzt `pendingMutations.count()` und
+  `pendingSessionMutations.count()` in einem Aufwasch und wird von beiden Sync-Modulen nach jeder
+  Queue-Änderung aufgerufen (`enqueueMutation`/`enqueueSessionMutation`, und am Ende jedes
+  Flush-Durchlaufs) — eine einzige Stelle, die weiß, wie sich "ausstehend" berechnet, statt zweier
+  Module, die das Rad unabhängig neu erfinden.
+- **Periodischer Retry (60s-Intervall) zusätzlich zum bisherigen `online`-Event-Trigger.** Ein
+  `online`-Event feuert nur bei einem echten Offline→Online-Übergang des Browsers — schlägt eine
+  Synchronisierung aus einem anderen Grund fehl (Backend kurz down, ein einzelner Request-Fehler),
+  während der Browser die ganze Zeit "online" blieb, bleibt die Queue bisher bis zur nächsten
+  lokalen Mutation oder einem App-Reload hängen. Beide `init*Sync()`-Funktionen setzen jetzt
+  zusätzlich einen `setInterval`, der bei `navigator.onLine` einen Flush-Versuch auslöst — billig
+  und wirkungslos, wenn die Queue ohnehin leer ist, aber der fehlende Sicherheitsnetz für genau
+  diesen "online, aber der einzelne Sync-Versuch ist gescheitert"-Fall.
+- **Neue `failedMutations`-Tabelle (Dexie-Version 3) statt stillem `console.error` + Löschen.**
+  Eine vom Server endgültig abgelehnte Mutation (`ApiError` — Validierung, `404` nach
+  anderweitigem Löschen, …) wurde bisher aus der Pending-Queue entfernt und nur in die
+  Browser-Konsole geloggt: aus Nutzersicht verschwand ein geloggter Satz oder eine
+  Session-Änderung spurlos, ohne dass die App das je kommuniziert hätte — ein klarer Bruch mit
+  "vollständig synchronisieren". Jetzt landet Art (`workoutLog`/`workoutSession`), Operation und
+  Fehlergrund in `failedMutations`, ein neues rotes "X fehlgeschlagen"-Badge in `AppShell` (gleiche
+  Position/Stil wie das bestehende "X ausstehend"-Badge) macht den Verlust sichtbar. Bewusst
+  **keine** automatische Wiederherstellungs-UI für diese Version — das Badge zeigt, dass etwas
+  verloren ging, die Korrektur (erneut eintragen) läuft über die bestehenden Log-Formulare, kein
+  neuer Recovery-Mechanismus für einen erwartungsgemäß seltenen Fall.
+- End-to-end verifiziert: ein offline im Plan-Tagebuch geloggter Satz zeigt sofort das
+  "ausstehend"-Badge, das nach Reconnect + erfolgreichem Sync wieder verschwindet (IndexedDB-
+  Zähler `pendingMutations` bestätigt 0 nach Sync); eine gezielt in die Queue injizierte,
+  dauerhaft fehlschlagende Mutation wandert nach einem Flush korrekt von `pendingMutations` in
+  `failedMutations` (Zähler-Übergang 0 → 1 direkt per IndexedDB bestätigt), und das
+  "fehlgeschlagen"-Badge erscheint entsprechend.
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen

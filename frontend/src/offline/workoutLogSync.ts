@@ -9,13 +9,9 @@ import { ApiError } from "../api/client";
 import { useSyncStore } from "../stores/syncStore";
 import { queryClient } from "../queryClient";
 import { offlineDb, type LocalWorkoutLog, type MutationOp } from "./db";
+import { refreshSyncCounts } from "./syncCounts";
 
 export const WORKOUT_LOGS_QUERY_KEY = ["workout-logs"];
-
-async function refreshPendingCount() {
-  const count = await offlineDb.pendingMutations.count();
-  useSyncStore.getState().setPendingCount(count);
-}
 
 // Keeps at most one queued mutation per row: a create followed by edits before it ever syncs
 // stays a single "create" carrying the latest values, rather than replaying every intermediate
@@ -48,7 +44,7 @@ async function enqueueMutation(clientId: string, op: MutationOp, payload: Record
     await offlineDb.pendingMutations.add({ clientId, op, payload, queuedAt });
   });
 
-  await refreshPendingCount();
+  await refreshSyncCounts();
 }
 
 // Local-only read, deliberately never touches the network — used to refresh the UI right after
@@ -172,18 +168,27 @@ export async function flushPendingMutations() {
         if (error instanceof ApiError) {
           // The server rejected it outright (validation, 404 after manual deletion elsewhere,
           // ...) — retrying won't change that, so drop it rather than blocking everything
-          // queued after it.
+          // queued after it. Recorded in failedMutations (not just console.error'd) so it shows
+          // up as a "fehlgeschlagen" badge instead of the entry just silently vanishing.
           console.error("Dropping unsyncable workout log mutation", next, error);
+          await offlineDb.failedMutations.add({
+            kind: "workoutLog",
+            clientId: next.clientId,
+            op: next.op,
+            reason: error.message,
+            failedAt: new Date().toISOString(),
+          });
           await offlineDb.pendingMutations.delete(next.id as number);
           continue;
         }
-        // Network failure — stop for now, the rest of the queue waits for the next online event.
+        // Network failure — stop for now; the periodic retry and the next online event both
+        // pick the rest of the queue back up.
         break;
       }
     }
   } finally {
     flushing = false;
-    await refreshPendingCount();
+    await refreshSyncCounts();
     await syncQueryCache();
   }
 }
@@ -192,12 +197,18 @@ let listenersInitialized = false;
 
 // Called once on app boot. Reconciles pendingCount on load and wires the online/offline events
 // that drive the sync manager — no Background Sync API, since iOS Safari doesn't support it.
+// Also retries periodically while online: an 'online' event only fires on an actual
+// offline→online transition, so a sync that failed for another reason (the backend briefly
+// down, a slow/erroring request) while the browser stayed "online" the whole time would
+// otherwise sit stuck until the next local mutation or app reload.
+const RETRY_INTERVAL_MS = 60_000;
+
 export function initWorkoutLogSync() {
   if (listenersInitialized) return;
   listenersInitialized = true;
 
   useSyncStore.getState().setOnline(navigator.onLine);
-  void refreshPendingCount();
+  void refreshSyncCounts();
 
   window.addEventListener("online", () => {
     useSyncStore.getState().setOnline(true);
@@ -210,4 +221,8 @@ export function initWorkoutLogSync() {
   if (navigator.onLine) {
     void flushPendingMutations();
   }
+
+  setInterval(() => {
+    if (navigator.onLine) void flushPendingMutations();
+  }, RETRY_INTERVAL_MS);
 }
