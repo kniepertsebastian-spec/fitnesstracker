@@ -901,6 +901,48 @@ bereits solide.
   `failedMutations` (Zähler-Übergang 0 → 1 direkt per IndexedDB bestätigt), und das
   "fehlgeschlagen"-Badge erscheint entsprechend.
 
+## Datenkonflikte definiert (Phase 26, fertig — letzter roadmap2.md-P0-Punkt)
+
+- **Politik: jüngste Aktion gewinnt, kein Versionsfeld, kein Merge.** Für eine Ein-Personen-App
+  mit gelegentlichem Multi-Geräte-Einsatz (Handy + Laptop, beide zeitweise offline) ist "wer den
+  Server zuletzt erreicht, gewinnt" die einfachste Politik, die tatsächlich vorkommende Fälle
+  abdeckt — ein waschechtes CRDT- oder Operational-Transform-System wäre für diesen
+  Anwendungsfall (kein Mehrbenutzer-Zusammenarbeitsszenario) Überengineering. Die meisten Fälle
+  waren durch die bestehende Idempotenz- (`clientId`) und Soft-Delete-Mechanik implizit schon
+  richtig gelöst — dieser Durchgang hat die Politik einmal explizit hingeschrieben und dabei zwei
+  echte Lücken bei `WorkoutSession` gefunden, die die "jüngste Aktion gewinnt"-Politik dort noch
+  nicht durchsetzten.
+- **`WorkoutLog`: Löschen schlägt ein verspätetes Update — kein neuer Code, nur explizit
+  gemacht.** `findOwnedWorkoutLog` filtert `deletedAt: null`; ein `update` gegen eine anderswo
+  bereits gelöschte Zeile findet sie nicht mehr und schlägt mit `404` fehl. Vor Phase 25 verschwand
+  dieser fehlgeschlagene Sync-Versuch nur in der Konsole, seit Phase 25 landet er sichtbar im
+  "fehlgeschlagen"-Badge — die Konfliktauflösung selbst war schon immer korrekt, nur ihre
+  Sichtbarkeit hat sich verbessert.
+- **`WorkoutSession`, Lücke 1: zwei Geräte konnten gleichzeitig eine offene Session erzeugen.**
+  Startet Gerät A offline eine Session und Gerät B (unwissend von A) ebenfalls, tragen beide
+  `create`-Mutationen unterschiedliche `clientId`s und syncen beide unabhängig erfolgreich — ohne
+  Gegenmaßnahme das Ergebnis: zwei gleichzeitig "offene" (ACTIVE/PAUSED) Sessions, die stillschweigend
+  die "höchstens eine offene Session"-Annahme verletzen, auf der `getOpenWorkoutSession` und die
+  Dashboard-UI (`WorkoutSessionBar`) aufbauen. `createWorkoutSession` läuft jetzt in einer
+  Transaktion: vor dem Anlegen einer wirklich neuen Session (kein idempotenter Retry derselben
+  `clientId`) werden alle anderen noch offenen Sessions desselben Nutzers per `updateMany` auf
+  `ABORTED` gesetzt. Dieselbe "jüngste Aktion gewinnt"-Politik wie bei `WorkoutLog`, nur diesmal
+  aktiv durchgesetzt statt sich nur zufällig aus Soft-Delete-Semantik zu ergeben.
+- **`WorkoutSession`, Lücke 2: eine verspätete Status-Änderung konnte eine bereits terminierte
+  Session wiederbeleben.** Schließt Gerät A eine Session ab (`COMPLETED`), während Gerät B offline
+  noch eine Pause dafür in der Queue hatte, hätte diese verspätete `PAUSED`-Mutation die längst
+  beendete Session zurück auf "offen" gesetzt — ein Widerspruch zur "jüngste Aktion gewinnt"-Politik,
+  denn die neuere Aktion (Abschluss) wäre von der älteren, aber später ankommenden Aktion (Pause)
+  überschrieben worden. `updateWorkoutSessionStatus` behandelt `COMPLETED`/`ABORTED` jetzt als
+  endgültig: eine Status-Änderung gegen eine bereits terminale Session ist ein folgenloses No-op
+  (gibt die unveränderte Session zurück), bewusst **kein** Fehler — die Session ist einfach schon
+  entschieden, kein Grund, das als gescheiterte Synchronisierung im "fehlgeschlagen"-Badge zu
+  zeigen.
+- End-to-end per Skript verifiziert: Session A wechselt automatisch zu `ABORTED` (mit gesetztem
+  `endedAt`), sobald Session B erzeugt wird; `getOpenWorkoutSession` liefert danach korrekt nur
+  noch B; eine `PAUSED`-Anfrage gegen eine bereits `COMPLETED`-Session lässt den Status
+  unverändert bei `COMPLETED`.
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen

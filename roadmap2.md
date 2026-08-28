@@ -6,7 +6,7 @@ Fitnesstracker – TODO vor Hardening
 ☑ Trainingsplan & Rotation finalisieren – Phasenwechsel, 8-Wochen-Zyklus, Pausen und Neustart eindeutig. (Pausieren/Fortsetzen/Phase neu starten als Buttons — siehe ARCHITECTURE.md/ROADMAP.md.)
 ☑ Progressionslogik festlegen – Klare Regeln für Steigerung, Fehlversuche und Deloads. (Aufbau/Negativ: Gewicht, Muskelausdauer: Wdh. — Vorschlag + Prefill im Plan-Tagebuch, siehe ARCHITECTURE.md/ROADMAP.md.)
 ☑ Offline-Sync fachlich fertigstellen – Offline-Trainings zuverlässig und vollständig synchronisieren. (Periodischer Retry, fehlgeschlagene Mutationen werden sichtbar statt still verworfen, Session-Queue jetzt auch im "ausstehend"-Badge — siehe ARCHITECTURE.md/ROADMAP.md.)
-☐ Datenkonflikte definieren – Verhalten bei parallelen/Offline-Änderungen festlegen.
+☑ Datenkonflikte definieren – Verhalten bei parallelen/Offline-Änderungen festlegen. (Policy: jüngste Aktion gewinnt; zwei parallel gestartete Sessions werden automatisch aufgelöst; Löschen schlägt ein verspätetes Update — siehe ARCHITECTURE.md/ROADMAP.md.)
 
 🟠 P1 – Wichtig
 
