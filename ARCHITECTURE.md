@@ -1028,6 +1028,32 @@ bereits solide.
   bei "Gesamt" korrekt verschwinden; kein horizontaler Overflow bei 375px; "Fortschritt" ist im
   Hamburger-Menü erreichbar.
 
+## Progress-Fotos komplettiert (Phase 29, fertig — dritter roadmap2.md-P1-Punkt)
+
+- **Vier von fünf Teilbereichen aus dem Roadmap-Punkt waren bereits vollständig** (Kamera mit
+  Ghost-Overlay aus Phase 20, Datei-Upload, Galerie-Grid mit Datum pro Foto, freie Vorher/Nachher-
+  Auswahl per Dropdown-Paar aus Phase 12) — dieser Durchgang war reine Lückenschließung, keine
+  Neuentwicklung.
+- **Backend-Plumbing für ein eigenes Aufnahmedatum existierte schon, aber ohne UI-Zugang.**
+  `POST /progress-photos` liest ein optionales `takenAt`-Multipart-Feld
+  (`progressPhoto.routes.ts`) und reicht es an `saveUploadedPhoto` durch, `useUploadProgressPhoto`
+  nimmt im Frontend bereits einen `takenAt`-Parameter entgegen — aber `ProgressPhotosCard.tsx`
+  rief den Upload immer ohne dieses Feld auf, es gab schlicht kein Eingabeelement dafür. Ein
+  Feature, dessen komplette technische Verdrahtung schon stand, kam nirgends beim Nutzer an.
+- **`<input type="date">` mit `max` auf heute gedeckelt** (kein Foto mit Zukunftsdatum), Default
+  auf heute, aber frei editierbar — der Hauptnutzen ist das Zurückdatieren beim nachträglichen
+  Import einer bestehenden Fotosammlung (z. B. vom Handy), nicht der alltägliche Upload direkt
+  nach der Aufnahme (dort passt "heute" ohnehin fast immer). Setzt sich nach jedem erfolgreichen
+  Upload automatisch zurück auf "heute", damit ein einmal zurückdatierter Wert nicht
+  unbeabsichtigt am nächsten, eigentlich aktuellen Foto hängen bleibt.
+- **Bewusst kein nachträgliches Bearbeiten des Datums eines bereits hochgeladenen Fotos** — dafür
+  gibt es keine `PATCH`-Route, und für den seltenen Korrekturfall ist Löschen + erneutes
+  Hochladen mit dem richtigen Datum der bestehende, einfachere Weg (kein neuer Mechanismus nur
+  für ein einziges Feld).
+- End-to-end verifiziert: ein mit zurückdatiertem Datum (15.01.2026) hochgeladenes Foto erscheint
+  korrekt mit diesem Datum in der Galerie, das Datumsfeld springt nach dem Upload zurück auf das
+  aktuelle Datum, kein horizontaler Overflow bei 375px.
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen
