@@ -22,7 +22,7 @@ export function WorkoutLogTable({ logs, onEdit }: Props) {
   const deleteLog = useDeleteWorkoutLog();
 
   if (logs.length === 0) {
-    return <p className="py-8 text-center text-ink-500">Noch keine Sätze protokolliert.</p>;
+    return <p className="py-8 text-center text-ink-500">Heute noch keine Sätze protokolliert.</p>;
   }
 
   return (

@@ -943,6 +943,40 @@ bereits solide.
   noch B; eine `PAUSED`-Anfrage gegen eine bereits `COMPLETED`-Session lässt den Status
   unverändert bei `COMPLETED`.
 
+## Dashboard finalisiert: Fortschritt & Ziele (Phase 27, fertig — erster roadmap2.md-P1-Punkt)
+
+- **Filterung auf "heute" bewusst auf der Darstellungsebene (`WorkoutLogPage`), nicht in
+  `fetchAndCacheWorkoutLogs`/der Offline-Sync-Schicht.** Die Log-Tabelle auf dem Dashboard zeigte
+  bisher unbegrenzt die komplette Trainings-Historie — bei längerer Nutzung ein unübersichtlicher,
+  ständig wachsender Anhang unter den "heute"-Karten darüber, der nichts mehr mit "heutiges
+  Training" zu tun hat. Ein Filter direkt im Fetch/Cache (`offline/workoutLogSync.ts`) hätte den
+  lokalen Dexie-Cache dauerhaft auf "heute" beschränkt — genau der Cache, auf dem die noch nicht
+  gebaute "Workout-Historie"-Ansicht (separater P1-Punkt) später aufbauen soll. Stattdessen filtert
+  `WorkoutLogPage` die bereits geladenen `logs` clientseitig auf den aktuellen UTC-Kalendertag
+  (gleiche Konvention wie Wasser/Tages-Challenge/Cardio) und reicht nur diese Teilmenge an
+  `WorkoutLogTable` weiter — der Cache selbst bleibt vollständig, unangetastet für spätere
+  Wiederverwendung.
+- **`GoalsProgressCard` dupliziert absichtlich die Fortschrittsbalken-Logik aus `GoalCard`
+  (`/goals`), statt eine gemeinsame Komponente zu extrahieren.** Beide Orte brauchen zwar dieselbe
+  `currentValue / targetValue`-Berechnung, aber unterschiedliche Interaktions-Oberflächen — die
+  Dashboard-Karte ist rein lesend (kein Löschen, kein "als erreicht markieren", kein
+  Bearbeiten-Formular), `GoalCard` ist die volle Verwaltungsansicht. Eine gemeinsame Komponente
+  hätte entweder alle Verwaltungsaktionen auch aufs Dashboard gezogen (nicht gewollt — das
+  Dashboard ist ein Kurzüberblick) oder wäre über Props zu einer generischen "mal mit, mal ohne
+  Aktionen"-Komponente geworden, die schwerer zu lesen ist als zwei kleine, je in sich
+  geschlossene Komponenten.
+- **Auf vier sichtbare Ziele gedeckelt (`MAX_VISIBLE`), mit "+N weitere"-Link statt einer
+  unbegrenzten Liste** — dieselbe Überlegung wie bei der Log-Tabelle: ein Kurzüberblick soll nicht
+  selbst wieder unübersichtlich werden, sollte jemand viele Ziele gleichzeitig verfolgen.
+- **Rendert `null` ohne offene Ziele**, gleiches Muster wie `DailyChallengeCard`/`CurrentPlanCard`
+  — eine ungenutzte Funktion nimmt auf dem Dashboard keinen Platz ein.
+- End-to-end verifiziert: Dashboard zeigt die Ziele-Karte korrekt mit beiden Test-Zielen (inkl.
+  eines aus der Log-Historie automatisch abgeleiteten `currentValue` für ein Übungs-Ziel), die
+  "Heute"-Tabelle zeigt ausschließlich heute geloggte Sätze — ältere, an früheren Tagen geloggte
+  Sätze verschwinden korrekt aus der Dashboard-Ansicht (weiterhin unverändert im lokalen Cache und
+  auf dem Server vorhanden, nur ohne aktuelle UI, bis die separate Historie-Ansicht gebaut ist);
+  kein horizontaler Overflow bei 375px.
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen
