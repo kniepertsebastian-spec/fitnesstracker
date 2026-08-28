@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import type { PlanDiaryExerciseDto } from "@fitnesstracker/shared";
+import type { PlanDiaryExerciseDto, ProgressionSuggestion } from "@fitnesstracker/shared";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../../hooks/useTrainingPlan";
 import { useWeeklyPlanStatus } from "../../hooks/usePlanExercises";
 import { useCreateWorkoutLog } from "../../hooks/useWorkoutLogs";
@@ -11,6 +11,24 @@ interface DiaryRowProps {
   onDone: () => void;
 }
 
+// Text + color for the progression subtitle under the exercise name — see
+// planWeekStatus.service.ts's computeProgression for the underlying rules (roadmap2.md P0.3).
+// Deload takes priority over the mode-specific hit/miss wording since it overrides both the
+// suggested weight and (in reps mode) resets the rep target back to baseline.
+function progressionHint(p: ProgressionSuggestion): { text: string; className: string } {
+  if (p.deloadSuggested) {
+    return { text: `Deload → ${p.suggestedWeightKg}kg`, className: "text-amber-400" };
+  }
+  if (p.mode === "weight") {
+    return p.hitTarget
+      ? { text: `↑ ${p.suggestedWeightKg}kg`, className: "text-emerald-400" }
+      : { text: `= ${p.suggestedWeightKg}kg`, className: "text-ink-500" };
+  }
+  return p.hitTarget
+    ? { text: `↑ ${p.suggestedReps} Wdh.`, className: "text-emerald-400" }
+    : { text: `= ${p.suggestedReps} Wdh.`, className: "text-ink-500" };
+}
+
 // One row of the plan diary: sets/reps/weight as plain number inputs, "Ende" as a checkbox.
 // Checking it writes one WorkoutLog per set entered (this *is* how the diary counts as a real
 // training-log entry, not just a plan-side checkbox) and locks the row — unchecking is
@@ -19,8 +37,10 @@ interface DiaryRowProps {
 function DiaryRow({ entry, setsInputRef, onDone }: DiaryRowProps) {
   const createLog = useCreateWorkoutLog();
   const [sets, setSets] = useState("3");
-  const [reps, setReps] = useState("");
-  const [weightKg, setWeightKg] = useState("");
+  const [reps, setReps] = useState(entry.progression ? String(entry.progression.suggestedReps) : "");
+  const [weightKg, setWeightKg] = useState(
+    entry.progression ? String(entry.progression.suggestedWeightKg) : "",
+  );
   const [done, setDone] = useState(entry.loggedThisWeek);
   const [error, setError] = useState(false);
 
@@ -72,7 +92,14 @@ function DiaryRow({ entry, setsInputRef, onDone }: DiaryRowProps) {
   return (
     <>
       <tr className={error ? "" : "border-b border-ink-900"}>
-        <td className="max-w-[88px] truncate py-2 pr-1 text-sm text-ink-100">{entry.exerciseName}</td>
+        <td className="max-w-[88px] py-2 pr-1">
+          <p className="truncate text-sm text-ink-100">{entry.exerciseName}</p>
+          {entry.progression && (
+            <p className={`text-xs ${progressionHint(entry.progression).className}`}>
+              {progressionHint(entry.progression).text}
+            </p>
+          )}
+        </td>
         <td className="py-2 pr-1">
           <input
             ref={setsInputRef}
@@ -99,7 +126,7 @@ function DiaryRow({ entry, setsInputRef, onDone }: DiaryRowProps) {
             step="0.5"
             value={weightKg}
             onChange={(e) => setWeightKg(e.target.value)}
-            className="w-11 rounded border border-ink-700 bg-ink-950 px-1 py-1 text-center text-sm"
+            className="w-14 rounded border border-ink-700 bg-ink-950 px-1 py-1 text-center text-sm"
           />
         </td>
         <td className="py-2 text-center">
