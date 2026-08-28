@@ -6,7 +6,13 @@ import { PushReminderCard } from "../components/trainingPlan/PushReminderCard";
 import { PlanExerciseList } from "../components/trainingPlan/PlanExerciseList";
 import { PhaseTabs } from "../components/trainingPlan/PhaseTabs";
 import { RecommendedSplitsSection } from "../components/trainingPlan/RecommendedSplitsSection";
-import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../hooks/useTrainingPlan";
+import {
+  TRAINING_PHASE_LABELS,
+  usePauseTrainingPlan,
+  useRestartPhase,
+  useResumeTrainingPlan,
+  useTrainingPlan,
+} from "../hooks/useTrainingPlan";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -14,6 +20,9 @@ function formatDate(iso: string) {
 
 export function TrainingPlanPage() {
   const { data: plan, isLoading } = useTrainingPlan();
+  const pausePlan = usePauseTrainingPlan();
+  const resumePlan = useResumeTrainingPlan();
+  const restartPhase = useRestartPhase();
   const [selectedPhase, setSelectedPhase] = useState<TrainingPhase | null>(null);
 
   // Default the phase tabs to whatever phase is currently active, once the plan has loaded —
@@ -45,8 +54,39 @@ export function TrainingPlanPage() {
               {TRAINING_PHASE_LABELS[plan.currentPhase]}
             </p>
             <p className="mt-2 text-sm text-ink-400">
-              Seit {formatDate(plan.phaseStartedOn)} · nächster Wechsel {formatDate(plan.nextRotationOn)}
+              Seit {formatDate(plan.phaseStartedOn)} ·{" "}
+              {plan.pausedAt
+                ? `pausiert seit ${formatDate(plan.pausedAt)}`
+                : plan.nextRotationOn
+                  ? `nächster Wechsel ${formatDate(plan.nextRotationOn)}`
+                  : null}
             </p>
+            <div className="mt-3 flex gap-2">
+              {plan.pausedAt ? (
+                <button
+                  onClick={() => resumePlan.mutate()}
+                  disabled={resumePlan.isPending}
+                  className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-violet-400"
+                >
+                  Fortsetzen
+                </button>
+              ) : (
+                <button
+                  onClick={() => pausePlan.mutate()}
+                  disabled={pausePlan.isPending}
+                  className="rounded-lg bg-ink-800 px-3 py-1.5 text-sm font-medium text-ink-200 hover:bg-ink-700"
+                >
+                  Pausieren
+                </button>
+              )}
+              <button
+                onClick={() => restartPhase.mutate()}
+                disabled={restartPhase.isPending}
+                className="rounded-lg bg-transparent px-3 py-1.5 text-sm font-medium text-ink-400 hover:text-ink-200"
+              >
+                Phase neu starten
+              </button>
+            </div>
           </div>
 
           <PushReminderCard />

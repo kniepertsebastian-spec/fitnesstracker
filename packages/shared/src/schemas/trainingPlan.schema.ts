@@ -14,7 +14,10 @@ export type TrainingPlanPhaseHistoryDto = z.infer<typeof trainingPlanPhaseHistor
 export const trainingPlanDtoSchema = z.object({
   currentPhase: trainingPhaseSchema,
   phaseStartedOn: z.string(),
-  nextRotationOn: z.string(),
+  // Null while the rotation is paused — there's no meaningful "next rotation date" to show
+  // while the clock isn't advancing.
+  nextRotationOn: z.string().nullable(),
+  pausedAt: z.string().nullable(),
   history: z.array(trainingPlanPhaseHistoryDtoSchema),
 });
 export type TrainingPlanDto = z.infer<typeof trainingPlanDtoSchema>;

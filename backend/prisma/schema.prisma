@@ -190,6 +190,11 @@ model TrainingPlan {
   currentPhase   TrainingPhase @default(AUFBAU)
   // Always a Monday; the scheduler advances the phase 8 weeks after this date.
   phaseStartedOn DateTime
+  // Set while the rotation clock is paused (injury, vacation, ...) — the scheduler and the lazy
+  // per-request rotation both skip a plan entirely while this is set. Resuming shifts
+  // `phaseStartedOn` forward by the paused duration so the remaining time-to-rotation is
+  // preserved instead of the pause silently eating into the 8-week cycle.
+  pausedAt       DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

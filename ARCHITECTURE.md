@@ -769,6 +769,43 @@ weiterhin über den separaten "+ Satz"-Dialog. Der Wunsch: der Plan selbst soll 
   Reconnect + Reload ist die offline gestartete Session serverseitig vorhanden; kein horizontaler
   Overflow bei 375px mit allen drei Aktions-Buttons gleichzeitig sichtbar.
 
+## Trainingsplan & Rotation: Pausieren und Neustart (Phase 23, fertig)
+
+- **`TrainingPlan.pausedAt` statt eines separaten "Pause"-Modells oder eines dritten
+  Rotations-Zustands.** Ein einzelnes nullable Datumsfeld reicht: gesetzt heißt pausiert, `null`
+  heißt läuft normal — kein eigenes Statusenum nötig, weil die einzige Zusatzinformation, die eine
+  Pause braucht, der Zeitpunkt ist, ab dem sie gilt (für die Verschiebungsrechnung beim
+  Fortsetzen).
+- **Fortsetzen verschiebt `phaseStartedOn` um exakt die pausierte Dauer, statt die Pause
+  einfach zu ignorieren.** Ohne diese Verschiebung würde eine 3-wöchige Pause die verbleibende
+  Zeit bis zur nächsten Rotation um 3 Wochen verkürzen (oder die Rotation sofort auslösen, falls
+  die Pause lang genug war) — spürbar falsch für ein Feature, dessen ganzer Zweck ist, den
+  8-Wochen-Countdown währenddessen anzuhalten. `phaseStartedOn_neu = phaseStartedOn_alt + (jetzt -
+  pausedAt)` hält die Restlaufzeit exakt konstant. Per Skript verifiziert: `pausedAt` künstlich 10
+  Tage zurückdatiert, `resumeTrainingPlan` verschiebt `phaseStartedOn` um exakt 10 Tage.
+- **`rotatePhaseIfDue` prüft `pausedAt` als Erstes und kehrt sofort zurück, wenn gesetzt** — kein
+  Rotations-Countdown, keine Historie, kein `nextRotationOn` während einer Pause zu berechnen.
+  Der Scheduler (`rotateAllDuePlans`) filtert pausierte Pläne zusätzlich schon in der SQL-Query
+  raus (`pausedAt: null`), damit sie gar nicht erst durch die (ohnehin harmlose, aber unnötige)
+  Rotationsprüfung laufen.
+- **`nextRotationOn` ist jetzt `string | null` im `TrainingPlanDto`** statt immer ein Datum — `/plan`
+  zeigt bei `pausedAt` gesetzt "pausiert seit …" anstelle eines nächsten Wechsel-Datums, das
+  während der Pause ohnehin nicht bedeutungsvoll wäre.
+- **"Phase neu starten" setzt nur `phaseStartedOn` zurück (auf den Montag der aktuellen Woche,
+  `mostRecentMonday` — dieselbe Normalisierung wie beim ersten Anlegen des Plans), rührt aber
+  weder `currentPhase` noch `TrainingPlanPhaseHistory` an.** Ein Neustart bedeutet "diese Phase
+  von vorn beginnen", nicht "eine neue Phase beginnen" — es wurde ja tatsächlich keine Phase
+  abgeschlossen, also gehört auch kein Eintrag in die Verlaufs-Historie. Hebt eine laufende Pause
+  automatisch mit auf (`pausedAt: null`), weil ein bewusster Neustart ein "ich trainiere wieder"-
+  Signal ist.
+- **Keine Bestätigungs-Dialoge**, obwohl "Phase neu starten" den Fortschritt der aktuellen Phase
+  verwirft — konsistent mit dem Rest der App, die für destruktive Aktionen durchgängig auf
+  `window.confirm` verzichtet (z. B. "Löschen" in `WorkoutLogTable`, "Abbrechen" in
+  `WorkoutSessionBar`).
+- End-to-end verifiziert: Pausieren zeigt sofort "pausiert seit HH…" und übersteht einen Reload;
+  Fortsetzen zeigt wieder ein nächstes Wechsel-Datum; Phase neu starten setzt "Seit" korrekt auf
+  den aktuellen Montag zurück; kein horizontaler Overflow bei 375px mit allen Buttons sichtbar.
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen
@@ -927,7 +964,8 @@ Breaking-Migrationen nötig werden:
   für idempotenten Import (Bibliotheks-UI mit Detailansicht: siehe oben, fertig)
 - `WorkoutLog` — Satz/Wiederholungen/Gewicht/Übung, `clientId` für Offline-Idempotenz, Soft-Delete,
   `rir` + `supersetGroupId` (siehe Phase 20, fertig)
-- `TrainingPlan` + `TrainingPlanPhaseHistory` — 8-Wochen-Rotation (siehe oben, fertig)
+- `TrainingPlan` + `TrainingPlanPhaseHistory` — 8-Wochen-Rotation, `pausedAt` fürs Pausieren des
+  Rotations-Countdowns (siehe oben, fertig — Phase 23)
 - `Goal` — Zielsetzung (siehe oben, fertig)
 - `PushSubscription` — Web-Push-Abos (siehe oben, fertig)
 - `Profile` — Eingaben für den Ernährungsrechner (siehe oben, fertig); `waterTargetMlOverride`
