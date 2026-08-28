@@ -20,11 +20,25 @@ export interface PendingMutation {
   queuedAt: string;
 }
 
+// A mutation the server rejected outright (validation, 404 after manual deletion elsewhere, ...)
+// — retrying wouldn't change the outcome, so it's dropped from the pending queue, but recorded
+// here instead of just logged to the console, so "vollständig synchronisieren" actually holds:
+// nothing a user entered offline disappears without a trace, even if it couldn't be saved.
+export interface FailedMutation {
+  id?: number;
+  kind: "workoutLog" | "workoutSession";
+  clientId: string;
+  op: MutationOp;
+  reason: string;
+  failedAt: string;
+}
+
 class OfflineDb extends Dexie {
   workoutLogs!: Table<LocalWorkoutLog, string>;
   pendingMutations!: Table<PendingMutation, number>;
   workoutSessions!: Table<LocalWorkoutSession, string>;
   pendingSessionMutations!: Table<PendingMutation, number>;
+  failedMutations!: Table<FailedMutation, number>;
 
   constructor() {
     super("fitnesstracker-offline");
@@ -35,6 +49,9 @@ class OfflineDb extends Dexie {
     this.version(2).stores({
       workoutSessions: "clientId, status",
       pendingSessionMutations: "++id, clientId, queuedAt",
+    });
+    this.version(3).stores({
+      failedMutations: "++id, clientId, failedAt",
     });
   }
 }

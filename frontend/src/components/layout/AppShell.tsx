@@ -22,7 +22,7 @@ const NAV_ITEMS: NavItem[] = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { data: plan } = useTrainingPlan();
-  const { isOnline, pendingCount } = useSyncStore();
+  const { isOnline, pendingCount, failedCount } = useSyncStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -109,6 +109,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           {pendingCount > 0 && (
             <span className="rounded-full bg-ink-800 px-2 py-0.5 text-xs text-ink-400">
               {pendingCount} ausstehend
+            </span>
+          )}
+          {failedCount > 0 && (
+            <span
+              className="rounded-full bg-red-950 px-2 py-0.5 text-xs text-red-400"
+              title="Konnte nicht synchronisiert werden — Eintrag ist lokal verloren"
+            >
+              {failedCount} fehlgeschlagen
             </span>
           )}
           {user && (
