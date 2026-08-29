@@ -1,9 +1,11 @@
-import type { Goal, PrismaClient } from "@prisma/client";
+import type { Exercise, Goal, PrismaClient } from "@prisma/client";
 import type { CreateGoalInput, UpdateGoalInput } from "@fitnesstracker/shared";
 import { NotFoundError } from "../../errors/httpErrors.js";
 import { getLatestWeightKg } from "../bodyComposition/bodyComposition.service.js";
 
 const withExercise = { include: { exercise: true } } as const;
+
+type GoalWithExercise = Goal & { exercise: Exercise | null };
 
 export function listGoals(prisma: PrismaClient, userId: string) {
   return prisma.goal.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, ...withExercise });
@@ -86,4 +88,33 @@ export async function computeCurrentValue(
 
   const result = await prisma.workoutLog.aggregate({ where, _max: { reps: true } });
   return result._max.reps;
+}
+
+// Auto-flips a goal to achieved the moment its derived current value first reaches the target —
+// without this, `achievedAt` only ever moved on an explicit "Als erreicht markieren" tap, so a
+// goal could sit at or past 100% indefinitely with no acknowledgment. Deliberately one-way: once
+// set, a later dip back below target never un-achieves it (this can't actually happen for
+// WEIGHT/REPS anyway, since they're a running max).
+//
+// Restricted to WEIGHT/REPS — "higher is progress" only holds unambiguously for those two.
+// BODYWEIGHT has no fixed direction (a target could mean "lose weight to X" or "bulk up to X",
+// and nothing in the data says which the user meant), so `currentValue >= targetValue` isn't a
+// reliable achieved-check for it — a cut goal of "75kg" would wrongly auto-achieve for someone
+// who currently weighs *more* than that and hasn't lost anything yet. CUSTOM has no derivable
+// currentValue at all (see computeCurrentValue). Both stay manual-only, same as before this change.
+export async function autoAchieveIfDue(
+  prisma: PrismaClient,
+  goal: GoalWithExercise,
+  currentValue: number | null,
+) {
+  if (goal.achievedAt || currentValue === null) {
+    return goal;
+  }
+  if (goal.type !== "WEIGHT" && goal.type !== "REPS") {
+    return goal;
+  }
+  if (currentValue < Number(goal.targetValue)) {
+    return goal;
+  }
+  return prisma.goal.update({ where: { id: goal.id }, data: { achievedAt: new Date() }, ...withExercise });
 }

@@ -1,10 +1,11 @@
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import type { CreateGoalInput, ExerciseDto } from "@fitnesstracker/shared";
+import type { CreateGoalInput, ExerciseDto, GoalDto, UpdateGoalInput } from "@fitnesstracker/shared";
 import { goalTypeSchema } from "@fitnesstracker/shared";
 import { useExercises } from "../../hooks/useWorkoutLogs";
-import { GOAL_TYPE_LABELS, GOAL_TYPE_UNITS, useCreateGoal } from "../../hooks/useGoals";
+import { GOAL_TYPE_LABELS, GOAL_TYPE_UNITS, useCreateGoal, useUpdateGoal } from "../../hooks/useGoals";
 
 const formSchema = z
   .object({
@@ -22,11 +23,20 @@ type FormValues = z.infer<typeof formSchema>;
 interface Props {
   open: boolean;
   onClose: () => void;
+  editingGoal?: GoalDto | null;
 }
 
-export function GoalFormDialog({ open, onClose }: Props) {
+function toDateInputValue(iso: string | null): string {
+  return iso ? iso.slice(0, 10) : "";
+}
+
+// Same form for create and edit — type and exercise are immutable once a goal exists (see
+// updateGoalSchema's comment), so in edit mode those two fields render read-only instead of a
+// second, near-duplicate dialog just to lock two fields.
+export function GoalFormDialog({ open, onClose, editingGoal }: Props) {
   const { data: exercises } = useExercises();
   const createGoal = useCreateGoal();
+  const updateGoal = useUpdateGoal();
 
   const {
     register,
@@ -41,16 +51,41 @@ export function GoalFormDialog({ open, onClose }: Props) {
   const type = watch("type");
   const needsExercise = type === "WEIGHT" || type === "REPS";
 
+  useEffect(() => {
+    if (editingGoal) {
+      reset({
+        type: editingGoal.type,
+        exerciseId: editingGoal.exerciseId ?? undefined,
+        targetValue: editingGoal.targetValue,
+        targetDate: toDateInputValue(editingGoal.targetDate),
+      });
+    } else {
+      reset({ type: "WEIGHT", targetValue: 0, exerciseId: undefined, targetDate: undefined });
+    }
+  }, [editingGoal, reset, open]);
+
   if (!open) return null;
 
   const onSubmit = async (data: FormValues) => {
-    const input: CreateGoalInput = {
-      type: data.type,
-      exerciseId: needsExercise ? data.exerciseId : undefined,
-      targetValue: data.targetValue,
-      targetDate: data.targetDate ? new Date(`${data.targetDate}T00:00:00.000Z`).toISOString() : undefined,
-    };
-    await createGoal.mutateAsync(input);
+    const targetDate = data.targetDate
+      ? new Date(`${data.targetDate}T00:00:00.000Z`).toISOString()
+      : undefined;
+
+    if (editingGoal) {
+      const input: UpdateGoalInput = {
+        targetValue: data.targetValue,
+        targetDate: targetDate ?? null,
+      };
+      await updateGoal.mutateAsync({ id: editingGoal.id, input });
+    } else {
+      const input: CreateGoalInput = {
+        type: data.type,
+        exerciseId: needsExercise ? data.exerciseId : undefined,
+        targetValue: data.targetValue,
+        targetDate,
+      };
+      await createGoal.mutateAsync(input);
+    }
     reset();
     onClose();
   };
@@ -58,23 +93,32 @@ export function GoalFormDialog({ open, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/60 sm:items-center">
       <div className="w-full max-w-sm rounded-t-2xl bg-ink-900 p-4 sm:rounded-2xl">
-        <h2 className="mb-4 text-lg font-semibold">Ziel hinzufügen</h2>
+        <h2 className="mb-4 text-lg font-semibold">
+          {editingGoal ? "Ziel bearbeiten" : "Ziel hinzufügen"}
+        </h2>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
           <div>
             <label className="mb-1 block text-sm text-ink-400">Art</label>
-            <select
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
-              {...register("type")}
-            >
-              {goalTypeSchema.options.map((value) => (
-                <option key={value} value={value}>
-                  {GOAL_TYPE_LABELS[value]}
-                </option>
-              ))}
-            </select>
+            {editingGoal ? (
+              <p className="rounded-lg border border-ink-800 bg-ink-950 px-3 py-2 text-ink-400">
+                {GOAL_TYPE_LABELS[editingGoal.type]}
+                {editingGoal.exerciseName && ` · ${editingGoal.exerciseName}`}
+              </p>
+            ) : (
+              <select
+                className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+                {...register("type")}
+              >
+                {goalTypeSchema.options.map((value) => (
+                  <option key={value} value={value}>
+                    {GOAL_TYPE_LABELS[value]}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
-          {needsExercise && (
+          {!editingGoal && needsExercise && (
             <div>
               <label className="mb-1 block text-sm text-ink-400">Übung</label>
               <select

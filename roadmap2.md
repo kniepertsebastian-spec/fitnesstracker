@@ -16,7 +16,7 @@ Fitnesstracker – TODO vor Hardening
 ☑ Push-Einstellungen fertigstellen – Erinnerungen individuell aktivierbar und konfigurierbar. (Drei Reminder-Typen (Phasenwechsel/Supplements/Foto) einzeln umschaltbar statt einem Alles-oder-nichts-Schalter — siehe ARCHITECTURE.md/ROADMAP.md.)
 ☑ Workout-Historie vervollständigen – Vergangene Trainings ansehen und bearbeiten. (Neue Seite `/history`, nach Tag gruppiert, Übungsfilter, Bearbeiten/Löschen — siehe ROADMAP.md Phase 31 / ARCHITECTURE.md)
 ☑ Übungsverwaltung finalisieren – Übungen anlegen, bearbeiten, deaktivieren und korrekt verwenden. (Anlegen/Bearbeiten-Dialog, neues `isActive`-Feld statt Hard-Delete, Picker filtern automatisch — siehe ROADMAP.md Phase 32 / ARCHITECTURE.md)
-☐ Ziele vollständig machen – Ziele erstellen, Fortschritt und Abschluss sauber behandeln.
+☑ Ziele vollständig machen – Ziele erstellen, Fortschritt und Abschluss sauber behandeln. (Auto-Abschluss für Gewicht/Wiederholungen-Ziele, Bearbeiten-Dialog für Zielwert/-datum — siehe ROADMAP.md Phase 33 / ARCHITECTURE.md; damit P1 vollständig)
 
 🟡 P2 – Abrunden
 
