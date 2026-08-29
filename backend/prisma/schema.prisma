@@ -20,6 +20,14 @@ enum GoalType {
   CUSTOM
 }
 
+enum DailyChallengeCategory {
+  TECHNIQUE
+  PROGRESSION
+  VOLUME
+  CONSISTENCY
+  RECOVERY
+}
+
 enum Gender {
   MALE
   FEMALE
@@ -314,14 +322,18 @@ model Profile {
 // day, each with a random rep target. Re-opening the same day returns the same set — the
 // randomness happens once per day, not on every read.
 model DailyChallengeItem {
-  id            String   @id @default(uuid())
+  id            String                 @id @default(uuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date          DateTime @db.Date
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime               @db.Date
   exerciseId    String
-  exercise      Exercise @relation(fields: [exerciseId], references: [id])
+  exercise      Exercise               @relation(fields: [exerciseId], references: [id])
+  category      DailyChallengeCategory @default(CONSISTENCY)
   targetReps    Int
-  completedReps Int      @default(0)
+  completedReps Int                    @default(0)
+  // How many times this item's exercise has been swapped out today — capped at
+  // MAX_ROTATIONS (2) in dailyChallenge.service.ts.
+  rotationsUsed Int                    @default(0)
 
   @@unique([userId, date, exerciseId])
 }
