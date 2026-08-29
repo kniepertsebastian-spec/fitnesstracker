@@ -4,6 +4,7 @@ import { RangeTabs } from "../components/progress/RangeTabs";
 import { WeightProgressCard } from "../components/progress/WeightProgressCard";
 import { StrengthProgressCard } from "../components/progress/StrengthProgressCard";
 import { VolumeProgressCard } from "../components/progress/VolumeProgressCard";
+import { ConsistencyCard } from "../components/progress/ConsistencyCard";
 import type { ProgressRange } from "../lib/progressRange";
 
 // roadmap2.md P1.2: "Fortschrittsansicht abrunden – Gewicht, Körperdaten, Kraft, Volumen, PRs
@@ -21,6 +22,7 @@ export function ProgressPage() {
         <WeightProgressCard range={range} />
         <StrengthProgressCard range={range} />
         <VolumeProgressCard range={range} />
+        <ConsistencyCard range={range} />
       </div>
     </AppShell>
   );
