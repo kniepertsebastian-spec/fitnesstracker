@@ -2,6 +2,7 @@ import type { Exercise, Goal, PrismaClient } from "@prisma/client";
 import type { CreateGoalInput, UpdateGoalInput } from "@fitnesstracker/shared";
 import { NotFoundError } from "../../errors/httpErrors.js";
 import { getLatestWeightKg } from "../bodyComposition/bodyComposition.service.js";
+import { sendNotificationToUser } from "../push/push.service.js";
 
 const withExercise = { include: { exercise: true } } as const;
 
@@ -116,5 +117,23 @@ export async function autoAchieveIfDue(
   if (currentValue < Number(goal.targetValue)) {
     return goal;
   }
-  return prisma.goal.update({ where: { id: goal.id }, data: { achievedAt: new Date() }, ...withExercise });
+  const updated = await prisma.goal.update({
+    where: { id: goal.id },
+    data: { achievedAt: new Date() },
+    ...withExercise,
+  });
+  // Only the auto-detected path notifies — a user who just tapped "Als erreicht markieren"
+  // themselves already knows, so a push about their own just-performed action would be the
+  // "aufdringlich" pattern the roadmap explicitly wants avoided. This path is the genuinely
+  // newsworthy one: the system noticed a crossed threshold the user might not have checked for.
+  const user = await prisma.user.findUnique({ where: { id: goal.userId }, select: { remindGoalAchievements: true } });
+  if (user?.remindGoalAchievements) {
+    const goalName = updated.exercise ? (updated.exercise.nameDe ?? updated.exercise.name) : "Körpergewicht";
+    await sendNotificationToUser(prisma, goal.userId, {
+      title: "🎯 Ziel erreicht",
+      body: `${goalName} — ${Number(updated.targetValue)} erreicht`,
+      url: "/goals",
+    });
+  }
+  return updated;
 }

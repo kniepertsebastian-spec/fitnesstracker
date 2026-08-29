@@ -29,10 +29,22 @@ export async function unsubscribeFromPush(prisma: PrismaClient, userId: string, 
   await prisma.pushSubscription.deleteMany({ where: { userId, endpoint } });
 }
 
+const PUSH_SETTINGS_SELECT = {
+  remindPhaseChange: true,
+  remindSupplements: true,
+  remindProgressPhoto: true,
+  remindWorkout: true,
+  remindPersonalRecords: true,
+  remindGoalAchievements: true,
+  remindDailyChallenge: true,
+  remindSyncErrors: true,
+  remindAppUpdates: true,
+} as const;
+
 export async function getPushSettings(prisma: PrismaClient, userId: string): Promise<PushSettingsDto> {
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
-    select: { remindPhaseChange: true, remindSupplements: true, remindProgressPhoto: true },
+    select: PUSH_SETTINGS_SELECT,
   });
   return user;
 }
@@ -45,7 +57,7 @@ export async function updatePushSettings(
   const user = await prisma.user.update({
     where: { id: userId },
     data: input,
-    select: { remindPhaseChange: true, remindSupplements: true, remindProgressPhoto: true },
+    select: PUSH_SETTINGS_SELECT,
   });
   return user;
 }

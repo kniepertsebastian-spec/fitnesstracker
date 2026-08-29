@@ -74,6 +74,22 @@ model User {
   remindPhaseChange    Boolean  @default(true)
   remindSupplements    Boolean  @default(true)
   remindProgressPhoto  Boolean  @default(true)
+  // Added for the additionals-roadmap P1.7 full notification-category set — Training/Progress/
+  // Challenges/System, "der Nutzer entscheidet selbst, welche Kategorien aktiviert sind".
+  // remindSyncErrors/remindAppUpdates are opt-out flags with no current sender: a sync failure is
+  // already known locally while the app is open (nothing for a push to add), and app-update
+  // pushes need a deploy-triggered broadcast mechanism that doesn't exist yet (see roadmap P0.6).
+  // Both stay here, ready, rather than added later as a second migration.
+  remindWorkout          Boolean   @default(true)
+  remindPersonalRecords  Boolean   @default(true)
+  remindGoalAchievements Boolean   @default(true)
+  remindDailyChallenge   Boolean   @default(true)
+  remindSyncErrors       Boolean   @default(true)
+  remindAppUpdates       Boolean   @default(true)
+  // Same "at most once per local day" marker pattern as Supplement.lastRemindedOn, just scoped
+  // to the user instead of a per-supplement row.
+  lastWorkoutReminderSentOn        DateTime? @db.Date
+  lastDailyChallengeReminderSentOn DateTime? @db.Date
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
