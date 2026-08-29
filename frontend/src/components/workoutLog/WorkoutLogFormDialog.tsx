@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { z } from "zod";
 import type { ExerciseDto } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../../offline/db";
-import { useCreateWorkoutLog, useExercises, useUpdateWorkoutLog } from "../../hooks/useWorkoutLogs";
+import { useCreateWorkoutLog, useExercises, useUpdateWorkoutLog, useWorkoutLogs } from "../../hooks/useWorkoutLogs";
 import { useTimerStore } from "../../stores/timerStore";
 import { buildWarmupPyramid } from "../../lib/oneRepMax";
 
@@ -30,23 +30,94 @@ let lastSupersetGroupId: string | null = null;
 
 type SupersetMode = "none" | "new" | "join";
 
+function isToday(performedAt: string): boolean {
+  const d = new Date(performedAt);
+  const now = new Date();
+  return (
+    d.getUTCFullYear() === now.getUTCFullYear() &&
+    d.getUTCMonth() === now.getUTCMonth() &&
+    d.getUTCDate() === now.getUTCDate()
+  );
+}
+
+// +/- stepper alongside the number input — the roadmap's "schnelle Gewichts-/Rep-Anpassung" ask:
+// a big tap target beats opening the on-screen keyboard for a ±1 rep or ±2.5kg change mid-set.
+function SteppedNumberField({
+  label,
+  value,
+  onChange,
+  step,
+  min = 0,
+  inputProps,
+}: {
+  label: string;
+  value: number;
+  onChange: (next: number) => void;
+  step: number;
+  min?: number;
+  inputProps: UseFormRegisterReturn;
+}) {
+  const round = (n: number) => Math.round(n * 10) / 10;
+  return (
+    <div>
+      <label className="mb-1 block text-sm text-ink-400">{label}</label>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onChange(Math.max(min, round((Number(value) || 0) - step)))}
+          className="h-10 w-10 shrink-0 rounded-lg border border-ink-700 text-lg text-ink-300 hover:bg-ink-800"
+          aria-label={`${label} verringern`}
+        >
+          −
+        </button>
+        <input
+          type="number"
+          // `step="any"` — a native step-mismatch would otherwise silently block submission
+          // (no JS handler runs, no console error) whenever the value carries more precision
+          // than the browser's default whole-number step, which the +/- buttons intentionally
+          // produce for weight (2.5kg increments).
+          step="any"
+          className="w-full rounded-lg border border-ink-700 bg-ink-950 px-2 py-2 text-center"
+          {...inputProps}
+        />
+        <button
+          type="button"
+          onClick={() => onChange(round((Number(value) || 0) + step))}
+          className="h-10 w-10 shrink-0 rounded-lg border border-ink-700 text-lg text-ink-300 hover:bg-ink-800"
+          aria-label={`${label} erhöhen`}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
   const { data: exercises } = useExercises();
+  const { data: allLogs } = useWorkoutLogs();
   const createLog = useCreateWorkoutLog();
   const updateLog = useUpdateWorkoutLog();
   const { autoStartEnabled, autoStartSeconds, start: startRestTimer } = useTimerStore();
   const [supersetMode, setSupersetMode] = useState<SupersetMode>("none");
   const [showWarmup, setShowWarmup] = useState(false);
+  // Counts sets saved in this dialog "session" (between opens) — drives the "Fertig" vs.
+  // "Abbrechen" close-button label and lets the dialog stay open across consecutive sets instead
+  // of forcing reopen-reselect-exercise for every single set of a workout.
+  const [savedCount, setSavedCount] = useState(0);
 
   const {
     register,
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(formSchema) });
 
   const watchedWeight = watch("weightKg");
+  const watchedReps = watch("reps");
+  const watchedExerciseId = watch("exerciseId");
 
   useEffect(() => {
     if (editingLog) {
@@ -63,9 +134,32 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
       setSupersetMode("none");
     }
     setShowWarmup(false);
+    setSavedCount(0);
   }, [editingLog, reset, open]);
 
+  // Prefills reps/weight from the last time this exercise was logged, and sets the set number to
+  // "however many sets of this exercise are already logged today, plus one" — the roadmap's
+  // "letzte Werte sinnvoll vorausfüllen" ask. Only runs when picking a *new* exercise (not on
+  // every keystroke) and never in edit mode, where the existing values are the point.
+  useEffect(() => {
+    if (editingLog || !watchedExerciseId || !allLogs) return;
+    const lastLog = allLogs.find((log) => log.exerciseId === watchedExerciseId);
+    const todaysSetCount = allLogs.filter(
+      (log) => log.exerciseId === watchedExerciseId && isToday(log.performedAt),
+    ).length;
+    if (lastLog) {
+      setValue("weightKg", lastLog.weightKg);
+      setValue("reps", lastLog.reps);
+    }
+    setValue("setNumber", todaysSetCount + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedExerciseId]);
+
   if (!open) return null;
+
+  const lastLogForExercise = !editingLog
+    ? allLogs?.find((log) => log.exerciseId === watchedExerciseId)
+    : undefined;
 
   const resolveSupersetGroupId = (): string | null | undefined => {
     if (editingLog) {
@@ -94,19 +188,31 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
         input: { ...data, rir },
         exerciseName,
       });
-    } else {
-      await createLog.mutateAsync({
-        input: { ...data, rir, supersetGroupId, clientId: crypto.randomUUID() },
-        exerciseName,
-      });
-      // Only a newly logged set starts the rest timer — editing a past entry (e.g. fixing a
-      // typo) isn't "I just finished a set", so it shouldn't interrupt whatever timer is
-      // already running (or start one out of nowhere).
-      if (autoStartEnabled) {
-        startRestTimer(autoStartSeconds);
-      }
+      onClose();
+      return;
     }
-    onClose();
+
+    await createLog.mutateAsync({
+      input: { ...data, rir, supersetGroupId, clientId: crypto.randomUUID() },
+      exerciseName,
+    });
+    // Only a newly logged set starts the rest timer — editing a past entry (e.g. fixing a
+    // typo) isn't "I just finished a set", so it shouldn't interrupt whatever timer is
+    // already running (or start one out of nowhere).
+    if (autoStartEnabled) {
+      startRestTimer(autoStartSeconds);
+    }
+    // A "Neue Gruppe" tap only starts a group once — the next quick set for the same exercise
+    // should join it, not spin up a second group.
+    if (supersetMode === "new") {
+      setSupersetMode("join");
+    }
+    setSavedCount((c) => c + 1);
+    // Stays open on the same exercise with the set number bumped — logging a straight set of 3-4
+    // sets is then select-exercise-once, then Speichern repeatedly, instead of reopening and
+    // reselecting the exercise for every single set (the roadmap's "möglichst wenige
+    // Interaktionen" / "Sets schnell hinzufügen" ask).
+    reset({ ...data, setNumber: data.setNumber + 1 });
   };
 
   const warmupSteps = buildWarmupPyramid(Number(watchedWeight) || 0);
@@ -137,32 +243,20 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
             {errors.exerciseId && (
               <p className="mt-1 text-sm text-red-400">{errors.exerciseId.message}</p>
             )}
+            {lastLogForExercise && (
+              <p className="mt-1 text-xs text-ink-500">
+                Zuletzt: {lastLogForExercise.reps} Wdh. × {lastLogForExercise.weightKg}kg
+              </p>
+            )}
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="mb-1 block text-sm text-ink-400">Satz</label>
               <input
                 type="number"
                 className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
                 {...register("setNumber")}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-ink-400">Wdh.</label>
-              <input
-                type="number"
-                className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
-                {...register("reps")}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-ink-400">kg</label>
-              <input
-                type="number"
-                step="0.5"
-                className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
-                {...register("weightKg")}
               />
             </div>
             <div>
@@ -179,6 +273,22 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
               />
             </div>
           </div>
+
+          <SteppedNumberField
+            label="Wdh."
+            value={Number(watchedReps) || 0}
+            onChange={(v) => setValue("reps", v)}
+            step={1}
+            min={1}
+            inputProps={register("reps")}
+          />
+          <SteppedNumberField
+            label="kg"
+            value={Number(watchedWeight) || 0}
+            onChange={(v) => setValue("weightKg", v)}
+            step={2.5}
+            inputProps={register("weightKg")}
+          />
           {errors.rir && <p className="text-sm text-red-400">{errors.rir.message}</p>}
 
           {!editingLog && (
@@ -243,13 +353,20 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
             </div>
           )}
 
+          {savedCount > 0 && (
+            <p className="text-xs text-emerald-400">
+              ✓ {savedCount} {savedCount === 1 ? "Satz" : "Sätze"} gespeichert — bereit für den
+              nächsten
+            </p>
+          )}
+
           <div className="mt-2 flex gap-2">
             <button
               type="button"
               onClick={onClose}
               className="flex-1 rounded-lg border border-ink-700 py-2 text-ink-300 hover:bg-ink-800"
             >
-              Abbrechen
+              {savedCount > 0 ? "Fertig" : "Abbrechen"}
             </button>
             <button
               type="submit"
