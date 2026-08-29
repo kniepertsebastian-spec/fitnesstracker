@@ -11,3 +11,7 @@ export function addChallengeRepsRequest(itemId: string, delta: number) {
     body: { delta },
   });
 }
+
+export function rerollChallengeItemRequest(itemId: string) {
+  return apiFetch<DailyChallengeItemDto>(`/daily-challenge/${itemId}/reroll`, { method: "POST" });
+}
