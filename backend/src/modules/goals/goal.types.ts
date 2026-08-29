@@ -24,8 +24,22 @@ export function toGoalSuggestionDto(suggestion: GoalSuggestion): GoalSuggestionD
   return {
     exerciseId: suggestion.exerciseId,
     exerciseName: suggestion.exerciseName,
-    currentBestKg: suggestion.currentBestKg,
-    suggestedTargetKg: suggestion.suggestedTargetKg,
-    suggestedTargetDate: suggestion.suggestedTargetDate.toISOString(),
+    type: suggestion.type,
+    currentBestValue: suggestion.currentBestValue,
+    plateauDetected: suggestion.plateauDetected,
+    tiers: {
+      conservative: {
+        targetValue: suggestion.tiers.conservative.targetValue,
+        targetDate: suggestion.tiers.conservative.targetDate.toISOString(),
+      },
+      realistic: {
+        targetValue: suggestion.tiers.realistic.targetValue,
+        targetDate: suggestion.tiers.realistic.targetDate.toISOString(),
+      },
+      ambitious: {
+        targetValue: suggestion.tiers.ambitious.targetValue,
+        targetDate: suggestion.tiers.ambitious.targetDate.toISOString(),
+      },
+    },
   };
 }
