@@ -15,7 +15,7 @@ Fitnesstracker – TODO vor Hardening
 ☑ Progress-Fotos komplettieren – Aufnahme, Upload, Datum, Galerie und Vorher/Nachher. (Aufnahme/Upload/Galerie/Vorher-Nachher waren schon fertig — Lücke war "Datum": Upload-Plumbing akzeptierte bereits ein eigenes Datum, aber die UI zeigte nie ein Datumsfeld, jetzt ergänzt — siehe ARCHITECTURE.md/ROADMAP.md.)
 ☑ Push-Einstellungen fertigstellen – Erinnerungen individuell aktivierbar und konfigurierbar. (Drei Reminder-Typen (Phasenwechsel/Supplements/Foto) einzeln umschaltbar statt einem Alles-oder-nichts-Schalter — siehe ARCHITECTURE.md/ROADMAP.md.)
 ☑ Workout-Historie vervollständigen – Vergangene Trainings ansehen und bearbeiten. (Neue Seite `/history`, nach Tag gruppiert, Übungsfilter, Bearbeiten/Löschen — siehe ROADMAP.md Phase 31 / ARCHITECTURE.md)
-☐ Übungsverwaltung finalisieren – Übungen anlegen, bearbeiten, deaktivieren und korrekt verwenden.
+☑ Übungsverwaltung finalisieren – Übungen anlegen, bearbeiten, deaktivieren und korrekt verwenden. (Anlegen/Bearbeiten-Dialog, neues `isActive`-Feld statt Hard-Delete, Picker filtern automatisch — siehe ROADMAP.md Phase 32 / ARCHITECTURE.md)
 ☐ Ziele vollständig machen – Ziele erstellen, Fortschritt und Abschluss sauber behandeln.
 
 🟡 P2 – Abrunden

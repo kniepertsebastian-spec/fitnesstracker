@@ -9,6 +9,7 @@ export interface ListExercisesFilters {
   equipment?: string;
   page?: number;
   pageSize?: number;
+  includeInactive?: boolean;
 }
 
 const DEFAULT_PAGE_SIZE = 200;
@@ -19,6 +20,13 @@ export async function listExercises(prisma: PrismaClient, filters: ListExercises
   // need their own `OR` (English name vs. German name; primary vs. secondary muscle), and a
   // plain object spread would let the second `OR` key silently clobber the first.
   const clauses: Prisma.ExerciseWhereInput[] = [];
+  // Deactivated exercises are excluded everywhere by default — the workout-log/plan/goal
+  // exercise pickers all call this with no filters at all, so this is what actually keeps a
+  // retired exercise out of "correct use" elsewhere without those callers needing to know about
+  // isActive at all. The exercise-management UI passes includeInactive to see them too.
+  if (!filters.includeInactive) {
+    clauses.push({ isActive: true });
+  }
   if (filters.search) {
     clauses.push({
       OR: [
@@ -106,7 +114,9 @@ export async function deleteExercise(prisma: PrismaClient, id: string) {
   } catch (error) {
     // FK RESTRICT from WorkoutLog/Goal — surface as a clean conflict instead of a raw 500.
     if ((error as Prisma.PrismaClientKnownRequestError).code === "P2003") {
-      throw new ConflictError("Exercise is still referenced by workout logs or goals");
+      throw new ConflictError(
+        "Exercise is still referenced by workout logs, plans, or goals — deactivate it instead of deleting",
+      );
     }
     throw error;
   }

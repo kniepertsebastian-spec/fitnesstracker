@@ -13,5 +13,6 @@ export function toExerciseDto(exercise: Exercise): ExerciseDto {
     primaryMuscles: exercise.primaryMuscles,
     secondaryMuscles: exercise.secondaryMuscles,
     source: exercise.source,
+    isActive: exercise.isActive,
   };
 }

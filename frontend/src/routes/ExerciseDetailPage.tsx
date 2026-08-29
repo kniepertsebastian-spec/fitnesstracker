@@ -1,10 +1,34 @@
-import { Link, useParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ApiError } from "../api/client";
 import { AppShell } from "../components/layout/AppShell";
-import { useExercise } from "../hooks/useExerciseLibrary";
+import { ExerciseFormDialog } from "../components/exerciseLibrary/ExerciseFormDialog";
+import { useDeleteExercise, useExercise, useUpdateExercise } from "../hooks/useExerciseLibrary";
 
 export function ExerciseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: exercise, isLoading } = useExercise(id);
+  const updateExercise = useUpdateExercise();
+  const deleteExercise = useDeleteExercise();
+  const navigate = useNavigate();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const toggleActive = () => {
+    if (!exercise) return;
+    updateExercise.mutate({ id: exercise.id, input: { isActive: !exercise.isActive } });
+  };
+
+  const handleDelete = async () => {
+    if (!exercise) return;
+    setDeleteError(null);
+    try {
+      await deleteExercise.mutateAsync(exercise.id);
+      navigate("/exercises");
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "Löschen fehlgeschlagen");
+    }
+  };
 
   return (
     <AppShell>
@@ -18,7 +42,22 @@ export function ExerciseDetailPage() {
         <p className="text-ink-500">Übung nicht gefunden.</p>
       ) : (
         <div className="flex flex-col gap-4">
-          <h1 className="text-xl font-semibold">{exercise.name}</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold">
+              {exercise.name}
+              {!exercise.isActive && (
+                <span className="ml-2 rounded-full bg-ink-800 px-2 py-0.5 text-xs font-normal text-ink-500">
+                  Inaktiv
+                </span>
+              )}
+            </h1>
+            <button
+              onClick={() => setDialogOpen(true)}
+              className="text-sm text-violet-400 hover:underline"
+            >
+              Bearbeiten
+            </button>
+          </div>
 
           {exercise.imageUrls.length > 0 && (
             <div className="flex gap-2 overflow-x-auto">
@@ -72,8 +111,28 @@ export function ExerciseDetailPage() {
           ) : (
             <p className="text-sm text-ink-600">Kein Video verfügbar.</p>
           )}
+
+          <div className="flex gap-4 border-t border-ink-800 pt-4 text-sm">
+            <button
+              onClick={toggleActive}
+              disabled={updateExercise.isPending}
+              className="text-ink-300 hover:underline disabled:opacity-50"
+            >
+              {exercise.isActive ? "Deaktivieren" : "Aktivieren"}
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleteExercise.isPending}
+              className="text-red-400 hover:underline disabled:opacity-50"
+            >
+              Löschen
+            </button>
+          </div>
+          {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
         </div>
       )}
+
+      <ExerciseFormDialog open={dialogOpen} onClose={() => setDialogOpen(false)} editingExercise={exercise ?? null} />
     </AppShell>
   );
 }
