@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTimerStore } from "../../stores/timerStore";
 import { unlockAudio } from "../../lib/timerSound";
 
 const PRESETS_SECONDS = [30, 60, 90, 120];
+const VIBRATION_SUPPORTED = typeof navigator !== "undefined" && "vibrate" in navigator;
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -22,12 +23,33 @@ export function RestTimerWidget() {
     autoStartEnabled,
     autoStartSeconds,
     setAutoStart,
+    soundEnabled,
+    vibrationEnabled,
+    setSoundEnabled,
+    setVibrationEnabled,
+    syncFromClock,
   } = useTimerStore();
   const [expanded, setExpanded] = useState(false);
   const [customSeconds, setCustomSeconds] = useState("90");
 
   const idle = totalSeconds === 0;
   const finished = !idle && remainingSeconds === 0;
+
+  // A backgrounded tab/app throttles setInterval, so the 1s tick alone can't be trusted to
+  // notice a finished timer promptly — recompute from the stored end time the moment the app
+  // is foregrounded again, so "zuverlässiges Verhalten bei App-Wechsel" holds instead of showing
+  // a stale countdown until the next tick eventually catches up (or never, if heavily throttled).
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") syncFromClock();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
+  }, [syncFromClock]);
 
   const handleStart = (seconds: number) => {
     if (!Number.isFinite(seconds) || seconds <= 0) return;
@@ -114,6 +136,27 @@ export function RestTimerWidget() {
             />
             <span className="text-xs text-ink-500">s</span>
           </div>
+        )}
+
+        <label className="mt-3 flex items-center justify-between border-t border-ink-800 pt-3 text-sm text-ink-300">
+          <span>Sound bei Timer-Ende</span>
+          <input
+            type="checkbox"
+            checked={soundEnabled}
+            onChange={(event) => setSoundEnabled(event.target.checked)}
+            className="h-4 w-4 accent-violet-500"
+          />
+        </label>
+        {VIBRATION_SUPPORTED && (
+          <label className="mt-2 flex items-center justify-between text-sm text-ink-300">
+            <span>Vibration bei Timer-Ende</span>
+            <input
+              type="checkbox"
+              checked={vibrationEnabled}
+              onChange={(event) => setVibrationEnabled(event.target.checked)}
+              className="h-4 w-4 accent-violet-500"
+            />
+          </label>
         )}
       </div>
     );
