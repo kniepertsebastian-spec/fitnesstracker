@@ -93,7 +93,7 @@ async function fetchRecentSetsByExercise(
   return byExercise;
 }
 
-// Monday 00:00 UTC of the current week — same UTC-calendar-day convention as the water/daily-
+// Monday 00:00 UTC of the current week — same UTC-calendar-day convention as the daily-
 // challenge day boundaries elsewhere in this app (a few hours of slop around midnight is
 // unnoticeable at week granularity, unlike the supplement reminder's exact-clock-time need).
 function currentWeekMondayUtc(): Date {

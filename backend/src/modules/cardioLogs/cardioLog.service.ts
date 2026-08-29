@@ -2,7 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import type { CreateCardioLogInput } from "@fitnesstracker/shared";
 import { NotFoundError } from "../../errors/httpErrors.js";
 
-// Same UTC-calendar-day convention as water/daily-challenge — the dashboard cardio card only
+// Same UTC-calendar-day convention as daily-challenge — the dashboard cardio card only
 // ever shows "today", no history view to page through yet.
 function todayUtcDate(): Date {
   const now = new Date();
