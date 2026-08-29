@@ -42,13 +42,31 @@ export const updateGoalSchema = z.object({
 });
 export type UpdateGoalInput = z.infer<typeof updateGoalSchema>;
 
-// An automatically derived candidate WEIGHT goal for an exercise the user has actually been
-// training — not a goal itself until the user explicitly adopts it via the normal POST /goals.
+// A single ambition level within a suggestion — see goalSuggestionDtoSchema.
+export const goalSuggestionTierSchema = z.object({
+  targetValue: z.number(),
+  targetDate: z.string(),
+});
+export type GoalSuggestionTierDto = z.infer<typeof goalSuggestionTierSchema>;
+
+// An automatically derived candidate goal for an exercise the user has actually been training —
+// not a goal itself until the user explicitly adopts one of its three tiers via the normal
+// POST /goals. `type` is WEIGHT or REPS depending on the exercise's typical rep range (a
+// high-rep/bodyweight exercise gets a reps target instead of a weight target). Three ambition
+// tiers (Konservativ/Realistisch/Ambitioniert) let the user pick how aggressive a timeline to
+// commit to, rather than a single take-it-or-leave-it suggestion.
 export const goalSuggestionDtoSchema = z.object({
   exerciseId: z.string().uuid(),
   exerciseName: z.string(),
-  currentBestKg: z.number(),
-  suggestedTargetKg: z.number(),
-  suggestedTargetDate: z.string(),
+  type: goalTypeSchema,
+  currentBestValue: z.number(),
+  // Best of the last 3 sessions hasn't beaten the best of everything before that — surfaced so
+  // the UI can explain why the suggested increments are smaller than usual.
+  plateauDetected: z.boolean(),
+  tiers: z.object({
+    conservative: goalSuggestionTierSchema,
+    realistic: goalSuggestionTierSchema,
+    ambitious: goalSuggestionTierSchema,
+  }),
 });
 export type GoalSuggestionDto = z.infer<typeof goalSuggestionDtoSchema>;
