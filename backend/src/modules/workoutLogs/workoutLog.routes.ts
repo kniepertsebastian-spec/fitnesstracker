@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { createWorkoutLogSchema, updateWorkoutLogSchema } from "@fitnesstracker/shared";
 import {
+  checkAndNotifyPersonalRecord,
   createWorkoutLog,
   deleteWorkoutLog,
   listWorkoutLogs,
@@ -31,6 +32,17 @@ export default async function workoutLogRoutes(fastify: FastifyInstance) {
       where: { clientId: input.clientId },
     });
     const log = await createWorkoutLog(fastify.prisma, request.user.sub, input);
+    // Fire-and-forget: a genuinely new set (not a retried/idempotent upsert of one already
+    // synced) may be a personal record, but checking and sending a push shouldn't add latency
+    // to the single hottest write endpoint in the app.
+    if (!wasExisting) {
+      void checkAndNotifyPersonalRecord(fastify.prisma, request.user.sub, {
+        id: log.id,
+        exerciseId: log.exerciseId,
+        reps: log.reps,
+        weightKg: Number(log.weightKg),
+      }).catch((error) => fastify.log.error(error, "Personal record check failed"));
+    }
     return reply.code(wasExisting ? 200 : 201).send(toWorkoutLogDto(log));
   });
 

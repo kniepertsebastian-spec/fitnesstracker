@@ -23,6 +23,8 @@ import supplementScheduler from "./modules/supplements/supplement.scheduler.js";
 import bodyCompositionRoutes from "./modules/bodyComposition/bodyComposition.routes.js";
 import progressPhotoRoutes from "./modules/progressPhotos/progressPhoto.routes.js";
 import progressPhotoScheduler from "./modules/progressPhotos/progressPhoto.scheduler.js";
+import workoutReminderScheduler from "./modules/workoutLogs/workoutReminder.scheduler.js";
+import dailyChallengeScheduler from "./modules/dailyChallenge/dailyChallenge.scheduler.js";
 import aiSettingsRoutes from "./modules/aiSettings/aiSettings.routes.js";
 import aiPlanGeneratorRoutes from "./modules/aiPlanGenerator/aiPlanGenerator.routes.js";
 import cardioLogRoutes from "./modules/cardioLogs/cardioLog.routes.js";
@@ -51,6 +53,8 @@ export function buildApp() {
   app.register(trainingPlanScheduler);
   app.register(supplementScheduler);
   app.register(progressPhotoScheduler);
+  app.register(workoutReminderScheduler);
+  app.register(dailyChallengeScheduler);
 
   app.get("/api/health", async () => ({ status: "ok" }));
 
