@@ -6,7 +6,16 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "autoUpdate" swaps in a new service worker and its cached assets the moment one is
+      // found, with no user-visible signal — mid-workout, that can mean the app silently starts
+      // serving a different JS bundle than the one currently running in memory. "prompt" leaves
+      // the new worker waiting until `UpdatePrompt` (src/components/layout/UpdatePrompt.tsx)
+      // calls `updateServiceWorker()`, so the reload happens when the user asks for it.
+      registerType: "prompt",
+      // The default injected registration script calls `registerSW({ immediate: true })` with
+      // no update hook — disabled here so `useRegisterSW` (the `virtual:pwa-register/react`
+      // hook used by UpdatePrompt) is the only thing registering the service worker.
+      injectRegister: false,
       includeAssets: ["icons/icon-192.png", "icons/icon-512.png", "sounds/timer-end.mp3"],
       manifest: {
         name: "Fitnesstracker",
