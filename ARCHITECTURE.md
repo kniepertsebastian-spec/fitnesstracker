@@ -976,6 +976,22 @@ bereits solide.
   Sätze verschwinden korrekt aus der Dashboard-Ansicht (weiterhin unverändert im lokalen Cache und
   auf dem Server vorhanden, nur ohne aktuelle UI, bis die separate Historie-Ansicht gebaut ist);
   kein horizontaler Overflow bei 375px.
+- **Nachbesserung: Fortschritts-Punkte im Plan-Tagebuch sind jetzt ein manueller Tage-Schalter,
+  nicht nur eine Anzeige.** `CurrentPlanCard` hatte bisher keine Möglichkeit, vom automatisch
+  erkannten aktiven Tag (`status.activeDayIndex` aus `planWeekStatus.service.ts`) abzuweichen —
+  wer aus irgendeinem Grund mit Tag 2 statt Tag 1 anfangen wollte, hatte keine Wahl. Neuer lokaler
+  State `selectedDayIndex` (`null` = kein manuelles Override, folgt dem Auto-erkannten Tag) wird
+  gesetzt, sobald jemand auf einen Fortschritts-Punkt tippt (jetzt `<button>` statt `<span>`) —
+  bleibt danach bestehen, auch wenn sich `activeDayIndex` durch neues Loggen ändert (kein
+  Zurückspringen mitten beim Ausfüllen). Funktioniert bewusst auch dann, wenn alle Tage dieser
+  Woche bereits abgeschlossen sind: die Erfolgsmeldung ersetzt die Tabelle nur, solange *weder*
+  eine manuelle Auswahl *noch* ein automatisch aktiver Tag vorliegt — die Punkte selbst bleiben in
+  jedem Fall klickbar, sodass sich jeder Tag jederzeit erneut aufrufen lässt. Live im Browser
+  verifiziert: alle drei Tage eines Push/Pull/Legs-Splits einzeln anwählbar, Kopfzeile
+  aktualisiert sich korrekt je Tag, auch beim Zurückwechseln zum ersten Tag.
+- **Navigation "Log" zu "Dashboard" umbenannt** — der etabliert genutzte Name für diese Seite,
+  die Bezeichnung "Log" beschrieb nur einen Teil dessen, was die Seite mittlerweile zeigt
+  (Session-Buttons, Tages-Challenge, Plan-Tagebuch, Cardio, Ziele, dazu die Log-Tabelle).
 
 ## Fortschrittsansicht (Phase 28, fertig — zweiter roadmap2.md-P1-Punkt)
 
