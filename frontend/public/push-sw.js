@@ -3,7 +3,7 @@
 // documented way to add push/notificationclick handling without switching to injectManifest
 // (which would mean hand-rolling the precache registration this app already gets for free).
 self.addEventListener("push", (event) => {
-  let data = {};
+  let data;
   try {
     data = event.data ? event.data.json() : {};
   } catch {

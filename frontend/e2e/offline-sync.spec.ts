@@ -11,7 +11,12 @@ import {
   type E2eUser,
 } from "./support";
 
-test.describe.configure({ mode: "serial" });
+// No `test.describe.configure({ mode: "serial" })` here: playwright.config.ts's `workers: 1` +
+// `fullyParallel: false` already keep every test in this file running one at a time — `serial`
+// mode on top of that does something different and unwanted (it was tried and reverted): it ties
+// every describe block in the file into one chain where a single failure skips the rest and a
+// retry restarts the *whole* chain from its first test, even though these four scenarios are
+// otherwise fully independent (separate registered users, no shared state).
 
 async function openCreateDialog(page: import("@playwright/test").Page) {
   await page.locator('button', { hasText: '+ Satz' }).click();
@@ -39,10 +44,23 @@ async function closeDialog(page: import("@playwright/test").Page) {
   await workoutLogDialog(page).locator('button', { hasText: /Fertig|Abbrechen/ }).click();
 }
 
-async function editWeight(page: import("@playwright/test").Page, exerciseName: string, weightKg: number) {
+async function editWeight(
+  page: import("@playwright/test").Page,
+  exerciseName: string,
+  previousWeightKg: number,
+  weightKg: number,
+) {
   await rowFor(page, exerciseName).locator('button', { hasText: "Bearbeiten" }).click();
   const dialog = workoutLogDialog(page);
-  await dialog.locator('input[name="weightKg"]').fill(String(weightKg));
+  const weightInput = dialog.locator('input[name="weightKg"]');
+  // WorkoutLogFormDialog populates the form from `editingLog` in a useEffect (reset({...}))
+  // that runs after the dialog is already visible — filling before that effect has actually
+  // landed races it: the effect's reset() can silently overwrite whatever was just typed a
+  // moment later. Waiting for the known pre-edit value to actually render first guarantees the
+  // fill below happens strictly after that reset, the same way a human editing the form would
+  // naturally see the current value appear before typing over it.
+  await expect(weightInput).toHaveValue(String(previousWeightKg));
+  await weightInput.fill(String(weightKg));
   await dialog.locator('button[type="submit"]').click();
   await expect(dialog).toHaveCount(0);
 }
@@ -64,14 +82,13 @@ test.describe("Kritischer Offline-Flow", () => {
     request,
   }) => {
     let accessToken = "";
-    let exercise: { id: string; name: string };
 
     await test.step("Login", async () => {
       accessToken = await login(page, user);
       await expect(syncPill(page)).toHaveText("Synchronisiert");
     });
 
-    exercise = await fetchAnyExercise(request, accessToken);
+    const exercise = await fetchAnyExercise(request, accessToken);
 
     await test.step("Offline gehen", async () => {
       await goOffline(page, context);
@@ -89,7 +106,7 @@ test.describe("Kritischer Offline-Flow", () => {
     });
 
     await test.step("Workout bearbeiten (offline)", async () => {
-      await editWeight(page, exercise.name, 45);
+      await editWeight(page, exercise.name, 41, 45);
 
       await expect(rowFor(page, exercise.name)).toContainText("45");
       // Editing a still-unsynced create coalesces into the same single pending mutation rather
@@ -141,11 +158,18 @@ test.describe("Mehrere Offline-Änderungen und Mutation Coalescing", () => {
     await openCreateDialog(page);
     await fillAndSubmit(page, { exerciseId: exercise.id, reps: 8, weightKg: 51 });
     await closeDialog(page);
+    await expect(rowFor(page, exercise.name)).toContainText("51");
     await expect(syncPill(page)).toHaveText("Offline · 1 ausstehend");
 
-    // Three rapid edits to the same not-yet-synced row while still offline.
+    // Three rapid edits to the same not-yet-synced row while still offline. Asserting the row's
+    // displayed value after each edit (not just that the dialog closed) matters here: the next
+    // iteration clicks "Bearbeiten" on that same row again, and without confirming the previous
+    // edit has actually landed first, that click could hit the row mid-update.
+    let previousWeight = 51;
     for (const weight of [52, 53, 54]) {
-      await editWeight(page, exercise.name, weight);
+      await editWeight(page, exercise.name, previousWeight, weight);
+      await expect(rowFor(page, exercise.name)).toContainText(String(weight));
+      previousWeight = weight;
       // Still exactly one pending mutation — coalescing, not queuing a fourth entry.
       await expect(syncPill(page)).toHaveText("Offline · 1 ausstehend");
     }
