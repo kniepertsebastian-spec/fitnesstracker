@@ -15,7 +15,14 @@ export function ExerciseCard({ exercise }: { exercise: ExerciseDto }) {
         <div className="h-12 w-12 shrink-0 rounded-md bg-ink-800" />
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-ink-100">{exercise.name}</p>
+        <p className="truncate font-medium text-ink-100">
+          {exercise.name}
+          {!exercise.isActive && (
+            <span className="ml-2 rounded-full bg-ink-800 px-2 py-0.5 text-xs font-normal text-ink-500">
+              Inaktiv
+            </span>
+          )}
+        </p>
         <p className="truncate text-sm text-ink-500">
           {[exercise.equipment, exercise.primaryMuscles.join(", ")].filter(Boolean).join(" · ") ||
             "—"}

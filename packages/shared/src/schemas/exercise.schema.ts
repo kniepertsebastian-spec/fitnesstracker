@@ -11,6 +11,7 @@ export const exerciseDtoSchema = z.object({
   primaryMuscles: z.array(z.string()),
   secondaryMuscles: z.array(z.string()),
   source: z.string().nullable(),
+  isActive: z.boolean(),
 });
 export type ExerciseDto = z.infer<typeof exerciseDtoSchema>;
 
@@ -25,7 +26,11 @@ export const createExerciseSchema = z.object({
 });
 export type CreateExerciseInput = z.infer<typeof createExerciseSchema>;
 
-export const updateExerciseSchema = createExerciseSchema.partial();
+// `isActive` isn't part of createExerciseSchema — a new exercise is always created active, only
+// an existing one can be deactivated/reactivated afterwards.
+export const updateExerciseSchema = createExerciseSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
 export type UpdateExerciseInput = z.infer<typeof updateExerciseSchema>;
 
 // Every registered adapter's name is a valid value here; kept as a plain string (not a

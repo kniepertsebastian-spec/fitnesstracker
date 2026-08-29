@@ -1141,6 +1141,36 @@ bereits solide.
   `WorkoutLogFormDialog`) — kein Duplikat-Formular nur für die Historie. Ein Satz lässt sich damit
   von jedem beliebigen vergangenen Tag aus identisch zum heutigen Tag korrigieren.
 
+## Übungsverwaltung finalisiert (Phase 32, fertig — sechster roadmap2.md-P1-Punkt)
+
+- **Soft-Deactivate statt Hard-Delete als primärer Rückzugsweg.** `Exercise` hat kein `userId` —
+  der Katalog ist global (Seed + `free-exercise-db`-Import), Hard-Delete war schon vor dieser
+  Änderung durch FK `RESTRICT` blockiert, sobald ein `WorkoutLog`/`PlanExercise`/`Goal` eine
+  Übung referenziert. Ein neues `isActive`-Feld (`@default(true)`) macht "diese Übung nicht mehr
+  zur Auswahl anbieten" unabhängig davon möglich, ob sie referenziert ist oder nicht — Hard-Delete
+  bleibt als Aufräum-Werkzeug für wirklich unbenutzte, versehentlich angelegte Einträge bestehen.
+- **Der Default-Filter in `listExercises` ist der eigentliche Hebel für "korrekt verwenden".**
+  `includeInactive` ist `false`, sofern nicht explizit gesetzt — jeder bestehende Aufrufer von
+  `GET /exercises` ohne Parameter (Workout-Log-Dialog, Plan-Übungs-Dialog, Ziel-Dialog, alle über
+  `useExercises()`/`listExercisesRequest()`) bekommt dadurch automatisch nur aktive Übungen,
+  ohne dass einer dieser drei Call-Sites geändert werden musste oder je von `isActive` erfahren
+  muss. Nur die Verwaltungsseite selbst (`ExerciseLibraryPage`) setzt `includeInactive` bewusst,
+  über eine Checkbox.
+- **`isActive` ist nicht Teil von `createExerciseSchema`, nur von `updateExerciseSchema`** — eine
+  neu angelegte Übung ist immer aktiv; es gibt keinen Anwendungsfall, direkt beim Anlegen bereits
+  deaktiviert zu starten, das hätte nur eine verwirrende Lücke in der UI bedeutet (ein
+  Aktiv/Inaktiv-Feld in einem Formular, dessen einziger sinnvoller Wert beim Anlegen "aktiv" ist).
+- **Eine einzige `ExerciseFormDialog`-Komponente für Anlegen und Bearbeiten**, gleiches
+  Bottom-Sheet-Muster wie `WorkoutLogFormDialog` — `editingExercise: ExerciseDto | null`
+  entscheidet Titel und Vorbefüllung, exakt wie `editingLog` dort. Muskel-Listen (`primaryMuscles`/
+  `secondaryMuscles`, serverseitig String-Arrays) werden als Komma-getrennter Text bearbeitet statt
+  über einen eigens gebauten Tag-Picker — für ein einzelnes Formularfeld unverhältnismäßiger
+  Aufwand.
+- **Löschfehler nennt jetzt den richtigen nächsten Schritt statt eines undurchsichtigen 409.** Der
+  FK-`RESTRICT`-Konflikt (`P2003`) wurde vorher als generische "wird noch referenziert"-Meldung
+  durchgereicht; jetzt verweist sie explizit auf "deaktivieren statt löschen" — der Nutzer landet
+  nicht in einer Sackgasse, sondern beim eigentlich vorgesehenen Weg.
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen

@@ -21,6 +21,7 @@ const listQuerySchema = z.object({
   equipment: z.string().max(200).optional(),
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().max(200).optional(),
+  includeInactive: z.coerce.boolean().optional(),
 });
 
 export default async function exerciseRoutes(fastify: FastifyInstance) {

@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { AppShell } from "../components/layout/AppShell";
 import { ExerciseCard } from "../components/exerciseLibrary/ExerciseCard";
+import { ExerciseFormDialog } from "../components/exerciseLibrary/ExerciseFormDialog";
 import { useExerciseFacets, useExerciseLibrary } from "../hooks/useExerciseLibrary";
 
 export function ExerciseLibraryPage() {
   const [search, setSearch] = useState("");
   const [muscleGroup, setMuscleGroup] = useState("");
   const [equipment, setEquipment] = useState("");
+  const [includeInactive, setIncludeInactive] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: facets } = useExerciseFacets();
   const {
@@ -15,14 +18,22 @@ export function ExerciseLibraryPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useExerciseLibrary({ search, muscleGroup, equipment });
+  } = useExerciseLibrary({ search, muscleGroup, equipment, includeInactive });
 
   const exercises = data?.pages.flatMap((page) => page.items) ?? [];
   const total = data?.pages[0]?.total ?? 0;
 
   return (
     <AppShell>
-      <h1 className="mb-4 text-xl font-semibold">Übungen</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Übungen</h1>
+        <button
+          onClick={() => setDialogOpen(true)}
+          className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-violet-400"
+        >
+          + Übung
+        </button>
+      </div>
 
       <div className="mb-4 flex flex-col gap-2">
         <input
@@ -58,6 +69,15 @@ export function ExerciseLibraryPage() {
             ))}
           </select>
         </div>
+        <label className="flex items-center gap-2 text-sm text-ink-400">
+          <input
+            type="checkbox"
+            checked={includeInactive}
+            onChange={(e) => setIncludeInactive(e.target.checked)}
+            className="h-4 w-4 accent-violet-500"
+          />
+          Auch inaktive Übungen anzeigen
+        </label>
       </div>
 
       {isLoading ? (
@@ -85,6 +105,8 @@ export function ExerciseLibraryPage() {
           )}
         </>
       )}
+
+      <ExerciseFormDialog open={dialogOpen} onClose={() => setDialogOpen(false)} editingExercise={null} />
     </AppShell>
   );
 }

@@ -149,6 +149,12 @@ model Exercise {
   // under a unique index, so this doesn't collide with imported rows.
   source      String?
   sourceId    String?
+  // Soft-deactivate instead of hard delete: an exercise in active use (referenced by a
+  // WorkoutLog/PlanExercise/Goal) can never be hard-deleted (FK RESTRICT), so retiring one from
+  // future use needs a flag rather than a row removal. Deactivated exercises are excluded from
+  // pickers by default (see exercise.service.ts's listExercises) but stay fully intact for any
+  // historical WorkoutLog/PlanExercise/Goal that already references them.
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
