@@ -11,7 +11,12 @@ import {
   type E2eUser,
 } from "./support";
 
-test.describe.configure({ mode: "serial" });
+// No `test.describe.configure({ mode: "serial" })` here: playwright.config.ts's `workers: 1` +
+// `fullyParallel: false` already keep every test in this file running one at a time — `serial`
+// mode on top of that does something different and unwanted (it was tried and reverted): it ties
+// every describe block in the file into one chain where a single failure skips the rest and a
+// retry restarts the *whole* chain from its first test, even though these four scenarios are
+// otherwise fully independent (separate registered users, no shared state).
 
 async function openCreateDialog(page: import("@playwright/test").Page) {
   await page.locator('button', { hasText: '+ Satz' }).click();
@@ -140,11 +145,16 @@ test.describe("Mehrere Offline-Änderungen und Mutation Coalescing", () => {
     await openCreateDialog(page);
     await fillAndSubmit(page, { exerciseId: exercise.id, reps: 8, weightKg: 51 });
     await closeDialog(page);
+    await expect(rowFor(page, exercise.name)).toContainText("51");
     await expect(syncPill(page)).toHaveText("Offline · 1 ausstehend");
 
-    // Three rapid edits to the same not-yet-synced row while still offline.
+    // Three rapid edits to the same not-yet-synced row while still offline. Asserting the row's
+    // displayed value after each edit (not just that the dialog closed) matters here: the next
+    // iteration clicks "Bearbeiten" on that same row again, and without confirming the previous
+    // edit has actually landed first, that click could hit the row mid-update.
     for (const weight of [52, 53, 54]) {
       await editWeight(page, exercise.name, weight);
+      await expect(rowFor(page, exercise.name)).toContainText(String(weight));
       // Still exactly one pending mutation — coalescing, not queuing a fourth entry.
       await expect(syncPill(page)).toHaveText("Offline · 1 ausstehend");
     }

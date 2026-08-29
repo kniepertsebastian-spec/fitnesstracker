@@ -37,6 +37,13 @@ jobs:
       # source — same as every local dev script (see dev:backend/dev:frontend in package.json).
       - run: pnpm run build:shared
 
+      # Typecheck/build/unit-tests below all import from @prisma/client's generated types (model
+      # types, enums, ...) — reading prisma/schema.prisma and generating that client is a local
+      # codegen step with no database connection needed, but nothing else in this job does it.
+      - name: Generate Prisma client
+        working-directory: backend
+        run: pnpm prisma:generate
+
       - name: Lint
         run: pnpm lint
 
