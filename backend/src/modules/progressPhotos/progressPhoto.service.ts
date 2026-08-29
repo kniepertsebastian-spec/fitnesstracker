@@ -1,18 +1,32 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import sharp from "sharp";
 import type { PrismaClient, ProgressPhoto } from "@prisma/client";
-import { NotFoundError } from "../../errors/httpErrors.js";
+import { HttpError, NotFoundError } from "../../errors/httpErrors.js";
 import { env } from "../../config/env.js";
 import { sendNotificationToUser } from "../push/push.service.js";
 
 const UPLOADS_DIR = path.resolve(env.UPLOADS_DIR);
 
-const EXTENSION_BY_MIME: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
+// Progress photos are private body-comparison shots — the client-declared upload mimetype is
+// not trusted (an attacker can label anything "image/jpeg"), and neither is the raw byte
+// content on disk. sharp both proves the bytes actually decode as one of these formats and,
+// by re-encoding rather than storing the upload verbatim, strips EXIF/GPS/ICC metadata that a
+// phone photo carries (sharp only preserves that when `.withMetadata()` is explicitly called).
+const MIME_BY_FORMAT: Record<string, string> = {
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
 };
+const EXTENSION_BY_FORMAT: Record<string, string> = {
+  jpeg: "jpg",
+  png: "png",
+  webp: "webp",
+};
+// Generous enough for any real phone or DSLR photo; rules out a decompression-bomb-style image
+// (tiny file, absurd pixel dimensions) tying up CPU/memory during re-encoding.
+const MAX_DIMENSION_PX = 8000;
 
 async function ensureUploadsDir() {
   await mkdir(UPLOADS_DIR, { recursive: true });
@@ -22,17 +36,34 @@ export function listPhotos(prisma: PrismaClient, userId: string) {
   return prisma.progressPhoto.findMany({ where: { userId }, orderBy: { takenAt: "desc" } });
 }
 
+async function reencodeAndValidate(buffer: Buffer): Promise<{ buffer: Buffer; mimeType: string; extension: string }> {
+  const image = sharp(buffer, { failOn: "error" });
+  const metadata = await image.metadata().catch(() => null);
+  const format = metadata?.format;
+  if (!format || !(format in MIME_BY_FORMAT)) {
+    throw new HttpError(400, "Datei ist kein gültiges Bild (JPEG/PNG/WebP)");
+  }
+  if (!metadata.width || !metadata.height || metadata.width > MAX_DIMENSION_PX || metadata.height > MAX_DIMENSION_PX) {
+    throw new HttpError(400, `Bildabmessungen zu groß (max. ${MAX_DIMENSION_PX}px)`);
+  }
+
+  // `.rotate()` bakes the EXIF orientation tag into the pixel data before it gets stripped, so
+  // the photo doesn't end up sideways once the tag carrying that info is gone.
+  const reencoded = await image.rotate().toFormat(format).toBuffer();
+  return { buffer: reencoded, mimeType: MIME_BY_FORMAT[format], extension: EXTENSION_BY_FORMAT[format] };
+}
+
 export async function saveUploadedPhoto(
   prisma: PrismaClient,
   userId: string,
   buffer: Buffer,
-  mimeType: string,
   takenAt: Date | undefined,
 ): Promise<ProgressPhoto> {
+  const { buffer: cleanBuffer, mimeType, extension } = await reencodeAndValidate(buffer);
+
   await ensureUploadsDir();
-  const extension = EXTENSION_BY_MIME[mimeType] ?? "bin";
   const filename = `${randomUUID()}.${extension}`;
-  await writeFile(path.join(UPLOADS_DIR, filename), buffer);
+  await writeFile(path.join(UPLOADS_DIR, filename), cleanBuffer);
 
   return prisma.progressPhoto.create({
     data: {

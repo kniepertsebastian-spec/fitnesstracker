@@ -38,7 +38,9 @@ export default async function progressPhotoRoutes(fastify: FastifyInstance) {
         : undefined;
     const takenAt = typeof takenAtValue === "string" && takenAtValue ? new Date(takenAtValue) : undefined;
 
-    const photo = await saveUploadedPhoto(fastify.prisma, request.user.sub, buffer, file.mimetype, takenAt);
+    // `saveUploadedPhoto` re-derives the real mimetype from the decoded image bytes — the
+    // client-declared `file.mimetype` above is only a cheap early reject, never trusted as fact.
+    const photo = await saveUploadedPhoto(fastify.prisma, request.user.sub, buffer, takenAt);
     return reply.code(201).send(toProgressPhotoDto(photo));
   });
 
@@ -46,6 +48,9 @@ export default async function progressPhotoRoutes(fastify: FastifyInstance) {
     const { id } = idParamSchema.parse(request.params);
     try {
       const { filePath, mimeType } = await getPhotoFileForUser(fastify.prisma, request.user.sub, id);
+      // Defense in depth alongside the re-encode-on-upload step in the service: even if a
+      // browser tried to sniff the response body against its declared type, this forbids it.
+      reply.header("X-Content-Type-Options", "nosniff");
       reply.type(mimeType);
       return reply.send(createReadStream(filePath));
     } catch (error) {
