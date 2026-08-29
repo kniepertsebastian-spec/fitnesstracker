@@ -1,7 +1,14 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { createGoalSchema, updateGoalSchema } from "@fitnesstracker/shared";
-import { computeCurrentValue, createGoal, deleteGoal, listGoals, updateGoal } from "./goal.service.js";
+import {
+  autoAchieveIfDue,
+  computeCurrentValue,
+  createGoal,
+  deleteGoal,
+  listGoals,
+  updateGoal,
+} from "./goal.service.js";
 import { getGoalSuggestions } from "./goalSuggestion.service.js";
 import { toGoalDto, toGoalSuggestionDto } from "./goal.types.js";
 import { HttpError } from "../../errors/httpErrors.js";
@@ -16,7 +23,8 @@ export default async function goalRoutes(fastify: FastifyInstance) {
     const items = await Promise.all(
       goals.map(async (goal) => {
         const currentValue = await computeCurrentValue(fastify.prisma, request.user.sub, goal);
-        return toGoalDto(goal, currentValue);
+        const resolved = await autoAchieveIfDue(fastify.prisma, goal, currentValue);
+        return toGoalDto(resolved, currentValue);
       }),
     );
     return reply.send({ items });
@@ -32,7 +40,8 @@ export default async function goalRoutes(fastify: FastifyInstance) {
     try {
       const goal = await createGoal(fastify.prisma, request.user.sub, input);
       const currentValue = await computeCurrentValue(fastify.prisma, request.user.sub, goal);
-      return reply.code(201).send(toGoalDto(goal, currentValue));
+      const resolved = await autoAchieveIfDue(fastify.prisma, goal, currentValue);
+      return reply.code(201).send(toGoalDto(resolved, currentValue));
     } catch (error) {
       if (error instanceof HttpError) {
         return reply.code(error.statusCode).send({ message: error.message });
@@ -47,7 +56,8 @@ export default async function goalRoutes(fastify: FastifyInstance) {
     try {
       const goal = await updateGoal(fastify.prisma, request.user.sub, id, input);
       const currentValue = await computeCurrentValue(fastify.prisma, request.user.sub, goal);
-      return reply.send(toGoalDto(goal, currentValue));
+      const resolved = await autoAchieveIfDue(fastify.prisma, goal, currentValue);
+      return reply.send(toGoalDto(resolved, currentValue));
     } catch (error) {
       if (error instanceof HttpError) {
         return reply.code(error.statusCode).send({ message: error.message });

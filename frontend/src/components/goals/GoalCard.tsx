@@ -5,7 +5,12 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export function GoalCard({ goal }: { goal: GoalDto }) {
+interface Props {
+  goal: GoalDto;
+  onEdit: (goal: GoalDto) => void;
+}
+
+export function GoalCard({ goal, onEdit }: Props) {
   const updateGoal = useUpdateGoal();
   const deleteGoal = useDeleteGoal();
 
@@ -36,12 +41,17 @@ export function GoalCard({ goal }: { goal: GoalDto }) {
             <p className="text-xs text-ink-600">bis {formatDate(goal.targetDate)}</p>
           )}
         </div>
-        <button
-          onClick={() => deleteGoal.mutate(goal.id)}
-          className="shrink-0 text-xs text-ink-600 hover:text-red-400"
-        >
-          Löschen
-        </button>
+        <div className="flex shrink-0 gap-2 text-xs">
+          <button onClick={() => onEdit(goal)} className="text-ink-500 hover:text-violet-400">
+            Bearbeiten
+          </button>
+          <button
+            onClick={() => deleteGoal.mutate(goal.id)}
+            className="text-ink-600 hover:text-red-400"
+          >
+            Löschen
+          </button>
+        </div>
       </div>
 
       {progress !== null && !achieved && (

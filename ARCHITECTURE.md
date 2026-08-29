@@ -1171,6 +1171,38 @@ bereits solide.
   durchgereicht; jetzt verweist sie explizit auf "deaktivieren statt löschen" — der Nutzer landet
   nicht in einer Sackgasse, sondern beim eigentlich vorgesehenen Weg.
 
+## Ziele vollständig gemacht (Phase 33, fertig — letzter roadmap2.md-P1-Punkt)
+
+- **Auto-Abschluss läuft bei jedem Lesen/Schreiben mit, kein separater Scheduler.**
+  `autoAchieveIfDue` hängt direkt hinter `computeCurrentValue` in allen drei Goal-Routen — es gibt
+  keinen Cronjob, der periodisch alle Ziele durchgeht; ein Ziel wird erst dann als erreicht
+  erkannt, wenn als Nächstes irgendetwas seinen aktuellen Stand tatsächlich abfragt (Dashboard,
+  `/goals`, ein Bearbeiten-Speichern). Für eine Ein-Personen-App reicht das: Ziele werden ohnehin
+  nur angezeigt, wenn jemand gerade hinschaut, und genau dann ist der Wert aktuell.
+- **Bewusst einseitig — einmal erreicht, bleibt erreicht.** Ein späterer Rückgang des abgeleiteten
+  Werts (bei WEIGHT/REPS praktisch ausgeschlossen, da beide ein laufendes Maximum sind) löscht
+  `achievedAt` nie automatisch wieder. Ein Nutzer, der einen Erfolg einmal erzielt hat, soll ihn
+  nicht durch eine spätere schwächere Trainingseinheit rückwirkend wieder verlieren.
+- **Auto-Abschluss ist bewusst auf WEIGHT/REPS beschränkt — ein beim Testen selbst gefundener Bug
+  in der ersten Fassung erzwang das.** Die erste Version prüfte `currentValue >= targetValue` für
+  jeden Zieltyp. Für BODYWEIGHT ist "höher ist Fortschritt" aber nicht zuverlässig: ein Zielwert
+  von 75kg kann ein Abnehm- oder ein Zunehm-Ziel sein, und welches gemeint ist, steht nirgends in
+  den Daten (`CreateGoalInput` speichert keinen Ausgangswert, nur den Zielwert). Beim
+  End-to-End-Test wurde dadurch ein Abnehm-Ziel (Zielwert 75kg, aktuelles Gewicht 82kg) fälschlich
+  als erreicht markiert — der Fehler wurde vor dem Merge gefunden und behoben, indem der
+  Auto-Abschluss auf `type === "WEIGHT" || type === "REPS"` eingeschränkt wurde, wo "mehr ist
+  Fortschritt" tatsächlich immer stimmt (mehr Gewicht gestemmt, mehr Wiederholungen geschafft).
+  BODYWEIGHT und CUSTOM bleiben wie zuvor ausschließlich manuell umschaltbar — eine künftige
+  Richtungs-Erkennung für BODYWEIGHT bräuchte einen gespeicherten Ausgangswert bei Zielerstellung,
+  das ist bewusst nicht Teil dieser Änderung.
+- **`GoalFormDialog` bedient Anlegen und Bearbeiten in einer Komponente** (`editingGoal: GoalDto |
+  null` entscheidet, analog zu `WorkoutLogFormDialog`s `editingLog` und `ExerciseFormDialog`s
+  `editingExercise` — durchgängiges Muster für alle drei Bearbeiten-Dialoge der App). Art und
+  Übung sind im Bearbeiten-Modus als reiner Text statt als Auswahlfelder gerendert, nicht nur
+  deaktiviert — sie sind serverseitig laut `updateGoalSchema`s Kommentar bewusst unveränderlich
+  ("Type and exercise are immutable after creation"), ein deaktiviertes, aber weiterhin
+  sichtbares Auswahlfeld hätte suggeriert, dass eine Änderung technisch möglich wäre.
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen
