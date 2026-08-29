@@ -2,9 +2,11 @@
   "name": "fitnesstracker",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "engines": {
     "node": ">=20"
   },
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "build:shared": "pnpm --filter @fitnesstracker/shared build",
     "dev:backend": "pnpm run build:shared && pnpm --filter backend dev",
@@ -14,7 +16,8 @@
     "prisma:generate": "pnpm --filter backend prisma:generate",
     "prisma:seed": "pnpm --filter backend prisma:seed",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -24,5 +27,12 @@
       "esbuild",
       "prisma"
     ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.11.0",
+    "typescript-eslint": "^8.68.0"
   }
 }

@@ -21,11 +21,13 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     trace: "retain-on-failure",
-    launchOptions: {
-      // Pinned so a locally different Playwright browser revision (e.g. a stale cache) doesn't
-      // silently trigger a download — this environment's pre-installed Chromium is the one to use.
-      executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH ?? "/opt/pw-browsers/chromium",
-    },
+    // Unset by default — Playwright then launches whatever `playwright install` put in its own
+    // managed browser cache, which is what a normal CI runner (and `pnpm exec playwright
+    // install`) sets up. Only set PLAYWRIGHT_CHROMIUM_PATH when a sandboxed/offline environment
+    // provides its own pre-installed Chromium at a fixed path instead.
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }
+      : {},
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {

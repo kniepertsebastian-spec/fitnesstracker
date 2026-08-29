@@ -17,7 +17,7 @@ const MIN_WEEKLY_RATE_REPS = 0.15;
 // more natural next goal than "lift more weight" — the roadmap's "Rep Range" consideration.
 const REPS_GOAL_AVG_REPS_THRESHOLD = 15;
 
-function roundToHalf(value: number): number {
+export function roundToHalf(value: number): number {
   return Math.round(value * 2) / 2;
 }
 
@@ -25,7 +25,7 @@ function roundToHalf(value: number): number {
 // StrengthProgressCard's client-side stagnation flag (roadmap2.md/additionals consistency), kept
 // as a small local reimplementation here since this runs server-side against Prisma rows instead
 // of the client's cached LocalWorkoutLog[].
-function detectPlateau(series: number[]): boolean {
+export function detectPlateau(series: number[]): boolean {
   if (series.length < 4) return false;
   const recentBest = Math.max(...series.slice(-3));
   const priorBest = Math.max(...series.slice(0, -3));
@@ -36,7 +36,7 @@ function detectPlateau(series: number[]): boolean {
 // total) usually means a deload, an injury, or the user deprioritizing this exercise — not a
 // moment to suggest a fresh, more ambitious goal on it. Too little data to judge either way is
 // not treated as a red flag.
-function volumeHolding(logs: WorkoutLog[]): boolean {
+export function volumeHolding(logs: WorkoutLog[]): boolean {
   if (logs.length < 4) return true;
   const mid = Math.floor(logs.length / 2);
   const earlierVolume = logs.slice(0, mid).reduce((sum, l) => sum + l.reps * Number(l.weightKg), 0);

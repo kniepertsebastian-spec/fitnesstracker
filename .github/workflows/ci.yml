@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Not real secrets — an ephemeral CI database with no external exposure needs values that only
+# satisfy config/env.ts's fail-fast startup validation (min length etc.), not actual security.
+env:
+  DATABASE_URL: postgresql://fitnesstracker:ci-password@localhost:5432/fitnesstracker
+  JWT_ACCESS_SECRET: ci-access-secret-not-a-real-secret
+  JWT_REFRESH_SECRET: ci-refresh-secret-not-a-real-secret
+  SETUP_TOKEN: ci-setup-token-not-real
+
+jobs:
+  # Runs on every push (any branch) and every PR — Lint, Typecheck, Unit Tests, Build.
+  checks:
+    name: Lint, Typecheck, Unit Tests, Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # backend and frontend both import from @fitnesstracker/shared's build output, not its
+      # source — same as every local dev script (see dev:backend/dev:frontend in package.json).
+      - run: pnpm run build:shared
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  # Only on PRs — brings up a real Postgres + backend and runs the offline-sync Playwright suite
+  # (frontend/e2e/) against a production build, covering integration, E2E and offline-sync
+  # testing in one (there's no separate integration suite; the E2E tests exercise the real API
+  # end to end already). This is the "Build Verification" step too, since the suite's webServer
+  # builds the frontend before serving it.
+  e2e:
+    name: Playwright E2E (offline-sync)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fitnesstracker
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: fitnesstracker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fitnesstracker"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build:shared
+
+      - name: Apply migrations + seed the exercise catalog
+        working-directory: backend
+        run: |
+          pnpm prisma:generate
+          pnpm prisma:deploy
+          pnpm prisma:seed
+
+      - name: Install Playwright's Chromium
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Start the backend
+        working-directory: backend
+        run: |
+          pnpm build
+          nohup node dist/server.js > backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/api/health && exit 0
+            sleep 1
+          done
+          echo "Backend never became healthy" >&2
+          exit 1
+
+      - name: Run the offline-sync E2E suite
+        working-directory: frontend
+        run: pnpm test:e2e
+
+      - name: Backend log (on failure)
+        if: failure()
+        run: cat backend/backend.log
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/test-results/
+          retention-days: 7

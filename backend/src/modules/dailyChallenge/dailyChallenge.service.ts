@@ -77,7 +77,7 @@ async function loadCurrentPlanExercises(prisma: PrismaClient, userId: string): P
   }));
 }
 
-interface RecentPerformance {
+export interface RecentPerformance {
   avgReps: number;
   maxReps: number;
 }
@@ -105,7 +105,7 @@ async function recentPerformance(
   return { avgReps, maxReps };
 }
 
-function computeTargetReps(
+export function computeTargetReps(
   category: DailyChallengeCategory,
   perf: RecentPerformance | null,
   planTargetReps: number | null,

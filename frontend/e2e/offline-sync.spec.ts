@@ -64,14 +64,13 @@ test.describe("Kritischer Offline-Flow", () => {
     request,
   }) => {
     let accessToken = "";
-    let exercise: { id: string; name: string };
 
     await test.step("Login", async () => {
       accessToken = await login(page, user);
       await expect(syncPill(page)).toHaveText("Synchronisiert");
     });
 
-    exercise = await fetchAnyExercise(request, accessToken);
+    const exercise = await fetchAnyExercise(request, accessToken);
 
     await test.step("Offline gehen", async () => {
       await goOffline(page, context);
