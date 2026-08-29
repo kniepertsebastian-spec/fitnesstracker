@@ -6,6 +6,7 @@ import { useSyncStore } from "../../stores/syncStore";
 import { InstallButton } from "./InstallButton";
 import { PRToastHost } from "./PRToastHost";
 import { RestTimerWidget } from "./RestTimerWidget";
+import { UpdatePrompt } from "./UpdatePrompt";
 
 interface NavItem {
   label: string;
@@ -138,6 +139,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <PRToastHost />
       <RestTimerWidget />
+      <UpdatePrompt />
     </div>
   );
 }
