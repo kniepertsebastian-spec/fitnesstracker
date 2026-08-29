@@ -153,17 +153,17 @@ function DiaryRow({ entry, setsInputRef, onDone }: DiaryRowProps) {
 // that's one day at a time (see planWeekStatus.service.ts for the progressive unlock), for a
 // single-day ("Ganzkörper") plan just that day's exercises. Filling in a row and checking "Ende"
 // writes real WorkoutLog entries, so this doubles as the actual training log for that session,
-// not a separate checklist next to it. The progress dots double as a manual day switcher — the
+// not a separate checklist next to it. The "Tag N" tabs are a manual day switcher — the
 // auto-detected active day is just the default, not a hard rail; someone who wants to jump to
-// day 2 without day 1 being complete (for whatever reason) can just tap its dot.
+// day 2 or 3 without day 1 being complete (for whatever reason) can just tap the tab.
 export function CurrentPlanCard() {
   const { data: plan } = useTrainingPlan();
   const { data: status, isLoading } = useWeeklyPlanStatus(plan?.currentPhase ?? "AUFBAU", {
     enabled: !!plan,
   });
   const rowRefs = useRef<(HTMLInputElement | null)[]>([]);
-  // Overrides the auto-detected active day once someone taps a different day's dot — e.g.
-  // skipping ahead to day 2 without day 1 being marked complete first, for whatever reason.
+  // Overrides the auto-detected active day once someone taps a different day's tab — e.g.
+  // skipping ahead to day 2 or 3 without day 1 being marked complete first, for whatever reason.
   // `null` means "no manual override yet", so a fresh page load still starts on the
   // auto-detected day; once set, it sticks even if activeDayIndex later changes (logging a set
   // shouldn't yank the view back out from under someone mid-fill).
@@ -197,21 +197,21 @@ export function CurrentPlanCard() {
       </div>
 
       {isSplit && (
-        <div className="mt-2 flex gap-1">
+        <div className="mt-2 flex gap-1 rounded-lg border border-ink-800 bg-ink-950 p-1">
           {status.days.map((day, index) => (
             <button
               key={index}
               onClick={() => setSelectedDayIndex(index)}
               title={day.dayLabel ?? undefined}
-              aria-label={day.dayLabel ?? `Tag ${index + 1}`}
-              className={`h-1.5 flex-1 rounded-full ${
-                day.completed
-                  ? "bg-emerald-500"
-                  : index === displayIndex
-                    ? "bg-violet-500"
-                    : "bg-ink-800"
+              className={`flex flex-1 items-center justify-center gap-1 rounded-md py-1.5 text-sm font-medium ${
+                index === displayIndex
+                  ? "bg-violet-500 text-ink-950"
+                  : "text-ink-400 hover:text-ink-200"
               }`}
-            />
+            >
+              Tag {index + 1}
+              {day.completed && <span className="text-emerald-500">✓</span>}
+            </button>
           ))}
         </div>
       )}
