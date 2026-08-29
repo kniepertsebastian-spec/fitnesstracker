@@ -51,7 +51,10 @@ function getLocalDateAndTime(date: Date, timeZone: string): { day: string; time:
 // Scheduler tick: checks every enabled supplement's reminder time against "now" in that
 // supplement's own timezone, and sends at most once per local day.
 export async function checkAndSendReminders(prisma: PrismaClient): Promise<{ sent: number }> {
-  const supplements = await prisma.supplement.findMany({ where: { enabled: true } });
+  const supplements = await prisma.supplement.findMany({
+    where: { enabled: true },
+    include: { user: { select: { remindSupplements: true } } },
+  });
   const now = new Date();
   let sent = 0;
 
@@ -69,16 +72,22 @@ export async function checkAndSendReminders(prisma: PrismaClient): Promise<{ sen
     if (local.time < supplement.reminderTime) continue;
     if (supplement.lastRemindedOn === local.day) continue;
 
-    await sendNotificationToUser(prisma, supplement.userId, {
-      title: "Supplement-Erinnerung",
-      body: supplement.name,
-      url: "/nutrition",
-    });
+    // Phase 30: per-reminder-type opt-out. `lastRemindedOn` still advances even when suppressed
+    // — "today's reminder was processed" is independent of whether push actually delivered it,
+    // and not advancing it would just re-check (and re-suppress) this supplement every tick for
+    // the rest of the day for no benefit.
+    if (supplement.user.remindSupplements) {
+      await sendNotificationToUser(prisma, supplement.userId, {
+        title: "Supplement-Erinnerung",
+        body: supplement.name,
+        url: "/nutrition",
+      });
+      sent += 1;
+    }
     await prisma.supplement.update({
       where: { id: supplement.id },
       data: { lastRemindedOn: local.day },
     });
-    sent += 1;
   }
 
   return { sent };

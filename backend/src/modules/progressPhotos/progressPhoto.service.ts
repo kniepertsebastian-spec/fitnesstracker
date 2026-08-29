@@ -77,6 +77,7 @@ export async function sendDueReminders(prisma: PrismaClient): Promise<{ sent: nu
   const now = Date.now();
   let sent = 0;
   for (const user of users) {
+    if (!user.remindProgressPhoto) continue; // Phase 30: per-reminder-type opt-out.
     const baseline = user.progressPhotos[0]?.takenAt ?? user.createdAt;
     const daysSince = (now - baseline.getTime()) / (1000 * 60 * 60 * 24);
     if (daysSince >= REMIND_AFTER_DAYS) {

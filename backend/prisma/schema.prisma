@@ -71,6 +71,13 @@ model User {
   // `Profile`, so a custom water target can be set without first filling in a full nutrition
   // profile (weight/height/age/gender) — see ROADMAP.md Phase 18 / ARCHITECTURE.md.
   waterTargetMlOverride Int?
+  // Per-reminder-type opt-out — a browser push subscription is a single endpoint shared by every
+  // reminder kind this app sends, so without these a user can't turn off just one kind (e.g.
+  // photo nudges) while keeping the others. Default true preserves existing subscribers' current
+  // behavior (get everything) until they explicitly opt out of something (see Phase 30).
+  remindPhaseChange    Boolean  @default(true)
+  remindSupplements    Boolean  @default(true)
+  remindProgressPhoto  Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import webpush from "web-push";
-import type { PushSubscribeInput } from "@fitnesstracker/shared";
+import type { PushSettingsDto, PushSubscribeInput, UpdatePushSettingsInput } from "@fitnesstracker/shared";
 import { env } from "../../config/env.js";
 
 // Push stays entirely inert without a configured keypair — no boot-time failure, since it's an
@@ -27,6 +27,27 @@ export function subscribeToPush(prisma: PrismaClient, userId: string, input: Pus
 
 export async function unsubscribeFromPush(prisma: PrismaClient, userId: string, endpoint: string) {
   await prisma.pushSubscription.deleteMany({ where: { userId, endpoint } });
+}
+
+export async function getPushSettings(prisma: PrismaClient, userId: string): Promise<PushSettingsDto> {
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { remindPhaseChange: true, remindSupplements: true, remindProgressPhoto: true },
+  });
+  return user;
+}
+
+export async function updatePushSettings(
+  prisma: PrismaClient,
+  userId: string,
+  input: UpdatePushSettingsInput,
+): Promise<PushSettingsDto> {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: input,
+    select: { remindPhaseChange: true, remindSupplements: true, remindProgressPhoto: true },
+  });
+  return user;
 }
 
 export interface PushNotificationPayload {

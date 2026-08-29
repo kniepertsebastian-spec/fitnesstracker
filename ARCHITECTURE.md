@@ -1054,6 +1054,51 @@ bereits solide.
   korrekt mit diesem Datum in der Galerie, das Datumsfeld springt nach dem Upload zurück auf das
   aktuelle Datum, kein horizontaler Overflow bei 375px.
 
+## Push-Einstellungen fertiggestellt (Phase 30, fertig — vierter roadmap2.md-P1-Punkt)
+
+- **Eine echte fachliche Lücke, kein reines UI-Problem.** `sendNotificationToUser`
+  (`push.service.ts`) sendet bedingungslos an jede Push-Subscription eines Nutzers — unabhängig
+  davon, welcher der drei Scheduler (Trainingsplan-Rotation, Supplement-Erinnerung,
+  Fortschrittsfoto-Erinnerung) sie ausgelöst hat. Der bisherige `PushReminderCard` bot nur einen
+  einzigen Subscribe/Unsubscribe-Schalter unter dem irreführenden Titel "Erinnerung bei
+  Phasenwechsel" — wer sich dort anmeldete, bekam tatsächlich alle drei Erinnerungsarten, ohne
+  dass die Karte das erwähnte oder eine Möglichkeit bot, nur eine davon abzuschalten.
+- **Drei neue `User`-Felder statt einer separaten "PushSettings"-Tabelle** —
+  `remindPhaseChange`/`remindSupplements`/`remindProgressPhoto`, alle `@default(true)`. Ein
+  Default von `true` ist hier bewusst kein "sicherer" Opt-in-Default im datenschutzrechtlichen
+  Sinne, sondern reine Verhaltens-Kontinuität: bestehende Abonnenten bekamen vor dieser Änderung
+  bereits alle drei Arten, `true` erhält das exakt, bis jemand aktiv etwas abwählt — ein Default
+  von `false` hätte allen bestehenden Nutzern stillschweigend Erinnerungen abgeschaltet, die sie
+  vorher bekamen.
+- **Jeder Scheduler prüft sein Flag unmittelbar vor dem `sendNotificationToUser`-Aufruf, nie
+  davor.** Die eigentliche fachliche Aktion (Phase wechselt, Supplement-Fälligkeit wird geprüft,
+  Foto-Erinnerungs-Schwelle wird berechnet) läuft in allen drei Fällen unverändert weiter — nur
+  der Push selbst wird unterdrückt. Bei `rotateAllDuePlans` bedeutet das: die Rotation passiert
+  so oder so, `rotatedPlans` zählt unabhängig vom Flag hoch, nur die Benachrichtigung fällt weg.
+- **`Supplement.lastRemindedOn` rückt auch bei unterdrückter Benachrichtigung vor.** "Heute schon
+  geprüft" ist unabhängig davon, ob der Push tatsächlich zugestellt wurde — würde das Feld bei
+  Unterdrückung nicht vorrücken, würde derselbe Supplement-Eintrag bei jedem weiteren
+  Scheduler-Tick des Tages erneut (wirkungslos) geprüft, reine Verschwendung ohne Nutzen.
+- **`PushReminderCard` behält ihren Dateinamen/Komponentennamen, obwohl sich ihr Inhalt und
+  Umfang deutlich erweitert hat** — gleiches Muster wie `CurrentPlanCard`, die von einer reinen
+  Plan-Anzeige zum vollständigen Trainings-Tagebuch wurde, ohne dass eine Umbenennung samt
+  Import-Updates den eigentlichen Funktionsumfang rechtfertigt hätte. Die drei Checkboxen sind
+  nur sichtbar, sobald tatsächlich ein aktives Push-Abo besteht — eine Präferenz für eine
+  Benachrichtigungsart zu zeigen, die mangels Abo noch gar nicht zugestellt werden könnte, wäre
+  nur Rauschen.
+- **Kein Live-Browser-Test der eigentlichen Checkbox-UI möglich.** `usePushSubscription` wartet
+  auf `navigator.serviceWorker.ready`, aber der Vite-Dev-Server liefert in keinem Modus eine
+  echte Service-Worker-Datei aus (`registerSW.js`/`sw.js` entstehen nur im Produktions-Build) —
+  die Karte bleibt im Dev-Modus dauerhaft bei `status: "loading"` hängen und rendert `null`, eine
+  bereits vor dieser Änderung bestehende Einschränkung der Dev-Umgebung für alles, was auf echte
+  Service-Worker/Push-APIs angewiesen ist, nicht durch diese Änderung verursacht. Stattdessen
+  verifiziert: `GET`/`PATCH /push/settings` per `curl` (Speichern und Persistenz über einen
+  erneuten `GET` bestätigt), sowie die Supplement- und Foto-Erinnerungs-Gates per Skript direkt
+  gegen die Service-Funktionen (`sent`-Zähler korrekt 0 bei deaktiviertem, ≥1 bei aktiviertem
+  Flag) — die Trainingsplan-Rotation ist strukturell identisch gebaut und typgeprüft, aber ohne
+  beobachtbaren Seiteneffekt testbar, da im Testkonto keine echte Push-Subscription hinterlegt
+  ist (der Aufruf liefe ins Leere, unabhängig vom Flag).
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen
@@ -1207,7 +1252,8 @@ Siehe [`backend/prisma/schema.prisma`](./backend/prisma/schema.prisma). Bereits 
 angelegt (auch für Modelle ohne UI in dieser Phase), damit spätere Phasen additiv bleiben und keine
 Breaking-Migrationen nötig werden:
 
-- `User`, `RefreshToken` — Auth
+- `User`, `RefreshToken` — Auth; `remindPhaseChange`/`remindSupplements`/`remindProgressPhoto`
+  fürs individuelle Ein-/Ausschalten einzelner Push-Erinnerungsarten (siehe Phase 30, fertig)
 - `Exercise` — Name, Beschreibung, Video-/Bild-URLs, Equipment, Muskelgruppen, `source`/`sourceId`
   für idempotenten Import (Bibliotheks-UI mit Detailansicht: siehe oben, fertig)
 - `WorkoutLog` — Satz/Wiederholungen/Gewicht/Übung, `clientId` für Offline-Idempotenz, Soft-Delete,
