@@ -6,7 +6,9 @@ import type { ExerciseDto } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../../offline/db";
 import { useCreateWorkoutLog, useExercises, useUpdateWorkoutLog, useWorkoutLogs } from "../../hooks/useWorkoutLogs";
 import { useTimerStore } from "../../stores/timerStore";
+import { usePRToastStore } from "../../stores/prToastStore";
 import { buildWarmupPyramid } from "../../lib/oneRepMax";
+import { detectPRs, prLabels } from "../../lib/prDetection";
 
 const formSchema = z.object({
   exerciseId: z.string().uuid({ message: "Bitte eine Übung wählen" }),
@@ -99,6 +101,7 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
   const createLog = useCreateWorkoutLog();
   const updateLog = useUpdateWorkoutLog();
   const { autoStartEnabled, autoStartSeconds, start: startRestTimer } = useTimerStore();
+  const showPR = usePRToastStore((s) => s.showPR);
   const [supersetMode, setSupersetMode] = useState<SupersetMode>("none");
   const [showWarmup, setShowWarmup] = useState(false);
   // Counts sets saved in this dialog "session" (between opens) — drives the "Fertig" vs.
@@ -192,10 +195,20 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
       return;
     }
 
+    // Captured before the create call — once it resolves, allLogs (the react-query cache) has
+    // already absorbed the new set, which would make it compare against itself.
+    const performedAt = new Date().toISOString();
+    const prs = detectPRs(allLogs ?? [], data.exerciseId, [
+      { reps: data.reps, weightKg: data.weightKg, performedAt },
+    ]);
+
     await createLog.mutateAsync({
       input: { ...data, rir, supersetGroupId, clientId: crypto.randomUUID() },
       exerciseName,
     });
+    if (prLabels(prs).length > 0) {
+      showPR(exerciseName, prLabels(prs));
+    }
     // Only a newly logged set starts the rest timer — editing a past entry (e.g. fixing a
     // typo) isn't "I just finished a set", so it shouldn't interrupt whatever timer is
     // already running (or start one out of nowhere).
