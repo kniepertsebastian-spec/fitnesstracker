@@ -13,6 +13,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/" },
+  { label: "Historie", to: "/history" },
   { label: "Übungen", to: "/exercises" },
   { label: "Plan", to: "/plan" },
   { label: "Fortschritt", to: "/progress" },
