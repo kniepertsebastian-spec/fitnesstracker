@@ -10,7 +10,7 @@ import { GoalsProgressCard } from "../components/workoutLog/GoalsProgressCard";
 import { WorkoutSessionBar } from "../components/workoutLog/WorkoutSessionBar";
 import { useWorkoutLogs } from "../hooks/useWorkoutLogs";
 
-// Same UTC-calendar-day convention as water/daily-challenge/cardio elsewhere in the app.
+// Same UTC-calendar-day convention as daily-challenge/cardio elsewhere in the app.
 function isToday(performedAt: string): boolean {
   const d = new Date(performedAt);
   const now = new Date();

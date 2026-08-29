@@ -67,10 +67,6 @@ model User {
   email        String   @unique
   passwordHash String
   displayName  String?
-  // Overrides the weight-derived water target (35ml/kg) from Phase 9. Lives on `User`, not
-  // `Profile`, so a custom water target can be set without first filling in a full nutrition
-  // profile (weight/height/age/gender) — see ROADMAP.md Phase 18 / ARCHITECTURE.md.
-  waterTargetMlOverride Int?
   // Per-reminder-type opt-out — a browser push subscription is a single endpoint shared by every
   // reminder kind this app sends, so without these a user can't turn off just one kind (e.g.
   // photo nudges) while keeping the others. Default true preserves existing subscribers' current
@@ -87,7 +83,6 @@ model User {
   goals                  Goal[]
   pushSubscriptions      PushSubscription[]
   profile                Profile?
-  waterLogs              WaterLog[]
   dailyChallengeItems    DailyChallengeItem[]
   supplements            Supplement[]
   bodyCompositionEntries BodyCompositionEntry[]
@@ -298,18 +293,6 @@ model Profile {
   updatedAt     DateTime      @updatedAt
 }
 
-// One row per user per calendar day (UTC) — a running total, not an event log, since nothing in
-// the roadmap needs per-glass timing, only "how much today" and a short daily history.
-model WaterLog {
-  id       String   @id @default(uuid())
-  userId   String
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date     DateTime @db.Date
-  amountMl Int      @default(0)
-
-  @@unique([userId, date])
-}
-
 // A day's "do it anywhere, no equipment" mini-workout: a handful of exercises picked at random
 // from the imported catalog (equipment = "body only") the first time the user opens it that
 // day, each with a random rep target. Re-opening the same day returns the same set — the
@@ -346,9 +329,9 @@ model Supplement {
   updatedAt      DateTime @updatedAt
 }
 
-// One row per manual scale reading. No upsert-by-day like WaterLog — a body-comp reading is a
-// point-in-time log entry a user might take more than once a day or skip for weeks, not a daily
-// running total. Only weightKg is required; smart scales vary widely in which of the rest they
+// One row per manual scale reading, not an upsert-by-day running total — a body-comp reading is a
+// point-in-time log entry a user might take more than once a day or skip for weeks. Only
+// weightKg is required; smart scales vary widely in which of the rest they
 // report at all.
 model BodyCompositionEntry {
   id               String   @id @default(uuid())

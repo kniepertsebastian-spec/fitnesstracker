@@ -17,7 +17,6 @@ import planExerciseRoutes from "./modules/trainingPlan/planExercise.routes.js";
 import goalRoutes from "./modules/goals/goal.routes.js";
 import pushRoutes from "./modules/push/push.routes.js";
 import profileRoutes from "./modules/profile/profile.routes.js";
-import waterRoutes from "./modules/water/water.routes.js";
 import dailyChallengeRoutes from "./modules/dailyChallenge/dailyChallenge.routes.js";
 import supplementRoutes from "./modules/supplements/supplement.routes.js";
 import supplementScheduler from "./modules/supplements/supplement.scheduler.js";
@@ -62,7 +61,6 @@ export function buildApp() {
   app.register(goalRoutes, { prefix: "/api" });
   app.register(pushRoutes, { prefix: "/api" });
   app.register(profileRoutes, { prefix: "/api" });
-  app.register(waterRoutes, { prefix: "/api" });
   app.register(dailyChallengeRoutes, { prefix: "/api" });
   app.register(supplementRoutes, { prefix: "/api" });
   app.register(bodyCompositionRoutes, { prefix: "/api" });

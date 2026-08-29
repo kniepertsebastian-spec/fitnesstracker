@@ -1405,9 +1405,7 @@ Breaking-Migrationen nötig werden:
   Rotations-Countdowns (siehe oben, fertig — Phase 23)
 - `Goal` — Zielsetzung (siehe oben, fertig)
 - `PushSubscription` — Web-Push-Abos (siehe oben, fertig)
-- `Profile` — Eingaben für den Ernährungsrechner (siehe oben, fertig); `waterTargetMlOverride`
-  lebt seit Phase 18 auf `User`, nicht mehr hier
-- `WaterLog` — Tages-Running-Total pro Nutzer (siehe oben, fertig)
+- `Profile` — Eingaben für den Ernährungsrechner (siehe oben, fertig)
 - `DailyChallengeItem` — Tages-Challenge-Übungen + Fortschritt (siehe oben, fertig)
 - `Supplement` — Erinnerungsliste + Zeitzone + letzter Versand (siehe oben, fertig)
 - `BodyCompositionEntry` — Waagen-Messungen als Verlauf (siehe oben, fertig)
@@ -1439,3 +1437,41 @@ Breaking-Migrationen nötig werden:
   fixen Höhen) statt horizontal zu überlaufen. Über alle Hauptseiten inkl. Trainings-Tabelle mit
   echten Daten bei 375px Breite (iPhone SE, die schmalste gängige Breite) und `deviceScaleFactor:
   3` verifiziert: `document.documentElement.scrollWidth` überschreitet nirgends `clientWidth`.
+
+## Produktfokus: Wasser-Tracker entfernt, Supplements auf den Wecker reduziert (Phase 34, fertig — roadmapv2_additionals.md P0.7)
+
+- **Echte Entfernung, nicht nur UI-Ausblenden.** Der Wasser-Tracker wurde vollständig aus allen
+  Schichten entfernt — Backend-Modul, Route-Registrierung, Prisma-Modell samt Migration
+  (`DROP TABLE "WaterLog"`, `DROP COLUMN "waterTargetMlOverride"`), Shared-Schema, Frontend-Karte,
+  -Hook, -API-Client. Kein `enabled: false`-Flag und keine tote Route, die nur unerreichbar bleibt
+  — die Daten und der Code existieren nach dieser Änderung schlicht nicht mehr. Das entspricht der
+  Roadmap-Begründung ("zusätzliche Navigation, UI-Komplexität und Wartungsaufwand ... kein
+  ausreichender dynamischer Mehrwert") wörtlich: ein Feature ohne dynamischen Mehrwert bekommt
+  keinen Kompromiss, sondern wird entfernt.
+- **Migration statt Schema-Drift.** `prisma migrate dev` verlangt in dieser (nicht-interaktiven)
+  Umgebung eine Bestätigung für destruktive Änderungs-Warnungen (hier: eine Nutzerin hatte bereits
+  einen `waterTargetMlOverride`-Wert gesetzt) und bricht deshalb ab. Die Migration wurde stattdessen
+  über `prisma migrate diff --from-url ... --to-schema-datamodel ...` erzeugt (liefert exakt das
+  SQL, das `migrate dev` auch erzeugt hätte), manuell als
+  `migrations/20260829142000_remove_water_tracker/migration.sql` abgelegt und per
+  `prisma migrate deploy` angewendet — gleiches Endergebnis, ohne den interaktiven Prompt.
+- **Supplement-"Wecker" bewusst von der Referenzliste getrennt behandelt — waren technisch schon
+  zwei unabhängige Features, nur auf derselben Seite.** Das `Supplement`-Modell besteht nur aus
+  `name`/`reminderTime`/`timeZone`/`enabled` — es speichert nie, *was* ein Supplement bewirkt oder
+  wie es dosiert wird, nur *wann* erinnert werden soll. Die entfernte `SupplementReferenceList`
+  (statische Wirksamkeits-/Dosierungs-Infos zu zwölf gängigen Supplements) war eine komplett
+  separate, rein informative Komponente ohne jede Verbindung zum `Supplement`-Modell oder dessen
+  Scheduler — sie ließ sich deshalb entfernen, ohne die CRUD-Routen, den minütlichen
+  `checkAndSendReminders`-Scheduler oder `SupplementCard` (das eigentliche Anlegen/Pausieren/
+  Löschen von Erinnerungen) im Geringsten anzufassen. Die inhaltliche Trennung aus der Roadmap
+  ("Supplement Tipps" vs. der Rest) fiel damit exakt mit einer bereits bestehenden
+  Komponentengrenze im Code zusammen.
+- **`NutritionPage`s Tab-Auflösung war bereits defensiv genug, dass das Entfernen zweier Tabs keine
+  Sonderbehandlung brauchte.** `TabKey` wird über `TABS.some((t) => t.key === requestedTab) ? ... :
+  "rechner"` aufgelöst — ein alter, gebookmarkter oder von einer Push-Notification mitgebrachter
+  `?tab=wasser`-Link fällt dadurch automatisch auf den ersten verbleibenden Tab zurück statt einen
+  leeren/kaputten Zustand zu zeigen, ganz ohne Änderung an dieser Logik selbst.
+- **`bodyWaterPercent` (Körperwasseranteil, ein optionales Waagen-Messfeld auf
+  `BodyCompositionEntry`) ist ein komplett unabhängiges Feature und wurde nicht angefasst** — die
+  Namensähnlichkeit zum entfernten Trink-Tracker ist zufällig, es gibt keine Code- oder
+  Datenbeziehung zwischen beiden.
