@@ -29,6 +29,13 @@ export interface FailedMutation {
   kind: "workoutLog" | "workoutSession";
   clientId: string;
   op: MutationOp;
+  // The original mutation's payload, kept so a manual retry (offline/retry.ts) can re-queue the
+  // exact same request rather than needing the user to redo the action.
+  payload: Record<string, unknown>;
+  // Human-readable summary of what this was ("Bankdrücken", "Trainingseinheit", ...) — resolved
+  // once at write time from the still-present local row, since a delete's row is already gone
+  // from the cache by the time the mutation reaches the front of the queue.
+  label: string;
   reason: string;
   failedAt: string;
 }
