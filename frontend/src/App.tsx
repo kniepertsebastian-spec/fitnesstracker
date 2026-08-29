@@ -11,6 +11,7 @@ import { PlanGenerateExportPage } from "./routes/PlanGenerateExportPage";
 import { GoalsPage } from "./routes/GoalsPage";
 import { NutritionPage } from "./routes/NutritionPage";
 import { ProgressPage } from "./routes/ProgressPage";
+import { SettingsPage } from "./routes/SettingsPage";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { useAuthBootstrap } from "./hooks/useAuth";
 import { initWorkoutLogSync } from "./offline/workoutLogSync";
@@ -95,6 +96,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <ProgressPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
             </ProtectedRoute>
           }
         />

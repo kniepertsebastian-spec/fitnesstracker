@@ -20,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Fortschritt", to: "/progress" },
   { label: "Ziele", to: "/goals" },
   { label: "Ernährung", to: "/nutrition" },
+  { label: "Einstellungen", to: "/settings" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
