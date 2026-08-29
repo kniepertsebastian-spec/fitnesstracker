@@ -4,6 +4,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../../hooks/useTrainingPlan";
 import { useSyncStore } from "../../stores/syncStore";
 import { InstallButton } from "./InstallButton";
+import { PRToastHost } from "./PRToastHost";
 import { RestTimerWidget } from "./RestTimerWidget";
 
 interface NavItem {
@@ -134,6 +135,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="flex-1 px-4 py-4">{children}</main>
 
+      <PRToastHost />
       <RestTimerWidget />
     </div>
   );

@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import type { PlanDiaryExerciseDto, ProgressionSuggestion } from "@fitnesstracker/shared";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../../hooks/useTrainingPlan";
 import { useWeeklyPlanStatus } from "../../hooks/usePlanExercises";
-import { useCreateWorkoutLog } from "../../hooks/useWorkoutLogs";
+import { useCreateWorkoutLog, useWorkoutLogs } from "../../hooks/useWorkoutLogs";
+import { usePRToastStore } from "../../stores/prToastStore";
+import { detectPRs, prLabels } from "../../lib/prDetection";
 
 interface DiaryRowProps {
   entry: PlanDiaryExerciseDto;
@@ -36,6 +38,8 @@ function progressionHint(p: ProgressionSuggestion): { text: string; className: s
 // via the existing edit/delete controls on the log table below, same as any other logged set.
 function DiaryRow({ entry, setsInputRef, onDone }: DiaryRowProps) {
   const createLog = useCreateWorkoutLog();
+  const { data: allLogs } = useWorkoutLogs();
+  const showPR = usePRToastStore((s) => s.showPR);
   const [sets, setSets] = useState("3");
   const [reps, setReps] = useState(entry.progression ? String(entry.progression.suggestedReps) : "");
   const [weightKg, setWeightKg] = useState(
@@ -73,6 +77,14 @@ function DiaryRow({ entry, setsInputRef, onDone }: DiaryRowProps) {
       return;
     }
     setError(false);
+    // Captured once before the batch — checking all setsNum sets at once against a baseline
+    // that's already absorbed some of them would understate what this batch actually achieved.
+    const performedAt = new Date().toISOString();
+    const prs = detectPRs(
+      allLogs ?? [],
+      entry.exerciseId,
+      Array.from({ length: setsNum }, () => ({ reps: repsNum, weightKg: weightNum, performedAt })),
+    );
     for (let setNumber = 1; setNumber <= setsNum; setNumber++) {
       await createLog.mutateAsync({
         input: {
@@ -84,6 +96,9 @@ function DiaryRow({ entry, setsInputRef, onDone }: DiaryRowProps) {
         },
         exerciseName: entry.exerciseName,
       });
+    }
+    if (prLabels(prs).length > 0) {
+      showPR(entry.exerciseName, prLabels(prs));
     }
     setDone(true);
     onDone();
