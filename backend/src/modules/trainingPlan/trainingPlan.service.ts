@@ -109,6 +109,7 @@ export async function rotateAllDuePlans(prisma: PrismaClient): Promise<{ rotated
   const cutoff = addWeeks(new Date(), -ROTATION_WEEKS);
   const duePlans = await prisma.trainingPlan.findMany({
     where: { phaseStartedOn: { lte: cutoff }, pausedAt: null },
+    include: { user: { select: { remindPhaseChange: true } } },
   });
 
   let rotatedPlans = 0;
@@ -116,11 +117,15 @@ export async function rotateAllDuePlans(prisma: PrismaClient): Promise<{ rotated
     const { plan: updated, rotated } = await rotatePhaseIfDue(prisma, plan);
     if (rotated) {
       rotatedPlans += 1;
-      await sendNotificationToUser(prisma, plan.userId, {
-        title: "Trainingsplan-Wechsel",
-        body: `Neue Phase: ${TRAINING_PHASE_LABELS[updated.currentPhase]}`,
-        url: "/plan",
-      });
+      // Phase 30: per-reminder-type opt-out — the rotation itself always happens, only the push
+      // notification is gated.
+      if (plan.user.remindPhaseChange) {
+        await sendNotificationToUser(prisma, plan.userId, {
+          title: "Trainingsplan-Wechsel",
+          body: `Neue Phase: ${TRAINING_PHASE_LABELS[updated.currentPhase]}`,
+          url: "/plan",
+        });
+      }
     }
   }
   return { rotatedPlans };

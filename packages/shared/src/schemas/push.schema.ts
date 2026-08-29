@@ -21,3 +21,16 @@ export const vapidPublicKeyDtoSchema = z.object({
   publicKey: z.string().nullable(),
 });
 export type VapidPublicKeyDto = z.infer<typeof vapidPublicKeyDtoSchema>;
+
+// Per-reminder-type opt-out — the underlying browser push subscription is a single endpoint
+// shared by every reminder kind, these three flags are what actually let a user turn off just
+// one kind while keeping the others (see ARCHITECTURE.md Phase 30).
+export const pushSettingsDtoSchema = z.object({
+  remindPhaseChange: z.boolean(),
+  remindSupplements: z.boolean(),
+  remindProgressPhoto: z.boolean(),
+});
+export type PushSettingsDto = z.infer<typeof pushSettingsDtoSchema>;
+
+export const updatePushSettingsSchema = pushSettingsDtoSchema.partial();
+export type UpdatePushSettingsInput = z.infer<typeof updatePushSettingsSchema>;
