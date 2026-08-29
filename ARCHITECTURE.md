@@ -1131,15 +1131,42 @@ bereits solide.
   Seite, die ohnehin komplett auf dem lokal bereits vorhandenen Cache aufbauen kann, ein
   unnötiger Bruch der bestehenden Architektur. Die Filter-Query-Params bleiben als potenzieller
   Baustein für einen späteren echten Server-seitigen Pagination-Bedarf im Code stehen.
-- **Fenstern (14 Tages-Gruppen initial, "Weitere Tage laden") statt echter Pagination.** Die in
-  `roadmap2.md` benannte Scaling-Sorge ("nach Monaten des Loggens wächst der Fetch unbegrenzt")
-  betrifft den Netzwerk-Fetch, nicht die Darstellung — der bleibt bewusst unverändert (siehe
-  oben). Das Fenstern in `WorkoutHistoryPage` reduziert stattdessen nur die Anzahl gleichzeitig
-  gerenderter DOM-Zeilen, damit die Seite bei monatelanger Nutzung nicht zu einer
-  Endlos-Scroll-Liste mit tausenden Zeilen wird.
-- **Bearbeiten/Löschen exakt dieselben Komponenten wie im Dashboard** (`WorkoutLogTable`,
-  `WorkoutLogFormDialog`) — kein Duplikat-Formular nur für die Historie. Ein Satz lässt sich damit
-  von jedem beliebigen vergangenen Tag aus identisch zum heutigen Tag korrigieren.
+- **Fenstern (14 Tages-Gruppen initial, "Weitere Tage laden") statt echter Pagination — erste
+  Fassung, seither durch den Kalender unten ersetzt.** Die in `roadmap2.md` benannte
+  Scaling-Sorge ("nach Monaten des Loggens wächst der Fetch unbegrenzt") betrifft den
+  Netzwerk-Fetch, nicht die Darstellung — der blieb unverändert (siehe oben, gilt weiterhin). Das
+  ursprüngliche Fenstern reduzierte nur die Anzahl gleichzeitig gerenderter Tages-Gruppen, zeigte
+  innerhalb jeder geladenen Gruppe aber sofort alle Sätze aller Übungen auf einmal — bei mehreren
+  Übungen pro Tag lief die Seite trotzdem in genau die Flut, die vermieden werden sollte.
+- **Bearbeiten/Löschen exakt dieselben Komponenten wie im Dashboard** (`WorkoutLogFormDialog`) —
+  kein Duplikat-Formular nur für die Historie. Ein Satz lässt sich damit von jedem beliebigen
+  vergangenen Tag aus identisch zum heutigen Tag korrigieren.
+
+### Nachbesserung: Kalender statt Tagesliste, Übungen als aufklappbare Gruppen
+
+- **Ein Monats-Kalender ersetzt die scrollende Tagesliste vollständig** (`HistoryCalendar`,
+  Montag-first-Grid über `buildCalendarCells`, Navigation per `shiftMonth`, "weiter" gesperrt ab
+  dem aktuellen Monat via `isAtOrPastCurrentMonth`). Löst das DOM-Flutungsproblem strukturell statt
+  nur zu verzögern: unabhängig davon, wie viele Monate an Historie insgesamt existieren, rendert
+  der Kalender selbst immer nur bis zu ~31 Zellen für den sichtbaren Monat. Tage mit
+  protokollierten Sätzen sind hervorgehoben und klickbar, alle anderen (`disabled`) nicht — die
+  Menge, die als "hat Einträge" zählt, richtet sich nach dem aktiven Übungsfilter, sodass der
+  Kalender selbst schon zeigt, an welchen Tagen die gefilterte Übung überhaupt vorkommt.
+- **Übungen eines ausgewählten Tages sind eigene, standardmäßig eingeklappte Kacheln
+  (`ExerciseLogGroup`)** statt einer gemeinsamen Tabelle — das ist der zweite Teil der
+  Flutungs-Vermeidung: selbst ein Tag mit sechs, sieben Übungen zeigt zunächst nur sechs, sieben
+  Kopfzeilen (Übungsname + Satzanzahl), nicht sofort jeden einzelnen Satz. Erst ein Klick auf eine
+  Kachel öffnet ihre Satz-Tabelle.
+- **Uhrzeit statt reiner Reihenfolge, weil Gruppierung nach Übung die Chronologie auflöst.** Die
+  vorherige Tagesliste zeigte Sätze in der Reihenfolge, in der sie geloggt wurden — bei
+  Gruppierung nach Übung geht diese Information sonst verloren (innerhalb einer Übungskachel
+  stünden alle Sätze nur noch nach Satznummer sortiert da, ohne erkennbaren Bezug zu anderen an
+  diesem Tag trainierten Übungen). Jede Zeile zeigt deshalb jetzt zusätzlich die Uhrzeit
+  (`formatTime`), sortiert chronologisch innerhalb der Übung — der zeitliche Ablauf des Trainings
+  bleibt dadurch nachvollziehbar, auch wenn die Tabelle selbst nach Übung statt nach Zeit gruppiert
+  ist.
+- **Die alte "Weitere Tage laden"-Pagination entfällt ersatzlos** — der Kalender macht sie
+  überflüssig, da immer nur ein Monat plus ein einzelner Tag gleichzeitig sichtbar sind.
 
 ## Übungsverwaltung finalisiert (Phase 32, fertig — sechster roadmap2.md-P1-Punkt)
 
