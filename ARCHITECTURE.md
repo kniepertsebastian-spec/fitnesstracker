@@ -992,6 +992,18 @@ bereits solide.
 - **Navigation "Log" zu "Dashboard" umbenannt** — der etabliert genutzte Name für diese Seite,
   die Bezeichnung "Log" beschrieb nur einen Teil dessen, was die Seite mittlerweile zeigt
   (Session-Buttons, Tages-Challenge, Plan-Tagebuch, Cardio, Ziele, dazu die Log-Tabelle).
+- **Nachbesserung 2: Fortschritts-Punkte zu beschrifteten Tag-Tabs, weil niemand die 6px-Balken
+  als Umschalter erkannte.** Die Punkte aus der ersten Nachbesserung funktionierten technisch
+  korrekt (klickbar, schalteten den Tag um), waren aber als reine 1.5-Einheiten hohe Farbstriche
+  ohne Text visuell nicht von einem statischen Fortschrittsbalken zu unterscheiden — die Funktion
+  existierte, wurde aber nicht gefunden. Ersetzt durch dieselbe Tab-Leisten-Optik wie `PhaseTabs`
+  auf `/plan` (violetter Hintergrund für den ausgewählten Tag, `border`/`bg-ink-950`-Rahmen um die
+  ganze Leiste): jeder Tab zeigt jetzt "Tag N" als Text plus ein ✓ für bereits abgeschlossene Tage.
+  Der zugrundeliegende `selectedDayIndex`-Mechanismus (siehe oben) ist unverändert — geändert hat
+  sich nur, wie er sichtbar gemacht wird. Der ausführliche `dayLabel` (z. B. "Push (Brust,
+  Schultern, Trizeps)") bleibt in der Kopfzeile über der Tabelle erhalten statt in die Tabs selbst
+  zu wandern — drei ausführliche Labels nebeneinander in einer Tab-Leiste hätten auf 375px nicht
+  ohne Umbruch oder Kürzung Platz gehabt.
 
 ## Fortschrittsansicht (Phase 28, fertig — zweiter roadmap2.md-P1-Punkt)
 
