@@ -1115,6 +1115,32 @@ bereits solide.
   beobachtbaren Seiteneffekt testbar, da im Testkonto keine echte Push-Subscription hinterlegt
   ist (der Aufruf liefe ins Leere, unabhängig vom Flag).
 
+## Workout-Historie vervollständigt (Phase 31, fertig — fünfter roadmap2.md-P1-Punkt)
+
+- **Keine neue Datenquelle, nur eine zweite Sicht auf denselben Cache.** `WorkoutLogPage`
+  (Phase 27) filtert `useWorkoutLogs()` bewusst auf den heutigen UTC-Kalendertag; die komplette
+  Historie lag darunter aber die ganze Zeit schon unverändert im Offline-Cache
+  (`fetchAndCacheWorkoutLogs`/Dexie), weil das Offline-First-Modell ohnehin die vollständige
+  lokale Kopie braucht, um Bearbeitungen auch offline zu erlauben. `WorkoutHistoryPage` ruft
+  denselben Hook auf und lässt nur den Today-Filter weg — kein zusätzlicher Netzwerk-Call, keine
+  neue Cache-Schicht.
+- **Serverseitige `from`/`to`/`exerciseId`-Filter (`GET /workout-logs`) bleiben ungenutzt, bewusst.**
+  Sie existierten schon vor dieser Änderung, wurden vom Frontend aber nie aufgerufen. Sie jetzt zu
+  verdrahten hätte bedeutet, den Offline-Cache-Ansatz für diese eine Seite zu verlassen (Filtern
+  müsste dann serverseitig passieren, während die Seite offline nichts anzeigen könnte) — für eine
+  Seite, die ohnehin komplett auf dem lokal bereits vorhandenen Cache aufbauen kann, ein
+  unnötiger Bruch der bestehenden Architektur. Die Filter-Query-Params bleiben als potenzieller
+  Baustein für einen späteren echten Server-seitigen Pagination-Bedarf im Code stehen.
+- **Fenstern (14 Tages-Gruppen initial, "Weitere Tage laden") statt echter Pagination.** Die in
+  `roadmap2.md` benannte Scaling-Sorge ("nach Monaten des Loggens wächst der Fetch unbegrenzt")
+  betrifft den Netzwerk-Fetch, nicht die Darstellung — der bleibt bewusst unverändert (siehe
+  oben). Das Fenstern in `WorkoutHistoryPage` reduziert stattdessen nur die Anzahl gleichzeitig
+  gerenderter DOM-Zeilen, damit die Seite bei monatelanger Nutzung nicht zu einer
+  Endlos-Scroll-Liste mit tausenden Zeilen wird.
+- **Bearbeiten/Löschen exakt dieselben Komponenten wie im Dashboard** (`WorkoutLogTable`,
+  `WorkoutLogFormDialog`) — kein Duplikat-Formular nur für die Historie. Ein Satz lässt sich damit
+  von jedem beliebigen vergangenen Tag aus identisch zum heutigen Tag korrigieren.
+
 ## Robustheit, Security & Bugfixes (Phase 16-18, fertig)
 
 Fünf gezielte Fixes aus der in `ROADMAP.md` (Phase 16-18) dokumentierten Review — keine neuen

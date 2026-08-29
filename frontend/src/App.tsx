@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { LoginPage } from "./routes/LoginPage";
 import { RegisterPage } from "./routes/RegisterPage";
 import { WorkoutLogPage } from "./routes/WorkoutLogPage";
+import { WorkoutHistoryPage } from "./routes/WorkoutHistoryPage";
 import { ExerciseLibraryPage } from "./routes/ExerciseLibraryPage";
 import { ExerciseDetailPage } from "./routes/ExerciseDetailPage";
 import { TrainingPlanPage } from "./routes/TrainingPlanPage";
@@ -30,6 +31,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <WorkoutLogPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute>
+              <WorkoutHistoryPage />
             </ProtectedRoute>
           }
         />
