@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../../hooks/useTrainingPlan";
-import { useSyncStore } from "../../stores/syncStore";
 import { InstallButton } from "./InstallButton";
 import { PRToastHost } from "./PRToastHost";
 import { RestTimerWidget } from "./RestTimerWidget";
+import { SyncStatusIndicator } from "./SyncStatusIndicator";
 import { UpdatePrompt } from "./UpdatePrompt";
 
 interface NavItem {
@@ -27,7 +27,6 @@ const NAV_ITEMS: NavItem[] = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { data: plan } = useTrainingPlan();
-  const { isOnline, pendingCount, failedCount } = useSyncStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -106,24 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <div className="flex items-center gap-3">
           <InstallButton />
-          {!isOnline && (
-            <span className="rounded-full bg-amber-950 px-2 py-0.5 text-xs text-amber-400">
-              Offline
-            </span>
-          )}
-          {pendingCount > 0 && (
-            <span className="rounded-full bg-ink-800 px-2 py-0.5 text-xs text-ink-400">
-              {pendingCount} ausstehend
-            </span>
-          )}
-          {failedCount > 0 && (
-            <span
-              className="rounded-full bg-red-950 px-2 py-0.5 text-xs text-red-400"
-              title="Konnte nicht synchronisiert werden — Eintrag ist lokal verloren"
-            >
-              {failedCount} fehlgeschlagen
-            </span>
-          )}
+          <SyncStatusIndicator />
           {user && (
             <button
               onClick={() => logout()}

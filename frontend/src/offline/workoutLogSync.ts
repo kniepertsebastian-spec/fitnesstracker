@@ -6,7 +6,7 @@ import {
   updateWorkoutLogRequest,
 } from "../api/workoutLog.api";
 import { ApiError } from "../api/client";
-import { useSyncStore } from "../stores/syncStore";
+import { beginSync, endSync, useSyncStore } from "../stores/syncStore";
 import { queryClient } from "../queryClient";
 import { offlineDb, type LocalWorkoutLog, type MutationOp } from "./db";
 import { refreshSyncCounts } from "./syncCounts";
@@ -156,6 +156,7 @@ let flushing = false;
 export async function flushPendingMutations() {
   if (flushing || !navigator.onLine) return;
   flushing = true;
+  beginSync();
   try {
     for (;;) {
       const next = await offlineDb.pendingMutations.orderBy("queuedAt").first();
@@ -167,14 +168,20 @@ export async function flushPendingMutations() {
       } catch (error) {
         if (error instanceof ApiError) {
           // The server rejected it outright (validation, 404 after manual deletion elsewhere,
-          // ...) — retrying won't change that, so drop it rather than blocking everything
-          // queued after it. Recorded in failedMutations (not just console.error'd) so it shows
-          // up as a "fehlgeschlagen" badge instead of the entry just silently vanishing.
+          // ...) — retrying the exact same request won't change that, so drop it rather than
+          // blocking everything queued after it. Recorded in failedMutations (payload included)
+          // rather than just console.error'd, so it shows up in the sync status panel with a
+          // manual retry option (offline/retry.ts) instead of the entry just silently vanishing.
           console.error("Dropping unsyncable workout log mutation", next, error);
+          // A delete's local row is already gone by now (deleteWorkoutLogLocal removes it
+          // immediately, optimistically) — fall back to a generic label in that case.
+          const localRow = await offlineDb.workoutLogs.get(next.clientId);
           await offlineDb.failedMutations.add({
             kind: "workoutLog",
             clientId: next.clientId,
             op: next.op,
+            payload: next.payload,
+            label: localRow?.exerciseName ?? "Satz",
             reason: error.message,
             failedAt: new Date().toISOString(),
           });
@@ -188,6 +195,7 @@ export async function flushPendingMutations() {
     }
   } finally {
     flushing = false;
+    endSync();
     await refreshSyncCounts();
     await syncQueryCache();
   }

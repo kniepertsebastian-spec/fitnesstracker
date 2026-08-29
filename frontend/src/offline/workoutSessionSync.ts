@@ -5,6 +5,7 @@ import {
   updateWorkoutSessionRequest,
 } from "../api/workoutSession.api";
 import { ApiError } from "../api/client";
+import { beginSync, endSync } from "../stores/syncStore";
 import { queryClient } from "../queryClient";
 import { offlineDb, type LocalWorkoutSession, type MutationOp } from "./db";
 import { refreshSyncCounts } from "./syncCounts";
@@ -121,6 +122,7 @@ let flushing = false;
 export async function flushPendingSessionMutations() {
   if (flushing || !navigator.onLine) return;
   flushing = true;
+  beginSync();
   try {
     for (;;) {
       const next = await offlineDb.pendingSessionMutations.orderBy("queuedAt").first();
@@ -136,6 +138,8 @@ export async function flushPendingSessionMutations() {
             kind: "workoutSession",
             clientId: next.clientId,
             op: next.op,
+            payload: next.payload,
+            label: "Trainingseinheit",
             reason: error.message,
             failedAt: new Date().toISOString(),
           });
@@ -149,6 +153,7 @@ export async function flushPendingSessionMutations() {
     }
   } finally {
     flushing = false;
+    endSync();
     await refreshSyncCounts();
     await syncSessionQueryCache();
   }
