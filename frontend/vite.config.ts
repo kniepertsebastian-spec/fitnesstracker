@@ -61,4 +61,15 @@ export default defineConfig({
       },
     },
   },
+  // Only exercised by `vite preview` (the E2E suite's webServer, see playwright.config.ts, and
+  // manual production-build testing) — prod itself never runs `vite preview`, Caddy proxies
+  // `/api` there instead (see ../Caddyfile).
+  preview: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: false,
+      },
+    },
+  },
 });
