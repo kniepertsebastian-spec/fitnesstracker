@@ -1,11 +1,27 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import sharp from "sharp";
+import type sharpFactory from "sharp";
 import type { PrismaClient, ProgressPhoto } from "@prisma/client";
 import { HttpError, NotFoundError } from "../../errors/httpErrors.js";
 import { env } from "../../config/env.js";
 import { sendNotificationToUser } from "../push/push.service.js";
+
+// Loaded lazily (only when a photo is actually uploaded) rather than as a static top-level
+// import. sharp bundles a precompiled native libvips binary, and that binary's own CPU-feature
+// initialization can fail outright on hardware that doesn't support the instructions it assumes
+// (e.g. AVX2) — a SIGILL, which crashes the whole Node process and can't be caught by any
+// try/catch. A static import pays that risk on every single backend boot, taking the entire app
+// down with it; deferred like this, the same failure is contained to just the upload request
+// that triggered it, and every other route keeps working. See CHANGELOG.md for the incident this
+// came out of.
+let sharpModule: Promise<typeof sharpFactory> | null = null;
+function loadSharp(): Promise<typeof sharpFactory> {
+  if (!sharpModule) {
+    sharpModule = import("sharp").then((mod) => mod.default);
+  }
+  return sharpModule;
+}
 
 const UPLOADS_DIR = path.resolve(env.UPLOADS_DIR);
 
@@ -37,6 +53,19 @@ export function listPhotos(prisma: PrismaClient, userId: string) {
 }
 
 async function reencodeAndValidate(buffer: Buffer): Promise<{ buffer: Buffer; mimeType: string; extension: string }> {
+  let sharp: typeof sharpFactory;
+  try {
+    sharp = await loadSharp();
+  } catch (error) {
+    // A module-load-time failure (missing/incompatible native binding) — surfaces as a clean
+    // 503 for this one request instead of the uncatchable process crash a static import risked.
+    // No `fastify` instance in scope here to log through, but this is rare/unexpected enough
+    // that stdout (still captured by `docker compose logs backend`) is fine.
+    console.error("Failed to load sharp — progress photo upload unavailable:", error);
+    sharpModule = null; // let the next attempt retry the import rather than caching a rejection
+    throw new HttpError(503, "Bildverarbeitung derzeit nicht verfügbar");
+  }
+
   const image = sharp(buffer, { failOn: "error" });
   const metadata = await image.metadata().catch(() => null);
   const format = metadata?.format;

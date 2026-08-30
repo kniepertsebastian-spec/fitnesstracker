@@ -33,6 +33,16 @@ services:
       # Cookies must be Secure once served over HTTPS (Caddy terminates TLS in front of this).
       COOKIE_SECURE: "true"
       FRONTEND_ORIGIN: https://${DOMAIN:?}
+      # `sharp` (progress-photo processing) bundles a precompiled libvips binary whose SIMD-
+      # vectorized codepaths can assume CPU instructions (AVX2) that lower-power hardware —
+      # exactly the kind of CPU a mini-PC like this one tends to have — doesn't support. Without
+      # this, that mismatch surfaces as a SIGILL that kills the whole container outright (not a
+      # catchable JS error) the moment libvips initializes; this env var forces libvips onto its
+      # universally-compatible non-vectorized path instead. The app also no longer imports sharp
+      # until a photo is actually uploaded (see progressPhoto.service.ts), so even if this box's
+      # CPU still can't run it, that failure now stays contained to the upload request instead of
+      # crash-looping the entire backend on every boot.
+      VIPS_NOVECTOR: "1"
     volumes:
       # Progress-photo uploads live on the VPS filesystem (no cloud storage, see
       # ARCHITECTURE.md) and must survive container recreation, same as pgdata below.
