@@ -12,6 +12,39 @@ const PROVIDER_OPTIONS: { value: AiProvider; label: string }[] = [
   { value: "OPENROUTER", label: "OpenRouter" },
 ];
 
+// Curated shortlist per provider so users aren't left guessing exact model IDs. OpenRouter alone
+// hosts hundreds of models under provider-prefixed IDs, so no static list can be complete for
+// it (or stay accurate as providers ship new models) — every list ends with a "custom" option
+// that reveals a free-text field instead, matching the server's own defaultModelFor fallback
+// (aiClient.ts) when the field is left empty.
+const CUSTOM_MODEL_VALUE = "__custom__";
+const PROVIDER_MODELS: Record<AiProvider, { value: string; label: string }[]> = {
+  OPENAI: [
+    { value: "gpt-4o-mini", label: "GPT-4o mini (Standard, günstig)" },
+    { value: "gpt-4o", label: "GPT-4o" },
+    { value: "gpt-4.1", label: "GPT-4.1" },
+    { value: "gpt-4.1-mini", label: "GPT-4.1 mini" },
+    { value: "o3-mini", label: "o3-mini (Reasoning)" },
+  ],
+  GROQ: [
+    { value: "llama-3.3-70b-versatile", label: "Llama 3.3 70B Versatile (Standard)" },
+    { value: "llama-3.1-8b-instant", label: "Llama 3.1 8B Instant" },
+    { value: "gemma2-9b-it", label: "Gemma 2 9B" },
+  ],
+  OPENROUTER: [
+    { value: "openai/gpt-4o-mini", label: "OpenAI: GPT-4o mini (Standard)" },
+    { value: "anthropic/claude-3.5-sonnet", label: "Anthropic: Claude 3.5 Sonnet" },
+    { value: "meta-llama/llama-3.3-70b-instruct", label: "Meta: Llama 3.3 70B Instruct" },
+    { value: "google/gemini-2.0-flash-001", label: "Google: Gemini 2.0 Flash" },
+  ],
+  GEMINI: [
+    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash (Standard)" },
+    { value: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash-Lite" },
+    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+    { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
+  ],
+};
+
 // BYOK settings (provider + API key + optional model override) plus the "Plan generieren"
 // action for whichever phase is currently selected on /plan. A first generate attempt without
 // enough workout history comes back asking for cold-start answers, which opens ColdStartModal
@@ -25,6 +58,7 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
   const [provider, setProvider] = useState<AiProvider>("OPENAI");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
+  const [isCustomModel, setIsCustomModel] = useState(false);
   const [coldStartOpen, setColdStartOpen] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [generatedCount, setGeneratedCount] = useState<number | null>(null);
@@ -82,7 +116,11 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
       <div className="mt-3 flex flex-col gap-2">
         <select
           value={provider}
-          onChange={(e) => setProvider(e.target.value as AiProvider)}
+          onChange={(e) => {
+            setProvider(e.target.value as AiProvider);
+            setModel("");
+            setIsCustomModel(false);
+          }}
           className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
         >
           {PROVIDER_OPTIONS.map((opt) => (
@@ -98,13 +136,35 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
           onChange={(e) => setApiKey(e.target.value)}
           className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
         />
-        <input
-          type="text"
-          placeholder="Modell (optional, z. B. gpt-4o-mini)"
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
+        <select
+          value={isCustomModel ? CUSTOM_MODEL_VALUE : model || PROVIDER_MODELS[provider][0].value}
+          onChange={(e) => {
+            if (e.target.value === CUSTOM_MODEL_VALUE) {
+              setIsCustomModel(true);
+              setModel("");
+            } else {
+              setIsCustomModel(false);
+              setModel(e.target.value);
+            }
+          }}
           className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
-        />
+        >
+          {PROVIDER_MODELS[provider].map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+          <option value={CUSTOM_MODEL_VALUE}>Benutzerdefiniert…</option>
+        </select>
+        {isCustomModel && (
+          <input
+            type="text"
+            placeholder="Modell-ID (z. B. mistralai/mistral-large)"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+          />
+        )}
         <div className="flex gap-2">
           <button
             onClick={handleSave}
