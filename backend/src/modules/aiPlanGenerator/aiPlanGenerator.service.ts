@@ -12,6 +12,7 @@ import {
   buildSystemPrompt,
   buildWarmStartContext,
   estimateWeeklyFrequency,
+  exercisesPerDayForDuration,
   resolveSplitDays,
   selectCatalogSubset,
 } from "./promptBuilder.js";
@@ -20,8 +21,8 @@ import { refreshDetectedAsymmetries } from "../trainingPlan/trainingAsymmetry.se
 // Below this many logged sets, there isn't enough real history to build a useful "warm start"
 // prompt (best lifts, etc.) — the frontend needs to collect cold-start answers instead.
 const MIN_LOGGED_SETS_FOR_WARM_START = 5;
-// 6 split days * up to ~8 exercises each, with some slack for the model overshooting the
-// requested 6-per-day — validated/filtered down to real catalog matches afterwards regardless.
+// 6 split days * up to 7 exercises each, with slack for provider overshoot — validated and
+// filtered down to real catalog matches afterwards regardless.
 const MAX_PLAN_ITEMS = 60;
 
 const aiPlanItemSchema = z.object({
@@ -75,10 +76,17 @@ export async function generatePlan(
 
   await refreshDetectedAsymmetries(prisma, userId);
   const remarksContext = await buildPlanRemarksContext(prisma, userId);
-  const context = (input.coldStart
-    ? buildColdStartContext(input.coldStart)
-    : await buildWarmStartContext(prisma, userId)) + remarksContext;
-  const systemPrompt = buildSystemPrompt(input.phase, catalog, splitDays);
+  const historyContext = enoughHistory ? await buildWarmStartContext(prisma, userId) : "";
+  const questionnaireContext = input.coldStart ? buildColdStartContext(input.coldStart) : "";
+  const context = [historyContext, questionnaireContext, remarksContext]
+    .filter((part) => part.trim().length > 0)
+    .join("\n");
+  const systemPrompt = buildSystemPrompt(
+    input.phase,
+    catalog,
+    splitDays,
+    exercisesPerDayForDuration(input.coldStart?.sessionDurationMinutes),
+  );
 
   const rawContent = await callChatCompletion(
     setting.provider,
