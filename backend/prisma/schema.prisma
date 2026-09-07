@@ -227,6 +227,9 @@ model TrainingPlan {
   // `phaseStartedOn` forward by the paused duration so the remaining time-to-rotation is
   // preserved instead of the pause silently eating into the 8-week cycle.
   pausedAt       DateTime?
+  remarks              String?
+  detectedAsymmetries  String[] @default([])
+  asymmetryAnalyzedAt  DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

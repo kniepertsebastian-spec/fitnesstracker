@@ -6,6 +6,7 @@ import { PushReminderCard } from "../components/trainingPlan/PushReminderCard";
 import { PlanExerciseList } from "../components/trainingPlan/PlanExerciseList";
 import { PhaseTabs } from "../components/trainingPlan/PhaseTabs";
 import { RecommendedSplitsSection } from "../components/trainingPlan/RecommendedSplitsSection";
+import { TrainingPlanRemarksCard } from "../components/trainingPlan/TrainingPlanRemarksCard";
 import {
   TRAINING_PHASE_LABELS,
   usePauseTrainingPlan,
@@ -90,6 +91,7 @@ export function TrainingPlanPage() {
           </div>
 
           <PushReminderCard />
+          <TrainingPlanRemarksCard plan={plan} />
 
           <div>
             {selectedPhase && <PhaseTabs selected={selectedPhase} onSelect={setSelectedPhase} />}

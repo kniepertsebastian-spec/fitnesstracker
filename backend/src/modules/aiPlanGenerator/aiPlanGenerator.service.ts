@@ -8,12 +8,14 @@ import { toPlanExerciseDto } from "../trainingPlan/planExercise.types.js";
 import { AiProviderError, callChatCompletion } from "./aiClient.js";
 import {
   buildColdStartContext,
+  buildPlanRemarksContext,
   buildSystemPrompt,
   buildWarmStartContext,
   estimateWeeklyFrequency,
   resolveSplitDays,
   selectCatalogSubset,
 } from "./promptBuilder.js";
+import { refreshDetectedAsymmetries } from "../trainingPlan/trainingAsymmetry.service.js";
 
 // Below this many logged sets, there isn't enough real history to build a useful "warm start"
 // prompt (best lifts, etc.) — the frontend needs to collect cold-start answers instead.
@@ -71,9 +73,11 @@ export async function generatePlan(
     : await estimateWeeklyFrequency(prisma, userId);
   const splitDays = resolveSplitDays(frequencyPerWeek);
 
-  const context = input.coldStart
+  await refreshDetectedAsymmetries(prisma, userId);
+  const remarksContext = await buildPlanRemarksContext(prisma, userId);
+  const context = (input.coldStart
     ? buildColdStartContext(input.coldStart)
-    : await buildWarmStartContext(prisma, userId);
+    : await buildWarmStartContext(prisma, userId)) + remarksContext;
   const systemPrompt = buildSystemPrompt(input.phase, catalog, splitDays);
 
   const rawContent = await callChatCompletion(

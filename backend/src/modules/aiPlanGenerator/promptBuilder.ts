@@ -199,6 +199,21 @@ export async function buildWarmStartContext(prisma: PrismaClient, userId: string
   );
 }
 
+export async function buildPlanRemarksContext(prisma: PrismaClient, userId: string): Promise<string> {
+  const plan = await prisma.trainingPlan.findUnique({
+    where: { userId },
+    select: { remarks: true, detectedAsymmetries: true },
+  });
+  if (!plan) return "";
+  const lines = [
+    plan.remarks?.trim() ? `Bemerkungen des Nutzers: ${plan.remarks.trim()}` : null,
+    ...plan.detectedAsymmetries.map((remark) => `Automatisch erkannte Trainingsasymmetrie: ${remark}`),
+  ].filter((line): line is string => line !== null);
+  return lines.length > 0
+    ? `\nDiese Hinweise müssen bei der Übungsauswahl und Trainingsverteilung berücksichtigt werden:\n${lines.join("\n")}`
+    : "";
+}
+
 const EQUIPMENT_LABELS: Record<ColdStartInput["equipment"], string> = {
   homegym: "Homegym (Kurzhanteln, Bänder, eigenes Körpergewicht)",
   dumbbells: "Nur Kurzhanteln",
