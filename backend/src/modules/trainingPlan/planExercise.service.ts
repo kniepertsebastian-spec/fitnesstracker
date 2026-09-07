@@ -22,21 +22,25 @@ export async function createPlanExercise(
     throw new NotFoundError("Exercise not found");
   }
 
-  // Manually added entries are never grouped under a split day — `dayLabel: null` here matches
-  // the compound unique index (userId, phase, exerciseId, dayLabel) that also allows the AI
-  // generator to put the same exercise on more than one split day. `findFirst` rather than
+  // Manual entries belong to the selected split day (or stay ungrouped for a single-day plan).
+  // `findFirst` rather than
   // `findUnique`: Prisma's compound-unique-input type doesn't accept `null` for a nullable
   // field even though the underlying index does, and at most one row can match this combination
   // anyway (the same unique index guarantees it).
   const existing = await prisma.planExercise.findFirst({
-    where: { userId, phase: input.phase, exerciseId: input.exerciseId, dayLabel: null },
+    where: {
+      userId,
+      phase: input.phase,
+      exerciseId: input.exerciseId,
+      dayLabel: input.dayLabel ?? null,
+    },
   });
   if (existing) {
     throw new ConflictError("Exercise already assigned to this phase");
   }
 
   const last = await prisma.planExercise.findFirst({
-    where: { userId, phase: input.phase },
+    where: { userId, phase: input.phase, dayLabel: input.dayLabel ?? null },
     orderBy: { order: "desc" },
   });
 
@@ -48,6 +52,7 @@ export async function createPlanExercise(
       targetSets: input.targetSets,
       targetReps: input.targetReps,
       order: last ? last.order + 1 : 0,
+      dayLabel: input.dayLabel ?? null,
     },
     ...withExercise,
   });
@@ -64,9 +69,25 @@ export async function updatePlanExercise(
     throw new NotFoundError("Plan exercise not found");
   }
 
+  if (input.exerciseId && input.exerciseId !== existing.exerciseId) {
+    const exercise = await prisma.exercise.findUnique({ where: { id: input.exerciseId } });
+    if (!exercise) throw new NotFoundError("Exercise not found");
+    const duplicate = await prisma.planExercise.findFirst({
+      where: {
+        userId,
+        phase: existing.phase,
+        exerciseId: input.exerciseId,
+        dayLabel: existing.dayLabel,
+        id: { not: id },
+      },
+    });
+    if (duplicate) throw new ConflictError("Exercise already assigned to this training day");
+  }
+
   return prisma.planExercise.update({
     where: { id },
     data: {
+      exerciseId: input.exerciseId,
       targetSets: input.targetSets,
       targetReps: input.targetReps,
       order: input.order,

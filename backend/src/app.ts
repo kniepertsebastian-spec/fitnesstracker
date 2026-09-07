@@ -30,6 +30,7 @@ import aiPlanGeneratorRoutes from "./modules/aiPlanGenerator/aiPlanGenerator.rou
 import cardioLogRoutes from "./modules/cardioLogs/cardioLog.routes.js";
 import workoutSessionRoutes from "./modules/workoutSessions/workoutSession.routes.js";
 import dataExportRoutes from "./modules/dataExport/dataExport.routes.js";
+import formAnalysisRoutes from "./modules/formAnalysis/formAnalysis.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -42,7 +43,7 @@ export function buildApp() {
   app.register(cookiePlugin);
   app.register(corsPlugin);
   app.register(jwtPlugin);
-  // 10MB per file — plenty for a phone photo, small enough to keep disk usage sane on the VPS.
+  // 10MB per file — enough for photos and short technique clips without unbounded memory use.
   app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
   // `global: false` — only routes that opt in via `config: { rateLimit }` (login/register) are
   // limited; every other route is unaffected. In-memory store is fine for a single backend
@@ -75,6 +76,7 @@ export function buildApp() {
   app.register(cardioLogRoutes, { prefix: "/api" });
   app.register(workoutSessionRoutes, { prefix: "/api" });
   app.register(dataExportRoutes, { prefix: "/api" });
+  app.register(formAnalysisRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {
     if (error instanceof ZodError) {

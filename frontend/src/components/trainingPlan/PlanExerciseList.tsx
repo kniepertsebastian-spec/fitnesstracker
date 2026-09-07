@@ -12,11 +12,13 @@ function PlanExerciseRow({
   isFirst,
   isLast,
   onMove,
+  onReplace,
 }: {
   entry: PlanExerciseDto;
   isFirst: boolean;
   isLast: boolean;
   onMove: (entry: PlanExerciseDto, direction: "up" | "down") => void;
+  onReplace: (entry: PlanExerciseDto) => void;
 }) {
   const deletePlanExercise = useDeletePlanExercise(entry.phase);
 
@@ -31,6 +33,12 @@ function PlanExerciseRow({
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        <button
+          onClick={() => onReplace(entry)}
+          className="ml-1 text-xs text-violet-400 hover:text-violet-300"
+        >
+          Ersetzen
+        </button>
         <button
           onClick={() => onMove(entry, "up")}
           disabled={isFirst}
@@ -81,6 +89,7 @@ export function PlanExerciseList({ phase }: { phase: TrainingPhase }) {
   const { data: entries, isLoading } = usePlanExercises(phase);
   const updatePlanExercise = useUpdatePlanExercise(phase);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [replacingEntry, setReplacingEntry] = useState<PlanExerciseDto | null>(null);
   const [selectedDay, setSelectedDay] = useState(0);
 
   const handleMove = (group: PlanExerciseDto[], entry: PlanExerciseDto, direction: "up" | "down") => {
@@ -104,7 +113,10 @@ export function PlanExerciseList({ phase }: { phase: TrainingPhase }) {
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-medium text-ink-400">Übungen in dieser Phase</h2>
         <button
-          onClick={() => setDialogOpen(true)}
+          onClick={() => {
+            setReplacingEntry(null);
+            setDialogOpen(true);
+          }}
           className="rounded-lg bg-violet-500 px-3 py-1 text-xs font-medium text-ink-950 hover:bg-violet-400"
         >
           + Übung
@@ -139,13 +151,26 @@ export function PlanExerciseList({ phase }: { phase: TrainingPhase }) {
                 isFirst={index === 0}
                 isLast={index === activeGroup.entries.length - 1}
                 onMove={(e, direction) => handleMove(activeGroup.entries, e, direction)}
+                onReplace={(entry) => {
+                  setReplacingEntry(entry);
+                  setDialogOpen(true);
+                }}
               />
             ))}
           </div>
         </div>
       )}
 
-      <PlanExerciseFormDialog phase={phase} open={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <PlanExerciseFormDialog
+        phase={phase}
+        open={dialogOpen}
+        dayLabel={replacingEntry?.dayLabel ?? activeGroup?.dayLabel ?? null}
+        replacingEntry={replacingEntry}
+        onClose={() => {
+          setDialogOpen(false);
+          setReplacingEntry(null);
+        }}
+      />
     </div>
   );
 }

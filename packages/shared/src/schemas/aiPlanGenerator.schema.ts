@@ -27,11 +27,24 @@ export type SaveAiSettingsInput = z.infer<typeof saveAiSettingsSchema>;
 
 export const coldStartEquipmentSchema = z.enum(["homegym", "dumbbells", "fullgym"]);
 export const coldStartExperienceSchema = z.enum(["beginner", "intermediate", "advanced"]);
+export const trainingGoalSchema = z.enum([
+  "muscle_gain",
+  "strength",
+  "endurance",
+  "fat_loss",
+  "general_fitness",
+]);
 
 export const coldStartInputSchema = z.object({
   frequencyPerWeek: z.number().int().min(1).max(7),
   equipment: coldStartEquipmentSchema,
   experience: coldStartExperienceSchema,
+  goal: trainingGoalSchema,
+  sessionDurationMinutes: z.number().int().min(15).max(240),
+  equipmentDetails: z.string().max(500).optional(),
+  priorityMuscles: z.string().max(500).optional(),
+  preferredExercises: z.string().max(500).optional(),
+  avoidedExercises: z.string().max(500).optional(),
   limitations: z.string().max(500).optional(),
 });
 export type ColdStartInput = z.infer<typeof coldStartInputSchema>;

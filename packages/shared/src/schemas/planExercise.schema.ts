@@ -22,10 +22,14 @@ export const createPlanExerciseSchema = z.object({
   exerciseId: z.string().uuid(),
   targetSets: z.number().int().positive().optional(),
   targetReps: z.number().int().positive().optional(),
+  // Manual additions can be assigned to an existing split day. `null` keeps single-day and
+  // ungrouped plans backwards compatible.
+  dayLabel: z.string().trim().min(1).nullable().optional(),
 });
 export type CreatePlanExerciseInput = z.infer<typeof createPlanExerciseSchema>;
 
 export const updatePlanExerciseSchema = z.object({
+  exerciseId: z.string().uuid().optional(),
   targetSets: z.number().int().positive().nullable().optional(),
   targetReps: z.number().int().positive().nullable().optional(),
   order: z.number().int().optional(),

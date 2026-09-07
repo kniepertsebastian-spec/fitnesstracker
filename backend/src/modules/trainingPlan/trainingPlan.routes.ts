@@ -4,7 +4,9 @@ import {
   pauseTrainingPlan,
   resumeTrainingPlan,
   restartCurrentPhase,
+  updateTrainingPlanRemarks,
 } from "./trainingPlan.service.js";
+import { updateTrainingPlanRemarksSchema } from "@fitnesstracker/shared";
 import { toTrainingPlanDto } from "./trainingPlan.types.js";
 
 export default async function trainingPlanRoutes(fastify: FastifyInstance) {
@@ -42,6 +44,13 @@ export default async function trainingPlanRoutes(fastify: FastifyInstance) {
       fastify.prisma,
       request.user.sub,
     );
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  fastify.patch("/training-plan/remarks", async (request, reply) => {
+    const { remarks } = updateTrainingPlanRemarksSchema.parse(request.body);
+    await updateTrainingPlanRemarks(fastify.prisma, request.user.sub, remarks);
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(fastify.prisma, request.user.sub);
     return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
   });
 }

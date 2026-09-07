@@ -13,9 +13,8 @@ const PROVIDER_OPTIONS: { value: AiProvider; label: string }[] = [
 ];
 
 // BYOK settings (provider + API key + optional model override) plus the "Plan generieren"
-// action for whichever phase is currently selected on /plan. A first generate attempt without
-// enough workout history comes back asking for cold-start answers, which opens ColdStartModal
-// and retries with them filled in — see aiPlanGenerator.service.ts's generatePlan.
+// action for whichever phase is currently selected on /plan. The questionnaire opens for every
+// generation so current goals/preferences can be combined with any existing workout history.
 export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
   const { data: settings, isLoading } = useAiSettings();
   const saveSettings = useSaveAiSettings();
@@ -131,11 +130,11 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
       </p>
 
       <button
-        onClick={() => runGenerate()}
+        onClick={() => setColdStartOpen(true)}
         disabled={!settings.hasApiKey || generatePlan.isPending}
         className="mt-3 w-full rounded-lg bg-violet-500 py-2 text-sm font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
       >
-        {generatePlan.isPending ? "Generiert…" : "Plan für diese Phase generieren"}
+        {generatePlan.isPending ? "Generiert…" : "Plan konfigurieren & generieren"}
       </button>
 
       {generateError && <p className="mt-2 text-sm text-red-400">{generateError}</p>}
