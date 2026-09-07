@@ -1,5 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { computeTargetReps, type RecentPerformance } from "./dailyChallenge.service.js";
+import {
+  computeTargetReps,
+  isPortableBodyweightExercise,
+  type RecentPerformance,
+} from "./dailyChallenge.service.js";
+
+describe("isPortableBodyweightExercise", () => {
+  it("accepts exercises requiring only floor space", () => {
+    expect(isPortableBodyweightExercise({ equipment: "body only", name: "Bodyweight Squat" })).toBe(true);
+  });
+
+  it("rejects exercises with equipment", () => {
+    expect(isPortableBodyweightExercise({ equipment: "dumbbell", name: "Goblet Squat" })).toBe(false);
+  });
+
+  it("rejects hidden fixtures in English and German names", () => {
+    expect(isPortableBodyweightExercise({ equipment: "body only", name: "Pull-Up" })).toBe(false);
+    expect(isPortableBodyweightExercise({
+      equipment: "body only",
+      name: "Triceps Press",
+      nameDe: "Trizepsdrücken am Stuhl",
+    })).toBe(false);
+  });
+});
 
 describe("computeTargetReps", () => {
   const perf: RecentPerformance = { avgReps: 10, maxReps: 15 };
