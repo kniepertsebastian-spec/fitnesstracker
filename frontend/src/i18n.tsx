@@ -128,7 +128,10 @@ const ENGLISH: Record<string, string> = {
 function initialLanguage(): AppLanguage {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === "de" || stored === "en") return stored;
-  return navigator.language.toLowerCase().startsWith("de") ? "de" : "en";
+  // Keep the established German UI as the deterministic default. Browser/CI locale must not
+  // silently change labels (and therefore automation selectors); users can opt into English in
+  // Settings and that choice remains persisted.
+  return "de";
 }
 
 function translateText(value: string): string {
