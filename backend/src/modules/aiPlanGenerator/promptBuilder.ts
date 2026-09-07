@@ -240,6 +240,12 @@ Phasen-Vorgabe: ${PHASE_GUIDANCE[phase]}
 
 Trainingsplan-Struktur: ${splitInstruction}
 
+GESUNDHEIT UND EINSCHRÄNKUNGEN: Die vom Nutzer genannten körperlichen Einschränkungen sind
+harte Ausschlusskriterien. Wähle keine Übung, die das betroffene Gelenk oder die betroffene
+Körperregion direkt oder indirekt stark belastet. Berücksichtige auch Sekundärbelastungen (z. B.
+schulterintensive Brust-/Drückübungen bei Schulterproblemen). Wähle im Zweifel eine gelenkschonende
+Alternative aus dem Katalog; Sicherheit hat Vorrang vor Split-Vollständigkeit und Übungsvielfalt.
+
 WICHTIG — Übungsauswahl: Wähle AUSSCHLIESSLICH Übungen aus der folgenden Liste (Format: ID | Name | Equipment | Muskelgruppen). Verwende niemals eine ID, die nicht in dieser Liste steht, und erfinde keine neuen Übungen — nur die exakten IDs aus der Liste sind gültig.
 
 ${catalogLines}
