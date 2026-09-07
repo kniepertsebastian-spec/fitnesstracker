@@ -1,8 +1,12 @@
 import { Link } from "react-router-dom";
 import type { ExerciseDto } from "@fitnesstracker/shared";
+import { useLanguage } from "../../i18n";
+import { localizedExerciseName } from "../../lib/localizedExercise";
 
 export function ExerciseCard({ exercise }: { exercise: ExerciseDto }) {
+  const { language } = useLanguage();
   const thumbnail = exercise.imageUrls[0];
+  const name = localizedExerciseName(exercise, language);
 
   return (
     <Link
@@ -16,7 +20,7 @@ export function ExerciseCard({ exercise }: { exercise: ExerciseDto }) {
       )}
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-ink-100">
-          {exercise.name}
+          {name}
           {!exercise.isActive && (
             <span className="ml-2 rounded-full bg-ink-800 px-2 py-0.5 text-xs font-normal text-ink-500">
               Inaktiv

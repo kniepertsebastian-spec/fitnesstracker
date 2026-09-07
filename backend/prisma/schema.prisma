@@ -155,6 +155,9 @@ model Exercise {
   // Execution technique description. For imported exercises this is the source's
   // instructions joined into one text; edit freely afterwards.
   description String?
+  // Curated or AI-assisted German translation. Imports update the English source description
+  // without overwriting this localized copy.
+  descriptionDe String?
   // No free/open source used so far ships actual video — left for manual curation or a
   // future source adapter that provides one.
   videoUrl    String?
