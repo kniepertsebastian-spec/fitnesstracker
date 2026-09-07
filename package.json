@@ -15,6 +15,7 @@
     "prisma:migrate": "pnpm --filter backend prisma:migrate",
     "prisma:generate": "pnpm --filter backend prisma:generate",
     "prisma:seed": "pnpm --filter backend prisma:seed",
+    "prisma:translate-descriptions": "pnpm --filter backend prisma:translate-descriptions",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test"

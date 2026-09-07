@@ -6,6 +6,8 @@ import type { CreateGoalInput, ExerciseDto, GoalDto, UpdateGoalInput } from "@fi
 import { goalTypeSchema } from "@fitnesstracker/shared";
 import { useExercises } from "../../hooks/useWorkoutLogs";
 import { GOAL_TYPE_LABELS, GOAL_TYPE_UNITS, useCreateGoal, useUpdateGoal } from "../../hooks/useGoals";
+import { useLanguage } from "../../i18n";
+import { localizedExerciseName } from "../../lib/localizedExercise";
 
 const formSchema = z
   .object({
@@ -34,6 +36,7 @@ function toDateInputValue(iso: string | null): string {
 // updateGoalSchema's comment), so in edit mode those two fields render read-only instead of a
 // second, near-duplicate dialog just to lock two fields.
 export function GoalFormDialog({ open, onClose, editingGoal }: Props) {
+  const { language } = useLanguage();
   const { data: exercises } = useExercises();
   const createGoal = useCreateGoal();
   const updateGoal = useUpdateGoal();
@@ -131,7 +134,7 @@ export function GoalFormDialog({ open, onClose, editingGoal }: Props) {
                 </option>
                 {exercises?.map((exercise: ExerciseDto) => (
                   <option key={exercise.id} value={exercise.id}>
-                    {exercise.name}
+                    {localizedExerciseName(exercise, language)}
                   </option>
                 ))}
               </select>

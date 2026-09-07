@@ -5,6 +5,8 @@ import { z } from "zod";
 import type { CreatePlanExerciseInput, ExerciseDto, PlanExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
 import { useExercises } from "../../hooks/useWorkoutLogs";
 import { useCreatePlanExercise, useUpdatePlanExercise } from "../../hooks/usePlanExercises";
+import { useLanguage } from "../../i18n";
+import { localizedExerciseName } from "../../lib/localizedExercise";
 
 const formSchema = z.object({
   exerciseId: z.string().uuid("Bitte eine Übung wählen"),
@@ -26,6 +28,7 @@ export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replaci
   const createPlanExercise = useCreatePlanExercise(phase);
   const updatePlanExercise = useUpdatePlanExercise(phase);
   const [search, setSearch] = useState("");
+  const { language } = useLanguage();
 
   const {
     register,
@@ -45,10 +48,14 @@ export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replaci
   }, [open, replacingEntry, reset]);
 
   const filteredExercises = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase("de");
+    const query = search.trim().toLocaleLowerCase(language);
     if (!query) return exercises;
-    return exercises?.filter((exercise) => exercise.name.toLocaleLowerCase("de").includes(query));
-  }, [exercises, search]);
+    return exercises?.filter((exercise) =>
+      [exercise.nameEn, exercise.nameDe].some((name) =>
+        name?.toLocaleLowerCase(language).includes(query),
+      ),
+    );
+  }, [exercises, language, search]);
 
   if (!open) return null;
 
@@ -104,7 +111,7 @@ export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replaci
               </option>
               {filteredExercises?.map((exercise: ExerciseDto) => (
                 <option key={exercise.id} value={exercise.id}>
-                  {exercise.name}
+                  {localizedExerciseName(exercise, language)}
                 </option>
               ))}
             </select>

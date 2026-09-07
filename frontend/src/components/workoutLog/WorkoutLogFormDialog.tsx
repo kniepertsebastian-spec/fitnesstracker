@@ -9,6 +9,8 @@ import { useTimerStore } from "../../stores/timerStore";
 import { usePRToastStore } from "../../stores/prToastStore";
 import { buildWarmupPyramid } from "../../lib/oneRepMax";
 import { detectPRs, prLabels } from "../../lib/prDetection";
+import { useLanguage } from "../../i18n";
+import { localizedExerciseName } from "../../lib/localizedExercise";
 
 const formSchema = z.object({
   exerciseId: z.string().uuid({ message: "Bitte eine Übung wählen" }),
@@ -96,6 +98,7 @@ function SteppedNumberField({
 }
 
 export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
+  const { language } = useLanguage();
   const { data: exercises } = useExercises();
   const { data: allLogs } = useWorkoutLogs();
   const createLog = useCreateWorkoutLog();
@@ -249,7 +252,7 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
               </option>
               {exercises?.map((exercise: ExerciseDto) => (
                 <option key={exercise.id} value={exercise.id}>
-                  {exercise.name}
+                  {localizedExerciseName(exercise, language)}
                 </option>
               ))}
             </select>

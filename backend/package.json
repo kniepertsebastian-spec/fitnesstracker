@@ -14,7 +14,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:generate": "prisma generate",
     "prisma:seed": "tsx prisma/seed.ts",
-    "prisma:translate-names": "tsx prisma/translateExerciseNames.ts"
+    "prisma:translate-names": "tsx prisma/translateExerciseNames.ts",
+    "prisma:translate-descriptions": "tsx prisma/translateExerciseDescriptions.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

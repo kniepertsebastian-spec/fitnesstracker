@@ -4,6 +4,8 @@ import { ApiError } from "../api/client";
 import { AppShell } from "../components/layout/AppShell";
 import { ExerciseFormDialog } from "../components/exerciseLibrary/ExerciseFormDialog";
 import { useDeleteExercise, useExercise, useUpdateExercise } from "../hooks/useExerciseLibrary";
+import { useLanguage } from "../i18n";
+import { localizedExerciseDescription, localizedExerciseName } from "../lib/localizedExercise";
 
 export function ExerciseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +15,9 @@ export function ExerciseDetailPage() {
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { language } = useLanguage();
+  const exerciseName = exercise ? localizedExerciseName(exercise, language) : "";
+  const exerciseDescription = exercise ? localizedExerciseDescription(exercise, language) : null;
 
   const toggleActive = () => {
     if (!exercise) return;
@@ -44,7 +49,7 @@ export function ExerciseDetailPage() {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold">
-              {exercise.name}
+              {exerciseName}
               {!exercise.isActive && (
                 <span className="ml-2 rounded-full bg-ink-800 px-2 py-0.5 text-xs font-normal text-ink-500">
                   Inaktiv
@@ -65,7 +70,7 @@ export function ExerciseDetailPage() {
                 <img
                   key={url}
                   src={url}
-                  alt={exercise.name}
+                  alt={exerciseName}
                   className="h-40 w-40 shrink-0 rounded-lg object-cover"
                 />
               ))}
@@ -95,8 +100,8 @@ export function ExerciseDetailPage() {
             ))}
           </div>
 
-          {exercise.description && (
-            <p className="whitespace-pre-line text-ink-300">{exercise.description}</p>
+          {exerciseDescription && (
+            <p className="whitespace-pre-line text-ink-300">{exerciseDescription}</p>
           )}
 
           {exercise.videoUrl ? (
