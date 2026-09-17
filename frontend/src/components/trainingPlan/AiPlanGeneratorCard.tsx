@@ -6,6 +6,7 @@ import { useGeneratePlan } from "../../hooks/useAiPlanGenerator";
 import { ColdStartModal } from "./ColdStartModal";
 
 const PROVIDER_OPTIONS: { value: AiProvider; label: string }[] = [
+  { value: "ANTHROPIC", label: "Anthropic (Claude)" },
   { value: "GEMINI", label: "Google Gemini" },
   { value: "OPENAI", label: "OpenAI (ChatGPT)" },
   { value: "GROQ", label: "Groq" },
@@ -19,6 +20,11 @@ const PROVIDER_OPTIONS: { value: AiProvider; label: string }[] = [
 // (aiClient.ts) when the field is left empty.
 const CUSTOM_MODEL_VALUE = "__custom__";
 const PROVIDER_MODELS: Record<AiProvider, { value: string; label: string }[]> = {
+  ANTHROPIC: [
+    { value: "claude-haiku-4-5", label: "Claude Haiku 4.5 (Standard, günstig & schnell)" },
+    { value: "claude-sonnet-5", label: "Claude Sonnet 5" },
+    { value: "claude-opus-5", label: "Claude Opus 5 (stärkste Qualität)" },
+  ],
   OPENAI: [
     { value: "gpt-4o-mini", label: "GPT-4o mini (Standard, günstig)" },
     { value: "gpt-4o", label: "GPT-4o" },

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { trainingPhaseSchema } from "./trainingPlan.schema.js";
 import { planExerciseDtoSchema } from "./planExercise.schema.js";
 
-export const AI_PROVIDERS = ["GEMINI", "OPENAI", "GROQ", "OPENROUTER"] as const;
+export const AI_PROVIDERS = ["GEMINI", "OPENAI", "GROQ", "OPENROUTER", "ANTHROPIC"] as const;
 export const aiProviderSchema = z.enum(AI_PROVIDERS);
 export type AiProvider = z.infer<typeof aiProviderSchema>;
 

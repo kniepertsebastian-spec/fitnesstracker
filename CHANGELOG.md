@@ -7,6 +7,10 @@ fortgeführt.
 
 Format: `- **Titel** — was sich geändert hat und warum, falls nicht offensichtlich. Verifiziert: wie.`
 
+## 2026-09-17
+
+- **Anthropic (Claude) als fünfter BYOK-Anbieter** — Im KI-Trainingsplan-Generator war Claude bisher keine Option, obwohl die anderen vier (Gemini/OpenAI/Groq/OpenRouter) alle über eine gemeinsame OpenAI-kompatible Chat-Completions-Form liefen. Claudes Messages API hat eine andere Form (eigenes `system`-Feld, kein `response_format: json_object`) und läuft deshalb über einen separaten Zweig in `aiClient.ts` mit dem offiziellen `@anthropic-ai/sdk` statt des gemeinsamen `fetch`-Pfads — der bestehende Prompt instruiert bereits "ausschließlich valides JSON", Claude hält sich daran zuverlässig auch ohne JSON-Modus. Standardmodell ist `claude-haiku-4-5` (günstigstes aktuelles Modell, reicht für die eng eingegrenzte Katalog-Generierung), Sonnet 5/Opus 5 wählbar. Das bisherige Freitext-Modellfeld ist dabei gleich für alle fünf Anbieter zu einem Dropdown mit kuratierten Modellen pro Anbieter geworden (plus "Benutzerdefiniert…"-Freitextoption, v. a. für OpenRouters riesige Modellauswahl relevant) statt exakte Modell-IDs raten zu müssen. `AiProvider`-Enum (Schema + Migration) und das geteilte Zod-Schema um `ANTHROPIC` erweitert. Verifiziert: Typecheck/Lint/Build für alle drei Packages sowie die bestehende Backend-Unit-Test-Suite grün; ein echter Aufruf gegen die Anthropic-API war in dieser Sandbox mangels Netzwerkzugriff/API-Key nicht möglich.
+
 ## 2026-08-29
 
 - **Workout-Flow optimiert (additionals P1.1)** — Der "+ Satz"-Dialog zeigt jetzt die letzte Leistung der gewählten Übung an und füllt Wdh./Gewicht/Satznummer damit vor; Wdh./kg haben große +/- Stepper statt reiner Tastatureingabe; nach dem Speichern bleibt der Dialog offen (Satznummer hochgezählt, Werte übernommen) statt sich zu schließen, für schnelles Loggen mehrerer Sätze hintereinander. Löschen einzelner Sätze gab es schon. Verifiziert: Playwright End-to-End (Vorbefüllung, Stepper, Mehrfach-Speichern, Aufräumen), kein Overflow bei 375px.
