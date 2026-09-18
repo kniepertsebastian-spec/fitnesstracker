@@ -21,8 +21,20 @@ export default defineConfig({
         name: "Fitnesstracker",
         short_name: "Fitness",
         description: "Persönlicher Fitnesstracker ohne Werbung.",
+        // Stable identity independent of start_url, so the OS/TWA still recognizes the app as
+        // "already installed" even if start_url ever changes (e.g. a future redirect/query param).
+        id: "/",
         start_url: "/",
         display: "standalone",
+        // Single-user Android app used mid-workout, one hand, phone always upright — locking
+        // orientation avoids an accidental landscape flip if the phone's rotation lock is off.
+        orientation: "portrait",
+        lang: "de",
+        dir: "ltr",
+        categories: ["health", "fitness", "lifestyle"],
+        // Re-launching the installed app (home-screen icon, or a TWA intent) focuses the
+        // existing window/task instead of spawning a second instance of the same app.
+        launch_handler: { client_mode: "focus-existing" },
         background_color: "#1a1622",
         theme_color: "#1a1622",
         icons: [
