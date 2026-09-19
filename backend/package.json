@@ -26,6 +26,7 @@
     "@fastify/multipart": "^10.1.1",
     "@fastify/rate-limit": "^11.2.0",
     "@fitnesstracker/shared": "workspace:*",
+    "@google/genai": "^2.23.0",
     "@prisma/client": "^5.20.0",
     "bcrypt": "^5.1.1",
     "fastify": "^5.0.0",
