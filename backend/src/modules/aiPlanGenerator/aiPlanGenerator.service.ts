@@ -5,6 +5,7 @@ import { env } from "../../config/env.js";
 import { decryptSecret } from "../../lib/crypto.js";
 import { ConflictError } from "../../errors/httpErrors.js";
 import { toPlanExerciseDto } from "../trainingPlan/planExercise.types.js";
+import { GoogleGenAI, Type } from "@google/genai";
 import { AiProviderError, callChatCompletion } from "./aiClient.js";
 import {
   buildColdStartContext,
@@ -32,7 +33,92 @@ const aiPlanItemSchema = z.object({
   targetReps: z.number().int().positive().max(100),
   order: z.number().int().min(0),
 });
-const aiPlanResponseSchema = z.object({ items: z.array(aiPlanItemSchema).min(1).max(MAX_PLAN_ITEMS) });
+const aiPlanResponseSchema = z.object({
+  analysis: z.object({
+    identifiedWeaknesses: z.array(z.string()),
+    asymmetries: z.array(z.string()),
+    adjustmentsRationale: z.string(),
+  }).optional(),
+  weeklySchedule: z.array(z.object({
+    day: z.string(),
+    targetMuscleGroups: z.array(z.string()),
+    exercises: z.array(z.object({
+      exerciseName: z.string(),
+      sets: z.number(),
+      repRange: z.string(),
+      targetRPE: z.number(),
+      restPeriodSeconds: z.number(),
+      formCues: z.string(),
+      alternativeExercise: z.string(),
+    })),
+  })).optional(),
+  items: z.array(aiPlanItemSchema).min(1).max(MAX_PLAN_ITEMS),
+});
+
+export const geminiWorkoutPlanResponseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    analysis: {
+      type: Type.OBJECT,
+      properties: {
+        identifiedWeaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+        asymmetries: { type: Type.ARRAY, items: { type: Type.STRING } },
+        adjustmentsRationale: { type: Type.STRING },
+      },
+      required: ["identifiedWeaknesses", "asymmetries", "adjustmentsRationale"],
+    },
+    weeklySchedule: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          day: { type: Type.STRING },
+          targetMuscleGroups: { type: Type.ARRAY, items: { type: Type.STRING } },
+          exercises: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                exerciseName: { type: Type.STRING },
+                sets: { type: Type.INTEGER },
+                repRange: { type: Type.STRING },
+                targetRPE: { type: Type.NUMBER },
+                restPeriodSeconds: { type: Type.INTEGER },
+                formCues: { type: Type.STRING },
+                alternativeExercise: { type: Type.STRING },
+              },
+              required: [
+                "exerciseName",
+                "sets",
+                "repRange",
+                "targetRPE",
+                "restPeriodSeconds",
+                "formCues",
+                "alternativeExercise",
+              ],
+            },
+          },
+        },
+        required: ["day", "targetMuscleGroups", "exercises"],
+      },
+    },
+    items: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          day: { type: Type.STRING },
+          exerciseId: { type: Type.STRING },
+          targetSets: { type: Type.INTEGER },
+          targetReps: { type: Type.INTEGER },
+          order: { type: Type.INTEGER },
+        },
+        required: ["day", "exerciseId", "targetSets", "targetReps", "order"],
+      },
+    },
+  },
+  required: ["analysis", "weeklySchedule", "items"],
+};
 
 async function hasEnoughHistory(prisma: PrismaClient, userId: string): Promise<boolean> {
   const count = await prisma.workoutLog.count({ where: { userId, deletedAt: null } });
@@ -88,16 +174,41 @@ export async function generatePlan(
     exercisesPerDayForDuration(input.coldStart?.sessionDurationMinutes),
   );
 
-  const rawContent = await callChatCompletion(
-    setting.provider,
-    apiKey,
-    setting.model,
-    [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: context },
-    ],
-    options,
-  );
+  let rawContent: string;
+  if (setting.provider === "GEMINI" && !options?.baseUrlOverride) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: setting.model || "gemini-2.5-flash",
+        contents: [
+          { role: "user", parts: [{ text: `${systemPrompt}\n\nKontext:\n${context}` }] },
+        ],
+        config: {
+          temperature: 0.1,
+          maxOutputTokens: 8192,
+          thinkingConfig: { thinkingBudget: 0 },
+          responseMimeType: "application/json",
+          responseSchema: geminiWorkoutPlanResponseSchema,
+        },
+      });
+      rawContent = response.text ?? "";
+    } catch (error) {
+      throw new AiProviderError(
+        `Could not reach the AI provider: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  } else {
+    rawContent = await callChatCompletion(
+      setting.provider,
+      apiKey,
+      setting.model,
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: context },
+      ],
+      options,
+    );
+  }
 
   let parsedJson: unknown;
   try {
