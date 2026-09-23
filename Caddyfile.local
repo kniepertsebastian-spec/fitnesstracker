@@ -1,0 +1,27 @@
+# Local/LAN-only deployment (see docker-compose.local.yml) — no public domain to get a real
+# Let's Encrypt cert for, so `tls internal` makes Caddy sign a cert with its own built-in CA
+# instead. The catch-all `:443` block (no hostname filter) means it answers for whatever
+# Host header the request actually arrives on — `localhost`, a LAN IP, a mDNS name, all work
+# without needing to know it in advance. Several app features (service worker/offline, push,
+# camera access for progress photos) require a secure context, which plain HTTP only grants on
+# literal `localhost` — this makes HTTPS work from other devices on the LAN too, at the cost of
+# a one-time "trust this certificate" step per device (see README).
+:443 {
+	tls internal
+
+	handle /api/* {
+		reverse_proxy backend:3000
+	}
+
+	handle {
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
+	}
+
+	encode gzip
+}
+
+:80 {
+	redir https://{host}{uri} permanent
+}
