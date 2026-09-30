@@ -47,13 +47,15 @@ enum NutritionGoal {
   BULK
 }
 
-// Roadmap Phase 19: BYOK AI training plan generator. All four are called through the same
-// OpenAI-compatible chat-completions shape — see aiPlanGenerator/aiClient.ts.
+// Roadmap Phase 19: BYOK AI training plan generator. GEMINI/OPENAI/GROQ/OPENROUTER are called
+// through a shared OpenAI-compatible chat-completions shape; ANTHROPIC has its own Messages API
+// shape and goes through the official Anthropic SDK instead — see aiPlanGenerator/aiClient.ts.
 enum AiProvider {
   GEMINI
   OPENAI
   GROQ
   OPENROUTER
+  ANTHROPIC
 }
 
 enum CardioMachine {

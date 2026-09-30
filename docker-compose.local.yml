@@ -1,0 +1,71 @@
+# Standalone local/LAN deployment — no Cloudflare Tunnel, no shared "edge" network. Caddy
+# publishes 80/443 directly on the host and terminates TLS itself with its built-in local CA
+# (see Caddyfile.local) instead of Cloudflare's edge, since several app features (service
+# worker/offline, push notifications, camera access for progress photos) require a secure
+# context — plain HTTP only satisfies that on literal `localhost`, not when another device (a
+# phone on the same WiFi) reaches this machine by LAN IP/hostname.
+#
+# Deliberately a standalone copy of docker-compose.prod.yml's services rather than a Compose
+# override file layered on top of it — avoids relying on how Compose merges (or doesn't) the
+# `networks:`/`edge: external: true` block across two files. Keep in sync manually if
+# docker-compose.prod.yml's postgres/backend service definitions change.
+#
+# Usage:
+#   docker build --target export -f frontend/Dockerfile --output frontend/dist .
+#   docker compose -f docker-compose.local.yml up -d --build
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?}
+      NODE_ENV: production
+      COOKIE_SECURE: "true"
+      FRONTEND_ORIGIN: https://${DOMAIN:?}
+      # See docker-compose.prod.yml's comment — same libvips/SIGILL concern applies to any
+      # lower-power CPU, not just the mini-PC.
+      VIPS_NOVECTOR: "1"
+    volumes:
+      - uploads:/app/backend/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: fitnesstracker-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - ./frontend/dist:/srv/frontend:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+  uploads:

@@ -110,6 +110,41 @@ Voraussetzung: ein separat laufender `cloudflared`-Container (nicht Teil dieses 
 Ebene darüber für alle PWAs gemeinsam) mit einer Public-Hostname-Route von `DOMAIN` auf
 `http://fitnesstracker-caddy:80`. Kein DNS-A-Record, kein offener Port am Router nötig.
 
+## Lokales/LAN-Deployment ohne Cloudflare Tunnel
+
+Für eine Maschine, die nur im eigenen Netz erreichbar sein soll (kein öffentlicher Tunnel, kein
+eigener Domain/DNS-Aufwand): `docker-compose.local.yml` + `Caddyfile.local` statt der
+Prod-Dateien. Caddy published `80`/`443` direkt auf den Host und signiert sich selbst ein
+Zertifikat über die eingebaute lokale CA (`tls internal`), statt TLS bei Cloudflare zu
+terminieren — nötig, weil Service Worker/Offline-Support, Push-Benachrichtigungen und der
+Kamera-Zugriff für Progress-Fotos einen "secure context" brauchen, den reines HTTP nur auf
+`localhost` selbst erfüllt, nicht wenn z. B. ein Handy im selben WLAN über die LAN-IP zugreift.
+
+```bash
+cp .env.example .env   # echte Secrets setzen; DOMAIN kann hier z. B. "localhost" oder ein
+                        # beliebiger Platzhalter sein — Caddy antwortet host-unabhängig
+docker build --target export -f frontend/Dockerfile --output frontend/dist .
+docker compose -f docker-compose.local.yml up -d --build
+```
+
+Aufruf über `https://localhost` (gleiche Maschine) oder `https://<LAN-IP-der-Maschine>` (andere
+Geräte im selben Netz). Der Browser warnt beim ersten Aufruf vor dem selbstsignierten
+Zertifikat — für volle PWA-Funktionalität (Installierbarkeit, Service Worker, Push, Kamera) auf
+einem anderen Gerät (z. B. dem Handy) muss die Caddy-eigene Root-CA dort als vertrauenswürdig
+importiert werden:
+
+```bash
+docker compose -f docker-compose.local.yml cp caddy:/data/caddy/pki/authorities/local/root.crt ./fitnesstracker-local-ca.crt
+# fitnesstracker-local-ca.crt aufs Gerät übertragen und dort als CA-Zertifikat installieren
+# (Android: Einstellungen → Sicherheit → Verschlüsselung & Anmeldedaten → Zertifikat installieren)
+```
+
+**Wichtig für den Android-APK-Weg (PWABuilder):** PWABuilder braucht eine öffentlich über HTTPS
+erreichbare URL mit einer von seinen eigenen Servern aus validierbaren Zertifikatskette — ein
+selbstsigniertes LAN-Zertifikat reicht dafür nicht. Für die APK-Generierung bleibt der
+Cloudflare-Tunnel-Weg (oder eine andere öffentlich erreichbare HTTPS-Domain) nötig; das
+lokale/LAN-Setup eignet sich nur zum direkten Browsen/Nutzen im eigenen Netz.
+
 ## Nützliche Skripte
 
 | Befehl | Beschreibung |
