@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import type { PlanDiaryExerciseDto, ProgressionSuggestion } from "@fitnesstracker/shared";
 import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../../hooks/useTrainingPlan";
 import { useWeeklyPlanStatus } from "../../hooks/usePlanExercises";
-import { useCreateWorkoutLog, useWorkoutLogs } from "../../hooks/useWorkoutLogs";
+import { useCreateWorkoutLog, useDeleteWorkoutLog, useWorkoutLogs } from "../../hooks/useWorkoutLogs";
 import { usePRToastStore } from "../../stores/prToastStore";
+import { useTimerStore } from "../../stores/timerStore";
+import { unlockAudio } from "../../lib/timerSound";
 import { detectPRs, prLabels } from "../../lib/prDetection";
 
 interface DiaryRowProps {
@@ -16,6 +18,18 @@ interface DiaryRowProps {
 interface SetValues {
   reps: string;
   weightKg: string;
+  // clientId of the WorkoutLog written when this set was ticked off, null while still open.
+  clientId: string | null;
+}
+
+// Monday 00:00 UTC of the current week — same boundary planWeekStatus.service.ts uses for
+// "trained this week", so reopening a finished row finds exactly the logs that marked it done.
+function currentWeekStartMs() {
+  const now = new Date();
+  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const daysSinceMonday = day.getUTCDay() === 0 ? 6 : day.getUTCDay() - 1;
+  day.setUTCDate(day.getUTCDate() - daysSinceMonday);
+  return day.getTime();
 }
 
 // Text + color for the progression subtitle under the exercise name — see
@@ -36,15 +50,17 @@ function progressionHint(p: ProgressionSuggestion): { text: string; className: s
     : { text: `= ${p.suggestedReps} Wdh.`, className: "text-ink-500" };
 }
 
-// One row of the plan diary: sets/reps/weight as plain number inputs, "Ende" as a checkbox.
-// Checking it writes one WorkoutLog per set entered (this *is* how the diary counts as a real
-// training-log entry, not just a plan-side checkbox) and locks the row — unchecking is
-// deliberately not supported, so a fumbled tap can't create duplicate sets; mistakes get fixed
-// via the existing edit/delete controls on the log table below, same as any other logged set.
+// One row of the plan diary: sets/reps/weight as plain number inputs. Each set has its own
+// checkbox — ticking it writes that set as a real WorkoutLog right away and starts the rest
+// timer, unticking deletes the log again, so a fumbled tap is reversible. "Übung abschließen"
+// (or ticking the last open set) collapses the row; "Rückgängig" reopens it, and the set count
+// stays editable either way (removing a ticked set deletes its log).
 function DiaryRow({ entry, firstSetInputRef, onDone }: DiaryRowProps) {
   const createLog = useCreateWorkoutLog();
+  const deleteLog = useDeleteWorkoutLog();
   const { data: allLogs } = useWorkoutLogs();
   const showPR = usePRToastStore((s) => s.showPR);
+  const { autoStartEnabled, autoStartSeconds, start: startRestTimer } = useTimerStore();
   const initialReps = entry.progression
     ? String(entry.progression.suggestedReps)
     : entry.targetReps
@@ -53,10 +69,126 @@ function DiaryRow({ entry, firstSetInputRef, onDone }: DiaryRowProps) {
   const initialWeight = entry.progression ? String(entry.progression.suggestedWeightKg) : "";
   const initialSetCount = entry.targetSets ?? 3;
   const [setValues, setSetValues] = useState<SetValues[]>(() =>
-    Array.from({ length: initialSetCount }, () => ({ reps: initialReps, weightKg: initialWeight })),
+    Array.from({ length: initialSetCount }, () => ({
+      reps: initialReps,
+      weightKg: initialWeight,
+      clientId: null,
+    })),
   );
   const [done, setDone] = useState(entry.loggedThisWeek);
   const [error, setError] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const parseSet = (set: SetValues) => ({ reps: Number(set.reps), weightKg: Number(set.weightKg) });
+  const isValid = (set: { reps: number; weightKg: number }) =>
+    Number.isInteger(set.reps) && set.reps > 0 && Number.isFinite(set.weightKg) && set.weightKg >= 0;
+
+  // Writes the given sets as logs (PR check against the baseline captured once up front, so a
+  // batch isn't compared against itself) and returns the new clientIds by set index.
+  const logSets = async (indexes: number[]): Promise<Map<number, string> | null> => {
+    const parsed = indexes.map((index) => parseSet(setValues[index]));
+    if (!parsed.every(isValid)) {
+      setError(true);
+      return null;
+    }
+    setError(false);
+    const performedAt = new Date().toISOString();
+    const prs = detectPRs(
+      allLogs ?? [],
+      entry.exerciseId,
+      parsed.map((set) => ({ ...set, performedAt })),
+    );
+    const ids = new Map<number, string>();
+    for (const [i, index] of indexes.entries()) {
+      const clientId = crypto.randomUUID();
+      await createLog.mutateAsync({
+        input: {
+          clientId,
+          exerciseId: entry.exerciseId,
+          setNumber: index + 1,
+          reps: parsed[i].reps,
+          weightKg: parsed[i].weightKg,
+        },
+        exerciseName: entry.exerciseName,
+      });
+      ids.set(index, clientId);
+    }
+    if (prLabels(prs).length > 0) showPR(entry.exerciseName, prLabels(prs));
+    return ids;
+  };
+
+  const applyIds = (ids: Map<number, string>) =>
+    setSetValues((current) =>
+      current.map((set, index) => (ids.has(index) ? { ...set, clientId: ids.get(index)! } : set)),
+    );
+
+  const finish = () => {
+    setDone(true);
+    onDone();
+  };
+
+  const toggleSet = async (index: number, checked: boolean) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const current = setValues[index];
+      if (checked) {
+        const ids = await logSets([index]);
+        if (!ids) return;
+        applyIds(ids);
+        unlockAudio();
+        if (autoStartEnabled) {
+          startRestTimer(autoStartSeconds, `${entry.exerciseName} · Satz ${index + 1} fertig`);
+        }
+        if (setValues.every((set, i) => i === index || set.clientId !== null)) finish();
+      } else if (current.clientId) {
+        await deleteLog.mutateAsync(current.clientId);
+        setSetValues((values) =>
+          values.map((set, i) => (i === index ? { ...set, clientId: null } : set)),
+        );
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Logs every set that isn't ticked yet in one go (the old one-tap behaviour), then collapses.
+  const handleFinish = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const open = setValues.flatMap((set, index) => (set.clientId === null ? [index] : []));
+      if (open.length > 0) {
+        const ids = await logSets(open);
+        if (!ids) return;
+        applyIds(ids);
+      }
+      finish();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Reopens a finished row. After a reload the local set state knows nothing about what was
+  // logged, so rebuild it from this week's logs for the exercise.
+  const handleUndo = () => {
+    if (!setValues.some((set) => set.clientId !== null)) {
+      const weekStart = currentWeekStartMs();
+      const logged = (allLogs ?? [])
+        .filter((log) => log.exerciseId === entry.exerciseId && Date.parse(log.performedAt) >= weekStart)
+        .sort((a, b) => a.setNumber - b.setNumber || (a.performedAt < b.performedAt ? -1 : 1));
+      if (logged.length > 0) {
+        setSetValues(
+          logged.map((log) => ({
+            reps: String(log.reps),
+            weightKg: String(log.weightKg),
+            clientId: log.clientId,
+          })),
+        );
+      }
+    }
+    setDone(false);
+  };
 
   if (done) {
     return (
@@ -65,74 +197,50 @@ function DiaryRow({ entry, firstSetInputRef, onDone }: DiaryRowProps) {
         <td colSpan={3} className="py-2 text-center text-xs text-ink-600">
           erledigt
         </td>
-        <td className="py-2 text-center text-emerald-400">✓</td>
+        <td className="py-2 text-center">
+          <button
+            onClick={handleUndo}
+            aria-label={`${entry.exerciseName}: Rückgängig`}
+            className="rounded bg-ink-800 px-2 py-1 text-xs text-ink-200 hover:bg-ink-700"
+          >
+            ↩
+          </button>
+        </td>
       </tr>
     );
   }
 
-  const handleCheck = async (checked: boolean) => {
-    if (!checked) return;
-    const parsedSets = setValues.map((set) => ({
-      reps: Number(set.reps),
-      weightKg: Number(set.weightKg),
-    }));
-    if (parsedSets.some((set) =>
-      !Number.isInteger(set.reps) ||
-      set.reps <= 0 ||
-      !Number.isFinite(set.weightKg) ||
-      set.weightKg < 0
-    )) {
-      setError(true);
-      return;
-    }
-    setError(false);
-    // Captured once before the batch — checking all setsNum sets at once against a baseline
-    // that's already absorbed some of them would understate what this batch actually achieved.
-    const performedAt = new Date().toISOString();
-    const prs = detectPRs(
-      allLogs ?? [],
-      entry.exerciseId,
-      parsedSets.map((set) => ({ ...set, performedAt })),
-    );
-    for (const [index, set] of parsedSets.entries()) {
-      await createLog.mutateAsync({
-        input: {
-          clientId: crypto.randomUUID(),
-          exerciseId: entry.exerciseId,
-          setNumber: index + 1,
-          reps: set.reps,
-          weightKg: set.weightKg,
-        },
-        exerciseName: entry.exerciseName,
-      });
-    }
-    if (prLabels(prs).length > 0) {
-      showPR(entry.exerciseName, prLabels(prs));
-    }
-    setDone(true);
-    onDone();
-  };
-
-  const changeSetCount = (rawCount: string) => {
+  const changeSetCount = async (rawCount: string) => {
     const count = Number(rawCount);
-    if (!Number.isInteger(count) || count < 1 || count > 20) return;
+    if (!Number.isInteger(count) || count < 1 || count > 20 || count === setValues.length) return;
+    if (count < setValues.length) {
+      const removed = setValues.slice(count).flatMap((set) => (set.clientId ? [set.clientId] : []));
+      for (const clientId of removed) await deleteLog.mutateAsync(clientId);
+    }
     setSetValues((current) => {
       if (count <= current.length) return current.slice(0, count);
       const template = current.at(-1) ?? { reps: initialReps, weightKg: initialWeight };
-      return [...current, ...Array.from({ length: count - current.length }, () => ({ ...template }))];
+      return [
+        ...current,
+        ...Array.from({ length: count - current.length }, () => ({
+          reps: template.reps,
+          weightKg: template.weightKg,
+          clientId: null,
+        })),
+      ];
     });
   };
 
-  const updateSet = (index: number, field: keyof SetValues, value: string) => {
+  const updateSet = (index: number, field: "reps" | "weightKg", value: string) => {
     setSetValues((current) =>
-      current.map((set, setIndex) => setIndex === index ? { ...set, [field]: value } : set),
+      current.map((set, setIndex) => (setIndex === index ? { ...set, [field]: value } : set)),
     );
   };
 
   return (
     <>
-      <tr className={error ? "" : "border-b border-ink-900"}>
-        <td className="max-w-[88px] py-2 pr-1">
+      <tr className="border-b-0">
+        <td className="max-w-[88px] py-2 pr-1 align-top">
           <p className="truncate text-sm text-ink-100">{entry.exerciseName}</p>
           {entry.progression && (
             <p className={`text-xs ${progressionHint(entry.progression).className}`}>
@@ -140,13 +248,14 @@ function DiaryRow({ entry, firstSetInputRef, onDone }: DiaryRowProps) {
             </p>
           )}
         </td>
-        <td className="py-2 pr-1">
+        <td className="py-2 pr-1 align-top">
           <input
             type="number"
             min={1}
             max={20}
+            aria-label="Anzahl Sätze"
             value={setValues.length}
-            onChange={(e) => changeSetCount(e.target.value)}
+            onChange={(e) => void changeSetCount(e.target.value)}
             className="w-9 rounded border border-ink-700 bg-ink-950 px-1 py-1 text-center text-sm"
           />
         </td>
@@ -182,19 +291,38 @@ function DiaryRow({ entry, firstSetInputRef, onDone }: DiaryRowProps) {
             ))}
           </div>
         </td>
-        <td className="py-2 text-center">
-          <input
-            type="checkbox"
-            disabled={createLog.isPending}
-            onChange={(e) => handleCheck(e.target.checked)}
-            className="h-4 w-4 accent-emerald-500"
-          />
+        <td className="py-2 text-center align-top">
+          <div className="flex flex-col gap-1">
+            {setValues.map((set, index) => (
+              <label key={index} className="flex h-[30px] items-center justify-center">
+                <input
+                  type="checkbox"
+                  aria-label={`Satz ${index + 1}: fertig`}
+                  checked={set.clientId !== null}
+                  disabled={busy}
+                  onChange={(e) => void toggleSet(index, e.target.checked)}
+                  className="h-5 w-5 accent-emerald-500"
+                />
+              </label>
+            ))}
+          </div>
+        </td>
+      </tr>
+      <tr className={error ? "" : "border-b border-ink-900"}>
+        <td colSpan={5} className="pb-2 text-right">
+          <button
+            onClick={() => void handleFinish()}
+            disabled={busy}
+            className="rounded bg-ink-800 px-2 py-1 text-xs text-ink-200 hover:bg-ink-700 disabled:opacity-50"
+          >
+            Übung abschließen
+          </button>
         </td>
       </tr>
       {error && (
         <tr className="border-b border-ink-900">
           <td colSpan={5} className="pb-2 text-xs text-red-400">
-            Sätze/Wdh./kg ausfüllen
+            Wdh./kg ausfüllen
           </td>
         </tr>
       )}
@@ -278,7 +406,7 @@ export function CurrentPlanCard() {
                 <th className="pb-1 pr-1 font-medium">Sätze</th>
                 <th className="pb-1 pr-1 font-medium">Wdh.</th>
                 <th className="pb-1 pr-1 font-medium">kg</th>
-                <th className="pb-1 font-medium">Ende</th>
+                <th className="pb-1 font-medium">Fertig</th>
               </tr>
             </thead>
             <tbody>

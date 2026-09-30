@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTimerStore } from "../../stores/timerStore";
 import { unlockAudio } from "../../lib/timerSound";
+import { TimerSettingsForm } from "../settings/TimerSettingsForm";
 
 const PRESETS_SECONDS = [30, 60, 90, 120];
-const VIBRATION_SUPPORTED = typeof navigator !== "undefined" && "vibrate" in navigator;
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -20,13 +20,7 @@ export function RestTimerWidget() {
     pause,
     resume,
     reset,
-    autoStartEnabled,
-    autoStartSeconds,
-    setAutoStart,
-    soundEnabled,
-    vibrationEnabled,
-    setSoundEnabled,
-    setVibrationEnabled,
+    label,
     syncFromClock,
   } = useTimerStore();
   const [expanded, setExpanded] = useState(false);
@@ -77,7 +71,7 @@ export function RestTimerWidget() {
 
   if (idle && expanded) {
     return (
-      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-30 w-64 rounded-xl border border-ink-800 bg-ink-900 p-3 shadow-lg">
+      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-30 w-72 rounded-xl border border-ink-800 bg-ink-900 p-3 shadow-lg">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-sm font-medium text-ink-200">Pausen-Timer</p>
           <button
@@ -115,85 +109,67 @@ export function RestTimerWidget() {
           </button>
         </div>
 
-        <label className="mt-3 flex items-center justify-between border-t border-ink-800 pt-3 text-sm text-ink-300">
-          <span>Automatisch nach jedem Satz starten</span>
-          <input
-            type="checkbox"
-            checked={autoStartEnabled}
-            onChange={(event) => setAutoStart(event.target.checked)}
-            className="h-4 w-4 accent-violet-500"
-          />
-        </label>
-        {autoStartEnabled && (
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-xs text-ink-500">Dauer</span>
-            <input
-              type="number"
-              min={1}
-              value={autoStartSeconds}
-              onChange={(event) => setAutoStart(true, Number(event.target.value))}
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1 text-sm"
-            />
-            <span className="text-xs text-ink-500">s</span>
-          </div>
-        )}
-
-        <label className="mt-3 flex items-center justify-between border-t border-ink-800 pt-3 text-sm text-ink-300">
-          <span>Sound bei Timer-Ende</span>
-          <input
-            type="checkbox"
-            checked={soundEnabled}
-            onChange={(event) => setSoundEnabled(event.target.checked)}
-            className="h-4 w-4 accent-violet-500"
-          />
-        </label>
-        {VIBRATION_SUPPORTED && (
-          <label className="mt-2 flex items-center justify-between text-sm text-ink-300">
-            <span>Vibration bei Timer-Ende</span>
-            <input
-              type="checkbox"
-              checked={vibrationEnabled}
-              onChange={(event) => setVibrationEnabled(event.target.checked)}
-              className="h-4 w-4 accent-violet-500"
-            />
-          </label>
-        )}
+        <div className="mt-3 max-h-[50vh] overflow-y-auto border-t border-ink-800 pt-3">
+          <TimerSettingsForm />
+        </div>
       </div>
     );
   }
 
+  const progress = totalSeconds > 0 ? Math.min(1, 1 - remainingSeconds / totalSeconds) : 0;
+
   return (
-    <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-30 flex items-center gap-2 rounded-full border border-ink-800 bg-ink-900 py-2 pl-4 pr-2 shadow-lg">
-      <span
-        className={`font-mono text-lg tabular-nums ${finished ? "text-emerald-400" : "text-ink-100"}`}
-      >
-        {formatTime(remainingSeconds)}
-      </span>
-      {finished ? (
-        <button
-          onClick={reset}
-          className="rounded-full bg-ink-800 px-3 py-1.5 text-sm text-ink-200 hover:bg-ink-700"
-        >
-          Fertig
-        </button>
-      ) : (
-        <>
-          <button
-            onClick={isRunning ? pause : handleResume}
-            aria-label={isRunning ? "Pausieren" : "Fortsetzen"}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-ink-800 text-ink-200 hover:bg-ink-700"
+    <div
+      role="timer"
+      className={`fixed inset-x-0 bottom-0 z-40 border-t-2 bg-ink-900 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(0,0,0,0.5)] ${
+        finished ? "animate-pulse border-emerald-400" : "border-violet-500"
+      }`}
+    >
+      <div className="h-1.5 w-full bg-ink-800">
+        <div
+          className={`h-full transition-all duration-1000 ease-linear ${finished ? "bg-emerald-400" : "bg-violet-500"}`}
+          style={{ width: `${finished ? 100 : progress * 100}%` }}
+        />
+      </div>
+      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
+        <div className="min-w-0">
+          <p className="truncate text-xs uppercase tracking-wide text-ink-400">
+            {finished ? "Pause vorbei – nächster Satz!" : (label ?? "Satzpause")}
+          </p>
+          <p
+            className={`font-mono text-5xl font-bold leading-none tabular-nums ${
+              finished ? "text-emerald-400" : "text-ink-50"
+            }`}
           >
-            {isRunning ? "⏸" : "▶"}
-          </button>
+            {formatTime(remainingSeconds)}
+          </p>
+        </div>
+        {finished ? (
           <button
             onClick={reset}
-            aria-label="Zurücksetzen"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-ink-800 text-ink-200 hover:bg-ink-700"
+            className="rounded-full bg-emerald-500 px-6 py-3 text-base font-semibold text-ink-950 hover:bg-emerald-400"
           >
-            ✕
+            Weiter
           </button>
-        </>
-      )}
+        ) : (
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              onClick={isRunning ? pause : handleResume}
+              aria-label={isRunning ? "Pausieren" : "Fortsetzen"}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-500 text-xl text-ink-950 hover:bg-violet-400"
+            >
+              {isRunning ? "⏸" : "▶"}
+            </button>
+            <button
+              onClick={reset}
+              aria-label="Überspringen"
+              className="flex h-12 items-center justify-center rounded-full bg-ink-800 px-4 text-sm text-ink-200 hover:bg-ink-700"
+            >
+              Skip
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
