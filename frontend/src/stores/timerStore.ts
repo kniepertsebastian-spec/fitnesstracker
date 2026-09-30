@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { playTimerEndSound } from "../lib/timerSound";
+import { playTimerEndSound, type TimerSoundId } from "../lib/timerSound";
 
 const DEFAULT_AUTO_START_SECONDS = 90;
 
@@ -21,7 +21,19 @@ interface TimerState {
   autoStartSeconds: number;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
-  start: (seconds: number) => void;
+  soundId: TimerSoundId;
+  soundVolume: number;
+  soundRepeat: number;
+  customSoundDataUrl: string | null;
+  customSoundName: string | null;
+  // Label of what the running timer is for (e.g. "Bankdrücken · Satz 2 fertig"), shown in the banner.
+  label: string | null;
+  start: (seconds: number, label?: string) => void;
+  setSoundId: (id: TimerSoundId) => void;
+  setSoundVolume: (volume: number) => void;
+  setSoundRepeat: (repeat: number) => void;
+  setCustomSound: (dataUrl: string | null, name: string | null) => void;
+  testSound: () => void;
   pause: () => void;
   resume: () => void;
   reset: () => void;
@@ -46,6 +58,11 @@ function clearTick() {
 export const useTimerStore = create<TimerState>()(
   persist(
     (set, get) => {
+      function soundOptions() {
+        const { soundId, soundVolume, soundRepeat, customSoundDataUrl } = get();
+        return { soundId, volume: soundVolume, repeat: soundRepeat, customSoundDataUrl };
+      }
+
       function syncFromClock() {
         const { isRunning, endsAt, soundEnabled, vibrationEnabled } = get();
         if (!isRunning || endsAt === null) return;
@@ -53,7 +70,7 @@ export const useTimerStore = create<TimerState>()(
         if (remaining <= 0) {
           clearTick();
           set({ remainingSeconds: 0, isRunning: false, endsAt: null });
-          if (soundEnabled) playTimerEndSound();
+          if (soundEnabled) playTimerEndSound(soundOptions());
           if (vibrationEnabled) navigator.vibrate?.([200, 100, 200]);
         } else {
           set({ remainingSeconds: remaining });
@@ -70,13 +87,20 @@ export const useTimerStore = create<TimerState>()(
         totalSeconds: 0,
         isRunning: false,
         endsAt: null,
-        autoStartEnabled: false,
+        autoStartEnabled: true,
         autoStartSeconds: DEFAULT_AUTO_START_SECONDS,
         soundEnabled: true,
         vibrationEnabled: true,
+        soundId: "mp3" as TimerSoundId,
+        soundVolume: 1,
+        soundRepeat: 1,
+        customSoundDataUrl: null,
+        customSoundName: null,
+        label: null,
 
-        start: (seconds) => {
+        start: (seconds, label) => {
           set({
+            label: label ?? null,
             totalSeconds: seconds,
             remainingSeconds: seconds,
             isRunning: true,
@@ -99,7 +123,7 @@ export const useTimerStore = create<TimerState>()(
 
         reset: () => {
           clearTick();
-          set({ remainingSeconds: 0, totalSeconds: 0, isRunning: false, endsAt: null });
+          set({ remainingSeconds: 0, totalSeconds: 0, isRunning: false, endsAt: null, label: null });
         },
 
         setAutoStart: (enabled, seconds) => {
@@ -114,6 +138,13 @@ export const useTimerStore = create<TimerState>()(
         setSoundEnabled: (enabled) => set({ soundEnabled: enabled }),
         setVibrationEnabled: (enabled) => set({ vibrationEnabled: enabled }),
 
+        setSoundId: (soundId) => set({ soundId }),
+        setSoundVolume: (soundVolume) => set({ soundVolume: Math.min(1, Math.max(0, soundVolume)) }),
+        setSoundRepeat: (soundRepeat) => set({ soundRepeat: Math.min(5, Math.max(1, Math.round(soundRepeat))) }),
+        setCustomSound: (customSoundDataUrl, customSoundName) =>
+          set({ customSoundDataUrl, customSoundName, ...(customSoundDataUrl ? { soundId: "custom" as TimerSoundId } : {}) }),
+        testSound: () => playTimerEndSound(soundOptions()),
+
         syncFromClock,
       };
     },
@@ -126,6 +157,11 @@ export const useTimerStore = create<TimerState>()(
         autoStartSeconds: state.autoStartSeconds,
         soundEnabled: state.soundEnabled,
         vibrationEnabled: state.vibrationEnabled,
+        soundId: state.soundId,
+        soundVolume: state.soundVolume,
+        soundRepeat: state.soundRepeat,
+        customSoundDataUrl: state.customSoundDataUrl,
+        customSoundName: state.customSoundName,
       }),
     },
   ),
