@@ -5,6 +5,7 @@ import { AppShell } from "../components/layout/AppShell";
 import { AiPlanGeneratorCard } from "../components/trainingPlan/AiPlanGeneratorCard";
 import { PlanExportImportCard } from "../components/trainingPlan/PlanExportImportCard";
 import { PhaseTabs } from "../components/trainingPlan/PhaseTabs";
+import { FormAnalysisCard } from "../components/trainingPlan/FormAnalysisCard";
 import { useTrainingPlan } from "../hooks/useTrainingPlan";
 
 // Split out of TrainingPlanPage (/plan) — that page had grown overloaded with the manual
@@ -38,6 +39,8 @@ export function PlanGenerateExportPage() {
         <div className="flex flex-col gap-4">
           {selectedPhase && <PhaseTabs selected={selectedPhase} onSelect={setSelectedPhase} />}
           {selectedPhase && <AiPlanGeneratorCard phase={selectedPhase} />}
+
+          <FormAnalysisCard />
 
           <PlanExportImportCard />
         </div>

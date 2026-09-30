@@ -5,12 +5,25 @@ import { sendNotificationToUser } from "../push/push.service.js";
 const ITEMS_PER_DAY = 3;
 export const MAX_ROTATIONS = 2;
 
-// "body only" is the exact equipment tag the free-exercise-db import uses for no-equipment
-// exercises (see ARCHITECTURE.md); "stretching" is excluded because hold/duration-based moves
-// don't fit a rep counter. Even so, some "body only"-tagged entries still assume a bench or a
-// pull-up bar — this keyword filter is a best-effort cleanup on top of the equipment tag, not a
-// guarantee every result needs literally zero surface or fixture.
-const EXCLUDE_KEYWORDS = ["bench", "hanging", "wall", "chair", "box", "step", "dip"];
+// "body only" is the exact equipment tag used by free-exercise-db. Some entries with that tag
+// still require a fixture, partner or raised surface, so the name filter is deliberately strict:
+// a Daily Challenge must be doable anywhere with only floor space.
+const EXCLUDE_KEYWORDS = [
+  "bench", "hanging", "wall", "chair", "box", "step", "dip", "pull-up", "pull up",
+  "bar", "door", "stair", "partner", "table", "pole", "rope", "sled", "machine",
+  "bank", "stuhl", "wand", "kiste", "tür", "treppe", "tisch", "stange", "seil",
+  "schlitten", "maschine", "klimmzug", "barren",
+];
+
+export function isPortableBodyweightExercise(exercise: {
+  equipment: string | null;
+  name: string;
+  nameDe?: string | null;
+}): boolean {
+  if (exercise.equipment !== "body only") return false;
+  const searchableName = `${exercise.name} ${exercise.nameDe ?? ""}`.toLowerCase();
+  return !EXCLUDE_KEYWORDS.some((keyword) => searchableName.includes(keyword));
+}
 
 function todayUtcDate(): Date {
   const now = new Date();
@@ -41,15 +54,16 @@ async function pickBodyweightExerciseIds(
   excludeIds: string[],
 ): Promise<string[]> {
   const candidates = await prisma.exercise.findMany({
-    where: { equipment: "body only", category: { in: ["strength", "plyometrics"] }, id: { notIn: excludeIds } },
-    select: { id: true, name: true },
+    where: {
+      isActive: true,
+      equipment: "body only",
+      category: { in: ["strength", "plyometrics"] },
+      id: { notIn: excludeIds },
+    },
+    select: { id: true, name: true, nameDe: true, equipment: true },
   });
-  const filtered = candidates.filter(
-    (ex) => !EXCLUDE_KEYWORDS.some((kw) => ex.name.toLowerCase().includes(kw)),
-  );
-  const pool = filtered.length >= count ? filtered : candidates;
 
-  return shuffle(pool)
+  return shuffle(candidates.filter(isPortableBodyweightExercise))
     .slice(0, count)
     .map((ex) => ex.id);
 }
@@ -57,6 +71,8 @@ async function pickBodyweightExerciseIds(
 interface PlanExerciseInfo {
   exerciseId: string;
   equipment: string | null;
+  name: string;
+  nameDe: string | null;
   targetReps: number | null;
 }
 
@@ -70,11 +86,15 @@ async function loadCurrentPlanExercises(prisma: PrismaClient, userId: string): P
     where: { userId, phase: plan.currentPhase },
     include: { exercise: true },
   });
-  return entries.map((entry) => ({
-    exerciseId: entry.exerciseId,
-    equipment: entry.exercise.equipment,
-    targetReps: entry.targetReps,
-  }));
+  return entries
+    .map((entry) => ({
+      exerciseId: entry.exerciseId,
+      equipment: entry.exercise.equipment,
+      name: entry.exercise.name,
+      nameDe: entry.exercise.nameDe,
+      targetReps: entry.targetReps,
+    }))
+    .filter(isPortableBodyweightExercise);
 }
 
 export interface RecentPerformance {
@@ -132,9 +152,8 @@ export function computeTargetReps(
 }
 
 // Picks one exercise + a target rep count for `category`, preferring an exercise from the user's
-// current plan phase (TECHNIQUE/RECOVERY prefer a bodyweight one among those if available) and
-// falling back to the generic bodyweight pool otherwise. Returns null only if no exercise at all
-// could be found (empty catalog).
+// current plan phase when it contains a truly portable bodyweight movement, and falling back to
+// the strict no-equipment pool otherwise. Every category follows the same portability rule.
 async function buildChallengeCandidate(
   prisma: PrismaClient,
   userId: string,
@@ -142,12 +161,7 @@ async function buildChallengeCandidate(
   planExercises: PlanExerciseInfo[],
   excludeIds: string[],
 ): Promise<{ exerciseId: string; targetReps: number } | null> {
-  const wantsBodyweight = category === "TECHNIQUE" || category === "RECOVERY";
-  let candidates = planExercises.filter((p) => !excludeIds.includes(p.exerciseId));
-  if (wantsBodyweight) {
-    const bodyweightCandidates = candidates.filter((p) => p.equipment === "body only");
-    if (bodyweightCandidates.length > 0) candidates = bodyweightCandidates;
-  }
+  const candidates = planExercises.filter((p) => !excludeIds.includes(p.exerciseId));
 
   const picked = candidates.length > 0 ? shuffle(candidates)[0] : undefined;
 
@@ -196,7 +210,12 @@ export async function getOrCreateTodayChallenge(prisma: PrismaClient, userId: st
     where: { userId, date },
     ...withExercise,
   });
-  if (existing.length > 0) return existing;
+  if (existing.length > 0) {
+    if (existing.every((item) => isPortableBodyweightExercise(item.exercise))) return existing;
+    // Challenges are generated lazily. If an older deployment already selected an unsuitable
+    // exercise for today, replace the whole set once instead of continuing to serve it.
+    await prisma.dailyChallengeItem.deleteMany({ where: { userId, date } });
+  }
 
   const [planExercises, daysTrained] = await Promise.all([
     loadCurrentPlanExercises(prisma, userId),

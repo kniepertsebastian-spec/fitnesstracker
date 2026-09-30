@@ -4,7 +4,9 @@ import {
   pauseTrainingPlanRequest,
   restartPhaseRequest,
   resumeTrainingPlanRequest,
+  updateTrainingPlanRemarksRequest,
 } from "../api/trainingPlan.api";
+import type { UpdateTrainingPlanRemarksInput } from "@fitnesstracker/shared";
 
 export { TRAINING_PHASE_LABELS } from "@fitnesstracker/shared";
 
@@ -35,4 +37,12 @@ export function useResumeTrainingPlan() {
 
 export function useRestartPhase() {
   return useTrainingPlanAction(restartPhaseRequest);
+}
+
+export function useUpdateTrainingPlanRemarks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateTrainingPlanRemarksInput) => updateTrainingPlanRemarksRequest(input),
+    onSuccess: (plan) => queryClient.setQueryData(TRAINING_PLAN_KEY, plan),
+  });
 }

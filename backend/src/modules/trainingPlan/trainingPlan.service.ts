@@ -1,6 +1,7 @@
 import type { PrismaClient, TrainingPlan, TrainingPlanPhaseHistory } from "@prisma/client";
 import { TRAINING_PHASE_LABELS, TRAINING_PHASE_ROTATION } from "@fitnesstracker/shared";
 import { sendNotificationToUser } from "../push/push.service.js";
+import { refreshDetectedAsymmetries } from "./trainingAsymmetry.service.js";
 
 const ROTATION_WEEKS = 8;
 
@@ -91,12 +92,25 @@ export async function rotatePhaseIfDue(
 // background scheduler hasn't ticked since the last due rotation.
 export async function getCurrentTrainingPlan(prisma: PrismaClient, userId: string) {
   const plan = await getOrCreateTrainingPlan(prisma, userId);
-  const { plan: current, nextRotationOn } = await rotatePhaseIfDue(prisma, plan);
+  const { plan: rotatedPlan, nextRotationOn } = await rotatePhaseIfDue(prisma, plan);
+  const current = (await refreshDetectedAsymmetries(prisma, userId)) ?? rotatedPlan;
   const history = await prisma.trainingPlanPhaseHistory.findMany({
     where: { trainingPlanId: current.id },
     orderBy: { startedOn: "desc" },
   });
   return { plan: current, nextRotationOn, history };
+}
+
+export async function updateTrainingPlanRemarks(
+  prisma: PrismaClient,
+  userId: string,
+  remarks: string | null,
+) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  return prisma.trainingPlan.update({
+    where: { id: plan.id },
+    data: { remarks: remarks?.trim() || null },
+  });
 }
 
 // Scheduler tick: rotates every plan with an overdue phase. Cheap to call often — plans that

@@ -11,6 +11,9 @@ export function toTrainingPlanDto(
     phaseStartedOn: plan.phaseStartedOn.toISOString(),
     nextRotationOn: nextRotationOn ? nextRotationOn.toISOString() : null,
     pausedAt: plan.pausedAt ? plan.pausedAt.toISOString() : null,
+    remarks: plan.remarks,
+    detectedAsymmetries: plan.detectedAsymmetries,
+    asymmetryAnalyzedAt: plan.asymmetryAnalyzedAt ? plan.asymmetryAnalyzedAt.toISOString() : null,
     history: history.map((entry) => ({
       id: entry.id,
       phase: entry.phase,

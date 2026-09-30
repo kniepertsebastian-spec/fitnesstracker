@@ -18,6 +18,14 @@ export const trainingPlanDtoSchema = z.object({
   // while the clock isn't advancing.
   nextRotationOn: z.string().nullable(),
   pausedAt: z.string().nullable(),
+  remarks: z.string().nullable(),
+  detectedAsymmetries: z.array(z.string()),
+  asymmetryAnalyzedAt: z.string().nullable(),
   history: z.array(trainingPlanPhaseHistoryDtoSchema),
 });
 export type TrainingPlanDto = z.infer<typeof trainingPlanDtoSchema>;
+
+export const updateTrainingPlanRemarksSchema = z.object({
+  remarks: z.string().trim().max(2000).nullable(),
+});
+export type UpdateTrainingPlanRemarksInput = z.infer<typeof updateTrainingPlanRemarksSchema>;
