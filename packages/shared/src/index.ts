@@ -15,3 +15,4 @@ export * from "./schemas/aiPlanGenerator.schema.js";
 export * from "./schemas/cardioLog.schema.js";
 export * from "./schemas/workoutSession.schema.js";
 export * from "./schemas/formAnalysis.schema.js";
+export * from "./schemas/stretching.schema.js";

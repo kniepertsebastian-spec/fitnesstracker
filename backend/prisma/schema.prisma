@@ -115,6 +115,7 @@ model User {
   aiProviderSetting      AiProviderSetting?
   cardioLogs             CardioLog[]
   workoutSessions        WorkoutSession[]
+  stretchPlanItems       StretchPlanItem[]
 }
 
 // One active BYOK provider config per user — "flexible Auswahl und Hinterlegung eines API-Keys"
@@ -181,6 +182,7 @@ model Exercise {
   goals               Goal[]
   dailyChallengeItems DailyChallengeItem[]
   planExercises       PlanExercise[]
+  stretchPlanItems    StretchPlanItem[]
 
   @@unique([source, sourceId])
   @@index([name])
@@ -437,4 +439,25 @@ model WorkoutSession {
   updatedAt DateTime             @updatedAt
 
   @@index([userId, status])
+}
+
+// AI-generated stretch routine for one training day of a phase. Same keying as PlanExercise
+// (phase + dayLabel, not a rotation instance). `dayLabel` is "" for a single-day plan instead of
+// NULL so the unique index below can actually prevent duplicates (Postgres treats NULLs as
+// distinct). Days without saved rows fall back to the deterministic muscle mapping at read time.
+model StretchPlanItem {
+  id          String        @id @default(uuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phase       TrainingPhase
+  dayLabel    String        @default("")
+  exerciseId  String
+  exercise    Exercise      @relation(fields: [exerciseId], references: [id])
+  holdSeconds Int           @default(30)
+  sets        Int           @default(1)
+  order       Int           @default(0)
+  createdAt   DateTime      @default(now())
+
+  @@unique([userId, phase, dayLabel, exerciseId])
+  @@index([userId, phase, order])
 }

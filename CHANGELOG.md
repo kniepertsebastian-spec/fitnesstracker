@@ -7,6 +7,10 @@ fortgeführt.
 
 Format: `- **Titel** — was sich geändert hat und warum, falls nicht offensichtlich. Verifiziert: wie.`
 
+## 2026-10-05
+
+- **Dehnroutine (neues Menü „Dehnen“)** — Dehnübungen kommen aus dem bereits importierten Katalog (free-exercise-db, Kategorie „stretching“). Je Trainingstag der Phase wird automatisch ein Dehnplan aus den trainierten Muskeln gebildet (Brust-Tag → Brust-Dehnungen usw.); optional erstellt die KI (BYOK) den Plan und speichert ihn (`StretchPlanItem`). Dazu eine tägliche Dehnroutine mit Wunschfokus (z. B. Schultern) auf dem Dashboard unter der Tages-Challenge. Verifiziert: Typecheck, Lint, Unit-Tests der Auswahllogik.
+
 ## 2026-08-29
 
 - **Workout-Flow optimiert (additionals P1.1)** — Der "+ Satz"-Dialog zeigt jetzt die letzte Leistung der gewählten Übung an und füllt Wdh./Gewicht/Satznummer damit vor; Wdh./kg haben große +/- Stepper statt reiner Tastatureingabe; nach dem Speichern bleibt der Dialog offen (Satznummer hochgezählt, Werte übernommen) statt sich zu schließen, für schnelles Loggen mehrerer Sätze hintereinander. Löschen einzelner Sätze gab es schon. Verifiziert: Playwright End-to-End (Vorbefüllung, Stepper, Mehrfach-Speichern, Aufräumen), kein Overflow bei 375px.
