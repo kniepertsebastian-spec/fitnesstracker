@@ -30,6 +30,7 @@ import aiPlanGeneratorRoutes from "./modules/aiPlanGenerator/aiPlanGenerator.rou
 import cardioLogRoutes from "./modules/cardioLogs/cardioLog.routes.js";
 import workoutSessionRoutes from "./modules/workoutSessions/workoutSession.routes.js";
 import dataExportRoutes from "./modules/dataExport/dataExport.routes.js";
+import stretchingRoutes from "./modules/stretching/stretching.routes.js";
 import formAnalysisRoutes from "./modules/formAnalysis/formAnalysis.routes.js";
 
 export function buildApp() {
@@ -77,6 +78,7 @@ export function buildApp() {
   app.register(workoutSessionRoutes, { prefix: "/api" });
   app.register(dataExportRoutes, { prefix: "/api" });
   app.register(formAnalysisRoutes, { prefix: "/api" });
+  app.register(stretchingRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {
     if (error instanceof ZodError) {

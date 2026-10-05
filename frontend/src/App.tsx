@@ -8,6 +8,7 @@ import { ExerciseLibraryPage } from "./routes/ExerciseLibraryPage";
 import { ExerciseDetailPage } from "./routes/ExerciseDetailPage";
 import { TrainingPlanPage } from "./routes/TrainingPlanPage";
 import { PlanGenerateExportPage } from "./routes/PlanGenerateExportPage";
+import { StretchingPage } from "./routes/StretchingPage";
 import { GoalsPage } from "./routes/GoalsPage";
 import { NutritionPage } from "./routes/NutritionPage";
 import { ProgressPage } from "./routes/ProgressPage";
@@ -72,6 +73,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <PlanGenerateExportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stretching"
+          element={
+            <ProtectedRoute>
+              <StretchingPage />
             </ProtectedRoute>
           }
         />

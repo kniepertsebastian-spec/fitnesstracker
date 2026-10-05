@@ -3,6 +3,7 @@ import type { LocalWorkoutLog } from "../offline/db";
 import { AppShell } from "../components/layout/AppShell";
 import { WorkoutLogTable } from "../components/workoutLog/WorkoutLogTable";
 import { WorkoutLogFormDialog } from "../components/workoutLog/WorkoutLogFormDialog";
+import { DailyStretchCard } from "../components/stretching/DailyStretchCard";
 import { DailyChallengeCard } from "../components/workoutLog/DailyChallengeCard";
 import { CurrentPlanCard } from "../components/workoutLog/CurrentPlanCard";
 import { CardioLogCard } from "../components/workoutLog/CardioLogCard";
@@ -57,6 +58,7 @@ export function WorkoutLogPage() {
 
       <div className="mb-4 flex flex-col gap-4">
         <DailyChallengeCard />
+        <DailyStretchCard />
         <CurrentPlanCard />
         <CardioLogCard />
         <GoalsProgressCard />
