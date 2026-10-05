@@ -193,7 +193,11 @@ function DiaryRow({ entry, firstSetInputRef, onDone }: DiaryRowProps) {
   if (done) {
     return (
       <tr className="border-b border-ink-900">
-        <td className="py-2 pr-2 text-ink-500 line-through decoration-ink-700">{entry.exerciseName}</td>
+        <td className="py-2 pr-2 text-ink-500 line-through decoration-ink-700">
+          <Link to={`/exercises/${entry.exerciseId}`} className="hover:underline">
+            {entry.exerciseName}
+          </Link>
+        </td>
         <td colSpan={3} className="py-2 text-center text-xs text-ink-600">
           erledigt
         </td>
@@ -241,7 +245,12 @@ function DiaryRow({ entry, firstSetInputRef, onDone }: DiaryRowProps) {
     <>
       <tr className="border-b-0">
         <td className="max-w-[88px] py-2 pr-1 align-top">
-          <p className="truncate text-sm text-ink-100">{entry.exerciseName}</p>
+          <Link
+            to={`/exercises/${entry.exerciseId}`}
+            className="block truncate text-sm text-ink-100 underline decoration-ink-700 underline-offset-2 hover:text-violet-400"
+          >
+            {entry.exerciseName}
+          </Link>
           {entry.progression && (
             <p className={`text-xs ${progressionHint(entry.progression).className}`}>
               {progressionHint(entry.progression).text}
