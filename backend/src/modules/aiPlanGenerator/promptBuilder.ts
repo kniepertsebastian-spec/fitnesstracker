@@ -1,4 +1,5 @@
 import type { PrismaClient, TrainingPhase } from "@prisma/client";
+import { isExcluded, type ExerciseExclusions } from "./injuryFilter.js";
 
 export interface ColdStartInput {
   frequencyPerWeek: number;
@@ -124,18 +125,22 @@ export async function selectCatalogSubset(
   prisma: PrismaClient,
   userId: string,
   coldStart: ColdStartInput | null,
+  exclusions: ExerciseExclusions = { muscles: [], nameKeywords: [] },
 ): Promise<CatalogEntry[]> {
+  const allowed = <T extends { name: string; nameDe: string | null; primaryMuscles: string[] }>(rows: T[]) =>
+    rows.filter((row) => !isExcluded(row, exclusions));
   if (coldStart) {
     const equipmentTags = EQUIPMENT_TAGS_BY_CHOICE[coldStart.equipment];
     const exercises = await prisma.exercise.findMany({
       where: {
         category: { in: GENERATOR_CATEGORIES },
+        isActive: true,
         ...(equipmentTags.length > 0 ? { equipment: { in: equipmentTags } } : {}),
       },
       select: CATALOG_SELECT,
-      take: MAX_CATALOG_ENTRIES,
     });
-    return exercises.map(toCatalogEntry);
+    // Filtered before the cap (not via `take`), so excluded exercises don't eat catalog slots.
+    return allowed(exercises).slice(0, MAX_CATALOG_ENTRIES).map(toCatalogEntry);
   }
 
   const logged = await prisma.workoutLog.groupBy({
@@ -154,19 +159,20 @@ export async function selectCatalogSubset(
   // Preserve the frequency-descending order from `loggedIds` — `findMany({ where: { in } })`
   // doesn't guarantee result order matches the id list.
   const loggedById = new Map(loggedExercises.map((e) => [e.id, e]));
-  const orderedLogged = loggedIds.map((id) => loggedById.get(id)).filter((e) => e !== undefined);
+  const orderedLogged = allowed(
+    loggedIds.map((id) => loggedById.get(id)).filter((e) => e !== undefined),
+  );
 
   const remaining = MAX_CATALOG_ENTRIES - orderedLogged.length;
   const fillerExercises =
     remaining > 0
       ? await prisma.exercise.findMany({
-          where: { id: { notIn: loggedIds }, category: { in: GENERATOR_CATEGORIES } },
+          where: { id: { notIn: loggedIds }, category: { in: GENERATOR_CATEGORIES }, isActive: true },
           select: CATALOG_SELECT,
-          take: remaining,
         })
       : [];
 
-  return [...orderedLogged, ...fillerExercises].map(toCatalogEntry);
+  return [...orderedLogged, ...allowed(fillerExercises).slice(0, Math.max(remaining, 0))].map(toCatalogEntry);
 }
 
 const EIGHT_WEEKS_MS = 8 * 7 * 24 * 60 * 60 * 1000;
@@ -218,6 +224,19 @@ export async function buildPlanRemarksContext(prisma: PrismaClient, userId: stri
   return lines.length > 0
     ? `\nDiese Hinweise müssen bei der Übungsauswahl und Trainingsverteilung berücksichtigt werden:\n${lines.join("\n")}`
     : "";
+}
+
+// Free text that can name an injury: the standing remarks on the plan (also the only place a
+// warm-start user — who skips the cold-start questionnaire — can state one).
+export async function loadLimitationTexts(
+  prisma: PrismaClient,
+  userId: string,
+  coldStart: ColdStartInput | null,
+): Promise<string[]> {
+  const plan = await prisma.trainingPlan.findUnique({ where: { userId }, select: { remarks: true } });
+  return [plan?.remarks, coldStart?.limitations, coldStart?.avoidedExercises].filter(
+    (t): t is string => !!t,
+  );
 }
 
 const EQUIPMENT_LABELS: Record<ColdStartInput["equipment"], string> = {
