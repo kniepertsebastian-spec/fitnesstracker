@@ -193,7 +193,11 @@ function DiaryRow({ entry, firstSetInputRef, onDone }: DiaryRowProps) {
   if (done) {
     return (
       <tr className="border-b border-ink-900">
-        <td className="py-2 pr-2 text-ink-500 line-through decoration-ink-700">{entry.exerciseName}</td>
+        <td className="py-2 pr-2 text-ink-500 line-through decoration-ink-700">
+          <Link to={`/exercises/${entry.exerciseId}`} className="hover:underline">
+            {entry.exerciseName}
+          </Link>
+        </td>
         <td colSpan={3} className="py-2 text-center text-xs text-ink-600">
           erledigt
         </td>
@@ -210,12 +214,23 @@ function DiaryRow({ entry, firstSetInputRef, onDone }: DiaryRowProps) {
     );
   }
 
-  const changeSetCount = async (rawCount: string) => {
-    const count = Number(rawCount);
-    if (!Number.isInteger(count) || count < 1 || count > 20 || count === setValues.length) return;
+  const changeSetCount = async (count: number) => {
+    if (busy || !Number.isInteger(count) || count < 1 || count > 20 || count === setValues.length) return;
     if (count < setValues.length) {
-      const removed = setValues.slice(count).flatMap((set) => (set.clientId ? [set.clientId] : []));
-      for (const clientId of removed) await deleteLog.mutateAsync(clientId);
+      setBusy(true);
+      try {
+        const removed = setValues.slice(count).flatMap((set) => (set.clientId ? [set.clientId] : []));
+        for (const clientId of removed) await deleteLog.mutateAsync(clientId);
+      } finally {
+        setBusy(false);
+      }
+      // Only 3 of 4 sets done: dropping the 4th leaves nothing open, so the exercise is complete
+      // — no need to fill in dummy values for a set that never happened.
+      if (setValues.slice(0, count).every((set) => set.clientId !== null)) {
+        setSetValues((current) => current.slice(0, count));
+        finish();
+        return;
+      }
     }
     setSetValues((current) => {
       if (count <= current.length) return current.slice(0, count);
@@ -241,7 +256,12 @@ function DiaryRow({ entry, firstSetInputRef, onDone }: DiaryRowProps) {
     <>
       <tr className="border-b-0">
         <td className="max-w-[88px] py-2 pr-1 align-top">
-          <p className="truncate text-sm text-ink-100">{entry.exerciseName}</p>
+          <Link
+            to={`/exercises/${entry.exerciseId}`}
+            className="block truncate text-sm text-ink-100 underline decoration-ink-700 underline-offset-2 hover:text-violet-400"
+          >
+            {entry.exerciseName}
+          </Link>
           {entry.progression && (
             <p className={`text-xs ${progressionHint(entry.progression).className}`}>
               {progressionHint(entry.progression).text}
@@ -249,15 +269,25 @@ function DiaryRow({ entry, firstSetInputRef, onDone }: DiaryRowProps) {
           )}
         </td>
         <td className="py-2 pr-1 align-top">
-          <input
-            type="number"
-            min={1}
-            max={20}
-            aria-label="Anzahl Sätze"
-            value={setValues.length}
-            onChange={(e) => void changeSetCount(e.target.value)}
-            className="w-9 rounded border border-ink-700 bg-ink-950 px-1 py-1 text-center text-sm"
-          />
+          <div className="flex flex-col items-center gap-1" aria-label="Anzahl Sätze">
+            <button
+              onClick={() => void changeSetCount(setValues.length + 1)}
+              disabled={busy || setValues.length >= 20}
+              aria-label="Satz hinzufügen"
+              className="h-7 w-7 rounded bg-ink-800 text-sm text-ink-200 hover:bg-ink-700 disabled:opacity-40"
+            >
+              +
+            </button>
+            <span className="text-sm text-ink-100">{setValues.length}</span>
+            <button
+              onClick={() => void changeSetCount(setValues.length - 1)}
+              disabled={busy || setValues.length <= 1}
+              aria-label="Satz entfernen"
+              className="h-7 w-7 rounded bg-ink-800 text-sm text-ink-200 hover:bg-ink-700 disabled:opacity-40"
+            >
+              −
+            </button>
+          </div>
         </td>
         <td className="py-2 pr-1 align-top">
           <div className="flex flex-col gap-1">

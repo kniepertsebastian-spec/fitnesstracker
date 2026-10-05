@@ -12,11 +12,13 @@ import {
   buildPlanRemarksContext,
   buildSystemPrompt,
   buildWarmStartContext,
+  loadLimitationTexts,
   estimateWeeklyFrequency,
   exercisesPerDayForDuration,
   resolveSplitDays,
   selectCatalogSubset,
 } from "./promptBuilder.js";
+import { buildExclusions } from "./injuryFilter.js";
 import { refreshDetectedAsymmetries } from "../trainingPlan/trainingAsymmetry.service.js";
 
 // Below this many logged sets, there isn't enough real history to build a useful "warm start"
@@ -147,7 +149,10 @@ export async function generatePlan(
   }
   const apiKey = decryptSecret(setting.encryptedApiKey, env.AI_SETTINGS_ENCRYPTION_KEY);
 
-  const catalog = await selectCatalogSubset(prisma, userId, input.coldStart ?? null);
+  const exclusions = buildExclusions(
+    ...(await loadLimitationTexts(prisma, userId, input.coldStart ?? null)),
+  );
+  const catalog = await selectCatalogSubset(prisma, userId, input.coldStart ?? null, exclusions);
   if (catalog.length === 0) {
     throw new ConflictError("Keine passenden Übungen für diese Vorgaben gefunden");
   }
