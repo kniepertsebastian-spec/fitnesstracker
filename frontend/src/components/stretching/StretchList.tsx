@@ -106,8 +106,20 @@ export function StretchList({ items, storageKey }: Props) {
             </div>
             {isOpen && (
               <div className="mt-2 flex flex-col gap-2 text-xs text-ink-400">
-                {item.imageUrls[0] && (
-                  <img src={item.imageUrls[0]} alt={item.name} loading="lazy" className="max-h-40 rounded-lg" />
+                {item.imageUrls.length > 0 && (
+                  // Start/end position side by side, each at its natural aspect ratio — a
+                  // full-width stretch distorts the source photos.
+                  <div className="flex gap-2">
+                    {item.imageUrls.slice(0, 2).map((url) => (
+                      <img
+                        key={url}
+                        src={url}
+                        alt={item.name}
+                        loading="lazy"
+                        className="aspect-[4/3] min-w-0 flex-1 rounded-lg bg-ink-800 object-contain sm:max-w-[16rem]"
+                      />
+                    ))}
+                  </div>
                 )}
                 {item.description && <p className="whitespace-pre-line">{item.description}</p>}
                 <Link to={`/exercises/${item.exerciseId}`} className="text-violet-400 hover:underline">
