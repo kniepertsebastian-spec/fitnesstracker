@@ -2,7 +2,9 @@ import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { LoginPage } from "./routes/LoginPage";
 import { RegisterPage } from "./routes/RegisterPage";
-import { WorkoutLogPage } from "./routes/WorkoutLogPage";
+import { DashboardPage } from "./routes/DashboardPage";
+import { DailyPage } from "./routes/DailyPage";
+import { DiaryPage } from "./routes/DiaryPage";
 import { WorkoutHistoryPage } from "./routes/WorkoutHistoryPage";
 import { ExerciseLibraryPage } from "./routes/ExerciseLibraryPage";
 import { ExerciseDetailPage } from "./routes/ExerciseDetailPage";
@@ -32,7 +34,23 @@ export function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <WorkoutLogPage />
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/daily"
+          element={
+            <ProtectedRoute>
+              <DailyPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/diary"
+          element={
+            <ProtectedRoute>
+              <DiaryPage />
             </ProtectedRoute>
           }
         />

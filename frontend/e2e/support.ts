@@ -53,6 +53,11 @@ export async function login(page: Page, user: E2eUser): Promise<string> {
     page.click('button[type="submit"]'),
   ]);
   await page.waitForURL("/");
+  // The training table lives in the Fitnesstagebuch, not on the dashboard — client-side nav
+  // (not goto) so the in-memory access token survives.
+  await page.getByLabel("Menü öffnen").click();
+  await page.getByRole("link", { name: "Fitnesstagebuch" }).click();
+  await page.waitForURL("/diary");
   const body = await response.json();
   return body.accessToken as string;
 }

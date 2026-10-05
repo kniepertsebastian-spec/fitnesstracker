@@ -9,6 +9,8 @@ Format: `- **Titel** — was sich geändert hat und warum, falls nicht offensich
 
 ## 2026-10-05
 
+- **Dashboard entschlackt, neue Seiten „Daily“ und „Fitnesstagebuch“** — Das Dashboard zeigt nur noch „Heute dran“ (mit „Training starten“), eine Heute-Checkliste, die Wochenübersicht mit Serie, das nächste Ziel und das letzte Training. Tages-Challenge, Dehnroutine und Cardio wandern nach `/daily`, Trainingsplan-Tabelle, „+ Satz“, Session-Leiste und Heute-Sätze nach `/diary`. Der Menüpunkt „Dehnen“ entfällt; die Dehnpläne sind über die Dehnroutine in „Daily“ erreichbar. Verifiziert: Typecheck, Lint (E2E-Login-Helper navigiert jetzt ins Tagebuch, E2E nicht ausgeführt).
+
 - **Dehnroutine (neues Menü „Dehnen“)** — Dehnübungen kommen aus dem bereits importierten Katalog (free-exercise-db, Kategorie „stretching“). Je Trainingstag der Phase wird automatisch ein Dehnplan aus den trainierten Muskeln gebildet (Brust-Tag → Brust-Dehnungen usw.); optional erstellt die KI (BYOK) den Plan und speichert ihn (`StretchPlanItem`). Dazu eine tägliche Dehnroutine mit Wunschfokus (z. B. Schultern) auf dem Dashboard unter der Tages-Challenge. Verifiziert: Typecheck, Lint, Unit-Tests der Auswahllogik.
 
 ## 2026-08-29
