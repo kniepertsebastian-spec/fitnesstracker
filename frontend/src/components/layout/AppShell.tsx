@@ -15,10 +15,11 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/" },
+  { label: "Daily", to: "/daily" },
+  { label: "Fitnesstagebuch", to: "/diary" },
   { label: "Historie", to: "/history" },
   { label: "Übungen", to: "/exercises" },
   { label: "Plan", to: "/plan" },
-  { label: "Dehnen", to: "/stretching" },
   { label: "Fortschritt", to: "/progress" },
   { label: "Ziele", to: "/goals" },
   { label: "Ernährung", to: "/nutrition" },
