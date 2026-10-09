@@ -39,13 +39,20 @@ interface Props {
   items: StretchItemDto[];
   // Scope for the persisted checkmarks; omit to disable persistence of "done" state.
   storageKey: string;
+  // F9: lets the training view show stretching progress in its focus bar.
+  onDoneChange?: (doneIds: string[]) => void;
 }
 
 // Per-device "done" marks, keyed by a caller-chosen scope (e.g. the date) — a stretch session is
 // a casual tick-off list, not data worth a table or offline-sync queue.
-export function StretchList({ items, storageKey }: Props) {
+export function StretchList({ items, storageKey, onDoneChange }: Props) {
   const [done, setDone] = useState<string[]>(() => loadStretchDone(storageKey));
   const [expanded, setExpanded] = useState<string | null>(null);
+  const reportDone = useRef(onDoneChange);
+  reportDone.current = onDoneChange;
+  useEffect(() => {
+    reportDone.current?.(done);
+  }, [done]);
 
   const toggle = (id: string, value?: boolean) => {
     setDone((current) => {

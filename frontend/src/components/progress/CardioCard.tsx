@@ -1,18 +1,13 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import type { CardioMachine, CreateCardioLogInput } from "@fitnesstracker/shared";
+import { CARDIO_MACHINE_LABELS, type CardioMachine, type CreateCardioLogInput } from "@fitnesstracker/shared";
 import { ApiError } from "../../api/client";
 import { useCreateCardioLog, useDeleteCardioLog, useWeekCardioLogs } from "../../hooks/useCardioLogs";
-import { Badge, Button, Callout, Card, Dialog, EmptyState, Field, IconButton, Input, ListRow, Select, StatTile } from "../ui";
+import { Button, Callout, Card, Dialog, EmptyState, Field, IconButton, Input, ListRow, Select, StatTile } from "../ui";
 import { Activity } from "lucide-react";
 import { utcDayKey } from "../../lib/dates";
 
-const MACHINE_LABELS: Record<CardioMachine, string> = {
-  TREADMILL: "Laufband",
-  BIKE: "Fahrrad",
-  STEPPER: "Stepper",
-  STAIRMASTER: "Stairmaster",
-};
+const MACHINE_LABELS = CARDIO_MACHINE_LABELS;
 const MACHINES = Object.keys(MACHINE_LABELS) as CardioMachine[];
 
 function CardioForm({ onClose }: { onClose: () => void }) {
@@ -82,8 +77,9 @@ function CardioForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-// Optional cardio tracking — a free-form addition next to the strength plan, since a cardio
-// session (machine + level/intensity/duration) doesn't fit the sets/reps/weight shape.
+// Cardio history and free entries (F9: moved here from Daily). Planned cardio lives in the plan
+// and is logged from the training view; this card shows the week and takes sessions logged
+// outside a workout, e.g. on a free day.
 export function CardioCard() {
   const { data: logs } = useWeekCardioLogs();
   const remove = useDeleteCardioLog();
@@ -96,11 +92,7 @@ export function CardioCard() {
 
   return (
     <Card
-      title={
-        <span className="flex items-center gap-2">
-          Cardio <Badge>optional</Badge>
-        </span>
-      }
+      title="Cardio"
       action={
         <Button size="sm" variant="secondary" iconLeft={<Plus size={14} aria-hidden />} onClick={() => setOpen(true)}>
           Eintragen

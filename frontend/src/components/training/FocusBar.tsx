@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { Pause, Play, X } from "lucide-react";
 import type { WorkoutSessionStatus } from "@fitnesstracker/shared";
 import { formatDuration } from "../../lib/trainingSets";
@@ -23,11 +24,11 @@ interface Props {
   startedAt: string;
   status: WorkoutSessionStatus;
   pausedAt: string | null;
+  /** F9: the section bar (Aufwärmen · Kraft · Cardio · Dehnen); without it the exercise segments show. */
+  stageBar?: ReactNode;
   segments: SegmentState[];
-  exerciseIndex: number;
-  exerciseCount: number;
-  setsDone: number;
-  setsTotal: number;
+  detailLeft: string;
+  detailRight?: string;
   onLeave: () => void;
   onTogglePause: () => void;
 }
@@ -38,11 +39,10 @@ export function FocusBar({
   startedAt,
   status,
   pausedAt,
+  stageBar,
   segments,
-  exerciseIndex,
-  exerciseCount,
-  setsDone,
-  setsTotal,
+  detailLeft,
+  detailRight,
   onLeave,
   onTogglePause,
 }: Props) {
@@ -74,14 +74,10 @@ export function FocusBar({
         </IconButton>
       </div>
       <div className="mx-auto max-w-2xl px-4 pb-3">
-        <SegmentedProgress segments={segments} size={8} label="Fortschritt im Training" />
+        {stageBar ?? <SegmentedProgress segments={segments} size={8} label="Fortschritt im Training" />}
         <div className="mt-2 flex items-center justify-between gap-2 text-xs text-text-subtle">
-          <span>
-            Übung {exerciseIndex + 1} von {exerciseCount}
-          </span>
-          <span className="tabular">
-            {setsDone} von {setsTotal} Sätzen
-          </span>
+          <span className="truncate">{detailLeft}</span>
+          {detailRight && <span className="tabular shrink-0">{detailRight}</span>}
           {/* Sync state stays visible during a workout (P0.3) — the shell's pill is not mounted here. */}
           <SyncStatusIndicator />
         </div>

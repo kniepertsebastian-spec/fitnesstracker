@@ -7,10 +7,11 @@
 > | Nr. | Screen | Phase |
 > |---|---|---|
 > | 1 | Heute – Dashboard (mobil) | F3 |
-> | 2 | Training – Fokusmodus | F4 |
-> | 3 | Daily – Challenge, Dehnen, Cardio | F5 |
+> | 2 | Training – Fokusmodus (Kraft) | F4, F9 |
+> | 2b | Training – Cardio und Dehnen | F9 |
+> | 3 | Daily – Challenge und Dehnroutine | F5, F9 |
 > | 4 | Fortschritt | F6 |
-> | 5 | Trainingsplan – 8-Wochen-Rotation | F7 |
+> | 5 | Trainingsplan – Kraft, Cardio, Dehnen | F7, F9 |
 > | 6 | Desktop – Heute mit Seitenleiste | F2, F3 |
 > | 7 | Menü – mobil | F2 |
 >

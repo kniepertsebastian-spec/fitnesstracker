@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Dumbbell, GripVertical, Plus, Repeat2, Trash2 } from "lucide-react";
 import type { PlanExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
+import { useCardioPlan } from "../../hooks/useCardioPlan";
 import { useDeletePlanExercise, usePlanExercises, useUpdatePlanExercise } from "../../hooks/usePlanExercises";
+import { useStretchPlan } from "../../hooks/useStretching";
+import { cardioMinutes, matchDay, stretchMinutes } from "../../lib/dayPlan";
 import { PlanExerciseFormDialog } from "../trainingPlan/PlanExerciseFormDialog";
 import { Button, Card, EmptyState, IconButton, ListRow, SegmentedControl, Skeleton, cn } from "../ui";
+import { DayCardioPanel } from "./DayCardioPanel";
+import { DayStretchPanel } from "./DayStretchPanel";
+
+type Section = "kraft" | "cardio" | "stretch";
 
 // Groups entries by `dayLabel` in first-seen order (already sorted by the backend to match the
 // split's actual day sequence — see aiPlanGenerator.service.ts). Entries without a dayLabel
@@ -88,6 +95,9 @@ export function PlanDays({ phase }: { phase: TrainingPhase }) {
   const [replacing, setReplacing] = useState<PlanExerciseDto | null>(null);
   const [selectedDay, setSelectedDay] = useState(0);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [section, setSection] = useState<Section>("kraft");
+  const { data: cardioPlan } = useCardioPlan(phase);
+  const { data: stretchPlan } = useStretchPlan(phase);
 
   const groups = entries ? groupByDay(entries) : [];
   const isSplit = groups.length > 1;
@@ -107,11 +117,15 @@ export function PlanDays({ phase }: { phase: TrainingPhase }) {
   };
 
   const sets = active?.entries.reduce((s, e) => s + (e.targetSets ?? 0), 0) ?? 0;
+  const dayLabel = active?.dayLabel ?? null;
+  const cardioMin = cardioMinutes(matchDay(cardioPlan?.days, dayLabel)?.items ?? []);
+  const stretchMin = stretchMinutes(matchDay(stretchPlan?.days, dayLabel)?.items ?? []);
 
   return (
     <Card
       title="Trainingstage"
       action={
+        section === "kraft" && (
         <Button
           size="sm"
           variant="dashed"
@@ -123,6 +137,7 @@ export function PlanDays({ phase }: { phase: TrainingPhase }) {
         >
           Übung hinzufügen
         </Button>
+        )
       }
     >
       {isLoading ? (
@@ -140,11 +155,24 @@ export function PlanDays({ phase }: { phase: TrainingPhase }) {
               options={groups.map((g, i) => ({ value: String(i), label: `${LETTERS[i] ?? i + 1} · ${shortName(g.dayLabel, i)}` }))}
             />
           )}
-          <p className="mb-1 text-small text-text-subtle">
+          <p className="mb-3 text-small text-text-subtle">
             <span className="font-medium text-text">{active.dayLabel ?? "Alle Übungen"}</span> · {active.entries.length} Übungen
             {sets > 0 ? ` · ${sets} Sätze` : ""}
           </p>
-          <div>
+          <SegmentedControl<Section>
+            label="Bereich des Trainingstags"
+            className="mb-3 w-full"
+            value={section}
+            onChange={setSection}
+            options={[
+              { value: "kraft", label: "Kraft" },
+              { value: "cardio", label: cardioMin > 0 ? `Cardio · ${cardioMin} Min.` : "Cardio" },
+              { value: "stretch", label: stretchMin > 0 ? `Dehnen · ${stretchMin} Min.` : "Dehnen" },
+            ]}
+          />
+          {section === "cardio" && <DayCardioPanel phase={phase} dayLabel={dayLabel} />}
+          {section === "stretch" && <DayStretchPanel phase={phase} dayLabel={dayLabel} />}
+          <div hidden={section !== "kraft"}>
             {active.entries.map((entry, i) => (
               <Row
                 key={entry.id}

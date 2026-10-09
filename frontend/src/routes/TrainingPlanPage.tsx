@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { FileDown, MessageSquareText, MoreHorizontal, Sparkles } from "lucide-react";
 import type { TrainingPhase } from "@fitnesstracker/shared";
 import { AppShell } from "../components/layout/AppShell";
+import { FreeCardioCard } from "../components/plan/FreeCardioCard";
 import { PhaseHero } from "../components/plan/PhaseHero";
 import { PhaseRotation } from "../components/plan/PhaseRotation";
 import { PlanDays } from "../components/plan/PlanDays";
@@ -83,6 +84,8 @@ export function TrainingPlanPage() {
             {selectedPhase && <PlanDays phase={selectedPhase} />}
 
             <div className="flex flex-col gap-4">
+              {selectedPhase && <FreeCardioCard phase={selectedPhase} />}
+
               <Link
                 to="/plan/generate"
                 className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors duration-150 hover:bg-surface-2"
