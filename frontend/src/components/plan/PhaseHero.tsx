@@ -1,15 +1,22 @@
 import { CalendarPlus, Pause, Play, RotateCcw } from "lucide-react";
-import { TRAINING_PHASE_ROTATION, type TrainingPlanDto } from "@fitnesstracker/shared";
+import {
+  TRAINING_GOAL_LABELS,
+  TRAINING_GOALS,
+  TRAINING_PHASE_ROTATION,
+  type TrainingGoalValue,
+  type TrainingPlanDto,
+} from "@fitnesstracker/shared";
 import {
   TRAINING_PHASE_LABELS,
   useExtendPhase,
   usePauseTrainingPlan,
   useRestartPhase,
   useResumeTrainingPlan,
+  useSetTrainingGoal,
 } from "../../hooks/useTrainingPlan";
 import { PHASE_RULES } from "../../lib/phaseInfo";
 import { phaseLength, phaseWeek } from "../../lib/phase";
-import { Button, Callout, Card, SegmentedProgress } from "../ui";
+import { Button, Callout, Card, Field, SegmentedProgress, Select } from "../ui";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "numeric", month: "long" });
@@ -20,6 +27,7 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
   const resume = useResumeTrainingPlan();
   const restart = useRestartPhase();
   const extend = useExtendPhase();
+  const setGoal = useSetTrainingGoal();
 
   const total = phaseLength(plan);
   const week = phaseWeek(plan);
@@ -50,6 +58,33 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
             ? `Danach folgt ${TRAINING_PHASE_LABELS[next]} ab ${formatDate(plan.nextRotationOn)}.`
             : null}
       </p>
+
+      <Field
+        label="Trainingsziel"
+        hint="Bestimmt den Cardio-Vorschlag für jeden Trainingstag. Ohne Ziel gibt es keinen Vorschlag."
+        className="mt-4 rounded-lg border border-border-hero bg-surface-inset p-3"
+      >
+        {(p) => (
+          <Select
+            {...p}
+            value={plan.trainingGoal ?? ""}
+            disabled={setGoal.isPending}
+            onChange={(e) => setGoal.mutate(e.target.value === "" ? null : (e.target.value as TrainingGoalValue))}
+          >
+            <option value="">Noch nicht gewählt</option>
+            {TRAINING_GOALS.map((g) => (
+              <option key={g} value={g}>
+                {TRAINING_GOAL_LABELS[g]}
+              </option>
+            ))}
+          </Select>
+        )}
+      </Field>
+      {setGoal.isError && (
+        <Callout tone="danger" className="mt-3">
+          Ziel konnte nicht gespeichert werden. Plan-Änderungen brauchen eine Verbindung.
+        </Callout>
+      )}
 
       {plan.pausedAt && (
         <Callout tone="warning" className="mt-3">

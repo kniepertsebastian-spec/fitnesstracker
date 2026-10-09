@@ -17,7 +17,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: "list",
+  // In CI also as GitHub annotations, so a failure's message shows on the PR without downloading
+  // the log or the report artifact.
+  reporter: process.env.CI ? [["list"], ["github"]] : "list",
   use: {
     baseURL: BASE_URL,
     trace: "retain-on-failure",

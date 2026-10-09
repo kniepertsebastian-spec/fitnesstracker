@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import { CalendarCheck, PauseCircle } from "lucide-react";
 import type { TrainingPlanDto, WeeklyPlanStatusDto } from "@fitnesstracker/shared";
+import { useCardioPlan } from "../../hooks/useCardioPlan";
+import { useStretchPlan } from "../../hooks/useStretching";
 import { TRAINING_PHASE_LABELS } from "../../hooks/useTrainingPlan";
+import { cardioMinutes, matchDay, stretchMinutes } from "../../lib/dayPlan";
 import type { LocalWorkoutSession } from "../../offline/db";
 import { StartTrainingButton } from "../layout/StartTrainingButton";
 import { Badge, ButtonLink, Callout, Card, ListRow } from "../ui";
@@ -22,6 +25,10 @@ function agoText(days: number) {
 }
 
 export function HeroCard({ plan, status, session, lastTrainedDaysAgo }: Props) {
+  // F9: the hero names the whole day (strength, cardio, stretching), not only the exercises.
+  const { data: cardioPlan } = useCardioPlan(plan?.currentPhase, { enabled: !!plan });
+  const { data: stretchPlan } = useStretchPlan(plan?.currentPhase ?? "AUFBAU");
+
   if (!plan) {
     return (
       <Card variant="hero">
@@ -86,7 +93,9 @@ export function HeroCard({ plan, status, session, lastTrainedDaysAgo }: Props) {
   }
 
   const sets = activeDay.exercises.reduce((sum, e) => sum + (e.targetSets ?? 3), 0);
-  const minutes = Math.max(5, Math.round((sets * 3) / 5) * 5);
+  const cardioMin = cardioMinutes(matchDay(cardioPlan?.days, activeDay.dayLabel)?.items ?? []);
+  const stretchMin = stretchMinutes(matchDay(stretchPlan?.days, activeDay.dayLabel)?.items ?? []);
+  const minutes = Math.max(5, Math.round((sets * 3 + cardioMin + stretchMin) / 5) * 5);
   const shown = activeDay.exercises.slice(0, 3);
   const more = activeDay.exercises.length - shown.length;
   const title = activeDay.dayLabel ?? `Tag ${(status!.activeDayIndex ?? 0) + 1}`;
@@ -108,7 +117,14 @@ export function HeroCard({ plan, status, session, lastTrainedDaysAgo }: Props) {
       </div>
       <h2 className="mt-1 text-h2-hero text-text">{title}</h2>
       <p className="mt-1 text-small text-text-subtle">
-        {activeDay.exercises.length} Übungen · {sets} Sätze · ca. {minutes} Min.
+        {[
+          `${activeDay.exercises.length} Übungen`,
+          cardioMin > 0 ? `${cardioMin} Min. Cardio` : null,
+          stretchMin > 0 ? `${stretchMin} Min. Dehnen` : null,
+          `ca. ${minutes} Min.`,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       </p>
 
       <div className="mt-3">

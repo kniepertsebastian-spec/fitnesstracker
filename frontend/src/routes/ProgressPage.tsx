@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AppShell } from "../components/layout/AppShell";
 import { BodyDataCard } from "../components/progress/BodyDataCard";
+import { CardioCard } from "../components/progress/CardioCard";
 import { StrengthCard } from "../components/progress/StrengthCard";
 import { WeeklyDaysCard } from "../components/progress/WeeklyDaysCard";
 import { SegmentedControl, StatTile } from "../components/ui";
@@ -79,6 +80,7 @@ export function ProgressPage() {
         <div className="flex flex-col gap-4">
           <WeeklyDaysCard targetDays={targetDays} />
           <BodyDataCard range={range} />
+          <CardioCard />
         </div>
       </div>
     </AppShell>

@@ -21,8 +21,15 @@ export default async function cardioLogRoutes(fastify: FastifyInstance) {
 
   fastify.post("/cardio-logs", async (request, reply) => {
     const input = createCardioLogSchema.parse(request.body);
-    const log = await createCardioLog(fastify.prisma, request.user.sub, input);
-    return reply.code(201).send(toCardioLogDto(log));
+    try {
+      const log = await createCardioLog(fastify.prisma, request.user.sub, input);
+      return reply.code(201).send(toCardioLogDto(log));
+    } catch (error) {
+      if (error instanceof HttpError) {
+        return reply.code(error.statusCode).send({ message: error.message });
+      }
+      throw error;
+    }
   });
 
   fastify.delete("/cardio-logs/:id", async (request, reply) => {

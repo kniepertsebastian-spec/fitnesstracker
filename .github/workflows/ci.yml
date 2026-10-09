@@ -15,6 +15,9 @@ env:
   JWT_ACCESS_SECRET: ci-access-secret-not-a-real-secret
   JWT_REFRESH_SECRET: ci-refresh-secret-not-a-real-secret
   SETUP_TOKEN: ci-setup-token-not-real
+  # Each E2E scenario registers and logs in its own account from the same IP; production keeps
+  # the default of 5 per minute (backend/src/config/env.ts).
+  AUTH_RATE_LIMIT_PER_MINUTE: "100"
 
 jobs:
   # Runs on every push (any branch) and every PR — Lint, Typecheck, Unit Tests, Build.

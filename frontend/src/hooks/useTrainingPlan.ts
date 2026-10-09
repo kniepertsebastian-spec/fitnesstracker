@@ -5,9 +5,10 @@ import {
   pauseTrainingPlanRequest,
   restartPhaseRequest,
   resumeTrainingPlanRequest,
+  updateTrainingGoalRequest,
   updateTrainingPlanRemarksRequest,
 } from "../api/trainingPlan.api";
-import type { UpdateTrainingPlanRemarksInput } from "@fitnesstracker/shared";
+import type { TrainingGoalValue, UpdateTrainingPlanRemarksInput } from "@fitnesstracker/shared";
 
 export { TRAINING_PHASE_LABELS } from "@fitnesstracker/shared";
 
@@ -54,5 +55,17 @@ export function useUpdateTrainingPlanRemarks() {
   return useMutation({
     mutationFn: (input: UpdateTrainingPlanRemarksInput) => updateTrainingPlanRemarksRequest(input),
     onSuccess: (plan) => queryClient.setQueryData(TRAINING_PLAN_KEY, plan),
+  });
+}
+
+// F9: the goal changes the cardio suggestion, so the cardio plans of every phase are refetched.
+export function useSetTrainingGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (goal: TrainingGoalValue | null) => updateTrainingGoalRequest({ goal }),
+    onSuccess: (plan) => {
+      queryClient.setQueryData(TRAINING_PLAN_KEY, plan);
+      void queryClient.invalidateQueries({ queryKey: ["cardio", "plan"] });
+    },
   });
 }

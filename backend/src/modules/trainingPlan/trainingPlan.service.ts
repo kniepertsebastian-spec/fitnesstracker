@@ -211,3 +211,13 @@ export async function extendCurrentPhase(prisma: PrismaClient, userId: string) {
     data: { extensionWeeks: { increment: 1 } },
   });
 }
+
+// F9: the goal the cardio suggestion is based on. Null clears it ("noch nicht gewählt").
+export async function setTrainingGoal(
+  prisma: PrismaClient,
+  userId: string,
+  goal: TrainingPlan["trainingGoal"],
+) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  return prisma.trainingPlan.update({ where: { id: plan.id }, data: { trainingGoal: goal } });
+}

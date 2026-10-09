@@ -4,6 +4,7 @@ import type { CardioLogDto } from "@fitnesstracker/shared";
 export function toCardioLogDto(log: CardioLog): CardioLogDto {
   return {
     id: log.id,
+    clientId: log.clientId,
     machine: log.machine,
     level: log.level,
     intensity: log.intensity,

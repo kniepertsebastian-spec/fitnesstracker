@@ -5,9 +5,10 @@ import {
   pauseTrainingPlan,
   resumeTrainingPlan,
   restartCurrentPhase,
+  setTrainingGoal,
   updateTrainingPlanRemarks,
 } from "./trainingPlan.service.js";
-import { updateTrainingPlanRemarksSchema } from "@fitnesstracker/shared";
+import { updateTrainingGoalSchema, updateTrainingPlanRemarksSchema } from "@fitnesstracker/shared";
 import { toTrainingPlanDto } from "./trainingPlan.types.js";
 
 export default async function trainingPlanRoutes(fastify: FastifyInstance) {
@@ -57,6 +58,13 @@ export default async function trainingPlanRoutes(fastify: FastifyInstance) {
   fastify.patch("/training-plan/remarks", async (request, reply) => {
     const { remarks } = updateTrainingPlanRemarksSchema.parse(request.body);
     await updateTrainingPlanRemarks(fastify.prisma, request.user.sub, remarks);
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(fastify.prisma, request.user.sub);
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  fastify.patch("/training-plan/goal", async (request, reply) => {
+    const { goal } = updateTrainingGoalSchema.parse(request.body);
+    await setTrainingGoal(fastify.prisma, request.user.sub, goal);
     const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(fastify.prisma, request.user.sub);
     return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
   });

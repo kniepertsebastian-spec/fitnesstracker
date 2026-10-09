@@ -1,4 +1,4 @@
-import type { TrainingPlanDto, UpdateTrainingPlanRemarksInput } from "@fitnesstracker/shared";
+import type { TrainingPlanDto, UpdateTrainingGoalInput, UpdateTrainingPlanRemarksInput } from "@fitnesstracker/shared";
 import { apiFetch } from "./client";
 
 export function getTrainingPlanRequest() {
@@ -23,4 +23,8 @@ export function extendPhaseRequest() {
 
 export function updateTrainingPlanRemarksRequest(input: UpdateTrainingPlanRemarksInput) {
   return apiFetch<TrainingPlanDto>("/training-plan/remarks", { method: "PATCH", body: input });
+}
+
+export function updateTrainingGoalRequest(input: UpdateTrainingGoalInput) {
+  return apiFetch<TrainingPlanDto>("/training-plan/goal", { method: "PATCH", body: input });
 }

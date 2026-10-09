@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { z } from "zod";
-import type { GeneratePlanRequest, GeneratePlanResponse } from "@fitnesstracker/shared";
+import type { GeneratePlanRequest, GeneratePlanResponse, TrainingGoalValue } from "@fitnesstracker/shared";
 import { env } from "../../config/env.js";
 import { decryptSecret } from "../../lib/crypto.js";
 import { ConflictError } from "../../errors/httpErrors.js";
@@ -24,6 +24,18 @@ import { refreshDetectedAsymmetries } from "../trainingPlan/trainingAsymmetry.se
 // Below this many logged sets, there isn't enough real history to build a useful "warm start"
 // prompt (best lifts, etc.) — the frontend needs to collect cold-start answers instead.
 const MIN_LOGGED_SETS_FOR_WARM_START = 5;
+
+// The questionnaire's goal values predate the persisted enum (F9) and are lower-case.
+const COLD_START_GOAL_TO_PLAN_GOAL: Record<
+  NonNullable<GeneratePlanRequest["coldStart"]>["goal"],
+  TrainingGoalValue
+> = {
+  muscle_gain: "MUSCLE_GAIN",
+  strength: "STRENGTH",
+  endurance: "ENDURANCE",
+  fat_loss: "FAT_LOSS",
+  general_fitness: "GENERAL_FITNESS",
+};
 // 6 split days * up to 7 exercises each, with slack for provider overshoot — validated and
 // filtered down to real catalog matches afterwards regardless.
 const MAX_PLAN_ITEMS = 60;
@@ -148,6 +160,15 @@ export async function generatePlan(
     throw new ConflictError("Noch kein KI-Anbieter konfiguriert — zuerst einen API-Key hinterlegen");
   }
   const apiKey = decryptSecret(setting.encryptedApiKey, env.AI_SETTINGS_ENCRYPTION_KEY);
+
+  // F9: the questionnaire asks for the training goal anyway — keep it on the plan (drives the
+  // cardio suggestion), but never overwrite a goal the user already chose in the plan itself.
+  if (input.coldStart) {
+    await prisma.trainingPlan.updateMany({
+      where: { userId, trainingGoal: null },
+      data: { trainingGoal: COLD_START_GOAL_TO_PLAN_GOAL[input.coldStart.goal] },
+    });
+  }
 
   const exclusions = buildExclusions(
     ...(await loadLimitationTexts(prisma, userId, input.coldStart ?? null)),

@@ -26,7 +26,7 @@ export interface PendingMutation {
 // nothing a user entered offline disappears without a trace, even if it couldn't be saved.
 export interface FailedMutation {
   id?: number;
-  kind: "workoutLog" | "workoutSession";
+  kind: "workoutLog" | "workoutSession" | "cardioLog";
   clientId: string;
   op: MutationOp;
   // The original mutation's payload, kept so a manual retry (offline/retry.ts) can re-queue the
@@ -40,12 +40,23 @@ export interface FailedMutation {
   failedAt: string;
 }
 
+// F9: a cardio session logged (possibly offline) and not yet confirmed by the server. Create-only:
+// the training view never edits or deletes a cardio entry, so no op/collapsing is needed.
+export interface PendingCardioLog {
+  id?: number;
+  clientId: string;
+  payload: Record<string, unknown>;
+  label: string;
+  queuedAt: string;
+}
+
 class OfflineDb extends Dexie {
   workoutLogs!: Table<LocalWorkoutLog, string>;
   pendingMutations!: Table<PendingMutation, number>;
   workoutSessions!: Table<LocalWorkoutSession, string>;
   pendingSessionMutations!: Table<PendingMutation, number>;
   failedMutations!: Table<FailedMutation, number>;
+  pendingCardioLogs!: Table<PendingCardioLog, number>;
 
   constructor() {
     super("fitnesstracker-offline");
@@ -59,6 +70,9 @@ class OfflineDb extends Dexie {
     });
     this.version(3).stores({
       failedMutations: "++id, clientId, failedAt",
+    });
+    this.version(4).stores({
+      pendingCardioLogs: "++id, clientId, queuedAt",
     });
   }
 }

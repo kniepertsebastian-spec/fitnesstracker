@@ -45,6 +45,7 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     supplements,
     profile,
     progressPhotos,
+    cardioPlanDays,
   ] = await Promise.all([
     listWorkoutLogs(prisma, userId, {}),
     listGoals(prisma, userId),
@@ -59,6 +60,7 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     listSupplements(prisma, userId),
     getProfile(prisma, userId),
     listPhotos(prisma, userId),
+    prisma.cardioPlanDay.findMany({ where: { userId }, orderBy: [{ phase: "asc" }, { dayLabel: "asc" }] }),
   ]);
 
   const goalsWithCurrentValue = await Promise.all(
@@ -80,6 +82,8 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     goals: goalsWithCurrentValue,
     bodyCompositionEntries: bodyCompositionEntries.map(toBodyCompositionEntryDto),
     cardioLogs: cardioLogs.map(toCardioLogDto),
+    // Own cardio plan versions (F9); days without a row use the rule-based suggestion.
+    cardioPlanDays: cardioPlanDays.map((d) => ({ phase: d.phase, dayLabel: d.dayLabel, items: d.items })),
     supplements: supplements.map(toSupplementDto),
     // Metadata only, no image bytes — see the module comment above.
     progressPhotos: progressPhotos.map(toProgressPhotoDto),

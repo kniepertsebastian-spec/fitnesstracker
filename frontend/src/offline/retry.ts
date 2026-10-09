@@ -2,11 +2,24 @@ import { offlineDb, type FailedMutation } from "./db";
 import { refreshSyncCounts } from "./syncCounts";
 import { flushPendingMutations } from "./workoutLogSync";
 import { flushPendingSessionMutations } from "./workoutSessionSync";
+import { flushPendingCardioLogs } from "./cardioLogSync";
 
 // Re-queues a dropped mutation using its saved payload — the user never has to redo the
 // original action. A retry can still fail again (e.g. the same validation issue), in which case
 // it lands right back in failedMutations with a fresh reason.
 export async function retryFailedMutation(failed: FailedMutation) {
+  if (failed.kind === "cardioLog") {
+    await offlineDb.pendingCardioLogs.add({
+      clientId: failed.clientId,
+      payload: failed.payload,
+      label: failed.label,
+      queuedAt: new Date().toISOString(),
+    });
+    await offlineDb.failedMutations.delete(failed.id as number);
+    await refreshSyncCounts();
+    void flushPendingCardioLogs();
+    return;
+  }
   const table = failed.kind === "workoutLog" ? offlineDb.pendingMutations : offlineDb.pendingSessionMutations;
   await table.add({
     clientId: failed.clientId,
