@@ -32,28 +32,28 @@ export function ExerciseDetailPage() {
 
   return (
     <AppShell>
-      <Link to="/exercises" className="mb-4 inline-block text-sm text-ink-400 hover:text-ink-200">
+      <Link to="/exercises" className="mb-4 inline-block text-sm text-text-subtle hover:text-text-2">
         ← Übungen
       </Link>
 
       {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
+        <p className="text-text-faint">Lädt…</p>
       ) : !exercise ? (
-        <p className="text-ink-500">Übung nicht gefunden.</p>
+        <p className="text-text-faint">Übung nicht gefunden.</p>
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold">
               {exercise.name}
               {!exercise.isActive && (
-                <span className="ml-2 rounded-full bg-ink-800 px-2 py-0.5 text-xs font-normal text-ink-500">
+                <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-normal text-text-faint">
                   Inaktiv
                 </span>
               )}
             </h1>
             <button
               onClick={() => setDialogOpen(true)}
-              className="text-sm text-violet-400 hover:underline"
+              className="text-sm text-accent hover:underline"
             >
               Bearbeiten
             </button>
@@ -74,29 +74,29 @@ export function ExerciseDetailPage() {
 
           <div className="flex flex-wrap gap-2 text-sm">
             {exercise.equipment && (
-              <span className="rounded-full bg-ink-800 px-3 py-1 text-ink-300">
+              <span className="rounded-full bg-surface-2 px-3 py-1 text-text-muted">
                 {exercise.equipment}
               </span>
             )}
             {exercise.category && (
-              <span className="rounded-full bg-ink-800 px-3 py-1 text-ink-300">
+              <span className="rounded-full bg-surface-2 px-3 py-1 text-text-muted">
                 {exercise.category}
               </span>
             )}
             {exercise.primaryMuscles.map((m) => (
-              <span key={m} className="rounded-full bg-violet-950 px-3 py-1 text-violet-300">
+              <span key={m} className="rounded-full bg-accent-soft px-3 py-1 text-accent-hover">
                 {m}
               </span>
             ))}
             {exercise.secondaryMuscles.map((m) => (
-              <span key={m} className="rounded-full bg-ink-800 px-3 py-1 text-ink-400">
+              <span key={m} className="rounded-full bg-surface-2 px-3 py-1 text-text-subtle">
                 {m}
               </span>
             ))}
           </div>
 
           {exercise.description && (
-            <p className="whitespace-pre-line text-ink-300">{exercise.description}</p>
+            <p className="whitespace-pre-line text-text-muted">{exercise.description}</p>
           )}
 
           {exercise.videoUrl ? (
@@ -104,31 +104,31 @@ export function ExerciseDetailPage() {
               href={exercise.videoUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-sm text-violet-400 hover:text-violet-300"
+              className="text-sm text-accent hover:text-accent-hover"
             >
               Video ansehen ↗
             </a>
           ) : (
-            <p className="text-sm text-ink-600">Kein Video verfügbar.</p>
+            <p className="text-sm text-text-faint">Kein Video verfügbar.</p>
           )}
 
-          <div className="flex gap-4 border-t border-ink-800 pt-4 text-sm">
+          <div className="flex gap-4 border-t border-border pt-4 text-sm">
             <button
               onClick={toggleActive}
               disabled={updateExercise.isPending}
-              className="text-ink-300 hover:underline disabled:opacity-50"
+              className="text-text-muted hover:underline disabled:opacity-50"
             >
               {exercise.isActive ? "Deaktivieren" : "Aktivieren"}
             </button>
             <button
               onClick={handleDelete}
               disabled={deleteExercise.isPending}
-              className="text-red-400 hover:underline disabled:opacity-50"
+              className="text-danger-text hover:underline disabled:opacity-50"
             >
               Löschen
             </button>
           </div>
-          {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
+          {deleteError && <p className="text-sm text-danger-text">{deleteError}</p>}
         </div>
       )}
 

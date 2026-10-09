@@ -7,23 +7,23 @@ export function ExerciseCard({ exercise }: { exercise: ExerciseDto }) {
   return (
     <Link
       to={`/exercises/${exercise.id}`}
-      className="flex items-center gap-3 rounded-lg border border-ink-800 bg-ink-900 p-3 hover:border-ink-700"
+      className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3 hover:border-border-strong"
     >
       {thumbnail ? (
         <img src={thumbnail} alt="" className="h-12 w-12 rounded-md object-cover" />
       ) : (
-        <div className="h-12 w-12 shrink-0 rounded-md bg-ink-800" />
+        <div className="h-12 w-12 shrink-0 rounded-md bg-surface-2" />
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-ink-100">
+        <p className="truncate font-medium text-text">
           {exercise.name}
           {!exercise.isActive && (
-            <span className="ml-2 rounded-full bg-ink-800 px-2 py-0.5 text-xs font-normal text-ink-500">
+            <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-normal text-text-faint">
               Inaktiv
             </span>
           )}
         </p>
-        <p className="truncate text-sm text-ink-500">
+        <p className="truncate text-sm text-text-faint">
           {[exercise.equipment, exercise.primaryMuscles.join(", ")].filter(Boolean).join(" · ") ||
             "—"}
         </p>

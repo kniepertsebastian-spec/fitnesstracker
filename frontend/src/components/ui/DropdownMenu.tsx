@@ -37,8 +37,14 @@ export function DropdownMenuItem({ icon, tone = "default", className, children, 
       )}
       {...rest}
     >
-      {icon && <span aria-hidden className="text-text-subtle">{icon}</span>}
-      {children}
+      {rest.asChild ? (
+        children
+      ) : (
+        <>
+          {icon && <span aria-hidden className="text-text-subtle">{icon}</span>}
+          {children}
+        </>
+      )}
     </Radix.Item>
   );
 }

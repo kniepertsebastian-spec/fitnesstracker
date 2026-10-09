@@ -30,7 +30,7 @@ import {
   useStartWorkoutSession,
   useUpdateWorkoutSessionStatus,
 } from "../hooks/useWorkoutSession";
-import { phaseWeek, PHASE_WEEKS } from "../lib/phase";
+import { phaseLength, phaseWeek } from "../lib/phase";
 import { detectPRs, prLabels } from "../lib/prDetection";
 import { unlockAudio } from "../lib/timerSound";
 import { formatDuration, formatKg, lastTimeSets, sessionSets } from "../lib/trainingSets";
@@ -256,7 +256,7 @@ export function TrainingPage() {
 
   const title = day?.dayLabel ?? (dayIndex !== null ? `Tag ${dayIndex + 1}` : "Training");
   const subtitle = plan
-    ? `${TRAINING_PHASE_LABELS[plan.currentPhase]} · Woche ${phaseWeek(plan)} von ${PHASE_WEEKS}`
+    ? `${TRAINING_PHASE_LABELS[plan.currentPhase]} · Woche ${phaseWeek(plan)} von ${phaseLength(plan)}`
     : "Freies Training";
 
   if (!plan || exercises.length === 0) {

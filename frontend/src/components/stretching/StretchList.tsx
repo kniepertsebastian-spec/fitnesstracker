@@ -33,7 +33,7 @@ function HoldTimer({ seconds, onFinished }: { seconds: number; onFinished: () =>
     return (
       <button
         onClick={() => setRemaining(seconds)}
-        className="rounded-lg bg-ink-800 px-2 py-1 text-xs text-ink-200 hover:bg-ink-700"
+        className="rounded-lg bg-surface-2 px-2 py-1 text-xs text-text-2 hover:bg-control"
       >
         ▶ {seconds}s halten
       </button>
@@ -42,7 +42,7 @@ function HoldTimer({ seconds, onFinished }: { seconds: number; onFinished: () =>
   return (
     <button
       onClick={() => setRemaining(null)}
-      className="rounded-lg bg-violet-500 px-2 py-1 text-xs font-medium text-ink-950"
+      className="rounded-lg bg-accent px-2 py-1 text-xs font-medium text-on-accent"
     >
       {remaining}s · Stopp
     </button>
@@ -76,36 +76,36 @@ export function StretchList({ items, storageKey }: Props) {
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-ink-500">
+      <p className="text-xs text-text-faint">
         {doneCount}/{items.length} erledigt
       </p>
       {items.map((item) => {
         const isDone = done.includes(item.exerciseId);
         const isOpen = expanded === item.exerciseId;
         return (
-          <div key={item.exerciseId} className="rounded-lg bg-ink-950/40 p-2">
+          <div key={item.exerciseId} className="rounded-lg bg-bg p-2">
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 checked={isDone}
                 onChange={() => toggle(item.exerciseId)}
                 aria-label={`${item.name} erledigt`}
-                className="h-4 w-4 shrink-0 accent-violet-500"
+                className="h-4 w-4 shrink-0 accent-accent"
               />
               <button
                 onClick={() => setExpanded(isOpen ? null : item.exerciseId)}
-                className={`min-w-0 flex-1 truncate text-left text-sm ${isDone ? "text-ink-500 line-through" : "text-ink-200"}`}
+                className={`min-w-0 flex-1 truncate text-left text-sm ${isDone ? "text-text-faint line-through" : "text-text-2"}`}
               >
                 {item.name}
               </button>
-              <span className="shrink-0 text-xs text-ink-500">
+              <span className="shrink-0 text-xs text-text-faint">
                 {item.sets > 1 ? `${item.sets}× ` : ""}
                 {item.holdSeconds}s
               </span>
               <HoldTimer seconds={item.holdSeconds} onFinished={() => toggle(item.exerciseId, true)} />
             </div>
             {isOpen && (
-              <div className="mt-2 flex flex-col gap-2 text-xs text-ink-400">
+              <div className="mt-2 flex flex-col gap-2 text-xs text-text-subtle">
                 {item.imageUrls.length > 0 && (
                   // Start/end position side by side, each at its natural aspect ratio — a
                   // full-width stretch distorts the source photos.
@@ -116,13 +116,13 @@ export function StretchList({ items, storageKey }: Props) {
                         src={url}
                         alt={item.name}
                         loading="lazy"
-                        className="aspect-[4/3] min-w-0 flex-1 rounded-lg bg-ink-800 object-contain sm:max-w-[16rem]"
+                        className="aspect-[4/3] min-w-0 flex-1 rounded-lg bg-surface-2 object-contain sm:max-w-[16rem]"
                       />
                     ))}
                   </div>
                 )}
                 {item.description && <p className="whitespace-pre-line">{item.description}</p>}
-                <Link to={`/exercises/${item.exerciseId}`} className="text-violet-400 hover:underline">
+                <Link to={`/exercises/${item.exerciseId}`} className="text-accent hover:underline">
                   Zur Übung
                 </Link>
               </div>

@@ -31,37 +31,37 @@ export function LoginPage() {
       <h1 className="mb-6 text-2xl font-semibold">Anmelden</h1>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div>
-          <label className="mb-1 block text-sm text-ink-400">E-Mail</label>
+          <label className="mb-1 block text-sm text-text-subtle">E-Mail</label>
           <input
             type="email"
-            className="w-full rounded-lg border border-ink-700 bg-ink-900 px-3 py-2"
+            className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2"
             {...register("email")}
           />
-          {errors.email && <p className="mt-1 text-sm text-red-400">{errors.email.message}</p>}
+          {errors.email && <p className="mt-1 text-sm text-danger-text">{errors.email.message}</p>}
         </div>
         <div>
-          <label className="mb-1 block text-sm text-ink-400">Passwort</label>
+          <label className="mb-1 block text-sm text-text-subtle">Passwort</label>
           <input
             type="password"
-            className="w-full rounded-lg border border-ink-700 bg-ink-900 px-3 py-2"
+            className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2"
             {...register("password")}
           />
           {errors.password && (
-            <p className="mt-1 text-sm text-red-400">{errors.password.message}</p>
+            <p className="mt-1 text-sm text-danger-text">{errors.password.message}</p>
           )}
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-danger-text">{error}</p>}
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-lg bg-violet-500 px-4 py-2 font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
+          className="rounded-lg bg-accent px-4 py-2 font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
         >
           Anmelden
         </button>
       </form>
-      <p className="mt-4 text-sm text-ink-400">
+      <p className="mt-4 text-sm text-text-subtle">
         Noch kein Konto?{" "}
-        <Link to="/register" className="text-violet-400 hover:underline">
+        <Link to="/register" className="text-accent hover:underline">
           Registrieren
         </Link>
       </p>

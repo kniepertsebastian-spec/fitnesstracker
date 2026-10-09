@@ -24,30 +24,30 @@ export function GoalCard({ goal, onEdit }: Props) {
   };
 
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-3">
+    <div className="rounded-lg border border-border bg-surface p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs text-ink-500">{GOAL_TYPE_LABELS[goal.type]}</p>
-          <p className="truncate font-medium text-ink-100">
+          <p className="text-xs text-text-faint">{GOAL_TYPE_LABELS[goal.type]}</p>
+          <p className="truncate font-medium text-text">
             {goal.exerciseName ?? GOAL_TYPE_LABELS[goal.type]}
           </p>
-          <p className="text-sm text-ink-400">
+          <p className="text-sm text-text-subtle">
             Ziel: {goal.targetValue} {unit}
             {goal.currentValue !== null && (
-              <span className="text-ink-500"> · bisher {goal.currentValue} {unit}</span>
+              <span className="text-text-faint"> · bisher {goal.currentValue} {unit}</span>
             )}
           </p>
           {goal.targetDate && (
-            <p className="text-xs text-ink-600">bis {formatDate(goal.targetDate)}</p>
+            <p className="text-xs text-text-faint">bis {formatDate(goal.targetDate)}</p>
           )}
         </div>
         <div className="flex shrink-0 gap-2 text-xs">
-          <button onClick={() => onEdit(goal)} className="text-ink-500 hover:text-violet-400">
+          <button onClick={() => onEdit(goal)} className="text-text-faint hover:text-accent">
             Bearbeiten
           </button>
           <button
             onClick={() => deleteGoal.mutate(goal.id)}
-            className="text-ink-600 hover:text-red-400"
+            className="text-text-faint hover:text-danger-text"
           >
             Löschen
           </button>
@@ -55,8 +55,8 @@ export function GoalCard({ goal, onEdit }: Props) {
       </div>
 
       {progress !== null && !achieved && (
-        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
-          <div className="h-full rounded-full bg-violet-500" style={{ width: `${progress * 100}%` }} />
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
+          <div className="h-full rounded-full bg-accent" style={{ width: `${progress * 100}%` }} />
         </div>
       )}
 
@@ -64,8 +64,8 @@ export function GoalCard({ goal, onEdit }: Props) {
         onClick={toggleAchieved}
         className={`mt-3 w-full rounded-lg py-1.5 text-sm font-medium ${
           achieved
-            ? "bg-emerald-950 text-emerald-400 hover:bg-emerald-900"
-            : "bg-ink-800 text-ink-300 hover:bg-ink-700"
+            ? "bg-accent-soft text-accent hover:bg-accent-soft"
+            : "bg-surface-2 text-text-muted hover:bg-control"
         }`}
       >
         {achieved ? `✓ Erreicht am ${formatDate(goal.achievedAt as string)}` : "Als erreicht markieren"}

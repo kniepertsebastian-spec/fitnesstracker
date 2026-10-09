@@ -20,19 +20,19 @@ export function PlanExportImportCard() {
   };
 
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-      <p className="text-sm font-medium text-ink-300">Plan exportieren / importieren</p>
-      <p className="mt-1 text-sm text-ink-500">
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <p className="text-sm font-medium text-text-muted">Plan exportieren / importieren</p>
+      <p className="mt-1 text-sm text-text-faint">
         Alle drei Phasen als Datei sichern oder aus einer zuvor exportierten Datei wiederherstellen.
       </p>
 
-      <div className="mt-3 flex gap-1 rounded-lg border border-ink-800 bg-ink-950 p-1">
+      <div className="mt-3 flex gap-1 rounded-lg border border-border bg-bg p-1">
         {FORMATS.map((f) => (
           <button
             key={f}
             onClick={() => setFormat(f)}
             className={`flex-1 rounded-md py-1 text-xs font-medium uppercase ${
-              format === f ? "bg-violet-500 text-ink-950" : "text-ink-400 hover:text-ink-200"
+              format === f ? "bg-accent text-on-accent" : "text-text-subtle hover:text-text-2"
             }`}
           >
             {f}
@@ -44,14 +44,14 @@ export function PlanExportImportCard() {
         <button
           onClick={() => exportPlan.mutate(format)}
           disabled={exportPlan.isPending}
-          className="flex-1 rounded-lg bg-ink-800 py-1.5 text-sm font-medium text-ink-200 hover:bg-ink-700 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-surface-2 py-1.5 text-sm font-medium text-text-2 hover:bg-control disabled:opacity-50"
         >
           Exportieren
         </button>
         <button
           onClick={handleImportClick}
           disabled={importPlan.isPending}
-          className="flex-1 rounded-lg bg-violet-500 py-1.5 text-sm font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
+          className="flex-1 rounded-lg bg-accent py-1.5 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
         >
           {importPlan.isPending ? "Importiert…" : "Importieren"}
         </button>
@@ -65,16 +65,16 @@ export function PlanExportImportCard() {
       </div>
 
       {importPlan.isError && (
-        <p className="mt-2 text-sm text-red-400">Import fehlgeschlagen — Datei/Format prüfen.</p>
+        <p className="mt-2 text-sm text-danger-text">Import fehlgeschlagen — Datei/Format prüfen.</p>
       )}
 
       {importPlan.isSuccess && (
         <div className="mt-2 text-sm">
-          <p className="text-emerald-400">
+          <p className="text-accent">
             {importPlan.data.created} neu, {importPlan.data.updated} aktualisiert.
           </p>
           {importPlan.data.errors.length > 0 && (
-            <ul className="mt-1 list-inside list-disc text-ink-500">
+            <ul className="mt-1 list-inside list-disc text-text-faint">
               {importPlan.data.errors.map((error, index) => (
                 <li key={index}>{error}</li>
               ))}

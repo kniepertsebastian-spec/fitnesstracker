@@ -109,11 +109,10 @@ export function syncPill(page: Page) {
   return page.locator("header button").filter({ hasText: /Synchronisiert|Offline|ausstehend|fehlgeschlagen/ }).first();
 }
 
-// The "+ Satz" dialog (create and edit alike) is the only element on the page using this exact
-// fixed-fullscreen-overlay class combination — a stable anchor without needing test ids sprinkled
-// through production markup.
+// The "Satz hinzufügen"/"Satz bearbeiten" dialog (create and edit alike) — the only dialog on the
+// diary page unless something else is open.
 export function workoutLogDialog(page: Page) {
-  return page.locator("div.fixed.inset-0.z-10");
+  return page.getByRole("dialog");
 }
 
 export async function serverWorkoutLogs(

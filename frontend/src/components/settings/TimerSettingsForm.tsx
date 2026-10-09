@@ -46,8 +46,8 @@ export function TimerSettingsForm() {
     testSound();
   };
 
-  const row = "flex items-center justify-between gap-3 text-sm text-ink-300";
-  const input = "rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm";
+  const row = "flex items-center justify-between gap-3 text-sm text-text-muted";
+  const input = "rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm";
 
   return (
     <div className="flex flex-col gap-3">
@@ -57,7 +57,7 @@ export function TimerSettingsForm() {
           type="checkbox"
           checked={autoStartEnabled}
           onChange={(e) => setAutoStart(e.target.checked)}
-          className="h-4 w-4 accent-violet-500"
+          className="h-4 w-4 accent-accent"
         />
       </label>
       <label className={row}>
@@ -72,13 +72,13 @@ export function TimerSettingsForm() {
         />
       </label>
 
-      <label className={`${row} border-t border-ink-800 pt-3`}>
+      <label className={`${row} border-t border-border pt-3`}>
         <span>Ton bei Timer-Ende</span>
         <input
           type="checkbox"
           checked={soundEnabled}
           onChange={(e) => setSoundEnabled(e.target.checked)}
-          className="h-4 w-4 accent-violet-500"
+          className="h-4 w-4 accent-accent"
         />
       </label>
       {soundEnabled && (
@@ -103,7 +103,7 @@ export function TimerSettingsForm() {
               type="file"
               accept="audio/*"
               onChange={(e) => handleFile(e.target.files?.[0])}
-              className="w-44 text-xs text-ink-400"
+              className="w-44 text-xs text-text-subtle"
             />
           </label>
           <label className={row}>
@@ -115,7 +115,7 @@ export function TimerSettingsForm() {
               step={0.05}
               value={soundVolume}
               onChange={(e) => setSoundVolume(Number(e.target.value))}
-              className="w-40 accent-violet-500"
+              className="w-40 accent-accent"
             />
           </label>
           <label className={row}>
@@ -132,7 +132,7 @@ export function TimerSettingsForm() {
           <button
             type="button"
             onClick={handleTest}
-            className="self-start rounded-lg bg-ink-800 px-3 py-1.5 text-sm text-ink-200 hover:bg-ink-700"
+            className="self-start rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-text-2 hover:bg-control"
           >
             ▶ Ton testen
           </button>
@@ -145,7 +145,7 @@ export function TimerSettingsForm() {
             type="checkbox"
             checked={vibrationEnabled}
             onChange={(e) => setVibrationEnabled(e.target.checked)}
-            className="h-4 w-4 accent-violet-500"
+            className="h-4 w-4 accent-accent"
           />
         </label>
       )}

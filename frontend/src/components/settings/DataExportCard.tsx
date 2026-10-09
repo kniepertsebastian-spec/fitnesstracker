@@ -9,9 +9,9 @@ export function DataExportCard() {
   const exportWorkoutsCsv = useExportWorkoutsCsv();
 
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-      <p className="text-sm font-medium text-ink-300">Export &amp; Backup</p>
-      <p className="mt-1 text-sm text-ink-500">
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <p className="text-sm font-medium text-text-muted">Export &amp; Backup</p>
+      <p className="mt-1 text-sm text-text-faint">
         Eigene Trainingsdaten als Datei sichern — unabhängig von der App nutzbar.
       </p>
 
@@ -19,26 +19,26 @@ export function DataExportCard() {
         <button
           onClick={() => exportBackup.mutate()}
           disabled={exportBackup.isPending}
-          className="rounded-lg bg-violet-500 py-2 text-sm font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
+          className="rounded-lg bg-accent py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
         >
           {exportBackup.isPending ? "Erstelle Backup…" : "Vollständiges Backup (JSON)"}
         </button>
         <button
           onClick={() => exportWorkoutsCsv.mutate()}
           disabled={exportWorkoutsCsv.isPending}
-          className="rounded-lg border border-ink-700 py-2 text-sm text-ink-300 hover:bg-ink-800 disabled:opacity-50"
+          className="rounded-lg border border-border-strong py-2 text-sm text-text-muted hover:bg-surface-2 disabled:opacity-50"
         >
           {exportWorkoutsCsv.isPending ? "Erstelle CSV…" : "Trainingslog (CSV)"}
         </button>
       </div>
 
-      <p className="mt-3 text-xs text-ink-600">
+      <p className="mt-3 text-xs text-text-faint">
         Das JSON-Backup enthält Trainingslog, Ziele, Körperdaten, Trainingsplan, Supplements und
         Einstellungen. Fotos sind nur mit Datum enthalten, nicht als Bilddatei.
       </p>
 
       {(exportBackup.isError || exportWorkoutsCsv.isError) && (
-        <p className="mt-2 text-sm text-red-400">Export fehlgeschlagen — bitte erneut versuchen.</p>
+        <p className="mt-2 text-sm text-danger-text">Export fehlgeschlagen — bitte erneut versuchen.</p>
       )}
     </div>
   );

@@ -24,17 +24,17 @@ function SuggestionRow({ suggestion }: { suggestion: GoalSuggestionDto }) {
   const selected = suggestion.tiers[tier];
 
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-3">
+    <div className="rounded-lg border border-border bg-surface p-3">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate font-medium text-ink-100">{suggestion.exerciseName}</p>
-          <p className="text-xs text-ink-500">
+          <p className="truncate font-medium text-text">{suggestion.exerciseName}</p>
+          <p className="text-xs text-text-faint">
             bisher {suggestion.currentBestValue} {unit(suggestion.type)}
           </p>
         </div>
         {suggestion.plateauDetected && (
           <span
-            className="shrink-0 rounded-full bg-amber-950 px-1.5 py-0.5 text-[10px] text-amber-400"
+            className="shrink-0 rounded-full bg-warning-soft px-1.5 py-0.5 text-[10px] text-warning"
             title="Kein neuer Bestwert in den letzten 3 Trainingseinheiten — Vorschläge deshalb vorsichtiger"
           >
             Stagniert
@@ -42,13 +42,13 @@ function SuggestionRow({ suggestion }: { suggestion: GoalSuggestionDto }) {
         )}
       </div>
 
-      <div className="mb-2 flex gap-1 rounded-lg border border-ink-800 bg-ink-950 p-1">
+      <div className="mb-2 flex gap-1 rounded-lg border border-border bg-bg p-1">
         {(Object.keys(TIER_LABELS) as Tier[]).map((t) => (
           <button
             key={t}
             onClick={() => setTier(t)}
             className={`flex-1 rounded-md py-1 text-xs font-medium ${
-              tier === t ? "bg-violet-500 text-ink-950" : "text-ink-400"
+              tier === t ? "bg-accent text-on-accent" : "text-text-subtle"
             }`}
           >
             {TIER_LABELS[t]}
@@ -57,9 +57,9 @@ function SuggestionRow({ suggestion }: { suggestion: GoalSuggestionDto }) {
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-ink-400">
+        <p className="text-sm text-text-subtle">
           Ziel: {selected.targetValue} {unit(suggestion.type)}
-          <span className="text-ink-600"> · bis {formatDate(selected.targetDate)}</span>
+          <span className="text-text-faint"> · bis {formatDate(selected.targetDate)}</span>
         </p>
         <button
           onClick={() =>
@@ -71,7 +71,7 @@ function SuggestionRow({ suggestion }: { suggestion: GoalSuggestionDto }) {
             })
           }
           disabled={createGoal.isPending}
-          className="shrink-0 rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
+          className="shrink-0 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
         >
           Übernehmen
         </button>
@@ -93,7 +93,7 @@ export function GoalSuggestionsCard() {
 
   return (
     <div className="mb-4">
-      <h2 className="mb-2 text-sm font-medium text-ink-400">Vorschläge</h2>
+      <h2 className="mb-2 text-sm font-medium text-text-subtle">Vorschläge</h2>
       <div className="flex flex-col gap-2">
         {suggestions.map((suggestion) => (
           <SuggestionRow key={suggestion.exerciseId} suggestion={suggestion} />

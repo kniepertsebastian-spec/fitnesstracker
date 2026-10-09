@@ -32,7 +32,7 @@ export function ProgressPhotoImage({
   }, [id]);
 
   if (!src) {
-    return <div className={`animate-pulse bg-ink-800 ${className ?? ""}`} />;
+    return <div className={`animate-pulse bg-surface-2 ${className ?? ""}`} />;
   }
 
   return <img src={src} alt={alt} className={className} />;

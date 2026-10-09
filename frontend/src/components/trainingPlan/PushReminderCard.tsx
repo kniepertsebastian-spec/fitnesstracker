@@ -58,14 +58,14 @@ export function PushReminderCard() {
   if (status === "loading" || status === "unsupported") return null;
 
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-      <p className="text-sm font-medium text-ink-300">Push-Benachrichtigungen</p>
-      <p className="mt-1 text-sm text-ink-500">
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <p className="text-sm font-medium text-text-muted">Push-Benachrichtigungen</p>
+      <p className="mt-1 text-sm text-text-faint">
         Erinnerungen direkt aufs Gerät, auch wenn die App gerade nicht offen ist.
       </p>
 
       {status === "unconfigured" ? (
-        <p className="mt-2 text-sm text-ink-600">
+        <p className="mt-2 text-sm text-text-faint">
           Server hat noch keinen VAPID-Schlüssel konfiguriert.
         </p>
       ) : (
@@ -74,32 +74,32 @@ export function PushReminderCard() {
             onClick={status === "subscribed" ? unsubscribe : subscribe}
             className={`mt-3 w-full rounded-lg py-1.5 text-sm font-medium ${
               status === "subscribed"
-                ? "bg-ink-800 text-ink-300 hover:bg-ink-700"
-                : "bg-violet-500 text-ink-950 hover:bg-violet-400"
+                ? "bg-surface-2 text-text-muted hover:bg-control"
+                : "bg-accent text-on-accent hover:bg-accent-hover"
             }`}
           >
             {status === "subscribed" ? "Benachrichtigungen deaktivieren" : "Benachrichtigungen aktivieren"}
           </button>
 
           {status === "subscribed" && settings && (
-            <div className="mt-3 flex flex-col gap-3 border-t border-ink-800 pt-3">
+            <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
               {REMINDER_GROUPS.map((group) => (
                 <div key={group.title}>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-600">
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-text-faint">
                     {group.title}
                   </p>
                   <div className="flex flex-col gap-1.5">
                     {group.types.map(({ key, label, note }) => (
-                      <label key={key} className="flex items-center gap-2 text-sm text-ink-300">
+                      <label key={key} className="flex items-center gap-2 text-sm text-text-muted">
                         <input
                           type="checkbox"
                           checked={settings[key]}
                           onChange={(e) => updateSettings.mutate({ [key]: e.target.checked })}
-                          className="h-4 w-4 accent-violet-500"
+                          className="h-4 w-4 accent-accent"
                         />
                         <span>
                           {label}
-                          {note && <span className="text-ink-600"> ({note})</span>}
+                          {note && <span className="text-text-faint"> ({note})</span>}
                         </span>
                       </label>
                     ))}
@@ -111,7 +111,7 @@ export function PushReminderCard() {
         </>
       )}
 
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-sm text-danger-text">{error}</p>}
     </div>
   );
 }

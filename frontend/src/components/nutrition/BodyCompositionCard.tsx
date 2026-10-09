@@ -59,83 +59,83 @@ export function BodyCompositionCard() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-        <p className="mb-2 text-sm font-medium text-ink-300">Neue Messung</p>
+      <div className="rounded-lg border border-border bg-surface p-4">
+        <p className="mb-2 text-sm font-medium text-text-muted">Neue Messung</p>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="mb-1 block text-xs text-ink-500">Gewicht (kg)</label>
+            <label className="mb-1 block text-xs text-text-faint">Gewicht (kg)</label>
             <input
               type="number"
               step="0.1"
               value={weightKg}
               onChange={(e) => setWeightKg(e.target.value)}
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-ink-500">Körperfett (%)</label>
+            <label className="mb-1 block text-xs text-text-faint">Körperfett (%)</label>
             <input
               type="number"
               step="0.1"
               value={bodyFatPercent}
               onChange={(e) => setBodyFatPercent(e.target.value)}
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-ink-500">Muskelmasse (kg)</label>
+            <label className="mb-1 block text-xs text-text-faint">Muskelmasse (kg)</label>
             <input
               type="number"
               step="0.1"
               value={muscleMassKg}
               onChange={(e) => setMuscleMassKg(e.target.value)}
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-ink-500">Wasseranteil (%)</label>
+            <label className="mb-1 block text-xs text-text-faint">Wasseranteil (%)</label>
             <input
               type="number"
               step="0.1"
               value={bodyWaterPercent}
               onChange={(e) => setBodyWaterPercent(e.target.value)}
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
             />
           </div>
         </div>
         <button
           onClick={handleAdd}
-          className="mt-3 w-full rounded-lg bg-violet-500 py-2 text-sm font-medium text-ink-950 hover:bg-violet-400"
+          className="mt-3 w-full rounded-lg bg-accent py-2 text-sm font-medium text-on-accent hover:bg-accent-hover"
         >
           Speichern
         </button>
-        {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+        {error && <p className="mt-1 text-xs text-danger-text">{error}</p>}
       </div>
 
       {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
+        <p className="text-text-faint">Lädt…</p>
       ) : latest ? (
-        <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-          <p className="mb-2 text-sm text-ink-500">Letzte Messung ({formatDate(latest.measuredAt)})</p>
+        <div className="rounded-lg border border-border bg-surface p-4">
+          <p className="mb-2 text-sm text-text-faint">Letzte Messung ({formatDate(latest.measuredAt)})</p>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-ink-500">{BODY_METRIC_INFO.weightKg.label}</p>
-              <p className="text-lg font-semibold text-ink-100">
+              <p className="text-text-faint">{BODY_METRIC_INFO.weightKg.label}</p>
+              <p className="text-lg font-semibold text-text">
                 {latest.weightKg} kg{" "}
-                <span className="text-sm text-ink-500">{trendArrow(latest.weightKg, previous?.weightKg)}</span>
+                <span className="text-sm text-text-faint">{trendArrow(latest.weightKg, previous?.weightKg)}</span>
               </p>
             </div>
             {latest.bodyFatPercent !== null && (
               <div>
-                <p className="text-ink-500">{BODY_METRIC_INFO.bodyFatPercent.label}</p>
-                <p className="text-lg font-semibold text-violet-400">
+                <p className="text-text-faint">{BODY_METRIC_INFO.bodyFatPercent.label}</p>
+                <p className="text-lg font-semibold text-accent">
                   {latest.bodyFatPercent}%{" "}
-                  <span className="text-sm text-ink-500">
+                  <span className="text-sm text-text-faint">
                     {trendArrow(latest.bodyFatPercent, previous?.bodyFatPercent)}
                   </span>
                 </p>
                 {categorizeBodyFat(latest.bodyFatPercent, profile?.gender) && (
-                  <p className="text-xs text-ink-600">
+                  <p className="text-xs text-text-faint">
                     {categorizeBodyFat(latest.bodyFatPercent, profile?.gender)}
                   </p>
                 )}
@@ -143,10 +143,10 @@ export function BodyCompositionCard() {
             )}
             {latest.muscleMassKg !== null && (
               <div>
-                <p className="text-ink-500">{BODY_METRIC_INFO.muscleMassKg.label}</p>
-                <p className="text-lg font-semibold text-ink-100">
+                <p className="text-text-faint">{BODY_METRIC_INFO.muscleMassKg.label}</p>
+                <p className="text-lg font-semibold text-text">
                   {latest.muscleMassKg} kg{" "}
-                  <span className="text-sm text-ink-500">
+                  <span className="text-sm text-text-faint">
                     {trendArrow(latest.muscleMassKg, previous?.muscleMassKg)}
                   </span>
                 </p>
@@ -154,10 +154,10 @@ export function BodyCompositionCard() {
             )}
             {latest.bodyWaterPercent !== null && (
               <div>
-                <p className="text-ink-500">{BODY_METRIC_INFO.bodyWaterPercent.label}</p>
-                <p className="text-lg font-semibold text-ink-100">
+                <p className="text-text-faint">{BODY_METRIC_INFO.bodyWaterPercent.label}</p>
+                <p className="text-lg font-semibold text-text">
                   {latest.bodyWaterPercent}%{" "}
-                  <span className="text-sm text-ink-500">
+                  <span className="text-sm text-text-faint">
                     {trendArrow(latest.bodyWaterPercent, previous?.bodyWaterPercent)}
                   </span>
                 </p>
@@ -166,16 +166,16 @@ export function BodyCompositionCard() {
           </div>
         </div>
       ) : (
-        <p className="text-ink-500">Noch keine Messung erfasst.</p>
+        <p className="text-text-faint">Noch keine Messung erfasst.</p>
       )}
 
       <div>
-        <h2 className="mb-2 text-sm font-medium text-ink-400">Was bedeuten die Werte?</h2>
+        <h2 className="mb-2 text-sm font-medium text-text-subtle">Was bedeuten die Werte?</h2>
         <div className="flex flex-col gap-2">
           {Object.values(BODY_METRIC_INFO).map((info) => (
-            <div key={info.label} className="rounded-lg border border-ink-800 bg-ink-900 p-3 text-sm">
-              <p className="font-medium text-ink-200">{info.label}</p>
-              <p className="text-ink-400">{info.description}</p>
+            <div key={info.label} className="rounded-lg border border-border bg-surface p-3 text-sm">
+              <p className="font-medium text-text-2">{info.label}</p>
+              <p className="text-text-subtle">{info.description}</p>
             </div>
           ))}
         </div>
@@ -183,16 +183,16 @@ export function BodyCompositionCard() {
 
       {entries && entries.length > 0 && (
         <div>
-          <h2 className="mb-2 text-sm font-medium text-ink-400">Verlauf</h2>
+          <h2 className="mb-2 text-sm font-medium text-text-subtle">Verlauf</h2>
           <div className="flex flex-col gap-2">
             {entries.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-center justify-between rounded-lg border border-ink-800 bg-ink-900 px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2 text-sm"
               >
                 <div>
-                  <p className="text-ink-300">{formatDate(entry.measuredAt)}</p>
-                  <p className="text-xs text-ink-500">
+                  <p className="text-text-muted">{formatDate(entry.measuredAt)}</p>
+                  <p className="text-xs text-text-faint">
                     {entry.weightKg} kg
                     {entry.bodyFatPercent !== null && ` · ${entry.bodyFatPercent}% KF`}
                     {entry.muscleMassKg !== null && ` · ${entry.muscleMassKg}kg Muskeln`}
@@ -201,7 +201,7 @@ export function BodyCompositionCard() {
                 </div>
                 <button
                   onClick={() => deleteEntry.mutate(entry.id)}
-                  className="text-xs text-red-400 hover:underline"
+                  className="text-xs text-danger-text hover:underline"
                 >
                   Löschen
                 </button>

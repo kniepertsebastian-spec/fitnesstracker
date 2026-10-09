@@ -80,26 +80,26 @@ function HistoryCalendar({ view, dayKeysWithLogs, selectedDate, onSelectDay, onP
   });
 
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-3">
+    <div className="rounded-lg border border-border bg-surface p-3">
       <div className="mb-2 flex items-center justify-between">
         <button
           onClick={onPrevMonth}
           aria-label="Vorheriger Monat"
-          className="rounded-lg px-2 py-1 text-ink-400 hover:bg-ink-800"
+          className="rounded-lg px-2 py-1 text-text-subtle hover:bg-surface-2"
         >
           ‹
         </button>
-        <p className="text-sm font-medium text-ink-100">{monthLabel}</p>
+        <p className="text-sm font-medium text-text">{monthLabel}</p>
         <button
           onClick={onNextMonth}
           disabled={isAtOrPastCurrentMonth(view)}
           aria-label="Nächster Monat"
-          className="rounded-lg px-2 py-1 text-ink-400 hover:bg-ink-800 disabled:opacity-30"
+          className="rounded-lg px-2 py-1 text-text-subtle hover:bg-surface-2 disabled:opacity-30"
         >
           ›
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-1 pb-1 text-center text-xs text-ink-600">
+      <div className="grid grid-cols-7 gap-1 pb-1 text-center text-xs text-text-faint">
         {WEEKDAY_LABELS.map((d) => (
           <div key={d}>{d}</div>
         ))}
@@ -117,10 +117,10 @@ function HistoryCalendar({ view, dayKeysWithLogs, selectedDate, onSelectDay, onP
               disabled={!hasLogs}
               className={`aspect-square rounded-lg text-sm ${
                 isSelected
-                  ? "bg-violet-500 font-medium text-ink-950"
+                  ? "bg-accent font-medium text-on-accent"
                   : hasLogs
-                    ? "bg-ink-800 text-ink-100 hover:bg-ink-700"
-                    : "text-ink-700"
+                    ? "bg-surface-2 text-text hover:bg-control"
+                    : "text-text-faint"
               }`}
             >
               {day}
@@ -146,20 +146,20 @@ function ExerciseLogGroup({ exerciseName, logs, onEdit }: ExerciseGroupProps) {
   const sorted = [...logs].sort((a, b) => (a.performedAt < b.performedAt ? -1 : 1));
 
   return (
-    <div className="overflow-hidden rounded-lg border border-ink-800 bg-ink-900">
+    <div className="overflow-hidden rounded-lg border border-border bg-surface">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between px-3 py-2 text-left"
       >
-        <span className="font-medium text-ink-100">{exerciseName}</span>
-        <span className="text-xs text-ink-500">
+        <span className="font-medium text-text">{exerciseName}</span>
+        <span className="text-xs text-text-faint">
           {logs.length} {logs.length === 1 ? "Satz" : "Sätze"} {open ? "▲" : "▼"}
         </span>
       </button>
       {open && (
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-y border-ink-800 text-left text-xs text-ink-500">
+            <tr className="border-y border-border text-left text-xs text-text-faint">
               <th className="py-1.5 pl-3 pr-2 font-medium">Uhrzeit</th>
               <th className="py-1.5 pr-2 font-medium">Satz</th>
               <th className="py-1.5 pr-2 font-medium">Wdh.</th>
@@ -169,19 +169,19 @@ function ExerciseLogGroup({ exerciseName, logs, onEdit }: ExerciseGroupProps) {
           </thead>
           <tbody>
             {sorted.map((log) => (
-              <tr key={log.clientId} className="border-b border-ink-900 last:border-0">
-                <td className="py-1.5 pl-3 pr-2 text-ink-400">{formatTime(log.performedAt)}</td>
+              <tr key={log.clientId} className="border-b border-border-subtle last:border-0">
+                <td className="py-1.5 pl-3 pr-2 text-text-subtle">{formatTime(log.performedAt)}</td>
                 <td className="py-1.5 pr-2">{log.setNumber}</td>
                 <td className="py-1.5 pr-2">{log.reps}</td>
                 <td className="py-1.5 pr-2">{log.weightKg}</td>
                 <td className="py-1.5 pr-3">
                   <div className="flex justify-end gap-3 text-xs">
-                    <button onClick={() => onEdit(log)} className="text-violet-400 hover:underline">
+                    <button onClick={() => onEdit(log)} className="text-accent hover:underline">
                       Bearbeiten
                     </button>
                     <button
                       onClick={() => deleteLog.mutate(log.clientId)}
-                      className="text-red-400 hover:underline"
+                      className="text-danger-text hover:underline"
                     >
                       Löschen
                     </button>
@@ -264,7 +264,7 @@ export function WorkoutHistoryPage() {
       <select
         value={exerciseFilter}
         onChange={(e) => setExerciseFilter(e.target.value)}
-        className="mb-4 w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2 text-sm text-ink-100"
+        className="mb-4 w-full rounded-lg border border-border-strong bg-bg px-3 py-2 text-sm text-text"
       >
         <option value="">Alle Übungen</option>
         {exercises?.map((exercise) => (
@@ -275,9 +275,9 @@ export function WorkoutHistoryPage() {
       </select>
 
       {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
+        <p className="text-text-faint">Lädt…</p>
       ) : logsByDay.size === 0 ? (
-        <p className="py-8 text-center text-ink-500">
+        <p className="py-8 text-center text-text-faint">
           {exerciseFilter ? "Keine Sätze für diese Übung protokolliert." : "Noch keine Trainings protokolliert."}
         </p>
       ) : (
@@ -295,9 +295,9 @@ export function WorkoutHistoryPage() {
 
           {selectedDate && (
             <div>
-              <h2 className="mb-2 text-sm font-medium text-ink-400">{dayLabel(selectedDate)}</h2>
+              <h2 className="mb-2 text-sm font-medium text-text-subtle">{dayLabel(selectedDate)}</h2>
               {selectedDayGroups.length === 0 ? (
-                <p className="text-sm text-ink-600">Keine Einträge für diese Auswahl.</p>
+                <p className="text-sm text-text-faint">Keine Einträge für diese Auswahl.</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {selectedDayGroups.map(([name, exerciseLogs]) => (

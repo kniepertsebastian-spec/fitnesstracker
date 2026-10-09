@@ -30,36 +30,36 @@ export function SupplementCard() {
   };
 
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-      <p className="mb-1 text-sm font-medium text-ink-300">Supplement-Erinnerungen</p>
-      <p className="mb-3 text-xs text-ink-500">
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <p className="mb-1 text-sm font-medium text-text-muted">Supplement-Erinnerungen</p>
+      <p className="mb-3 text-xs text-text-faint">
         Tägliche Push-Erinnerung zur eingestellten Uhrzeit — benötigt aktivierte
         Push-Benachrichtigungen (siehe Trainingsplan-Seite).
       </p>
 
       {isLoading ? (
-        <p className="mb-3 text-sm text-ink-500">Lädt…</p>
+        <p className="mb-3 text-sm text-text-faint">Lädt…</p>
       ) : supplements && supplements.length > 0 ? (
         <div className="mb-3 flex flex-col gap-2">
           {supplements.map((s) => (
             <div
               key={s.id}
-              className="flex items-center justify-between rounded-lg bg-ink-800 px-3 py-2 text-sm"
+              className="flex items-center justify-between rounded-lg bg-surface-2 px-3 py-2 text-sm"
             >
               <div>
-                <p className={s.enabled ? "text-ink-200" : "text-ink-500 line-through"}>{s.name}</p>
-                <p className="text-xs text-ink-500">{s.reminderTime}</p>
+                <p className={s.enabled ? "text-text-2" : "text-text-faint line-through"}>{s.name}</p>
+                <p className="text-xs text-text-faint">{s.reminderTime}</p>
               </div>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => updateSupplement.mutate({ id: s.id, input: { enabled: !s.enabled } })}
-                  className="text-xs text-violet-400 hover:underline"
+                  className="text-xs text-accent hover:underline"
                 >
                   {s.enabled ? "Pausieren" : "Aktivieren"}
                 </button>
                 <button
                   onClick={() => deleteSupplement.mutate(s.id)}
-                  className="text-xs text-red-400 hover:underline"
+                  className="text-xs text-danger-text hover:underline"
                 >
                   Löschen
                 </button>
@@ -68,7 +68,7 @@ export function SupplementCard() {
           ))}
         </div>
       ) : (
-        <p className="mb-3 text-sm text-ink-600">Noch keine Supplements hinterlegt.</p>
+        <p className="mb-3 text-sm text-text-faint">Noch keine Supplements hinterlegt.</p>
       )}
 
       <div className="flex gap-2">
@@ -77,22 +77,22 @@ export function SupplementCard() {
           placeholder="Name (z. B. Kreatin)"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+          className="min-w-0 flex-1 rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
         />
         <input
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          className="rounded-lg border border-ink-700 bg-ink-950 px-2 py-1.5 text-sm"
+          className="rounded-lg border border-border-strong bg-bg px-2 py-1.5 text-sm"
         />
         <button
           onClick={handleAdd}
-          className="shrink-0 rounded-lg border border-ink-700 px-3 text-sm text-ink-300 hover:bg-ink-800"
+          className="shrink-0 rounded-lg border border-border-strong px-3 text-sm text-text-muted hover:bg-surface-2"
         >
           +
         </button>
       </div>
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-danger-text">{error}</p>}
     </div>
   );
 }

@@ -30,7 +30,7 @@ export function GoalsPage() {
         <h1 className="text-xl font-semibold">Ziele</h1>
         <button
           onClick={openCreate}
-          className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-violet-400"
+          className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-hover"
         >
           + Ziel
         </button>
@@ -39,14 +39,14 @@ export function GoalsPage() {
       <GoalSuggestionsCard />
 
       {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
+        <p className="text-text-faint">Lädt…</p>
       ) : !goals || goals.length === 0 ? (
-        <p className="text-ink-500">Noch keine Ziele gesetzt.</p>
+        <p className="text-text-faint">Noch keine Ziele gesetzt.</p>
       ) : (
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             {open.length === 0 ? (
-              <p className="text-sm text-ink-600">Keine offenen Ziele.</p>
+              <p className="text-sm text-text-faint">Keine offenen Ziele.</p>
             ) : (
               open.map((goal) => <GoalCard key={goal.id} goal={goal} onEdit={openEdit} />)
             )}
@@ -54,7 +54,7 @@ export function GoalsPage() {
 
           {achieved.length > 0 && (
             <div>
-              <h2 className="mb-2 text-sm font-medium text-ink-400">Erreicht</h2>
+              <h2 className="mb-2 text-sm font-medium text-text-subtle">Erreicht</h2>
               <div className="flex flex-col gap-2">
                 {achieved.map((goal) => (
                   <GoalCard key={goal.id} goal={goal} onEdit={openEdit} />

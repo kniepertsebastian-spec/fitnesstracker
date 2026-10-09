@@ -120,16 +120,16 @@ export function ProgressPhotoCamera({ latestPhotoId, onCapture, onCancel, onUnav
           />
         )}
         {!ready && (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-ink-300">
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-text-muted">
             Kamera wird gestartet…
           </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-3 bg-ink-950 p-4">
+      <div className="flex flex-col gap-3 bg-bg p-4">
         {overlaySrc && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-ink-500">Vorheriges Foto</span>
+            <span className="text-xs text-text-faint">Vorheriges Foto</span>
             <input
               type="range"
               min={0}
@@ -144,7 +144,7 @@ export function ProgressPhotoCamera({ latestPhotoId, onCapture, onCancel, onUnav
         <div className="flex items-center justify-between gap-3">
           <button
             onClick={onCancel}
-            className="rounded-lg border border-ink-700 px-4 py-2 text-sm text-ink-300 hover:bg-ink-800"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm text-text-muted hover:bg-surface-2"
           >
             Abbrechen
           </button>
@@ -152,11 +152,11 @@ export function ProgressPhotoCamera({ latestPhotoId, onCapture, onCancel, onUnav
             onClick={handleCapture}
             disabled={!ready}
             aria-label="Foto aufnehmen"
-            className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-ink-700 bg-white disabled:opacity-50"
+            className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-border-strong bg-white disabled:opacity-50"
           />
           <button
             onClick={() => setFacingMode((m) => (m === "environment" ? "user" : "environment"))}
-            className="rounded-lg border border-ink-700 px-4 py-2 text-sm text-ink-300 hover:bg-ink-800"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm text-text-muted hover:bg-surface-2"
           >
             Kamera wechseln
           </button>

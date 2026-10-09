@@ -66,16 +66,16 @@ export function ProgressPhotosCard() {
         />
       )}
 
-      <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-        <p className="mb-2 text-sm font-medium text-ink-300">Neues Vergleichsfoto</p>
+      <div className="rounded-lg border border-border bg-surface p-4">
+        <p className="mb-2 text-sm font-medium text-text-muted">Neues Vergleichsfoto</p>
         <div className="mb-2">
-          <label className="mb-1 block text-xs text-ink-500">Datum</label>
+          <label className="mb-1 block text-xs text-text-faint">Datum</label>
           <input
             type="date"
             value={takenAt}
             max={todayDateInputValue()}
             onChange={(e) => setTakenAt(e.target.value)}
-            className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+            className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
           />
         </div>
         <div className="flex gap-2">
@@ -85,11 +85,11 @@ export function ProgressPhotosCard() {
               setCameraOpen(true);
             }}
             disabled={upload.isPending}
-            className="flex-1 rounded-lg border border-dashed border-ink-700 bg-ink-950 py-4 text-sm text-ink-400 hover:border-violet-500 disabled:opacity-50"
+            className="flex-1 rounded-lg border border-dashed border-border-strong bg-bg py-4 text-sm text-text-subtle hover:border-accent disabled:opacity-50"
           >
             {upload.isPending ? "Lädt hoch…" : "Kamera mit Vorher-Vergleich"}
           </button>
-          <label className="flex cursor-pointer items-center justify-center rounded-lg border border-ink-700 bg-ink-950 px-4 text-sm text-ink-400 hover:border-violet-500">
+          <label className="flex cursor-pointer items-center justify-center rounded-lg border border-border-strong bg-bg px-4 text-sm text-text-subtle hover:border-accent">
             Datei
             <input
               type="file"
@@ -101,19 +101,19 @@ export function ProgressPhotosCard() {
           </label>
         </div>
         {cameraUnavailable && (
-          <p className="mt-1 text-xs text-amber-500">{cameraUnavailable} Nutze stattdessen "Datei".</p>
+          <p className="mt-1 text-xs text-warning">{cameraUnavailable} Nutze stattdessen "Datei".</p>
         )}
-        {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+        {error && <p className="mt-1 text-xs text-danger-text">{error}</p>}
       </div>
 
       {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
+        <p className="text-text-faint">Lädt…</p>
       ) : items.length === 0 ? (
-        <p className="text-ink-500">Noch keine Fotos. Nur du kannst sie sehen.</p>
+        <p className="text-text-faint">Noch keine Fotos. Nur du kannst sie sehen.</p>
       ) : (
         <>
           <div>
-            <h2 className="mb-2 text-sm font-medium text-ink-400">Galerie</h2>
+            <h2 className="mb-2 text-sm font-medium text-text-subtle">Galerie</h2>
             <div className="grid grid-cols-3 gap-2">
               {items.map((photo) => (
                 <div key={photo.id} className="relative">
@@ -122,10 +122,10 @@ export function ProgressPhotosCard() {
                     alt={formatDate(photo.takenAt)}
                     className="aspect-square w-full rounded-lg object-cover"
                   />
-                  <p className="mt-1 text-center text-xs text-ink-500">{formatDate(photo.takenAt)}</p>
+                  <p className="mt-1 text-center text-xs text-text-faint">{formatDate(photo.takenAt)}</p>
                   <button
                     onClick={() => deletePhoto.mutate(photo.id)}
-                    className="absolute right-1 top-1 rounded-full bg-ink-950/80 px-1.5 py-0.5 text-xs text-red-400"
+                    className="absolute right-1 top-1 rounded-full bg-bg px-1.5 py-0.5 text-xs text-danger-text"
                     aria-label="Foto löschen"
                   >
                     ×
@@ -137,12 +137,12 @@ export function ProgressPhotosCard() {
 
           {items.length >= 2 && (
             <div>
-              <h2 className="mb-2 text-sm font-medium text-ink-400">Vorher/Nachher</h2>
+              <h2 className="mb-2 text-sm font-medium text-text-subtle">Vorher/Nachher</h2>
               <div className="grid grid-cols-2 gap-2">
                 <select
                   value={beforeId}
                   onChange={(e) => setBeforeId(e.target.value)}
-                  className="rounded-lg border border-ink-700 bg-ink-950 px-2 py-1.5 text-sm"
+                  className="rounded-lg border border-border-strong bg-bg px-2 py-1.5 text-sm"
                 >
                   <option value="">Vorher wählen…</option>
                   {items.map((p) => (
@@ -154,7 +154,7 @@ export function ProgressPhotosCard() {
                 <select
                   value={afterId}
                   onChange={(e) => setAfterId(e.target.value)}
-                  className="rounded-lg border border-ink-700 bg-ink-950 px-2 py-1.5 text-sm"
+                  className="rounded-lg border border-border-strong bg-bg px-2 py-1.5 text-sm"
                 >
                   <option value="">Nachher wählen…</option>
                   {items.map((p) => (

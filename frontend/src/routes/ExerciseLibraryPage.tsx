@@ -29,7 +29,7 @@ export function ExerciseLibraryPage() {
         <h1 className="text-xl font-semibold">Übungen</h1>
         <button
           onClick={() => setDialogOpen(true)}
-          className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-violet-400"
+          className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:bg-accent-hover"
         >
           + Übung
         </button>
@@ -41,13 +41,13 @@ export function ExerciseLibraryPage() {
           placeholder="Übung suchen…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2 text-ink-100"
+          className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2 text-text"
         />
         <div className="grid grid-cols-2 gap-2">
           <select
             value={muscleGroup}
             onChange={(e) => setMuscleGroup(e.target.value)}
-            className="rounded-lg border border-ink-700 bg-ink-950 px-3 py-2 text-ink-100"
+            className="rounded-lg border border-border-strong bg-bg px-3 py-2 text-text"
           >
             <option value="">Alle Muskelgruppen</option>
             {facets?.muscleGroups.map((m) => (
@@ -59,7 +59,7 @@ export function ExerciseLibraryPage() {
           <select
             value={equipment}
             onChange={(e) => setEquipment(e.target.value)}
-            className="rounded-lg border border-ink-700 bg-ink-950 px-3 py-2 text-ink-100"
+            className="rounded-lg border border-border-strong bg-bg px-3 py-2 text-text"
           >
             <option value="">Alle Equipment</option>
             {facets?.equipment.map((eq) => (
@@ -69,24 +69,24 @@ export function ExerciseLibraryPage() {
             ))}
           </select>
         </div>
-        <label className="flex items-center gap-2 text-sm text-ink-400">
+        <label className="flex items-center gap-2 text-sm text-text-subtle">
           <input
             type="checkbox"
             checked={includeInactive}
             onChange={(e) => setIncludeInactive(e.target.checked)}
-            className="h-4 w-4 accent-violet-500"
+            className="h-4 w-4 accent-accent"
           />
           Auch inaktive Übungen anzeigen
         </label>
       </div>
 
       {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
+        <p className="text-text-faint">Lädt…</p>
       ) : exercises.length === 0 ? (
-        <p className="text-ink-500">Keine Übungen gefunden.</p>
+        <p className="text-text-faint">Keine Übungen gefunden.</p>
       ) : (
         <>
-          <p className="mb-2 text-sm text-ink-500">
+          <p className="mb-2 text-sm text-text-faint">
             {exercises.length} von {total}
           </p>
           <div className="flex flex-col gap-2">
@@ -98,7 +98,7 @@ export function ExerciseLibraryPage() {
             <button
               onClick={() => fetchNextPage()}
               disabled={isFetchingNextPage}
-              className="mt-4 w-full rounded-lg border border-ink-700 py-2 text-sm text-ink-300 hover:bg-ink-800 disabled:opacity-50"
+              className="mt-4 w-full rounded-lg border border-border-strong py-2 text-sm text-text-muted hover:bg-surface-2 disabled:opacity-50"
             >
               {isFetchingNextPage ? "Lädt…" : "Mehr laden"}
             </button>

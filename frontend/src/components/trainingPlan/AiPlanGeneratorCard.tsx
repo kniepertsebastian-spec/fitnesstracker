@@ -30,17 +30,17 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
 
   if (isLoading || !settings) {
     return (
-      <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-        <p className="text-sm text-ink-500">KI-Trainingsplan lädt…</p>
+      <div className="rounded-lg border border-border bg-surface p-4">
+        <p className="text-sm text-text-faint">KI-Trainingsplan lädt…</p>
       </div>
     );
   }
 
   if (!settings.configured) {
     return (
-      <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-        <p className="text-sm font-medium text-ink-300">KI-Trainingsplan-Generator</p>
-        <p className="mt-1 text-sm text-ink-600">
+      <div className="rounded-lg border border-border bg-surface p-4">
+        <p className="text-sm font-medium text-text-muted">KI-Trainingsplan-Generator</p>
+        <p className="mt-1 text-sm text-text-faint">
           Server hat noch keinen AI_SETTINGS_ENCRYPTION_KEY konfiguriert.
         </p>
       </div>
@@ -71,9 +71,9 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
   };
 
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-      <p className="text-sm font-medium text-ink-300">KI-Trainingsplan-Generator</p>
-      <p className="mt-1 text-xs text-ink-500">
+    <div className="rounded-lg border border-border bg-surface p-4">
+      <p className="text-sm font-medium text-text-muted">KI-Trainingsplan-Generator</p>
+      <p className="mt-1 text-xs text-text-faint">
         Eigener API-Key (BYOK) — der Key verlässt den Server nie außer für Aufrufe an den
         gewählten Anbieter.
       </p>
@@ -82,7 +82,7 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
         <select
           value={provider}
           onChange={(e) => setProvider(e.target.value as AiProvider)}
-          className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+          className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
         >
           {PROVIDER_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -95,27 +95,27 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
           placeholder={settings.hasApiKey ? "Neuen API-Key eingeben zum Ändern" : "API-Key"}
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+          className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
         />
         <input
           type="text"
           placeholder="Modell (optional, z. B. gpt-4o-mini)"
           value={model}
           onChange={(e) => setModel(e.target.value)}
-          className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+          className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
         />
         <div className="flex gap-2">
           <button
             onClick={handleSave}
             disabled={!apiKey.trim() || saveSettings.isPending}
-            className="flex-1 rounded-lg bg-ink-800 py-1.5 text-sm font-medium text-ink-200 hover:bg-ink-700 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-surface-2 py-1.5 text-sm font-medium text-text-2 hover:bg-control disabled:opacity-50"
           >
             {saveSettings.isPending ? "Speichert…" : "Key speichern"}
           </button>
           {settings.hasApiKey && (
             <button
               onClick={() => deleteSettings.mutate()}
-              className="rounded-lg border border-ink-700 px-3 text-sm text-ink-500 hover:text-red-400"
+              className="rounded-lg border border-border-strong px-3 text-sm text-text-faint hover:text-danger-text"
             >
               Entfernen
             </button>
@@ -123,7 +123,7 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
         </div>
       </div>
 
-      <p className="mt-2 text-xs text-ink-500">
+      <p className="mt-2 text-xs text-text-faint">
         {settings.hasApiKey
           ? `Konfiguriert: ${PROVIDER_OPTIONS.find((o) => o.value === settings.provider)?.label ?? settings.provider}`
           : "Noch kein Anbieter konfiguriert."}
@@ -132,14 +132,14 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
       <button
         onClick={() => setColdStartOpen(true)}
         disabled={!settings.hasApiKey || generatePlan.isPending}
-        className="mt-3 w-full rounded-lg bg-violet-500 py-2 text-sm font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
+        className="mt-3 w-full rounded-lg bg-accent py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
       >
         {generatePlan.isPending ? "Generiert…" : "Plan konfigurieren & generieren"}
       </button>
 
-      {generateError && <p className="mt-2 text-sm text-red-400">{generateError}</p>}
+      {generateError && <p className="mt-2 text-sm text-danger-text">{generateError}</p>}
       {generatedCount !== null && (
-        <p className="mt-2 text-sm text-emerald-400">{generatedCount} Übungen generiert.</p>
+        <p className="mt-2 text-sm text-accent">{generatedCount} Übungen generiert.</p>
       )}
 
       {coldStartOpen && (

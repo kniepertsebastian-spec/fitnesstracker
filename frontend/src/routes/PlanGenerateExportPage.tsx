@@ -26,15 +26,15 @@ export function PlanGenerateExportPage() {
     <AppShell>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Plan generieren &amp; exportieren</h1>
-        <Link to="/plan" className="text-xs text-violet-400 hover:underline">
+        <Link to="/plan" className="text-xs text-accent hover:underline">
           Zum Plan
         </Link>
       </div>
 
       {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
+        <p className="text-text-faint">Lädt…</p>
       ) : !plan ? (
-        <p className="text-ink-500">Kein Plan gefunden.</p>
+        <p className="text-text-faint">Kein Plan gefunden.</p>
       ) : (
         <div className="flex flex-col gap-4">
           {selectedPhase && <PhaseTabs selected={selectedPhase} onSelect={setSelectedPhase} />}

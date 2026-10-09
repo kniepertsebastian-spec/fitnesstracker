@@ -10,6 +10,7 @@ export function toTrainingPlanDto(
     currentPhase: plan.currentPhase,
     phaseStartedOn: plan.phaseStartedOn.toISOString(),
     nextRotationOn: nextRotationOn ? nextRotationOn.toISOString() : null,
+    extensionWeeks: plan.extensionWeeks,
     pausedAt: plan.pausedAt ? plan.pausedAt.toISOString() : null,
     remarks: plan.remarks,
     detectedAsymmetries: plan.detectedAsymmetries,

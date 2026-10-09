@@ -9,6 +9,20 @@ function todayUtcDate(): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
+// Monday 00:00 UTC of the week containing `date` (same week boundary as the plan-week status).
+export function weekStartUtc(date: Date = new Date()): Date {
+  const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
+  return day;
+}
+
+export function listWeekCardioLogs(prisma: PrismaClient, userId: string) {
+  return prisma.cardioLog.findMany({
+    where: { userId, deletedAt: null, performedAt: { gte: weekStartUtc() } },
+    orderBy: { performedAt: "desc" },
+  });
+}
+
 export function listTodayCardioLogs(prisma: PrismaClient, userId: string) {
   return prisma.cardioLog.findMany({
     where: { userId, deletedAt: null, performedAt: { gte: todayUtcDate() } },

@@ -92,21 +92,21 @@ export function GoalFormDialog({ open, onClose, editingGoal }: Props) {
 
   return (
     <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/60 sm:items-center">
-      <div className="w-full max-w-sm rounded-t-2xl bg-ink-900 p-4 sm:rounded-2xl">
+      <div className="w-full max-w-sm rounded-t-2xl bg-surface p-4 sm:rounded-2xl">
         <h2 className="mb-4 text-lg font-semibold">
           {editingGoal ? "Ziel bearbeiten" : "Ziel hinzufügen"}
         </h2>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
           <div>
-            <label className="mb-1 block text-sm text-ink-400">Art</label>
+            <label className="mb-1 block text-sm text-text-subtle">Art</label>
             {editingGoal ? (
-              <p className="rounded-lg border border-ink-800 bg-ink-950 px-3 py-2 text-ink-400">
+              <p className="rounded-lg border border-border bg-bg px-3 py-2 text-text-subtle">
                 {GOAL_TYPE_LABELS[editingGoal.type]}
                 {editingGoal.exerciseName && ` · ${editingGoal.exerciseName}`}
               </p>
             ) : (
               <select
-                className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+                className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
                 {...register("type")}
               >
                 {goalTypeSchema.options.map((value) => (
@@ -120,9 +120,9 @@ export function GoalFormDialog({ open, onClose, editingGoal }: Props) {
 
           {!editingGoal && needsExercise && (
             <div>
-              <label className="mb-1 block text-sm text-ink-400">Übung</label>
+              <label className="mb-1 block text-sm text-text-subtle">Übung</label>
               <select
-                className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+                className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
                 {...register("exerciseId")}
                 defaultValue=""
               >
@@ -136,31 +136,31 @@ export function GoalFormDialog({ open, onClose, editingGoal }: Props) {
                 ))}
               </select>
               {errors.exerciseId && (
-                <p className="mt-1 text-sm text-red-400">{errors.exerciseId.message}</p>
+                <p className="mt-1 text-sm text-danger-text">{errors.exerciseId.message}</p>
               )}
             </div>
           )}
 
           <div>
-            <label className="mb-1 block text-sm text-ink-400">
+            <label className="mb-1 block text-sm text-text-subtle">
               Zielwert {GOAL_TYPE_UNITS[type] && `(${GOAL_TYPE_UNITS[type]})`}
             </label>
             <input
               type="number"
               step="0.1"
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
               {...register("targetValue")}
             />
             {errors.targetValue && (
-              <p className="mt-1 text-sm text-red-400">{errors.targetValue.message}</p>
+              <p className="mt-1 text-sm text-danger-text">{errors.targetValue.message}</p>
             )}
           </div>
 
           <div>
-            <label className="mb-1 block text-sm text-ink-400">Zieldatum (optional)</label>
+            <label className="mb-1 block text-sm text-text-subtle">Zieldatum (optional)</label>
             <input
               type="date"
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
               {...register("targetDate")}
             />
           </div>
@@ -169,14 +169,14 @@ export function GoalFormDialog({ open, onClose, editingGoal }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-lg border border-ink-700 py-2 text-ink-300 hover:bg-ink-800"
+              className="flex-1 rounded-lg border border-border-strong py-2 text-text-muted hover:bg-surface-2"
             >
               Abbrechen
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 rounded-lg bg-violet-500 py-2 font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-accent py-2 font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
             >
               Speichern
             </button>

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  extendPhaseRequest,
   getTrainingPlanRequest,
   pauseTrainingPlanRequest,
   restartPhaseRequest,
@@ -33,6 +34,15 @@ export function usePauseTrainingPlan() {
 
 export function useResumeTrainingPlan() {
   return useTrainingPlanAction(resumeTrainingPlanRequest);
+}
+
+// "+1 Woche": pushes the next phase change out by a week (online-only, like pausing).
+export function useExtendPhase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: extendPhaseRequest,
+    onSuccess: (plan) => queryClient.setQueryData(TRAINING_PLAN_KEY, plan),
+  });
 }
 
 export function useRestartPhase() {

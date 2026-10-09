@@ -32,7 +32,7 @@ export function NutritionPage() {
         <div className="flex flex-col gap-6">
           <BodyCompositionCard />
           <div>
-            <h2 className="mb-2 text-sm font-medium text-ink-400">Fortschritts-Fotos</h2>
+            <h2 className="mb-2 text-sm font-medium text-text-subtle">Fortschritts-Fotos</h2>
             <ProgressPhotosCard />
           </div>
         </div>

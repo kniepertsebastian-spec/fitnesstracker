@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { createCardioLogSchema } from "@fitnesstracker/shared";
-import { createCardioLog, deleteCardioLog, listTodayCardioLogs } from "./cardioLog.service.js";
+import { createCardioLog, deleteCardioLog, listTodayCardioLogs, listWeekCardioLogs } from "./cardioLog.service.js";
 import { toCardioLogDto } from "./cardioLog.types.js";
 import { HttpError } from "../../errors/httpErrors.js";
 import { z } from "zod";
@@ -10,6 +10,12 @@ export default async function cardioLogRoutes(fastify: FastifyInstance) {
 
   fastify.get("/cardio-logs", async (request, reply) => {
     const logs = await listTodayCardioLogs(fastify.prisma, request.user.sub);
+    return reply.send({ items: logs.map(toCardioLogDto) });
+  });
+
+  // This week's sessions (Mon–now) for the Daily page's weekly totals.
+  fastify.get("/cardio-logs/week", async (request, reply) => {
+    const logs = await listWeekCardioLogs(fastify.prisma, request.user.sub);
     return reply.send({ items: logs.map(toCardioLogDto) });
   });
 

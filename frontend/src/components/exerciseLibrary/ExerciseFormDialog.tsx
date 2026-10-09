@@ -86,91 +86,91 @@ export function ExerciseFormDialog({ open, onClose, editingExercise }: Props) {
 
   return (
     <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/60 sm:items-center">
-      <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-ink-900 p-4 sm:rounded-2xl">
+      <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-surface p-4 sm:rounded-2xl">
         <h2 className="mb-4 text-lg font-semibold">
           {editingExercise ? "Übung bearbeiten" : "Übung anlegen"}
         </h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
-            <label className="mb-1 block text-sm text-ink-400">Name</label>
+            <label className="mb-1 block text-sm text-text-subtle">Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="mb-1 block text-sm text-ink-400">Equipment</label>
+              <label className="mb-1 block text-sm text-text-subtle">Equipment</label>
               <input
                 type="text"
                 value={equipment}
                 onChange={(e) => setEquipment(e.target.value)}
-                className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+                className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-ink-400">Kategorie</label>
+              <label className="mb-1 block text-sm text-text-subtle">Kategorie</label>
               <input
                 type="text"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+                className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
               />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-sm text-ink-400">Primäre Muskeln (Komma-getrennt)</label>
+            <label className="mb-1 block text-sm text-text-subtle">Primäre Muskeln (Komma-getrennt)</label>
             <input
               type="text"
               value={primaryMuscles}
               onChange={(e) => setPrimaryMuscles(e.target.value)}
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-ink-400">Sekundäre Muskeln (Komma-getrennt)</label>
+            <label className="mb-1 block text-sm text-text-subtle">Sekundäre Muskeln (Komma-getrennt)</label>
             <input
               type="text"
               value={secondaryMuscles}
               onChange={(e) => setSecondaryMuscles(e.target.value)}
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-ink-400">Video-URL</label>
+            <label className="mb-1 block text-sm text-text-subtle">Video-URL</label>
             <input
               type="text"
               value={videoUrl}
               onChange={(e) => setVideoUrl(e.target.value)}
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-ink-400">Beschreibung</label>
+            <label className="mb-1 block text-sm text-text-subtle">Beschreibung</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
+              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
             />
           </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-danger-text">{error}</p>}
 
           <div className="mt-2 flex gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-lg border border-ink-700 py-2 text-ink-300 hover:bg-ink-800"
+              className="flex-1 rounded-lg border border-border-strong py-2 text-text-muted hover:bg-surface-2"
             >
               Abbrechen
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="flex-1 rounded-lg bg-violet-500 py-2 font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-accent py-2 font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
             >
               Speichern
             </button>

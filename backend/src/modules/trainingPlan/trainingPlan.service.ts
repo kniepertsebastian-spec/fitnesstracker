@@ -4,6 +4,8 @@ import { sendNotificationToUser } from "../push/push.service.js";
 import { refreshDetectedAsymmetries } from "./trainingAsymmetry.service.js";
 
 const ROTATION_WEEKS = 8;
+// Upper bound for "+1 Woche" so a phase can't be stretched indefinitely by accident.
+export const MAX_EXTENSION_WEEKS = 8;
 
 function nextPhase(phase: TrainingPlan["currentPhase"]) {
   const index = TRAINING_PHASE_ROTATION.indexOf(phase);
@@ -38,6 +40,34 @@ export async function getOrCreateTrainingPlan(
   });
 }
 
+export interface RotationComputation {
+  currentPhase: TrainingPlan["currentPhase"];
+  phaseStartedOn: Date;
+  nextRotationOn: Date;
+  closedHistory: Array<Pick<TrainingPlanPhaseHistory, "phase" | "startedOn" | "endedOn">>;
+}
+
+// Pure phase math. The current phase lasts 8 weeks plus any "+1 Woche" extension; every phase
+// after it is a plain 8 weeks (the extension belongs to the phase it was added to).
+export function computeRotation(
+  plan: Pick<TrainingPlan, "currentPhase" | "phaseStartedOn" | "extensionWeeks">,
+  now: Date,
+): RotationComputation {
+  let currentPhase = plan.currentPhase;
+  let phaseStartedOn = plan.phaseStartedOn;
+  let nextRotationOn = addWeeks(phaseStartedOn, ROTATION_WEEKS + plan.extensionWeeks);
+  const closedHistory: RotationComputation["closedHistory"] = [];
+
+  while (nextRotationOn <= now) {
+    closedHistory.push({ phase: currentPhase, startedOn: phaseStartedOn, endedOn: nextRotationOn });
+    currentPhase = nextPhase(currentPhase);
+    phaseStartedOn = nextRotationOn;
+    nextRotationOn = addWeeks(phaseStartedOn, ROTATION_WEEKS);
+  }
+
+  return { currentPhase, phaseStartedOn, nextRotationOn, closedHistory };
+}
+
 export interface RotationResult {
   plan: TrainingPlan;
   // Null while the plan is paused — there's nothing due to compute since the clock isn't
@@ -57,18 +87,7 @@ export async function rotatePhaseIfDue(
     return { plan, nextRotationOn: null, rotated: false };
   }
 
-  const now = new Date();
-  let currentPhase = plan.currentPhase;
-  let phaseStartedOn = plan.phaseStartedOn;
-  let nextRotationOn = addWeeks(phaseStartedOn, ROTATION_WEEKS);
-  const closedHistory: Array<Pick<TrainingPlanPhaseHistory, "phase" | "startedOn" | "endedOn">> = [];
-
-  while (nextRotationOn <= now) {
-    closedHistory.push({ phase: currentPhase, startedOn: phaseStartedOn, endedOn: nextRotationOn });
-    currentPhase = nextPhase(currentPhase);
-    phaseStartedOn = nextRotationOn;
-    nextRotationOn = addWeeks(phaseStartedOn, ROTATION_WEEKS);
-  }
+  const { currentPhase, phaseStartedOn, nextRotationOn, closedHistory } = computeRotation(plan, new Date());
 
   if (closedHistory.length === 0) {
     return { plan, nextRotationOn, rotated: false };
@@ -81,7 +100,7 @@ export async function rotatePhaseIfDue(
     }),
     prisma.trainingPlan.update({
       where: { id: plan.id },
-      data: { currentPhase, phaseStartedOn },
+      data: { currentPhase, phaseStartedOn, extensionWeeks: 0 },
     }),
   ]);
 
@@ -177,6 +196,18 @@ export async function restartCurrentPhase(prisma: PrismaClient, userId: string) 
   const plan = await getOrCreateTrainingPlan(prisma, userId);
   return prisma.trainingPlan.update({
     where: { id: plan.id },
-    data: { phaseStartedOn: mostRecentMonday(new Date()), pausedAt: null },
+    data: { phaseStartedOn: mostRecentMonday(new Date()), pausedAt: null, extensionWeeks: 0 },
+  });
+}
+
+// "+1 Woche": pushes the next phase change out by one week (capped at MAX_EXTENSION_WEEKS).
+// Because the scheduler and the lazy per-request rotation both go through computeRotation, the
+// "Trainingsplan-Wechsel" push moves with it. Like pausing, this is an online-only action.
+export async function extendCurrentPhase(prisma: PrismaClient, userId: string) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  if (plan.extensionWeeks >= MAX_EXTENSION_WEEKS) return plan;
+  return prisma.trainingPlan.update({
+    where: { id: plan.id },
+    data: { extensionWeeks: { increment: 1 } },
   });
 }

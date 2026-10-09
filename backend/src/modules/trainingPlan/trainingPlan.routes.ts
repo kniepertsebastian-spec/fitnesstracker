@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import {
   getCurrentTrainingPlan,
+  extendCurrentPhase,
   pauseTrainingPlan,
   resumeTrainingPlan,
   restartCurrentPhase,
@@ -44,6 +45,12 @@ export default async function trainingPlanRoutes(fastify: FastifyInstance) {
       fastify.prisma,
       request.user.sub,
     );
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  fastify.post("/training-plan/extend-phase", async (request, reply) => {
+    await extendCurrentPhase(fastify.prisma, request.user.sub);
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(fastify.prisma, request.user.sub);
     return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
   });
 
