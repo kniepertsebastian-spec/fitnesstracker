@@ -22,6 +22,7 @@ export function SegmentedControl<T extends string>({
   label,
   className,
 }: SegmentedControlProps<T>) {
+  const hasSelection = options.some((o) => o.value === value);
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -50,7 +51,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={selected}
-            tabIndex={selected ? 0 : -1}
+            tabIndex={selected || (!hasSelection && i === 0) ? 0 : -1}
             onClick={() => onChange(option.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(

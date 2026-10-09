@@ -10,6 +10,7 @@ export interface StepperProps {
   max?: number;
   unit?: string;
   label: string;
+  disabled?: boolean;
   className?: string;
 }
 
@@ -17,13 +18,14 @@ function round(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-export function Stepper({ value, onChange, step = 1, min = 0, max, unit, label, className }: StepperProps) {
+export function Stepper({ value, onChange, step = 1, min = 0, max, unit, label, disabled, className }: StepperProps) {
   const set = (next: number) => {
     const clamped = Math.max(min, max === undefined ? next : Math.min(max, next));
     onChange(round(clamped));
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
+    if (disabled) return;
     if (event.key === "ArrowUp" || event.key === "ArrowRight") {
       event.preventDefault();
       set(value + step);
@@ -39,7 +41,8 @@ export function Stepper({ value, onChange, step = 1, min = 0, max, unit, label, 
   return (
     <div
       role="spinbutton"
-      tabIndex={0}
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled}
       aria-label={label}
       aria-valuenow={value}
       aria-valuemin={min}
@@ -53,7 +56,7 @@ export function Stepper({ value, onChange, step = 1, min = 0, max, unit, label, 
         tabIndex={-1}
         aria-label={`${label} verringern`}
         className={button}
-        disabled={value <= min}
+        disabled={disabled || value <= min}
         onClick={() => set(value - step)}
       >
         <Minus size={18} strokeWidth={2} aria-hidden />
@@ -67,7 +70,7 @@ export function Stepper({ value, onChange, step = 1, min = 0, max, unit, label, 
         tabIndex={-1}
         aria-label={`${label} erhöhen`}
         className={button}
-        disabled={max !== undefined && value >= max}
+        disabled={disabled || (max !== undefined && value >= max)}
         onClick={() => set(value + step)}
       >
         <Plus size={18} strokeWidth={2} aria-hidden />

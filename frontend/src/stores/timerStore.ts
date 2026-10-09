@@ -34,6 +34,8 @@ interface TimerState {
   setSoundRepeat: (repeat: number) => void;
   setCustomSound: (dataUrl: string | null, name: string | null) => void;
   testSound: () => void;
+  // Shifts a running countdown by ±seconds (−15/+15 in the focus mode's Satzpause card).
+  adjust: (deltaSeconds: number) => void;
   pause: () => void;
   resume: () => void;
   reset: () => void;
@@ -107,6 +109,18 @@ export const useTimerStore = create<TimerState>()(
             endsAt: Date.now() + seconds * 1000,
           });
           runTicking();
+        },
+
+        adjust: (deltaSeconds) => {
+          const { isRunning, endsAt, remainingSeconds, totalSeconds } = get();
+          if (!isRunning || endsAt === null) return;
+          const elapsed = totalSeconds - remainingSeconds;
+          const nextRemaining = Math.max(1, Math.round((endsAt - Date.now()) / 1000) + deltaSeconds);
+          set({
+            endsAt: Date.now() + nextRemaining * 1000,
+            remainingSeconds: nextRemaining,
+            totalSeconds: elapsed + nextRemaining,
+          });
         },
 
         pause: () => {

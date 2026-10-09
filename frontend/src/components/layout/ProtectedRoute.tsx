@@ -6,7 +6,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, status } = useAuth();
 
   if (status === "idle" || status === "loading") {
-    return <div className="p-4 text-ink-400">Lädt…</div>;
+    return <div className="p-4 text-text-subtle">Lädt…</div>;
   }
 
   if (!user) {

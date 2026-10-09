@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { LoginPage } from "./routes/LoginPage";
 import { RegisterPage } from "./routes/RegisterPage";
 import { DashboardPage } from "./routes/DashboardPage";
@@ -15,11 +15,19 @@ import { GoalsPage } from "./routes/GoalsPage";
 import { NutritionPage } from "./routes/NutritionPage";
 import { ProgressPage } from "./routes/ProgressPage";
 import { SettingsPage } from "./routes/SettingsPage";
+import { TrainingPage } from "./routes/TrainingPage";
 import { UiKitPage } from "./routes/UiKitPage";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
+import { UpdatePrompt } from "./components/layout/UpdatePrompt";
 import { useAuthBootstrap } from "./hooks/useAuth";
 import { initWorkoutLogSync } from "./offline/workoutLogSync";
 import { initWorkoutSessionSync } from "./offline/workoutSessionSync";
+
+// No reload prompt while a workout is in focus mode (/training) — it appears right after.
+function GlobalUpdatePrompt() {
+  const { pathname } = useLocation();
+  return <UpdatePrompt suppressed={pathname.startsWith("/training")} />;
+}
 
 export function App() {
   useAuthBootstrap();
@@ -28,6 +36,7 @@ export function App() {
 
   return (
     <BrowserRouter>
+      <GlobalUpdatePrompt />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -36,6 +45,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/training"
+          element={
+            <ProtectedRoute>
+              <TrainingPage />
             </ProtectedRoute>
           }
         />
