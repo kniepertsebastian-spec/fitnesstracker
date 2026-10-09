@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Lists Hex colors and legacy Tailwind palettes (ink/violet/red/emerald/amber) in frontend JSX
-// outside components/ui. See docs/ROADMAP-UI.md (F1). Report only; pass --strict to fail (from F8).
+// outside components/ui. See docs/ROADMAP-UI.md (F1). Lists the hits; --strict (used by CI since F8) fails on any.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 

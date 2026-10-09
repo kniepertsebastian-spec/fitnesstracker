@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { ExerciseDto } from "@fitnesstracker/shared";
 import { useCreateExercise, useUpdateExercise } from "../../hooks/useExerciseLibrary";
+import { Button, Callout, Dialog, Field, Input, Textarea } from "../ui";
 
 interface Props {
   open: boolean;
@@ -17,8 +18,7 @@ function parseMuscleList(value: string): string[] {
     .filter(Boolean);
 }
 
-// Shared create/edit dialog for the exercise catalog — mirrors WorkoutLogFormDialog's layout
-// (bottom sheet on mobile, centered on larger screens) for visual consistency across the app.
+// Shared create/edit dialog for the exercise catalog.
 export function ExerciseFormDialog({ open, onClose, editingExercise }: Props) {
   const createExercise = useCreateExercise();
   const updateExercise = useUpdateExercise();
@@ -32,27 +32,15 @@ export function ExerciseFormDialog({ open, onClose, editingExercise }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (editingExercise) {
-      setName(editingExercise.name);
-      setDescription(editingExercise.description ?? "");
-      setVideoUrl(editingExercise.videoUrl ?? "");
-      setEquipment(editingExercise.equipment ?? "");
-      setCategory(editingExercise.category ?? "");
-      setPrimaryMuscles(editingExercise.primaryMuscles.join(", "));
-      setSecondaryMuscles(editingExercise.secondaryMuscles.join(", "));
-    } else {
-      setName("");
-      setDescription("");
-      setVideoUrl("");
-      setEquipment("");
-      setCategory("");
-      setPrimaryMuscles("");
-      setSecondaryMuscles("");
-    }
+    setName(editingExercise?.name ?? "");
+    setDescription(editingExercise?.description ?? "");
+    setVideoUrl(editingExercise?.videoUrl ?? "");
+    setEquipment(editingExercise?.equipment ?? "");
+    setCategory(editingExercise?.category ?? "");
+    setPrimaryMuscles(editingExercise?.primaryMuscles.join(", ") ?? "");
+    setSecondaryMuscles(editingExercise?.secondaryMuscles.join(", ") ?? "");
     setError(null);
   }, [editingExercise, open]);
-
-  if (!open) return null;
 
   const isPending = createExercise.isPending || updateExercise.isPending;
 
@@ -85,98 +73,39 @@ export function ExerciseFormDialog({ open, onClose, editingExercise }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/60 sm:items-center">
-      <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-t-2xl bg-surface p-4 sm:rounded-2xl">
-        <h2 className="mb-4 text-lg font-semibold">
-          {editingExercise ? "Übung bearbeiten" : "Übung anlegen"}
-        </h2>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <div>
-            <label className="mb-1 block text-sm text-text-subtle">Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="mb-1 block text-sm text-text-subtle">Equipment</label>
-              <input
-                type="text"
-                value={equipment}
-                onChange={(e) => setEquipment(e.target.value)}
-                className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-text-subtle">Kategorie</label>
-              <input
-                type="text"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-text-subtle">Primäre Muskeln (Komma-getrennt)</label>
-            <input
-              type="text"
-              value={primaryMuscles}
-              onChange={(e) => setPrimaryMuscles(e.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-text-subtle">Sekundäre Muskeln (Komma-getrennt)</label>
-            <input
-              type="text"
-              value={secondaryMuscles}
-              onChange={(e) => setSecondaryMuscles(e.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-text-subtle">Video-URL</label>
-            <input
-              type="text"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-text-subtle">Beschreibung</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-            />
-          </div>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title={editingExercise ? "Übung bearbeiten" : "Übung anlegen"}
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <Field label="Name">{(p) => <Input {...p} value={name} onChange={(e) => setName(e.target.value)} />}</Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Equipment">{(p) => <Input {...p} value={equipment} onChange={(e) => setEquipment(e.target.value)} />}</Field>
+          <Field label="Kategorie">{(p) => <Input {...p} value={category} onChange={(e) => setCategory(e.target.value)} />}</Field>
+        </div>
+        <Field label="Primäre Muskeln" hint="Komma-getrennt">
+          {(p) => <Input {...p} value={primaryMuscles} onChange={(e) => setPrimaryMuscles(e.target.value)} />}
+        </Field>
+        <Field label="Sekundäre Muskeln" hint="Komma-getrennt">
+          {(p) => <Input {...p} value={secondaryMuscles} onChange={(e) => setSecondaryMuscles(e.target.value)} />}
+        </Field>
+        <Field label="Video-URL">{(p) => <Input {...p} value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />}</Field>
+        <Field label="Beschreibung">
+          {(p) => <Textarea {...p} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />}
+        </Field>
 
-          {error && <p className="text-sm text-danger-text">{error}</p>}
+        {error && <Callout tone="danger">{error}</Callout>}
 
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-lg border border-border-strong py-2 text-text-muted hover:bg-surface-2"
-            >
-              Abbrechen
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="flex-1 rounded-lg bg-accent py-2 font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
-            >
-              Speichern
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="mt-1 flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Abbrechen
+          </Button>
+          <Button type="submit" variant="primary" disabled={isPending}>
+            Speichern
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

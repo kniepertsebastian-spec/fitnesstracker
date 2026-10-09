@@ -52,20 +52,6 @@ export default {
           soft: "var(--danger-soft)",
         },
         violet: { DEFAULT: "var(--violet)", soft: "var(--violet-soft)" },
-        // Legacy palette — remains only until F8 migrates the remaining pages, then it is removed.
-        ink: {
-          50: "hsl(260, 50%, 98%)",
-          100: "hsl(260, 45%, 96%)",
-          200: "hsl(260, 35%, 91%)",
-          300: "hsl(260, 25%, 82%)",
-          400: "hsl(260, 15%, 66%)",
-          500: "hsl(260, 12%, 49%)",
-          600: "hsl(260, 14%, 37%)",
-          700: "hsl(260, 16%, 26%)",
-          800: "hsl(260, 18%, 17%)",
-          900: "hsl(260, 20%, 11%)",
-          950: "hsl(260, 22%, 6%)",
-        },
       },
       borderRadius: {
         sm: "9px",

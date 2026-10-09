@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { Check, ChevronDown, Play, Square } from "lucide-react";
 import type { StretchItemDto } from "@fitnesstracker/shared";
-
-// Per-device "done" marks, keyed by a caller-chosen scope (e.g. the date) — a stretch session is
-// a casual tick-off list, not data worth a table or offline-sync queue.
-function loadDone(storageKey: string): string[] {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    return raw ? (JSON.parse(raw) as string[]) : [];
-  } catch {
-    return [];
-  }
-}
+import { loadStretchDone } from "../../lib/stretchStorage";
+import { Button, ProgressBar, cn } from "../ui";
 
 function HoldTimer({ seconds, onFinished }: { seconds: number; onFinished: () => void }) {
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -31,21 +23,15 @@ function HoldTimer({ seconds, onFinished }: { seconds: number; onFinished: () =>
 
   if (remaining === null) {
     return (
-      <button
-        onClick={() => setRemaining(seconds)}
-        className="rounded-lg bg-surface-2 px-2 py-1 text-xs text-text-2 hover:bg-control"
-      >
-        ▶ {seconds}s halten
-      </button>
+      <Button size="sm" variant="secondary" iconLeft={<Play size={14} aria-hidden />} onClick={() => setRemaining(seconds)}>
+        {seconds}s halten
+      </Button>
     );
   }
   return (
-    <button
-      onClick={() => setRemaining(null)}
-      className="rounded-lg bg-accent px-2 py-1 text-xs font-medium text-on-accent"
-    >
+    <Button size="sm" variant="primary" iconLeft={<Square size={14} aria-hidden />} onClick={() => setRemaining(null)}>
       {remaining}s · Stopp
-    </button>
+    </Button>
   );
 }
 
@@ -55,8 +41,10 @@ interface Props {
   storageKey: string;
 }
 
+// Per-device "done" marks, keyed by a caller-chosen scope (e.g. the date) — a stretch session is
+// a casual tick-off list, not data worth a table or offline-sync queue.
 export function StretchList({ items, storageKey }: Props) {
-  const [done, setDone] = useState<string[]>(() => loadDone(storageKey));
+  const [done, setDone] = useState<string[]>(() => loadStretchDone(storageKey));
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const toggle = (id: string, value?: boolean) => {
@@ -75,37 +63,51 @@ export function StretchList({ items, storageKey }: Props) {
   const doneCount = items.filter((i) => done.includes(i.exerciseId)).length;
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-xs text-text-faint">
-        {doneCount}/{items.length} erledigt
-      </p>
+    <div className="flex flex-col">
+      <div className="mb-2 flex items-center gap-3">
+        <ProgressBar value={(doneCount / items.length) * 100} label="Dehnübungen erledigt" />
+        <span className="tabular shrink-0 text-small text-text-subtle">
+          {doneCount} von {items.length}
+        </span>
+      </div>
       {items.map((item) => {
         const isDone = done.includes(item.exerciseId);
         const isOpen = expanded === item.exerciseId;
         return (
-          <div key={item.exerciseId} className="rounded-lg bg-bg p-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={isDone}
-                onChange={() => toggle(item.exerciseId)}
-                aria-label={`${item.name} erledigt`}
-                className="h-4 w-4 shrink-0 accent-accent"
-              />
+          <div key={item.exerciseId} className="border-t border-border-subtle py-2 first:border-t-0">
+            <div className="flex min-h-[52px] items-center gap-3">
               <button
-                onClick={() => setExpanded(isOpen ? null : item.exerciseId)}
-                className={`min-w-0 flex-1 truncate text-left text-sm ${isDone ? "text-text-faint line-through" : "text-text-2"}`}
+                type="button"
+                aria-pressed={isDone}
+                aria-label={`${item.name} erledigt`}
+                onClick={() => toggle(item.exerciseId)}
+                className={cn(
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
+                  isDone ? "border-accent bg-accent text-on-accent" : "border-border-strong",
+                )}
               >
-                {item.name}
+                {isDone && <Check size={14} strokeWidth={3} aria-hidden />}
               </button>
-              <span className="shrink-0 text-xs text-text-faint">
-                {item.sets > 1 ? `${item.sets}× ` : ""}
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                onClick={() => setExpanded(isOpen ? null : item.exerciseId)}
+                className={cn(
+                  "flex min-w-0 flex-1 items-center gap-1 text-left text-body",
+                  isDone ? "text-text-faint line-through" : "text-text-2",
+                )}
+              >
+                <span className="truncate">{item.name}</span>
+                <ChevronDown size={14} aria-hidden className={cn("shrink-0 transition-transform", isOpen && "rotate-180")} />
+              </button>
+              <span className="tabular shrink-0 font-mono text-small text-text-faint">
+                {item.sets > 1 ? `${item.sets} × ` : ""}
                 {item.holdSeconds}s
               </span>
               <HoldTimer seconds={item.holdSeconds} onFinished={() => toggle(item.exerciseId, true)} />
             </div>
             {isOpen && (
-              <div className="mt-2 flex flex-col gap-2 text-xs text-text-subtle">
+              <div className="mt-2 flex flex-col gap-2 text-small text-text-subtle">
                 {item.imageUrls.length > 0 && (
                   // Start/end position side by side, each at its natural aspect ratio — a
                   // full-width stretch distorts the source photos.
@@ -116,13 +118,13 @@ export function StretchList({ items, storageKey }: Props) {
                         src={url}
                         alt={item.name}
                         loading="lazy"
-                        className="aspect-[4/3] min-w-0 flex-1 rounded-lg bg-surface-2 object-contain sm:max-w-[16rem]"
+                        className="aspect-[4/3] min-w-0 flex-1 rounded-lg bg-track object-contain sm:max-w-[16rem]"
                       />
                     ))}
                   </div>
                 )}
                 {item.description && <p className="whitespace-pre-line">{item.description}</p>}
-                <Link to={`/exercises/${item.exerciseId}`} className="text-accent hover:underline">
+                <Link to={`/exercises/${item.exerciseId}`} className="text-accent hover:text-accent-hover">
                   Zur Übung
                 </Link>
               </div>

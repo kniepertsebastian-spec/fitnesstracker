@@ -3,6 +3,8 @@ import { ApiError } from "../../api/client";
 import { useDeleteProgressPhoto, useProgressPhotos, useUploadProgressPhoto } from "../../hooks/useProgressPhotos";
 import { ProgressPhotoImage } from "./ProgressPhotoImage";
 import { ProgressPhotoCamera } from "./ProgressPhotoCamera";
+import { Camera, ImagePlus, X } from "lucide-react";
+import { Button, Callout, Card, EmptyState, Field, IconButton, Input, Select, Skeleton } from "../ui";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -66,111 +68,97 @@ export function ProgressPhotosCard() {
         />
       )}
 
-      <div className="rounded-lg border border-border bg-surface p-4">
-        <p className="mb-2 text-sm font-medium text-text-muted">Neues Vergleichsfoto</p>
-        <div className="mb-2">
-          <label className="mb-1 block text-xs text-text-faint">Datum</label>
-          <input
-            type="date"
-            value={takenAt}
-            max={todayDateInputValue()}
-            onChange={(e) => setTakenAt(e.target.value)}
-            className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
-          />
-        </div>
+      <Card title="Neues Vergleichsfoto" className="lg:max-w-xl">
+        <Field label="Datum" className="mb-3">
+          {(p) => <Input {...p} type="date" value={takenAt} max={todayDateInputValue()} onChange={(e) => setTakenAt(e.target.value)} />}
+        </Field>
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="dashed"
+            size="lg"
+            className="flex-1"
+            iconLeft={<Camera size={18} aria-hidden />}
+            disabled={upload.isPending}
             onClick={() => {
               setCameraUnavailable(null);
               setCameraOpen(true);
             }}
-            disabled={upload.isPending}
-            className="flex-1 rounded-lg border border-dashed border-border-strong bg-bg py-4 text-sm text-text-subtle hover:border-accent disabled:opacity-50"
           >
             {upload.isPending ? "Lädt hoch…" : "Kamera mit Vorher-Vergleich"}
-          </button>
-          <label className="flex cursor-pointer items-center justify-center rounded-lg border border-border-strong bg-bg px-4 text-sm text-text-subtle hover:border-accent">
+          </Button>
+          <label
+            className={`inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border border-border-strong bg-control px-4 text-body font-medium text-text transition-colors duration-150 hover:bg-track focus-within:outline focus-within:outline-2 focus-within:outline-accent ${upload.isPending ? "pointer-events-none opacity-50" : ""}`}
+          >
+            <ImagePlus size={18} aria-hidden />
             Datei
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-              disabled={upload.isPending}
-            />
+            <input type="file" accept="image/*" className="sr-only" onChange={handleFileChange} disabled={upload.isPending} />
           </label>
         </div>
         {cameraUnavailable && (
-          <p className="mt-1 text-xs text-warning">{cameraUnavailable} Nutze stattdessen "Datei".</p>
+          <Callout tone="warning" className="mt-3">
+            {cameraUnavailable} Nutze stattdessen „Datei“.
+          </Callout>
         )}
-        {error && <p className="mt-1 text-xs text-danger-text">{error}</p>}
-      </div>
+        {error && (
+          <Callout tone="danger" className="mt-3">
+            {error}
+          </Callout>
+        )}
+      </Card>
 
       {isLoading ? (
-        <p className="text-text-faint">Lädt…</p>
+        <Skeleton className="h-40 w-full" />
       ) : items.length === 0 ? (
-        <p className="text-text-faint">Noch keine Fotos. Nur du kannst sie sehen.</p>
+        <Card>
+          <EmptyState icon={<Camera size={18} aria-hidden />} text="Noch keine Fotos. Nur du kannst sie sehen." />
+        </Card>
       ) : (
         <>
-          <div>
-            <h2 className="mb-2 text-sm font-medium text-text-subtle">Galerie</h2>
-            <div className="grid grid-cols-3 gap-2">
+          <Card title="Galerie">
+            <div className="grid grid-cols-3 gap-2 lg:grid-cols-6">
               {items.map((photo) => (
                 <div key={photo.id} className="relative">
-                  <ProgressPhotoImage
-                    id={photo.id}
-                    alt={formatDate(photo.takenAt)}
-                    className="aspect-square w-full rounded-lg object-cover"
-                  />
+                  <ProgressPhotoImage id={photo.id} alt={formatDate(photo.takenAt)} className="aspect-square w-full rounded-lg object-cover" />
                   <p className="mt-1 text-center text-xs text-text-faint">{formatDate(photo.takenAt)}</p>
-                  <button
+                  <IconButton
                     onClick={() => deletePhoto.mutate(photo.id)}
-                    className="absolute right-1 top-1 rounded-full bg-bg px-1.5 py-0.5 text-xs text-danger-text"
-                    aria-label="Foto löschen"
+                    className="absolute right-1 top-1 h-9 w-9 rounded-full bg-bg"
+                    aria-label={`Foto vom ${formatDate(photo.takenAt)} löschen`}
                   >
-                    ×
-                  </button>
+                    <X size={14} aria-hidden />
+                  </IconButton>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
           {items.length >= 2 && (
-            <div>
-              <h2 className="mb-2 text-sm font-medium text-text-subtle">Vorher/Nachher</h2>
-              <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={beforeId}
-                  onChange={(e) => setBeforeId(e.target.value)}
-                  className="rounded-lg border border-border-strong bg-bg px-2 py-1.5 text-sm"
-                >
+            <Card title="Vorher/Nachher">
+              <div className="grid grid-cols-2 gap-3">
+                <Select aria-label="Vorher-Foto" value={beforeId} onChange={(e) => setBeforeId(e.target.value)}>
                   <option value="">Vorher wählen…</option>
                   {items.map((p) => (
                     <option key={p.id} value={p.id}>
                       {formatDate(p.takenAt)}
                     </option>
                   ))}
-                </select>
-                <select
-                  value={afterId}
-                  onChange={(e) => setAfterId(e.target.value)}
-                  className="rounded-lg border border-border-strong bg-bg px-2 py-1.5 text-sm"
-                >
+                </Select>
+                <Select aria-label="Nachher-Foto" value={afterId} onChange={(e) => setAfterId(e.target.value)}>
                   <option value="">Nachher wählen…</option>
                   {items.map((p) => (
                     <option key={p.id} value={p.id}>
                       {formatDate(p.takenAt)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               {before && after && (
-                <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="mt-3 grid grid-cols-2 gap-3 lg:max-w-xl">
                   <ProgressPhotoImage id={before.id} alt="Vorher" className="w-full rounded-lg object-cover" />
                   <ProgressPhotoImage id={after.id} alt="Nachher" className="w-full rounded-lg object-cover" />
                 </div>
               )}
-            </div>
+            </Card>
           )}
         </>
       )}

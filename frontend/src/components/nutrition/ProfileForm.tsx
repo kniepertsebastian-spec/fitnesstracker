@@ -10,6 +10,7 @@ import {
   useProfile,
   useUpsertProfile,
 } from "../../hooks/useProfile";
+import { Button, Card, Field, Input, Select, Skeleton, StatTile } from "../ui";
 
 const formSchema = z.object({
   weightKg: z.coerce.number().positive(),
@@ -53,115 +54,73 @@ export function ProfileForm() {
   };
 
   if (isLoading) {
-    return <p className="text-text-faint">Lädt…</p>;
+    return <Skeleton className="h-64 w-full" />;
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4"
-      >
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-sm text-text-subtle">Gewicht (kg)</label>
-            <input
-              type="number"
-              step="0.1"
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-              {...register("weightKg")}
-            />
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">
+      <Card title="Profil">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Gewicht (kg)">
+              {(p) => <Input {...p} type="number" step="0.1" inputMode="decimal" {...register("weightKg")} />}
+            </Field>
+            <Field label="Größe (cm)">
+              {(p) => <Input {...p} type="number" inputMode="numeric" {...register("heightCm")} />}
+            </Field>
+            <Field label="Alter">{(p) => <Input {...p} type="number" inputMode="numeric" {...register("age")} />}</Field>
+            <Field label="Geschlecht">
+              {(p) => (
+                <Select {...p} {...register("gender")}>
+                  {genderSchema.options.map((value) => (
+                    <option key={value} value={value}>
+                      {GENDER_LABELS[value]}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
           </div>
-          <div>
-            <label className="mb-1 block text-sm text-text-subtle">Größe (cm)</label>
-            <input
-              type="number"
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-              {...register("heightCm")}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-text-subtle">Alter</label>
-            <input
-              type="number"
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-              {...register("age")}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm text-text-subtle">Geschlecht</label>
-            <select
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-              {...register("gender")}
-            >
-              {genderSchema.options.map((value) => (
-                <option key={value} value={value}>
-                  {GENDER_LABELS[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
 
-        <div>
-          <label className="mb-1 block text-sm text-text-subtle">Aktivitätslevel</label>
-          <select
-            className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-            {...register("activityLevel")}
-          >
-            {activityLevelSchema.options.map((value) => (
-              <option key={value} value={value}>
-                {ACTIVITY_LEVEL_LABELS[value]}
-              </option>
-            ))}
-          </select>
-        </div>
+          <Field label="Aktivitätslevel">
+            {(p) => (
+              <Select {...p} {...register("activityLevel")}>
+                {activityLevelSchema.options.map((value) => (
+                  <option key={value} value={value}>
+                    {ACTIVITY_LEVEL_LABELS[value]}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
 
-        <div>
-          <label className="mb-1 block text-sm text-text-subtle">Ziel</label>
-          <select
-            className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2"
-            {...register("goal")}
-          >
-            {nutritionGoalSchema.options.map((value) => (
-              <option key={value} value={value}>
-                {NUTRITION_GOAL_LABELS[value]}
-              </option>
-            ))}
-          </select>
-        </div>
+          <Field label="Ziel">
+            {(p) => (
+              <Select {...p} {...register("goal")}>
+                {nutritionGoalSchema.options.map((value) => (
+                  <option key={value} value={value}>
+                    {NUTRITION_GOAL_LABELS[value]}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="mt-2 rounded-lg bg-accent py-2 font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
-        >
-          Speichern
-        </button>
-      </form>
+          <Button type="submit" variant="primary" size="lg" disabled={isSubmitting}>
+            Speichern
+          </Button>
+        </form>
+      </Card>
 
       {profile && (
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <p className="text-sm text-text-faint">Tagesbedarf</p>
-          <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <p className="text-text-faint">Grundumsatz (BMR)</p>
-              <p className="text-lg font-semibold text-text-2">{profile.bmr} kcal</p>
-            </div>
-            <div>
-              <p className="text-text-faint">Gesamtumsatz (TDEE)</p>
-              <p className="text-lg font-semibold text-text-2">{profile.tdee} kcal</p>
-            </div>
-            <div>
-              <p className="text-text-faint">Ziel-Kalorien</p>
-              <p className="text-lg font-semibold text-accent">{profile.targetCalories} kcal</p>
-            </div>
-            <div>
-              <p className="text-text-faint">Ziel-Protein</p>
-              <p className="text-lg font-semibold text-accent">{profile.targetProteinG} g</p>
-            </div>
+        <Card title="Tagesbedarf">
+          <div className="grid grid-cols-2 gap-3">
+            <StatTile label="Grundumsatz (BMR)" value={profile.bmr} unit="kcal" className="p-3" />
+            <StatTile label="Gesamtumsatz (TDEE)" value={profile.tdee} unit="kcal" className="p-3" />
+            <StatTile label="Ziel-Kalorien" value={profile.targetCalories} unit="kcal" className="p-3" />
+            <StatTile label="Ziel-Protein" value={profile.targetProteinG} unit="g" className="p-3" />
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

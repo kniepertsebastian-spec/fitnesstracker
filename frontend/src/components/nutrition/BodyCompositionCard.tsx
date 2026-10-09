@@ -7,16 +7,20 @@ import {
   useDeleteBodyCompositionEntry,
 } from "../../hooks/useBodyComposition";
 import { useProfile } from "../../hooks/useProfile";
+import { ArrowDown, ArrowRight, ArrowUp, Scale, Trash2 } from "lucide-react";
+import { Button, Callout, Card, EmptyState, Field, IconButton, Input, ListRow, Skeleton, StatTile } from "../ui";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function trendArrow(current: number, previous: number | null | undefined): string {
-  if (previous === null || previous === undefined) return "";
-  if (current > previous) return "↑";
-  if (current < previous) return "↓";
-  return "→";
+// Neutral up/down/flat icon — deliberately no "up is bad, down is good" coloring: a weight
+// increase is exactly the goal for some users.
+function Trend({ current, previous }: { current: number; previous: number | null | undefined }) {
+  if (previous === null || previous === undefined) return null;
+  const Icon = current > previous ? ArrowUp : current < previous ? ArrowDown : ArrowRight;
+  const label = current > previous ? "gestiegen" : current < previous ? "gesunken" : "unverändert";
+  return <Icon size={14} aria-label={label} className="inline text-text-faint" />;
 }
 
 export function BodyCompositionCard() {
@@ -57,158 +61,113 @@ export function BodyCompositionCard() {
     }
   };
 
+  const metricField = (label: string, value: string, set: (v: string) => void) => (
+    <Field label={label}>
+      {(p) => <Input {...p} type="number" step="0.1" inputMode="decimal" value={value} onChange={(e) => set(e.target.value)} />}
+    </Field>
+  );
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-border bg-surface p-4">
-        <p className="mb-2 text-sm font-medium text-text-muted">Neue Messung</p>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="mb-1 block text-xs text-text-faint">Gewicht (kg)</label>
-            <input
-              type="number"
-              step="0.1"
-              value={weightKg}
-              onChange={(e) => setWeightKg(e.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
-            />
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">
+        <Card title="Neue Messung">
+          <div className="grid grid-cols-2 gap-3">
+            {metricField("Gewicht (kg)", weightKg, setWeightKg)}
+            {metricField("Körperfett (%)", bodyFatPercent, setBodyFatPercent)}
+            {metricField("Muskelmasse (kg)", muscleMassKg, setMuscleMassKg)}
+            {metricField("Wasseranteil (%)", bodyWaterPercent, setBodyWaterPercent)}
           </div>
-          <div>
-            <label className="mb-1 block text-xs text-text-faint">Körperfett (%)</label>
-            <input
-              type="number"
-              step="0.1"
-              value={bodyFatPercent}
-              onChange={(e) => setBodyFatPercent(e.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-text-faint">Muskelmasse (kg)</label>
-            <input
-              type="number"
-              step="0.1"
-              value={muscleMassKg}
-              onChange={(e) => setMuscleMassKg(e.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-text-faint">Wasseranteil (%)</label>
-            <input
-              type="number"
-              step="0.1"
-              value={bodyWaterPercent}
-              onChange={(e) => setBodyWaterPercent(e.target.value)}
-              className="w-full rounded-lg border border-border-strong bg-bg px-3 py-1.5 text-sm"
-            />
-          </div>
-        </div>
-        <button
-          onClick={handleAdd}
-          className="mt-3 w-full rounded-lg bg-accent py-2 text-sm font-medium text-on-accent hover:bg-accent-hover"
-        >
-          Speichern
-        </button>
-        {error && <p className="mt-1 text-xs text-danger-text">{error}</p>}
+          <Button variant="primary" size="lg" fullWidth className="mt-3" onClick={handleAdd}>
+            Speichern
+          </Button>
+          {error && (
+            <Callout tone="danger" className="mt-3">
+              {error}
+            </Callout>
+          )}
+        </Card>
+
+        {isLoading ? (
+          <Skeleton className="h-40 w-full" />
+        ) : latest ? (
+          <Card title="Letzte Messung" action={<span className="text-small text-text-subtle">{formatDate(latest.measuredAt)}</span>}>
+            <div className="grid grid-cols-2 gap-3">
+              <StatTile
+                className="p-3"
+                label={BODY_METRIC_INFO.weightKg.label}
+                value={<>{latest.weightKg} <Trend current={latest.weightKg} previous={previous?.weightKg} /></>}
+                unit="kg"
+              />
+              {latest.bodyFatPercent !== null && (
+                <StatTile
+                  className="p-3"
+                  label={BODY_METRIC_INFO.bodyFatPercent.label}
+                  value={<>{latest.bodyFatPercent} <Trend current={latest.bodyFatPercent} previous={previous?.bodyFatPercent} /></>}
+                  unit="%"
+                  sub={categorizeBodyFat(latest.bodyFatPercent, profile?.gender) ?? undefined}
+                />
+              )}
+              {latest.muscleMassKg !== null && (
+                <StatTile
+                  className="p-3"
+                  label={BODY_METRIC_INFO.muscleMassKg.label}
+                  value={<>{latest.muscleMassKg} <Trend current={latest.muscleMassKg} previous={previous?.muscleMassKg} /></>}
+                  unit="kg"
+                />
+              )}
+              {latest.bodyWaterPercent !== null && (
+                <StatTile
+                  className="p-3"
+                  label={BODY_METRIC_INFO.bodyWaterPercent.label}
+                  value={<>{latest.bodyWaterPercent} <Trend current={latest.bodyWaterPercent} previous={previous?.bodyWaterPercent} /></>}
+                  unit="%"
+                />
+              )}
+            </div>
+          </Card>
+        ) : (
+          <Card>
+            <EmptyState icon={<Scale size={18} aria-hidden />} text="Noch keine Messung erfasst." />
+          </Card>
+        )}
       </div>
 
-      {isLoading ? (
-        <p className="text-text-faint">Lädt…</p>
-      ) : latest ? (
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <p className="mb-2 text-sm text-text-faint">Letzte Messung ({formatDate(latest.measuredAt)})</p>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <p className="text-text-faint">{BODY_METRIC_INFO.weightKg.label}</p>
-              <p className="text-lg font-semibold text-text">
-                {latest.weightKg} kg{" "}
-                <span className="text-sm text-text-faint">{trendArrow(latest.weightKg, previous?.weightKg)}</span>
-              </p>
-            </div>
-            {latest.bodyFatPercent !== null && (
-              <div>
-                <p className="text-text-faint">{BODY_METRIC_INFO.bodyFatPercent.label}</p>
-                <p className="text-lg font-semibold text-accent">
-                  {latest.bodyFatPercent}%{" "}
-                  <span className="text-sm text-text-faint">
-                    {trendArrow(latest.bodyFatPercent, previous?.bodyFatPercent)}
-                  </span>
-                </p>
-                {categorizeBodyFat(latest.bodyFatPercent, profile?.gender) && (
-                  <p className="text-xs text-text-faint">
-                    {categorizeBodyFat(latest.bodyFatPercent, profile?.gender)}
-                  </p>
-                )}
-              </div>
-            )}
-            {latest.muscleMassKg !== null && (
-              <div>
-                <p className="text-text-faint">{BODY_METRIC_INFO.muscleMassKg.label}</p>
-                <p className="text-lg font-semibold text-text">
-                  {latest.muscleMassKg} kg{" "}
-                  <span className="text-sm text-text-faint">
-                    {trendArrow(latest.muscleMassKg, previous?.muscleMassKg)}
-                  </span>
-                </p>
-              </div>
-            )}
-            {latest.bodyWaterPercent !== null && (
-              <div>
-                <p className="text-text-faint">{BODY_METRIC_INFO.bodyWaterPercent.label}</p>
-                <p className="text-lg font-semibold text-text">
-                  {latest.bodyWaterPercent}%{" "}
-                  <span className="text-sm text-text-faint">
-                    {trendArrow(latest.bodyWaterPercent, previous?.bodyWaterPercent)}
-                  </span>
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <p className="text-text-faint">Noch keine Messung erfasst.</p>
-      )}
-
-      <div>
-        <h2 className="mb-2 text-sm font-medium text-text-subtle">Was bedeuten die Werte?</h2>
-        <div className="flex flex-col gap-2">
+      <Card title="Was bedeuten die Werte?">
+        <div className="grid gap-3 lg:grid-cols-2">
           {Object.values(BODY_METRIC_INFO).map((info) => (
-            <div key={info.label} className="rounded-lg border border-border bg-surface p-3 text-sm">
-              <p className="font-medium text-text-2">{info.label}</p>
-              <p className="text-text-subtle">{info.description}</p>
+            <div key={info.label}>
+              <p className="text-body font-medium text-text-2">{info.label}</p>
+              <p className="text-small text-text-subtle">{info.description}</p>
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       {entries && entries.length > 0 && (
-        <div>
-          <h2 className="mb-2 text-sm font-medium text-text-subtle">Verlauf</h2>
-          <div className="flex flex-col gap-2">
-            {entries.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2 text-sm"
-              >
-                <div>
-                  <p className="text-text-muted">{formatDate(entry.measuredAt)}</p>
+        <Card title="Verlauf">
+          {entries.map((entry) => (
+            <ListRow key={entry.id}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-body text-text-muted">{formatDate(entry.measuredAt)}</p>
                   <p className="text-xs text-text-faint">
                     {entry.weightKg} kg
-                    {entry.bodyFatPercent !== null && ` · ${entry.bodyFatPercent}% KF`}
-                    {entry.muscleMassKg !== null && ` · ${entry.muscleMassKg}kg Muskeln`}
-                    {entry.bodyWaterPercent !== null && ` · ${entry.bodyWaterPercent}% Wasser`}
+                    {entry.bodyFatPercent !== null && ` · ${entry.bodyFatPercent} % KF`}
+                    {entry.muscleMassKg !== null && ` · ${entry.muscleMassKg} kg Muskeln`}
+                    {entry.bodyWaterPercent !== null && ` · ${entry.bodyWaterPercent} % Wasser`}
                   </p>
                 </div>
-                <button
+                <IconButton
+                  aria-label={`Messung vom ${formatDate(entry.measuredAt)} löschen`}
+                  className="border-transparent bg-transparent hover:text-danger-text"
                   onClick={() => deleteEntry.mutate(entry.id)}
-                  className="text-xs text-danger-text hover:underline"
                 >
-                  Löschen
-                </button>
+                  <Trash2 size={16} aria-hidden />
+                </IconButton>
               </div>
-            ))}
-          </div>
-        </div>
+            </ListRow>
+          ))}
+        </Card>
       )}
     </div>
   );

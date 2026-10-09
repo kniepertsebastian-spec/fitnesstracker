@@ -47,6 +47,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: UI tokens (no raw colors / legacy palettes outside components/ui)
+        run: pnpm run check:ui
+
       - name: Typecheck
         run: pnpm typecheck
 

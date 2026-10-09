@@ -1,4 +1,6 @@
+import { Download } from "lucide-react";
 import { useExportBackup, useExportWorkoutsCsv } from "../../hooks/useDataExport";
+import { Button, Callout, Card } from "../ui";
 
 // "Persönliche Trainingsdaten sollen nicht ausschließlich an die App gebunden sein" (roadmap
 // additionals P1.6) — a full JSON backup (everything: workouts, goals, body metrics, training
@@ -9,27 +11,28 @@ export function DataExportCard() {
   const exportWorkoutsCsv = useExportWorkoutsCsv();
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <p className="text-sm font-medium text-text-muted">Export &amp; Backup</p>
-      <p className="mt-1 text-sm text-text-faint">
+    <Card title="Export & Backup">
+      <p className="text-small text-text-subtle">
         Eigene Trainingsdaten als Datei sichern — unabhängig von der App nutzbar.
       </p>
 
       <div className="mt-3 flex flex-col gap-2">
-        <button
-          onClick={() => exportBackup.mutate()}
+        <Button
+          variant="primary"
+          iconLeft={<Download size={16} aria-hidden />}
           disabled={exportBackup.isPending}
-          className="rounded-lg bg-accent py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
+          onClick={() => exportBackup.mutate()}
         >
           {exportBackup.isPending ? "Erstelle Backup…" : "Vollständiges Backup (JSON)"}
-        </button>
-        <button
-          onClick={() => exportWorkoutsCsv.mutate()}
+        </Button>
+        <Button
+          variant="secondary"
+          iconLeft={<Download size={16} aria-hidden />}
           disabled={exportWorkoutsCsv.isPending}
-          className="rounded-lg border border-border-strong py-2 text-sm text-text-muted hover:bg-surface-2 disabled:opacity-50"
+          onClick={() => exportWorkoutsCsv.mutate()}
         >
           {exportWorkoutsCsv.isPending ? "Erstelle CSV…" : "Trainingslog (CSV)"}
-        </button>
+        </Button>
       </div>
 
       <p className="mt-3 text-xs text-text-faint">
@@ -38,8 +41,10 @@ export function DataExportCard() {
       </p>
 
       {(exportBackup.isError || exportWorkoutsCsv.isError) && (
-        <p className="mt-2 text-sm text-danger-text">Export fehlgeschlagen — bitte erneut versuchen.</p>
+        <Callout tone="danger" className="mt-3">
+          Export fehlgeschlagen — bitte erneut versuchen.
+        </Callout>
       )}
-    </div>
+    </Card>
   );
 }

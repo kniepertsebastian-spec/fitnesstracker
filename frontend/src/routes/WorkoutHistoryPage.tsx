@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import type { LocalWorkoutLog } from "../offline/db";
 import { AppShell } from "../components/layout/AppShell";
 import { WorkoutLogFormDialog } from "../components/workoutLog/WorkoutLogFormDialog";
+import { Button, Card, Dialog, EmptyState, IconButton, Input, ListRow, Select, Skeleton, cn } from "../components/ui";
 import { useDeleteWorkoutLog, useExercises, useWorkoutLogs } from "../hooks/useWorkoutLogs";
+import { formatKg } from "../lib/trainingSets";
+import { Dumbbell } from "lucide-react";
 
 // Same UTC-calendar-day convention as WorkoutLogPage's isToday() and the rest of the app.
 function dayKey(performedAt: string): string {
@@ -80,24 +84,20 @@ function HistoryCalendar({ view, dayKeysWithLogs, selectedDate, onSelectDay, onP
   });
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-3">
+    <Card>
       <div className="mb-2 flex items-center justify-between">
-        <button
-          onClick={onPrevMonth}
-          aria-label="Vorheriger Monat"
-          className="rounded-lg px-2 py-1 text-text-subtle hover:bg-surface-2"
-        >
-          ‹
-        </button>
-        <p className="text-sm font-medium text-text">{monthLabel}</p>
-        <button
+        <IconButton aria-label="Vorheriger Monat" onClick={onPrevMonth} className="border-transparent bg-transparent">
+          <ChevronLeft size={18} aria-hidden />
+        </IconButton>
+        <p className="text-body font-medium text-text">{monthLabel}</p>
+        <IconButton
+          aria-label="Nächster Monat"
           onClick={onNextMonth}
           disabled={isAtOrPastCurrentMonth(view)}
-          aria-label="Nächster Monat"
-          className="rounded-lg px-2 py-1 text-text-subtle hover:bg-surface-2 disabled:opacity-30"
+          className="border-transparent bg-transparent"
         >
-          ›
-        </button>
+          <ChevronRight size={18} aria-hidden />
+        </IconButton>
       </div>
       <div className="grid grid-cols-7 gap-1 pb-1 text-center text-xs text-text-faint">
         {WEEKDAY_LABELS.map((d) => (
@@ -113,22 +113,26 @@ function HistoryCalendar({ view, dayKeysWithLogs, selectedDate, onSelectDay, onP
           return (
             <button
               key={i}
+              type="button"
               onClick={() => onSelectDay(key)}
               disabled={!hasLogs}
-              className={`aspect-square rounded-lg text-sm ${
+              aria-pressed={isSelected}
+              aria-label={`${day}.${hasLogs ? " mit Training" : ""}`}
+              className={cn(
+                "tabular aspect-square min-h-9 rounded-lg text-small",
                 isSelected
-                  ? "bg-accent font-medium text-on-accent"
+                  ? "bg-accent font-semibold text-on-accent"
                   : hasLogs
-                    ? "bg-surface-2 text-text hover:bg-control"
-                    : "text-text-faint"
-              }`}
+                    ? "bg-accent-soft text-text hover:bg-track"
+                    : "text-text-faint",
+              )}
             >
               {day}
             </button>
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -142,57 +146,68 @@ interface ExerciseGroupProps {
 // stays scannable as a stack of headers instead of one long flooded table.
 function ExerciseLogGroup({ exerciseName, logs, onEdit }: ExerciseGroupProps) {
   const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState<LocalWorkoutLog | null>(null);
   const deleteLog = useDeleteWorkoutLog();
   const sorted = [...logs].sort((a, b) => (a.performedAt < b.performedAt ? -1 : 1));
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-surface">
+    <Card className="p-0 lg:p-0">
       <button
+        type="button"
+        aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-3 py-2 text-left"
+        className="flex min-h-[52px] w-full items-center justify-between gap-3 px-4 text-left"
       >
-        <span className="font-medium text-text">{exerciseName}</span>
-        <span className="text-xs text-text-faint">
-          {logs.length} {logs.length === 1 ? "Satz" : "Sätze"} {open ? "▲" : "▼"}
+        <span className="text-body font-medium text-text">{exerciseName}</span>
+        <span className="flex items-center gap-2 text-small text-text-faint">
+          {logs.length} {logs.length === 1 ? "Satz" : "Sätze"}
+          <ChevronDown size={16} aria-hidden className={cn("transition-transform", open && "rotate-180")} />
         </span>
       </button>
       {open && (
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-y border-border text-left text-xs text-text-faint">
-              <th className="py-1.5 pl-3 pr-2 font-medium">Uhrzeit</th>
-              <th className="py-1.5 pr-2 font-medium">Satz</th>
-              <th className="py-1.5 pr-2 font-medium">Wdh.</th>
-              <th className="py-1.5 pr-2 font-medium">kg</th>
-              <th className="py-1.5 pr-3 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((log) => (
-              <tr key={log.clientId} className="border-b border-border-subtle last:border-0">
-                <td className="py-1.5 pl-3 pr-2 text-text-subtle">{formatTime(log.performedAt)}</td>
-                <td className="py-1.5 pr-2">{log.setNumber}</td>
-                <td className="py-1.5 pr-2">{log.reps}</td>
-                <td className="py-1.5 pr-2">{log.weightKg}</td>
-                <td className="py-1.5 pr-3">
-                  <div className="flex justify-end gap-3 text-xs">
-                    <button onClick={() => onEdit(log)} className="text-accent hover:underline">
-                      Bearbeiten
-                    </button>
-                    <button
-                      onClick={() => deleteLog.mutate(log.clientId)}
-                      className="text-danger-text hover:underline"
-                    >
-                      Löschen
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="border-t border-border-subtle px-4">
+          {sorted.map((log) => (
+            <ListRow key={log.clientId} prefix={log.setNumber} value={`${log.reps} × ${formatKg(log.weightKg)} kg`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-small text-text-subtle">{formatTime(log.performedAt)}</span>
+                <span className="flex">
+                  <IconButton aria-label={`Satz ${log.setNumber} bearbeiten`} className="h-9 w-9 border-transparent bg-transparent" onClick={() => onEdit(log)}>
+                    <Pencil size={16} aria-hidden />
+                  </IconButton>
+                  <IconButton aria-label={`Satz ${log.setNumber} löschen`} className="h-9 w-9 border-transparent bg-transparent hover:text-danger-text" onClick={() => setDeleting(log)}>
+                    <Trash2 size={16} aria-hidden />
+                  </IconButton>
+                </span>
+              </div>
+            </ListRow>
+          ))}
+        </div>
       )}
-    </div>
+      <Dialog
+        open={deleting !== null}
+        onOpenChange={(next) => !next && setDeleting(null)}
+        title="Satz löschen?"
+        description={deleting ? `${exerciseName} · Satz ${deleting.setNumber} · ${deleting.reps} × ${formatKg(deleting.weightKg)} kg` : undefined}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeleting(null)}>
+              Abbrechen
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (deleting) deleteLog.mutate(deleting.clientId);
+                setDeleting(null);
+              }}
+            >
+              Löschen
+            </Button>
+          </>
+        }
+      >
+        <p className="text-small text-text-subtle">Der Satz wird aus deiner Historie entfernt.</p>
+      </Dialog>
+    </Card>
   );
 }
 
@@ -204,6 +219,7 @@ export function WorkoutHistoryPage() {
   const { data: logs, isLoading } = useWorkoutLogs();
   const { data: exercises } = useExercises();
   const [exerciseFilter, setExerciseFilter] = useState("");
+  const [exerciseSearch, setExerciseSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<LocalWorkoutLog | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -257,31 +273,43 @@ export function WorkoutHistoryPage() {
     setDialogOpen(true);
   };
 
+  const visibleExercises = (exercises ?? []).filter((e) =>
+    e.name.toLocaleLowerCase("de").includes(exerciseSearch.trim().toLocaleLowerCase("de")),
+  );
+
   return (
     <AppShell>
-      <h1 className="mb-4 text-xl font-semibold">Historie</h1>
+      <h1 className="mb-4 text-h1 text-text lg:text-h1-lg">Historie</h1>
 
-      <select
-        value={exerciseFilter}
-        onChange={(e) => setExerciseFilter(e.target.value)}
-        className="mb-4 w-full rounded-lg border border-border-strong bg-bg px-3 py-2 text-sm text-text"
-      >
-        <option value="">Alle Übungen</option>
-        {exercises?.map((exercise) => (
-          <option key={exercise.id} value={exercise.id}>
-            {exercise.name}
-          </option>
-        ))}
-      </select>
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <Input
+          type="search"
+          aria-label="Übung suchen"
+          placeholder="Übung suchen…"
+          value={exerciseSearch}
+          onChange={(e) => setExerciseSearch(e.target.value)}
+        />
+        <Select aria-label="Übung filtern" value={exerciseFilter} onChange={(e) => setExerciseFilter(e.target.value)}>
+          <option value="">Alle Übungen</option>
+          {visibleExercises.map((exercise) => (
+            <option key={exercise.id} value={exercise.id}>
+              {exercise.name}
+            </option>
+          ))}
+        </Select>
+      </div>
 
       {isLoading ? (
-        <p className="text-text-faint">Lädt…</p>
+        <Skeleton className="h-64 w-full" />
       ) : logsByDay.size === 0 ? (
-        <p className="py-8 text-center text-text-faint">
-          {exerciseFilter ? "Keine Sätze für diese Übung protokolliert." : "Noch keine Trainings protokolliert."}
-        </p>
+        <Card>
+          <EmptyState
+            icon={<Dumbbell size={18} aria-hidden />}
+            text={exerciseFilter ? "Keine Sätze für diese Übung protokolliert." : "Noch keine Trainings protokolliert."}
+          />
+        </Card>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
           {view && (
             <HistoryCalendar
               view={view}
@@ -295,9 +323,9 @@ export function WorkoutHistoryPage() {
 
           {selectedDate && (
             <div>
-              <h2 className="mb-2 text-sm font-medium text-text-subtle">{dayLabel(selectedDate)}</h2>
+              <h2 className="mb-2 text-h2 text-text">{dayLabel(selectedDate)}</h2>
               {selectedDayGroups.length === 0 ? (
-                <p className="text-sm text-text-faint">Keine Einträge für diese Auswahl.</p>
+                <p className="text-small text-text-faint">Keine Einträge für diese Auswahl.</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {selectedDayGroups.map(([name, exerciseLogs]) => (

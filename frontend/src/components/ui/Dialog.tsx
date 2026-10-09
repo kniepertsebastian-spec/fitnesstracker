@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { ReactNode } from "react";
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
@@ -10,6 +11,19 @@ export interface DialogProps {
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
+}
+
+// Radix only restores focus to a <Dialog.Trigger>; ours are opened from plain buttons, so remember
+// the element that was focused when the dialog opened and put focus back there on close.
+function useReturnFocus(open: boolean) {
+  const previous = useRef<HTMLElement | null>(null);
+  const wasOpen = useRef(false);
+  if (open && !wasOpen.current) previous.current = document.activeElement as HTMLElement | null;
+  wasOpen.current = open;
+  return (event: Event) => {
+    event.preventDefault();
+    previous.current?.focus();
+  };
 }
 
 const overlay = "fixed inset-0 z-40 bg-black/60 animate-fade-in";
@@ -26,11 +40,13 @@ function CloseButton() {
 }
 
 export function Dialog({ open, onOpenChange, title, description, children, footer }: DialogProps) {
+  const returnFocus = useReturnFocus(open);
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className={overlay} />
         <RadixDialog.Content
+          onCloseAutoFocus={returnFocus}
           className="fixed left-1/2 top-1/2 z-50 flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl border border-border bg-surface shadow-overlay animate-pop-in"
         >
           <div className="flex items-start justify-between gap-3 px-5 pt-4">
@@ -64,11 +80,13 @@ export interface SheetProps {
 
 /** Right-hand sheet: 320 px on mobile, 360–420 px on desktop. */
 export function Sheet({ open, onOpenChange, title, children, className }: SheetProps) {
+  const returnFocus = useReturnFocus(open);
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
         <RadixDialog.Overlay className={overlay} />
         <RadixDialog.Content
+          onCloseAutoFocus={returnFocus}
           className={cn(
             "fixed inset-y-0 right-0 z-50 flex w-80 max-w-full flex-col border-l border-border bg-bg-sidebar shadow-overlay animate-slide-in-right sm:w-[400px]",
             className,

@@ -1,3 +1,4 @@
+import { Button } from "../ui";
 import { useEffect, useRef, useState } from "react";
 import { apiFetchBlob } from "../../api/client";
 
@@ -102,7 +103,7 @@ export function ProgressPhotoCamera({ latestPhotoId, onCapture, onCancel, onUnav
   };
 
   return (
-    <div className="fixed inset-0 z-20 flex flex-col bg-black">
+    <div className="fixed inset-0 z-50 flex flex-col bg-bg">
       <div className="relative flex-1 overflow-hidden">
         <video
           ref={videoRef}
@@ -120,13 +121,13 @@ export function ProgressPhotoCamera({ latestPhotoId, onCapture, onCancel, onUnav
           />
         )}
         {!ready && (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-text-muted">
+          <div className="absolute inset-0 flex items-center justify-center text-small text-text-muted">
             Kamera wird gestartet…
           </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-3 bg-bg p-4">
+      <div className="flex flex-col gap-3 bg-bg-sidebar p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         {overlaySrc && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-faint">Vorheriges Foto</span>
@@ -137,29 +138,29 @@ export function ProgressPhotoCamera({ latestPhotoId, onCapture, onCancel, onUnav
               step={0.05}
               value={overlayOpacity}
               onChange={(e) => setOverlayOpacity(Number(e.target.value))}
-              className="w-full"
+              className="h-11 w-full accent-accent"
+              aria-label="Deckkraft des vorherigen Fotos"
             />
           </div>
         )}
         <div className="flex items-center justify-between gap-3">
-          <button
-            onClick={onCancel}
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm text-text-muted hover:bg-surface-2"
-          >
+          <Button variant="ghost" size="lg" onClick={onCancel}>
             Abbrechen
-          </button>
+          </Button>
           <button
+            type="button"
             onClick={handleCapture}
             disabled={!ready}
             aria-label="Foto aufnehmen"
-            className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-border-strong bg-white disabled:opacity-50"
+            className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-border-strong bg-text disabled:opacity-50"
           />
-          <button
+          <Button
+            variant="ghost"
+            size="lg"
             onClick={() => setFacingMode((m) => (m === "environment" ? "user" : "environment"))}
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm text-text-muted hover:bg-surface-2"
           >
             Kamera wechseln
-          </button>
+          </Button>
         </div>
       </div>
     </div>

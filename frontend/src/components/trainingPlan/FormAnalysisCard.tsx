@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ApiError } from "../../api/client";
 import { useFormAnalysis } from "../../hooks/useFormAnalysis";
+import { Badge, Button, Callout, Card, Field, Input } from "../ui";
 
 const PRIORITY_LABELS = { high: "Hoch", medium: "Mittel", low: "Niedrig" } as const;
 
@@ -28,51 +29,59 @@ export function FormAnalysisCard() {
     : null);
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <p className="text-sm font-medium text-text-muted">KI-Technik-Check mit Gemini</p>
-      <p className="mt-1 text-xs text-text-faint">
+    <Card title="KI-Technik-Check mit Gemini">
+      <p className="text-small text-text-subtle">
         Kurzen Clip aus einer gut sichtbaren Perspektive hochladen. Das Video wird nicht in der
         App gespeichert, aber zur Analyse an Google Gemini übertragen.
       </p>
-      <div className="mt-3 flex flex-col gap-2">
-        <input
-          value={exerciseName}
-          onChange={(event) => setExerciseName(event.target.value)}
-          maxLength={120}
-          placeholder="Übung, z. B. Kniebeuge"
-          className="w-full rounded-lg border border-border-strong bg-bg px-3 py-2 text-sm"
-        />
-        <input
-          type="file"
-          accept="video/mp4,video/webm,video/quicktime"
-          onChange={(event) => setVideo(event.target.files?.[0] ?? null)}
-          className="w-full text-sm text-text-subtle file:mr-3 file:rounded-lg file:border-0 file:bg-surface-2 file:px-3 file:py-2 file:text-text-2"
-        />
-        <button
-          onClick={submit}
-          disabled={analysis.isPending}
-          className="rounded-lg bg-accent py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:opacity-50"
-        >
+      <div className="mt-3 flex flex-col gap-3">
+        <Field label="Übung">
+          {(p) => (
+            <Input
+              {...p}
+              value={exerciseName}
+              onChange={(event) => setExerciseName(event.target.value)}
+              maxLength={120}
+              placeholder="z. B. Kniebeuge"
+            />
+          )}
+        </Field>
+        <Field label="Video" hint="MP4, WebM oder MOV, max. 10 MB">
+          {(p) => (
+            <input
+              {...p}
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime"
+              onChange={(event) => setVideo(event.target.files?.[0] ?? null)}
+              className="text-small text-text-subtle file:mr-3 file:min-h-9 file:rounded-md file:border file:border-border-strong file:bg-control file:px-3 file:text-text-2"
+            />
+          )}
+        </Field>
+        <Button variant="primary" disabled={analysis.isPending} onClick={submit}>
           {analysis.isPending ? "Gemini analysiert…" : "Ausführung analysieren"}
-        </button>
+        </Button>
       </div>
-      {error && <p className="mt-2 text-sm text-danger-text">{error}</p>}
+      {error && (
+        <Callout tone="danger" className="mt-3">
+          {error}
+        </Callout>
+      )}
 
       {analysis.data && (
-        <div className="mt-4 border-t border-border pt-4">
-          <div className="flex items-center justify-between">
-            <p className="font-medium text-text">{analysis.data.exerciseName}</p>
-            <span className="rounded-full bg-accent/15 px-2 py-1 text-sm font-semibold text-accent-hover">
-              {analysis.data.rating}/10
-            </span>
+        <div className="mt-4 border-t border-border-subtle pt-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-body font-medium text-text">{analysis.data.exerciseName}</p>
+            <Badge tone="accent">{analysis.data.rating}/10</Badge>
           </div>
-          <p className="mt-2 text-sm text-text-muted">{analysis.data.summary}</p>
+          <p className="mt-2 text-small text-text-muted">{analysis.data.summary}</p>
 
           {analysis.data.strengths.length > 0 && (
             <div className="mt-3">
               <p className="text-xs font-medium text-accent">Das läuft gut</p>
-              <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-text-muted">
-                {analysis.data.strengths.map((strength) => <li key={strength}>{strength}</li>)}
+              <ul className="mt-1 list-disc space-y-1 pl-4 text-small text-text-muted">
+                {analysis.data.strengths.map((strength) => (
+                  <li key={strength}>{strength}</li>
+                ))}
               </ul>
             </div>
           )}
@@ -80,29 +89,34 @@ export function FormAnalysisCard() {
             <div className="mt-3 space-y-2">
               <p className="text-xs font-medium text-warning">Verbesserungen</p>
               {analysis.data.improvements.map((item, index) => (
-                <div key={`${item.title}-${index}`} className="rounded-lg border border-border bg-bg p-3">
+                <div key={`${item.title}-${index}`} className="rounded-lg bg-surface-2 p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium text-text">{item.title}</p>
+                    <p className="text-small font-medium text-text">{item.title}</p>
                     <span className="text-xs text-text-faint">
-                      {item.timestamp ? `${item.timestamp} · ` : ""}{PRIORITY_LABELS[item.priority]}
+                      {item.timestamp ? `${item.timestamp} · ` : ""}
+                      {PRIORITY_LABELS[item.priority]}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-text-subtle">{item.detail}</p>
+                  <p className="mt-1 text-small text-text-subtle">{item.detail}</p>
                 </div>
               ))}
             </div>
           )}
           {analysis.data.safetyNotes.length > 0 && (
-            <div className="mt-3 rounded-lg border border-danger/30 bg-danger/5 p-3">
-              <p className="text-xs font-medium text-danger-text">Sicherheit</p>
-              {analysis.data.safetyNotes.map((note) => <p key={note} className="mt-1 text-sm text-danger-text">{note}</p>)}
-            </div>
+            <Callout tone="danger" className="mt-3">
+              <p className="font-medium text-text">Sicherheit</p>
+              {analysis.data.safetyNotes.map((note) => (
+                <p key={note} className="mt-1">
+                  {note}
+                </p>
+              ))}
+            </Callout>
           )}
           <p className="mt-3 text-xs text-text-faint">
             KI-Einschätzung, keine medizinische Diagnose. Bei Schmerzen Training stoppen und fachlichen Rat einholen.
           </p>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
