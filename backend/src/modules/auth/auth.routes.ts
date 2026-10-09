@@ -23,8 +23,9 @@ function setRefreshCookie(reply: import("fastify").FastifyReply, token: string) 
 }
 
 // Brute-force protection for the two credential-guessing-prone routes — 5 requests/minute per
-// IP is generous for a legitimate login/registration attempt but blunts automated guessing.
-const AUTH_RATE_LIMIT = { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } };
+// IP (default of AUTH_RATE_LIMIT_PER_MINUTE) is generous for a legitimate login/registration
+// attempt but blunts automated guessing.
+const AUTH_RATE_LIMIT = { config: { rateLimit: { max: env.AUTH_RATE_LIMIT_PER_MINUTE, timeWindow: "1 minute" } } };
 
 export default async function authRoutes(fastify: FastifyInstance) {
   fastify.post("/register", AUTH_RATE_LIMIT, async (request, reply) => {

@@ -8,6 +8,10 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(16, "JWT_REFRESH_SECRET must be at least 16 characters"),
   SETUP_TOKEN: z.string().min(8, "SETUP_TOKEN must be at least 8 characters"),
   FRONTEND_ORIGIN: z.string().url().default("http://localhost:5173"),
+  // Requests per minute and IP on /auth/login and /auth/register. Keep the default in production;
+  // only the CI raises it, because every E2E scenario registers and logs in its own account from
+  // the same IP and the suite outgrew five per minute.
+  AUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1000).default(5),
   COOKIE_SECURE: z
     .string()
     .default("false")
