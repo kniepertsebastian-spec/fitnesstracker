@@ -61,7 +61,7 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
 
       <Field
         label="Trainingsziel"
-        hint="Bestimmt den Cardio-Vorschlag für jeden Trainingstag."
+        hint="Bestimmt den Cardio-Vorschlag für jeden Trainingstag. Ohne Ziel gibt es keinen Vorschlag."
         className="mt-4 rounded-lg border border-border-hero bg-surface-inset p-3"
       >
         {(p) => (

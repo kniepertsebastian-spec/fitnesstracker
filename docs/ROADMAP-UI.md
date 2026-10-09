@@ -319,7 +319,7 @@ Ohne eigenen Screen; gebaut nur aus `components/ui` und den Mustern der Screens 
 
 ### Trainingsziel und Cardio-Plan
 
-- [ ] **Trainingsziel am Plan** speichern (Muskelaufbau, Kraft, Ausdauer, Fettabbau, Allgemeine Fitness; leer = noch nicht gewählt), wählbar im Hero „Aktuelle Phase“. Der KI-Fragebogen übernimmt sein Ziel, wenn noch keins gewählt ist.
+- [ ] **Trainingsziel am Plan** speichern (Muskelaufbau, Kraft, Ausdauer, Fettabbau, Allgemeine Fitness; leer = noch nicht gewählt), wählbar im Hero „Aktuelle Phase“. Der KI-Fragebogen übernimmt sein Ziel, wenn noch keins gewählt ist. **Ohne Ziel kein Cardio-Vorschlag** (Cardio ist Opt-in; bestehende Pläne ändern sich durch das Update nicht).
 - [ ] **Regelbasierter Cardio-Vorschlag** je Trainingstag (reine Funktion mit Unit-Tests, keine KI): Das Ziel bestimmt Umfang und Art (Aufwärmen, Einheit nach dem Krafttraining, Einheiten an freien Tagen), der Tag bestimmt Gerät und Intensität (Beintag: Rad zum Aufwärmen, danach Laufband ohne Steigung). In der Phase Muskelausdauer etwas länger. Ein Satz je Ziel erklärt den Vorschlag. Richtwerte, keine medizinische Beratung.
 - [ ] **Eigene Anpassung** je Tag und für die freien Tage (Gerät, Minuten, Intensität; Einheiten hinzufügen oder entfernen), „Auf Vorschlag zurücksetzen“. Gespeichert je Phase und Tag wie der Dehnplan.
 - [ ] Plan-Seite: im Trainingstag drei Bereiche **Kraft · Cardio · Dehnen** mit Minutenangabe; Dehnen zeigt den Dehnplan des Tages (KI-Erstellung wie bisher über die Dehnseite). Darunter „Cardio an freien Tagen“.

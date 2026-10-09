@@ -54,14 +54,16 @@ describe("suggestDayCardio", () => {
     expect(minutes("STRENGTH", "MUSKELAUSDAUER")).toBe(minutes("STRENGTH", "AUFBAU"));
   });
 
-  it("falls back to general fitness when no goal is chosen", () => {
-    expect(suggestDayCardio(null, "NEGATIV", PUSH)).toEqual(suggestDayCardio("GENERAL_FITNESS", "NEGATIV", PUSH));
-    expect(cardioReason(null)).toBe(cardioReason("GENERAL_FITNESS"));
+  it("suggests nothing until a goal is chosen (cardio is opt-in)", () => {
+    expect(suggestDayCardio(null, "NEGATIV", PUSH)).toEqual([]);
+    expect(suggestDayCardio(null, "AUFBAU", LEGS)).toEqual([]);
+    expect(cardioReason(null)).toContain("Trainingsziel");
   });
 });
 
 describe("suggestFreeCardio", () => {
   it("only plans extra days where the goal needs them", () => {
+    expect(suggestFreeCardio(null)).toEqual([]);
     expect(suggestFreeCardio("MUSCLE_GAIN")).toEqual([]);
     expect(suggestFreeCardio("STRENGTH")).toEqual([]);
     expect(suggestFreeCardio("FAT_LOSS")).toHaveLength(1);

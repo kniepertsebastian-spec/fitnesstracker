@@ -62,11 +62,12 @@ const RULES: Record<TrainingGoalValue, GoalRule> = {
   },
 };
 
-// No goal chosen yet → suggest as for general fitness (the UI asks the user to pick one).
-export const FALLBACK_GOAL: TrainingGoalValue = "GENERAL_FITNESS";
+// No goal chosen yet → no cardio suggestion at all. Cardio is opt-in via the goal: an existing
+// plan must not suddenly start every workout with a warm-up the user never asked for.
+const NO_GOAL_REASON = "Noch kein Trainingsziel gewählt. Wähle eins, dann schlägt der Plan passendes Cardio vor.";
 
 export function cardioReason(goal: TrainingGoalValue | null): string {
-  return RULES[goal ?? FALLBACK_GOAL].reason;
+  return goal ? RULES[goal].reason : NO_GOAL_REASON;
 }
 
 export function suggestDayCardio(
@@ -74,7 +75,8 @@ export function suggestDayCardio(
   phase: TrainingPhase,
   rankedMuscles: string[],
 ): CardioPlanItem[] {
-  const rule = RULES[goal ?? FALLBACK_GOAL];
+  if (!goal) return [];
+  const rule = RULES[goal];
   const legDay = isLegDay(rankedMuscles);
   const after = rule.afterMinutes + (phase === "MUSKELAUSDAUER" ? rule.afterBonusInMuskelausdauer : 0);
 
@@ -87,9 +89,9 @@ export function suggestDayCardio(
   let afterItem: CardioPlanItem;
   if (legDay) {
     afterItem = { slot: "AFTER", machine: "TREADMILL", durationMinutes: after, intensity: "Zone 2 · ohne Steigung" };
-  } else if ((goal ?? FALLBACK_GOAL) === "FAT_LOSS") {
+  } else if (goal === "FAT_LOSS") {
     afterItem = { slot: "AFTER", machine: "TREADMILL", durationMinutes: after, intensity: "Zone 2 · 5–8 % Steigung" };
-  } else if ((goal ?? FALLBACK_GOAL) === "STRENGTH") {
+  } else if (goal === "STRENGTH") {
     afterItem = { slot: "AFTER", machine: "BIKE", durationMinutes: after, intensity: "sehr locker · Auslockern" };
   } else {
     afterItem = { slot: "AFTER", machine: "BIKE", durationMinutes: after, intensity: "Zone 2 · locker" };
@@ -99,5 +101,6 @@ export function suggestDayCardio(
 }
 
 export function suggestFreeCardio(goal: TrainingGoalValue | null): CardioPlanItem[] {
-  return RULES[goal ?? FALLBACK_GOAL].free.map((item) => ({ ...item, slot: "FREE" as const }));
+  if (!goal) return [];
+  return RULES[goal].free.map((item) => ({ ...item, slot: "FREE" as const }));
 }

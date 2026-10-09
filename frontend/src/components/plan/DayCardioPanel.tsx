@@ -42,16 +42,14 @@ export function DayCardioPanel({ phase, dayLabel }: { phase: TrainingPhase; dayL
 
   return (
     <div className="flex flex-col gap-3">
-      {plan.goal === null ? (
-        <Callout tone="warning">
-          Noch kein Trainingsziel gewählt. Der Vorschlag gilt für allgemeine Fitness, bis du oben ein Ziel wählst.
-        </Callout>
-      ) : (
-        <Callout tone="info">{plan.reason}</Callout>
-      )}
+      <Callout tone={plan.goal === null && day.source === "auto" ? "warning" : "info"}>{plan.reason}</Callout>
 
       {day.items.length === 0 ? (
-        <p className="text-small text-text-subtle">An diesem Tag ist kein Cardio geplant.</p>
+        <p className="text-small text-text-subtle">
+          {plan.goal === null && day.source === "auto"
+            ? "Ohne Ziel bleibt das Training wie bisher nur Kraft. Eigene Einheiten kannst du trotzdem über „Anpassen“ planen."
+            : "An diesem Tag ist kein Cardio geplant."}
+        </p>
       ) : (
         <div>
           {day.items.map((item, i) => (
