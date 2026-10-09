@@ -1,36 +1,20 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { NavLink, useLocation } from "react-router-dom";
-import { useAuth } from "../../hooks/useAuth";
-import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../../hooks/useTrainingPlan";
+import { useEffect, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
+import { Menu, X } from "lucide-react";
+import { IconButton, Sheet, SheetClose } from "../ui";
 import { InstallButton } from "./InstallButton";
+import { Logo } from "./Logo";
+import { NavMenu } from "./NavMenu";
 import { PRToastHost } from "./PRToastHost";
 import { RestTimerWidget } from "./RestTimerWidget";
+import { StartTrainingButton } from "./StartTrainingButton";
 import { SyncStatusIndicator } from "./SyncStatusIndicator";
-import { UpdatePrompt } from "./UpdatePrompt";
+import { UserRow } from "./UserRow";
 
-interface NavItem {
-  label: string;
-  to: string;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", to: "/" },
-  { label: "Daily", to: "/daily" },
-  { label: "Fitnesstagebuch", to: "/diary" },
-  { label: "Historie", to: "/history" },
-  { label: "Übungen", to: "/exercises" },
-  { label: "Plan", to: "/plan" },
-  { label: "Fortschritt", to: "/progress" },
-  { label: "Ziele", to: "/goals" },
-  { label: "Ernährung", to: "/nutrition" },
-  { label: "Einstellungen", to: "/settings" },
-];
-
+// Mobile (< 1024 px): top bar + right-hand menu sheet. Desktop: fixed 248 px sidebar with the
+// same ten entries. Safe-area insets stay on the outer frame.
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
-  const { data: plan } = useTrainingPlan();
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
   // Close on navigation, so picking an item never leaves a stale open menu behind.
@@ -38,92 +22,58 @@ export function AppShell({ children }: { children: ReactNode }) {
     setMenuOpen(false);
   }, [location.pathname]);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handlePointerDown = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [menuOpen]);
-
   return (
-    <div className="flex min-h-screen flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-      <header className="flex items-center justify-between border-b border-ink-800 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div ref={menuRef} className="relative">
-            <button
-              onClick={() => setMenuOpen((v) => !v)}
+    <div className="min-h-screen bg-bg pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-text lg:grid lg:grid-cols-[248px_1fr]">
+      <aside className="sticky top-0 hidden h-screen flex-col gap-4 border-r border-border bg-bg-sidebar p-4 lg:flex">
+        <Logo />
+        <StartTrainingButton size="lg" fullWidth />
+        <div className="-mx-1 flex-1 overflow-y-auto px-1">
+          <NavMenu />
+        </div>
+        <InstallButton />
+        <UserRow />
+      </aside>
+
+      <div className="flex min-w-0 flex-col">
+        <header className="flex items-center justify-between gap-3 border-b border-border bg-bg-sidebar px-4 py-2 lg:justify-end lg:border-b-0 lg:bg-transparent lg:px-10 lg:pt-5">
+          <div className="lg:hidden">
+            <Logo />
+          </div>
+          <div className="flex items-center gap-2">
+            <SyncStatusIndicator />
+            <IconButton
               aria-label="Menü öffnen"
               aria-expanded={menuOpen}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-300 hover:bg-ink-800 hover:text-ink-100"
+              onClick={() => setMenuOpen(true)}
+              className="lg:hidden"
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                className="h-5 w-5"
-              >
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-
-            {menuOpen && (
-              <div className="absolute left-0 top-full z-20 mt-2 w-48 overflow-hidden rounded-lg border border-ink-800 bg-ink-900 py-1 shadow-lg">
-                {NAV_ITEMS.map((item) => (
-                  <NavLink
-                    key={item.label}
-                    to={item.to}
-                    end={item.to === "/"}
-                    className={({ isActive }) =>
-                      `flex items-center justify-between px-3 py-2 text-sm ${isActive ? "text-violet-400" : "text-ink-300 hover:bg-ink-800 hover:text-ink-100"}`
-                    }
-                  >
-                    <span>{item.label}</span>
-                    {item.label === "Plan" && plan && (
-                      <span className="text-xs text-ink-500">
-                        {TRAINING_PHASE_LABELS[plan.currentPhase]}
-                      </span>
-                    )}
-                  </NavLink>
-                ))}
-              </div>
-            )}
+              <Menu size={20} strokeWidth={2} aria-hidden />
+            </IconButton>
           </div>
+        </header>
 
-          <span className="font-semibold text-ink-100">Fitnesstracker</span>
+        <main className="flex-1 px-4 py-4 lg:px-10 lg:py-6">{children}</main>
+      </div>
+
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen} title="Menü" className="gap-4 p-4">
+        <div className="flex items-center justify-between">
+          <Logo />
+          <SheetClose asChild>
+            <IconButton aria-label="Menü schließen">
+              <X size={20} strokeWidth={2} aria-hidden />
+            </IconButton>
+          </SheetClose>
         </div>
-
-        <div className="flex items-center gap-3">
-          <InstallButton />
-          <SyncStatusIndicator />
-          {user && (
-            <button
-              onClick={() => logout()}
-              className="text-sm text-ink-400 hover:text-ink-200"
-            >
-              Abmelden
-            </button>
-          )}
+        <StartTrainingButton size="lg" fullWidth onNavigate={() => setMenuOpen(false)} />
+        <div className="flex-1 overflow-y-auto">
+          <NavMenu />
         </div>
-      </header>
-
-      <main className="flex-1 px-4 py-4">{children}</main>
+        <InstallButton />
+        <UserRow />
+      </Sheet>
 
       <PRToastHost />
       <RestTimerWidget />
-      <UpdatePrompt />
     </div>
   );
 }

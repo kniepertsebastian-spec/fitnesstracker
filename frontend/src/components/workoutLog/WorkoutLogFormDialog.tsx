@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
+import { Minus, Plus } from "lucide-react";
 import { z } from "zod";
 import type { ExerciseDto } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../../offline/db";
@@ -9,6 +10,7 @@ import { useTimerStore } from "../../stores/timerStore";
 import { usePRToastStore } from "../../stores/prToastStore";
 import { buildWarmupPyramid } from "../../lib/oneRepMax";
 import { detectPRs, prLabels } from "../../lib/prDetection";
+import { Button, Callout, Dialog, Field, IconButton, Input, SegmentedControl, Select } from "../ui";
 
 const formSchema = z.object({
   exerciseId: z.string().uuid({ message: "Bitte eine Übung wählen" }),
@@ -61,37 +63,37 @@ function SteppedNumberField({
 }) {
   const round = (n: number) => Math.round(n * 10) / 10;
   return (
-    <div>
-      <label className="mb-1 block text-sm text-ink-400">{label}</label>
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onChange(Math.max(min, round((Number(value) || 0) - step)))}
-          className="h-10 w-10 shrink-0 rounded-lg border border-ink-700 text-lg text-ink-300 hover:bg-ink-800"
-          aria-label={`${label} verringern`}
-        >
-          −
-        </button>
-        <input
-          type="number"
-          // `step="any"` — a native step-mismatch would otherwise silently block submission
-          // (no JS handler runs, no console error) whenever the value carries more precision
-          // than the browser's default whole-number step, which the +/- buttons intentionally
-          // produce for weight (2.5kg increments).
-          step="any"
-          className="w-full rounded-lg border border-ink-700 bg-ink-950 px-2 py-2 text-center"
-          {...inputProps}
-        />
-        <button
-          type="button"
-          onClick={() => onChange(round((Number(value) || 0) + step))}
-          className="h-10 w-10 shrink-0 rounded-lg border border-ink-700 text-lg text-ink-300 hover:bg-ink-800"
-          aria-label={`${label} erhöhen`}
-        >
-          +
-        </button>
-      </div>
-    </div>
+    <Field label={label}>
+      {(p) => (
+        <div className="flex items-center gap-2">
+          <IconButton
+            className="h-12 w-12"
+            onClick={() => onChange(Math.max(min, round((Number(value) || 0) - step)))}
+            aria-label={`${label} verringern`}
+          >
+            <Minus size={18} aria-hidden />
+          </IconButton>
+          <Input
+            {...p}
+            type="number"
+            // `step="any"` — a native step-mismatch would otherwise silently block submission
+            // (no JS handler runs, no console error) whenever the value carries more precision
+            // than the browser's default whole-number step, which the +/- buttons intentionally
+            // produce for weight (2.5kg increments).
+            step="any"
+            className="h-12 text-center font-mono"
+            {...inputProps}
+          />
+          <IconButton
+            className="h-12 w-12"
+            onClick={() => onChange(round((Number(value) || 0) + step))}
+            aria-label={`${label} erhöhen`}
+          >
+            <Plus size={18} aria-hidden />
+          </IconButton>
+        </div>
+      )}
+    </Field>
   );
 }
 
@@ -157,8 +159,6 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
     setValue("setNumber", todaysSetCount + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchedExerciseId]);
-
-  if (!open) return null;
 
   const lastLogForExercise = !editingLog
     ? allLogs?.find((log) => log.exerciseId === watchedExerciseId)
@@ -231,19 +231,23 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
   const warmupSteps = buildWarmupPyramid(Number(watchedWeight) || 0);
 
   return (
-    <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/60 sm:items-center">
-      <div className="w-full max-w-sm rounded-t-2xl bg-ink-900 p-4 sm:rounded-2xl">
-        <h2 className="mb-4 text-lg font-semibold">
-          {editingLog ? "Satz bearbeiten" : "Satz hinzufügen"}
-        </h2>
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-          <div>
-            <label className="mb-1 block text-sm text-ink-400">Übung</label>
-            <select
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
-              {...register("exerciseId")}
-              defaultValue=""
-            >
+    <Dialog
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title={editingLog ? "Satz bearbeiten" : "Satz hinzufügen"}
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+        <Field
+          label="Übung"
+          error={errors.exerciseId?.message}
+          hint={
+            lastLogForExercise
+              ? `Zuletzt: ${lastLogForExercise.reps} Wdh. × ${lastLogForExercise.weightKg} kg`
+              : undefined
+          }
+        >
+          {(p) => (
+            <Select {...p} {...register("exerciseId")} defaultValue="">
               <option value="" disabled>
                 Übung wählen…
               </option>
@@ -252,145 +256,93 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
                   {exercise.name}
                 </option>
               ))}
-            </select>
-            {errors.exerciseId && (
-              <p className="mt-1 text-sm text-red-400">{errors.exerciseId.message}</p>
-            )}
-            {lastLogForExercise && (
-              <p className="mt-1 text-xs text-ink-500">
-                Zuletzt: {lastLogForExercise.reps} Wdh. × {lastLogForExercise.weightKg}kg
-              </p>
-            )}
+            </Select>
+          )}
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Satz">{(p) => <Input {...p} type="number" {...register("setNumber")} />}</Field>
+          <Field label="RIR" error={errors.rir?.message}>
+            {(p) => <Input {...p} type="number" min={0} max={10} placeholder="–" {...register("rir")} />}
+          </Field>
+        </div>
+
+        <SteppedNumberField
+          label="Wdh."
+          value={Number(watchedReps) || 0}
+          onChange={(v) => setValue("reps", v)}
+          step={1}
+          min={1}
+          inputProps={register("reps")}
+        />
+        <SteppedNumberField
+          label="kg"
+          value={Number(watchedWeight) || 0}
+          onChange={(v) => setValue("weightKg", v)}
+          step={2.5}
+          inputProps={register("weightKg")}
+        />
+
+        {!editingLog && (
+          <div className="flex flex-col gap-1.5">
+            <span className="text-small font-medium text-text-muted">Superset / Dropset</span>
+            <SegmentedControl
+              label="Superset / Dropset"
+              value={supersetMode}
+              onChange={(v) => {
+                if (v === "join" && !lastSupersetGroupId) return;
+                setSupersetMode(v);
+              }}
+              options={[
+                { value: "none", label: "Einzeln" },
+                { value: "new", label: "Neue Gruppe" },
+                { value: "join", label: "Zu letzter" },
+              ]}
+            />
           </div>
+        )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="mb-1 block text-sm text-ink-400">Satz</label>
-              <input
-                type="number"
-                className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
-                {...register("setNumber")}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm text-ink-400" title="Reps in Reserve">
-                RIR
-              </label>
-              <input
-                type="number"
-                min={0}
-                max={10}
-                placeholder="–"
-                className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
-                {...register("rir")}
-              />
-            </div>
-          </div>
-
-          <SteppedNumberField
-            label="Wdh."
-            value={Number(watchedReps) || 0}
-            onChange={(v) => setValue("reps", v)}
-            step={1}
-            min={1}
-            inputProps={register("reps")}
-          />
-          <SteppedNumberField
-            label="kg"
-            value={Number(watchedWeight) || 0}
-            onChange={(v) => setValue("weightKg", v)}
-            step={2.5}
-            inputProps={register("weightKg")}
-          />
-          {errors.rir && <p className="text-sm text-red-400">{errors.rir.message}</p>}
-
-          {!editingLog && (
-            <div>
-              <label className="mb-1 block text-sm text-ink-400">Superset / Dropset</label>
-              <div className="flex gap-1 rounded-lg border border-ink-800 bg-ink-950 p-1">
-                <button
-                  type="button"
-                  onClick={() => setSupersetMode("none")}
-                  className={`flex-1 rounded-md py-1 text-xs font-medium ${
-                    supersetMode === "none" ? "bg-violet-500 text-ink-950" : "text-ink-400"
-                  }`}
-                >
-                  Einzeln
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSupersetMode("new")}
-                  className={`flex-1 rounded-md py-1 text-xs font-medium ${
-                    supersetMode === "new" ? "bg-violet-500 text-ink-950" : "text-ink-400"
-                  }`}
-                >
-                  Neue Gruppe
-                </button>
-                <button
-                  type="button"
-                  disabled={!lastSupersetGroupId}
-                  onClick={() => setSupersetMode("join")}
-                  className={`flex-1 rounded-md py-1 text-xs font-medium disabled:opacity-30 ${
-                    supersetMode === "join" ? "bg-violet-500 text-ink-950" : "text-ink-400"
-                  }`}
-                >
-                  Zu letzter
-                </button>
-              </div>
-            </div>
-          )}
-
-          {Number(watchedWeight) > 0 && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowWarmup((v) => !v)}
-                className="text-xs text-violet-400 hover:underline"
-              >
-                {showWarmup ? "Aufwärmpyramide ausblenden" : "Aufwärmpyramide anzeigen"}
-              </button>
-              {showWarmup && (
-                <div className="mt-2 grid grid-cols-4 gap-2">
-                  {warmupSteps.map((step) => (
-                    <div
-                      key={step.percent}
-                      className="rounded-lg border border-ink-800 bg-ink-950 px-2 py-1.5 text-center"
-                    >
-                      <p className="text-xs text-ink-500">{step.percent}%</p>
-                      <p className="text-sm font-medium text-ink-100">{step.weightKg}kg</p>
-                      <p className="text-xs text-ink-500">×{step.reps}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {savedCount > 0 && (
-            <p className="text-xs text-emerald-400">
-              ✓ {savedCount} {savedCount === 1 ? "Satz" : "Sätze"} gespeichert — bereit für den
-              nächsten
-            </p>
-          )}
-
-          <div className="mt-2 flex gap-2">
+        {Number(watchedWeight) > 0 && (
+          <div>
             <button
               type="button"
-              onClick={onClose}
-              className="flex-1 rounded-lg border border-ink-700 py-2 text-ink-300 hover:bg-ink-800"
+              onClick={() => setShowWarmup((v) => !v)}
+              className="min-h-9 text-small text-accent hover:text-accent-hover"
             >
-              {savedCount > 0 ? "Fertig" : "Abbrechen"}
+              {showWarmup ? "Aufwärmpyramide ausblenden" : "Aufwärmpyramide anzeigen"}
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 rounded-lg bg-violet-500 py-2 font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
-            >
-              Speichern
-            </button>
+            {showWarmup && (
+              <div className="mt-2 grid grid-cols-4 gap-2">
+                {warmupSteps.map((step) => (
+                  <div
+                    key={step.percent}
+                    className="rounded-lg border border-border bg-surface-2 px-2 py-1.5 text-center"
+                  >
+                    <p className="text-xs text-text-faint">{step.percent}%</p>
+                    <p className="tabular font-mono text-small font-medium text-text">{step.weightKg} kg</p>
+                    <p className="tabular font-mono text-xs text-text-faint">×{step.reps}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+
+        {savedCount > 0 && (
+          <Callout tone="info">
+            {savedCount} {savedCount === 1 ? "Satz" : "Sätze"} gespeichert — bereit für den nächsten.
+          </Callout>
+        )}
+
+        <div className="mt-1 flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            {savedCount > 0 ? "Fertig" : "Abbrechen"}
+          </Button>
+          <Button type="submit" variant="primary" disabled={isSubmitting}>
+            Speichern
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

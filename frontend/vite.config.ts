@@ -23,8 +23,8 @@ export default defineConfig({
         description: "Persönlicher Fitnesstracker ohne Werbung.",
         start_url: "/",
         display: "standalone",
-        background_color: "#1a1622",
-        theme_color: "#1a1622",
+        background_color: "#0A0C10",
+        theme_color: "#0A0C10",
         icons: [
           { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
@@ -37,6 +37,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Fonts are part of the shell: the offline reload must render with Geist, not a fallback.
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         // Never let the service worker serve cached API responses — a stale workout log
         // after a deploy is a much worse bug than a network round-trip.
         navigateFallbackDenylist: [/^\/api/],

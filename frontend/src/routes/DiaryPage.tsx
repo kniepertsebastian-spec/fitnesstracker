@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Plus } from "lucide-react";
 import type { LocalWorkoutLog } from "../offline/db";
 import { AppShell } from "../components/layout/AppShell";
 import { WorkoutLogTable } from "../components/workoutLog/WorkoutLogTable";
 import { WorkoutLogFormDialog } from "../components/workoutLog/WorkoutLogFormDialog";
-import { CurrentPlanCard } from "../components/workoutLog/CurrentPlanCard";
+import { PlanTodayCard } from "../components/workoutLog/PlanTodayCard";
 import { GoalsProgressCard } from "../components/workoutLog/GoalsProgressCard";
 import { WorkoutSessionBar } from "../components/workoutLog/WorkoutSessionBar";
+import { Button, Card, Skeleton } from "../components/ui";
 import { useWorkoutLogs } from "../hooks/useWorkoutLogs";
 import { isToday } from "../lib/dates";
 
@@ -29,45 +31,38 @@ export function DiaryPage() {
 
   return (
     <AppShell>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Fitnesstagebuch</h1>
-        <button
-          onClick={openCreate}
-          className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-violet-400"
-        >
-          + Satz
-        </button>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h1 className="text-h1 text-text lg:text-h1-lg">Fitnesstagebuch</h1>
+        <Button variant="primary" iconLeft={<Plus size={18} aria-hidden />} onClick={openCreate}>
+          Satz
+        </Button>
       </div>
 
-      <WorkoutSessionBar />
-
-      <div className="mb-4 flex flex-col gap-4">
-        <CurrentPlanCard />
-        <GoalsProgressCard />
-      </div>
-
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-ink-400">Heute</h2>
-        <div className="flex gap-3 text-xs">
-          <Link to="/history" className="text-violet-400 hover:underline">
-            Historie
-          </Link>
-          <Link to="/progress" className="text-violet-400 hover:underline">
-            Fortschritt
-          </Link>
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">
+        <div className="flex flex-col gap-4">
+          <WorkoutSessionBar />
+          <PlanTodayCard />
+          <GoalsProgressCard />
         </div>
-      </div>
-      {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
-      ) : (
-        <WorkoutLogTable logs={todaysLogs} onEdit={openEdit} />
-      )}
 
-      <WorkoutLogFormDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        editingLog={editingLog}
-      />
+        <Card
+          title="Heute"
+          action={
+            <span className="flex gap-3 text-small">
+              <Link to="/history" className="text-accent hover:text-accent-hover">
+                Historie
+              </Link>
+              <Link to="/progress" className="text-accent hover:text-accent-hover">
+                Fortschritt
+              </Link>
+            </span>
+          }
+        >
+          {isLoading ? <Skeleton className="h-24 w-full" /> : <WorkoutLogTable logs={todaysLogs} onEdit={openEdit} />}
+        </Card>
+      </div>
+
+      <WorkoutLogFormDialog open={dialogOpen} onClose={() => setDialogOpen(false)} editingLog={editingLog} />
     </AppShell>
   );
 }

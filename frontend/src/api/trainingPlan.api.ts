@@ -17,6 +17,10 @@ export function restartPhaseRequest() {
   return apiFetch<TrainingPlanDto>("/training-plan/restart-phase", { method: "POST" });
 }
 
+export function extendPhaseRequest() {
+  return apiFetch<TrainingPlanDto>("/training-plan/extend-phase", { method: "POST" });
+}
+
 export function updateTrainingPlanRemarksRequest(input: UpdateTrainingPlanRemarksInput) {
   return apiFetch<TrainingPlanDto>("/training-plan/remarks", { method: "PATCH", body: input });
 }

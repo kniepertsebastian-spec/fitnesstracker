@@ -152,31 +152,31 @@ Schrift: **Geist** (Text), **Geist Mono** (Timer, Dauer, Satznummern, Satz-/Wdh.
 
 ### Tokens und Schrift
 
-- [ ] Alle Farb-Tokens aus der [Designsprache](#designsprache-verbindlich) als CSS-Variablen in `src/styles/index.css` (`:root`), in `tailwind.config.js` als Farben verfügbar (`bg-surface`, `text-muted`, `border-strong`, `bg-accent`, `text-on-accent`, …), Radius- und Schriftskala ebenso. Tailwind 3 bleibt (kein Versionssprung als Nebeneffekt).
-- [ ] Geist und Geist Mono selbst ausliefern; Google-Fonts-Links aus `index.html` entfernen. Prüfen, dass die Schriften im Service-Worker-Precache landen (offline).
-- [ ] `theme_color` und `background_color` in `vite.config.ts` auf `#0A0C10`.
-- [ ] Prüfskript (oder ESLint-Regel): keine Hex-Werte und keine Tailwind-Paletten (`ink-*`, `violet-*`, `red-*`, `emerald-*`, `amber-*`) im JSX außerhalb von `components/ui`. Zum Start erzeugt es nur die Liste der Treffer (im PR), ab F8 bricht es die CI.
+- [x] Alle Farb-Tokens aus der [Designsprache](#designsprache-verbindlich) als CSS-Variablen in `src/styles/index.css` (`:root`), in `tailwind.config.js` als Farben verfügbar (`bg-surface`, `text-muted`, `border-strong`, `bg-accent`, `text-on-accent`, …), Radius- und Schriftskala ebenso. Tailwind 3 bleibt (kein Versionssprung als Nebeneffekt).
+- [x] Geist und Geist Mono selbst ausliefern; Google-Fonts-Links aus `index.html` entfernen. Prüfen, dass die Schriften im Service-Worker-Precache landen (offline).
+- [x] `theme_color` und `background_color` in `vite.config.ts` auf `#0A0C10`.
+- [x] Prüfskript (oder ESLint-Regel): keine Hex-Werte und keine Tailwind-Paletten (`ink-*`, `violet-*`, `red-*`, `emerald-*`, `amber-*`) im JSX außerhalb von `components/ui`. Zum Start erzeugt es nur die Liste der Treffer (im PR), ab F8 bricht es die CI.
 
 ### Komponenten (`src/components/ui/`)
 
 Eigene, schlanke Komponenten auf Tailwind-Basis. **Radix-Primitives nur für `Dialog`, `Sheet` und `DropdownMenu`** (Fokusfalle, Esc, Portale); alles andere ohne neue Abhängigkeit.
 
-- [ ] `Button` – `primary` (Mint, Text `--on-accent`, 600), `secondary` (`--control`, Rahmen `--border-strong`), `ghost` (transparent, Rahmen), `dashed` (gestrichelt, für „+ Satz“, „+ Übung hinzufügen“), `danger`. Größen `sm 36`, `md 44`, `lg 48` px. Icon links/rechts optional. Ein `Button` kann als Link gerendert werden (React-Router `Link`).
-- [ ] `IconButton` – 44×44, `aria-label` Pflicht (Typprüfung).
-- [ ] `Card` – `surface`, Rahmen `border`, Radius 16, Padding 16 mobil / 20–22 Desktop. Variante `hero` (Verlauf, Rahmen `#1F3A30`, Radius 18). Optionaler Kopf mit Titel und Aktion rechts.
-- [ ] `Badge` – Radius `full`, 12 px, 500–600. Töne `accent | info | warning | danger | violet | neutral`, weiche Fläche (12–14 % Alpha) + farbiger Text.
-- [ ] `StatTile` – Label (12.5–13, subtle), Wert (26–28, 600, tabular-nums) mit Einheit klein, Unterzeile (12, optional farbig).
-- [ ] `ProgressBar` (5/6/8 px) und `SegmentedProgress` (N Segmente à 6–8 px, Lücke 4 px, Zustände offen/erledigt/aktuell).
-- [ ] `SegmentedControl` – Pillen auf `--surface-inset`, gewählter Eintrag `--track`; ersetzt `RangeTabs`, `PhaseTabs`, `PageTabs` optisch.
-- [ ] `Stepper` – Minus / Wert mit Einheit / Plus, 48 px hoch, auf `--surface-inset`; Schrittweite als Prop (2,5 kg, 1 Wdh.); Tastatur: Pfeiltasten.
-- [ ] `CheckRow` – Kreis-Checkbox 24 px + Titel + Meta + Pfeil, ganze Zeile klickbar (`button` mit `aria-pressed`), 52 px.
-- [ ] `SetCheck` – 44–48 px Quadrat zum Abhaken eines Satzes (offen / aktuell / erledigt).
-- [ ] `ListRow` – Zeile mit `--border-subtle` oben, ≥ 52 px, optional Mono-Präfix (Nummer) und Mono-Wert rechts.
-- [ ] `EmptyState` – Icon, ein Satz, eine Aktion. Ersetzt alle „Noch keine …“-Zeilen.
-- [ ] `Callout` – Töne `info | warning | danger`: Icon-Kachel 32 px + Text, Fläche 6–8 % Alpha, Rahmen im abgedunkelten Ton (Hinweise, Formularfehler, Sync-Fehler).
-- [ ] `Dialog`, `Sheet` (rechts, 320 px mobil / 360–420 px Desktop), `DropdownMenu`, `Toast` (Rekord, Ziel erreicht, Fehler), `Skeleton`.
-- [ ] `StatusPill` – Sync-Zustand (synchronisiert / offline · n ausstehend / n fehlgeschlagen), nutzt die Logik von `SyncStatusIndicator`, öffnet dessen Panel.
-- [ ] Übersichtsseite `/ui` (nur im Dev-Build oder hinter Einstellungen versteckt) mit allen Komponenten und Zuständen – dient als Sichtprüfung.
+- [x] `Button` – `primary` (Mint, Text `--on-accent`, 600), `secondary` (`--control`, Rahmen `--border-strong`), `ghost` (transparent, Rahmen), `dashed` (gestrichelt, für „+ Satz“, „+ Übung hinzufügen“), `danger`. Größen `sm 36`, `md 44`, `lg 48` px. Icon links/rechts optional. Ein `Button` kann als Link gerendert werden (React-Router `Link`).
+- [x] `IconButton` – 44×44, `aria-label` Pflicht (Typprüfung).
+- [x] `Card` – `surface`, Rahmen `border`, Radius 16, Padding 16 mobil / 20–22 Desktop. Variante `hero` (Verlauf, Rahmen `#1F3A30`, Radius 18). Optionaler Kopf mit Titel und Aktion rechts.
+- [x] `Badge` – Radius `full`, 12 px, 500–600. Töne `accent | info | warning | danger | violet | neutral`, weiche Fläche (12–14 % Alpha) + farbiger Text.
+- [x] `StatTile` – Label (12.5–13, subtle), Wert (26–28, 600, tabular-nums) mit Einheit klein, Unterzeile (12, optional farbig).
+- [x] `ProgressBar` (5/6/8 px) und `SegmentedProgress` (N Segmente à 6–8 px, Lücke 4 px, Zustände offen/erledigt/aktuell).
+- [x] `SegmentedControl` – Pillen auf `--surface-inset`, gewählter Eintrag `--track`; ersetzt `RangeTabs`, `PhaseTabs`, `PageTabs` optisch.
+- [x] `Stepper` – Minus / Wert mit Einheit / Plus, 48 px hoch, auf `--surface-inset`; Schrittweite als Prop (2,5 kg, 1 Wdh.); Tastatur: Pfeiltasten.
+- [x] `CheckRow` – Kreis-Checkbox 24 px + Titel + Meta + Pfeil, ganze Zeile klickbar (`button` mit `aria-pressed`), 52 px.
+- [x] `SetCheck` – 44–48 px Quadrat zum Abhaken eines Satzes (offen / aktuell / erledigt).
+- [x] `ListRow` – Zeile mit `--border-subtle` oben, ≥ 52 px, optional Mono-Präfix (Nummer) und Mono-Wert rechts.
+- [x] `EmptyState` – Icon, ein Satz, eine Aktion. Ersetzt alle „Noch keine …“-Zeilen.
+- [x] `Callout` – Töne `info | warning | danger`: Icon-Kachel 32 px + Text, Fläche 6–8 % Alpha, Rahmen im abgedunkelten Ton (Hinweise, Formularfehler, Sync-Fehler).
+- [x] `Dialog`, `Sheet` (rechts, 320 px mobil / 360–420 px Desktop), `DropdownMenu`, `Toast` (Rekord, Ziel erreicht, Fehler), `Skeleton`.
+- [x] `StatusPill` – Sync-Zustand (synchronisiert / offline · n ausstehend / n fehlgeschlagen), nutzt die Logik von `SyncStatusIndicator`, öffnet dessen Panel.
+- [x] Übersichtsseite `/ui` (nur im Dev-Build oder hinter Einstellungen versteckt) mit allen Komponenten und Zuständen – dient als Sichtprüfung.
 
 ### Gate F1
 
@@ -190,12 +190,12 @@ Eigene, schlanke Komponenten auf Tailwind-Basis. **Radix-Primitives nur für `Di
 
 **Ziel:** Gleiche zehn Menüpunkte wie bisher, aber eine Shell, die auf dem Handy schnell und auf dem Desktop breit funktioniert.
 
-- [ ] **Menüpunkte unverändert** in dieser Reihenfolge: Dashboard, Daily, Fitnesstagebuch, Historie, Übungen, Plan, Fortschritt, Ziele, Ernährung, Einstellungen. Der Phasen-Hinweis am Eintrag „Plan“ bleibt (als `Badge`, z. B. „Aufbau · W3“).
-- [ ] **Mobil (< 1024 px):** Kopfleiste auf `--bg-sidebar`: Logo-Kachel (30 px, Mint, Hantel-Icon), „Fitnesstracker“, `StatusPill`, rechts Menü-Button (44 px). Der Button öffnet ein `Sheet` von rechts (Screen 7): Logo + Schließen, Primär-Button „Training starten“, die zehn Einträge (46 px, aktiver mit `--surface-2` und Mint-Punkt), unten Benutzerzeile mit „Abmelden“.
-- [ ] **Desktop (≥ 1024 px):** Seitenleiste 248 px links (Screen 6) mit denselben Einträgen, darüber „Training starten“, unten Benutzerzeile. Inhalt nutzt die Breite (Seitenpadding 28–40 px), lesbare Breiten nur bei Formularen (max. 640 px).
-- [ ] „Abmelden“ nur noch im Menü bzw. in der Benutzerzeile, nicht mehr in der Kopfleiste.
-- [ ] `UpdatePrompt`, `RestTimerWidget`, `PRToastHost` auf Tokens umstellen; `UpdatePrompt` im Fokusmodus unterdrücken (Leitplanke).
-- [ ] Safe-Area-Abstände (`env(safe-area-inset-*)`) beibehalten.
+- [x] **Menüpunkte unverändert** in dieser Reihenfolge: Dashboard, Daily, Fitnesstagebuch, Historie, Übungen, Plan, Fortschritt, Ziele, Ernährung, Einstellungen. Der Phasen-Hinweis am Eintrag „Plan“ bleibt (als `Badge`, z. B. „Aufbau · W3“).
+- [x] **Mobil (< 1024 px):** Kopfleiste auf `--bg-sidebar`: Logo-Kachel (30 px, Mint, Hantel-Icon), „Fitnesstracker“, `StatusPill`, rechts Menü-Button (44 px). Der Button öffnet ein `Sheet` von rechts (Screen 7): Logo + Schließen, Primär-Button „Training starten“, die zehn Einträge (46 px, aktiver mit `--surface-2` und Mint-Punkt), unten Benutzerzeile mit „Abmelden“.
+- [x] **Desktop (≥ 1024 px):** Seitenleiste 248 px links (Screen 6) mit denselben Einträgen, darüber „Training starten“, unten Benutzerzeile. Inhalt nutzt die Breite (Seitenpadding 28–40 px), lesbare Breiten nur bei Formularen (max. 640 px).
+- [x] „Abmelden“ nur noch im Menü bzw. in der Benutzerzeile, nicht mehr in der Kopfleiste.
+- [x] `UpdatePrompt`, `RestTimerWidget`, `PRToastHost` auf Tokens umstellen; `UpdatePrompt` im Fokusmodus unterdrücken (Leitplanke).
+- [x] Safe-Area-Abstände (`env(safe-area-inset-*)`) beibehalten.
 
 ### Gate F2
 
@@ -209,12 +209,12 @@ Eigene, schlanke Komponenten auf Tailwind-Basis. **Radix-Primitives nur für `Di
 
 Route `/`. Bausteine bleiben die heutigen (`TodayCard`, `ChecklistCard`, `WeekCard`, `NextGoalCard`, `LastWorkoutCard`), neu gestaltet.
 
-- [ ] **Begrüßung:** „Guten Morgen/Tag/Abend, {Name}“ + Zeile „Phase {Phase} · Woche x von 8 · heute Tag {X}“. Ohne Plan: „Noch kein Trainingsplan“ mit Link zum Plan.
-- [ ] **Hero „Heute dran“:** Overline + „zuletzt vor n Tagen“, Titel „{Tag-Label} – {Muskelgruppen}“, Zeile „n Übungen · n Sätze · ca. n Min.“, die ersten drei Übungen als `ListRow` (Mono-Nummer, Name, `4 × 6–8`) + „+ n weitere“, Primär-Button „Training starten“ (48 px, volle Breite mobil) → F4. Läuft schon eine Session: „Training fortsetzen“ mit Dauer. Pausiertem Plan: Hinweis statt Button.
-- [ ] **Checkliste „Heute“** mit `CheckRow`: Training, Tages-Challenge (x von 3), Dehnroutine, fällige Supplements; Zähler „x von n erledigt“. Jede Zeile führt zur zuständigen Seite; abgehakt wird dort, wo es fachlich passiert (keine zweite Wahrheit auf dem Dashboard).
-- [ ] **„Diese Woche“:** 7 Tageskacheln Mo–So (trainiert Mint-Soft mit Häkchen, heute Mint-Rahmen, Rest `--surface-2`), Serien-`Badge` (Bernstein, Flammen-Icon, „n Wochen Serie“), Balken „x von y Trainingstagen“. Desktop: Balkenhöhe = Tagesvolumen.
-- [ ] **Nächstes Ziel** und **Letztes Training** als zwei Kacheln nebeneinander (mobil) bzw. als Ziele-Spalte und Tabelle „Letzte Trainings“ (Desktop: Datum, Training, Sätze, Volumen, Rekorde).
-- [ ] Desktop zusätzlich vier `StatTile`: Trainingstage/Woche, Volumen der Woche (Δ zur Vorwoche), neue Rekorde im Monat, Körpergewicht (Δ 3 Monate). Nur Werte, die sich aus vorhandenen Daten berechnen lassen.
+- [x] **Begrüßung:** „Guten Morgen/Tag/Abend, {Name}“ + Zeile „Phase {Phase} · Woche x von 8 · heute Tag {X}“. Ohne Plan: „Noch kein Trainingsplan“ mit Link zum Plan.
+- [x] **Hero „Heute dran“:** Overline + „zuletzt vor n Tagen“, Titel „{Tag-Label} – {Muskelgruppen}“, Zeile „n Übungen · n Sätze · ca. n Min.“, die ersten drei Übungen als `ListRow` (Mono-Nummer, Name, `4 × 6–8`) + „+ n weitere“, Primär-Button „Training starten“ (48 px, volle Breite mobil) → F4. Läuft schon eine Session: „Training fortsetzen“ mit Dauer. Pausiertem Plan: Hinweis statt Button.
+- [x] **Checkliste „Heute“** mit `CheckRow`: Training, Tages-Challenge (x von 3), Dehnroutine, fällige Supplements; Zähler „x von n erledigt“. Jede Zeile führt zur zuständigen Seite; abgehakt wird dort, wo es fachlich passiert (keine zweite Wahrheit auf dem Dashboard).
+- [x] **„Diese Woche“:** 7 Tageskacheln Mo–So (trainiert Mint-Soft mit Häkchen, heute Mint-Rahmen, Rest `--surface-2`), Serien-`Badge` (Bernstein, Flammen-Icon, „n Wochen Serie“), Balken „x von y Trainingstagen“. Desktop: Balkenhöhe = Tagesvolumen.
+- [x] **Nächstes Ziel** und **Letztes Training** als zwei Kacheln nebeneinander (mobil) bzw. als Ziele-Spalte und Tabelle „Letzte Trainings“ (Desktop: Datum, Training, Sätze, Volumen, Rekorde).
+- [x] Desktop zusätzlich vier `StatTile`: Trainingstage/Woche, Volumen der Woche (Δ zur Vorwoche), neue Rekorde im Monat, Körpergewicht (Δ 3 Monate). Nur Werte, die sich aus vorhandenen Daten berechnen lassen. *(Supplement-Zeile: „abgehakt“ = alle heutigen Erinnerungszeiten verstrichen, da es keinen Einnahme-Status gibt.)*
 
 **Gate F3:** Screens 1 und 6 nachgebaut; alle Zahlen aus echten Daten; leere Zustände gestaltet (neues Konto, kein Plan, keine Ziele, noch kein Training).
 
@@ -226,26 +226,26 @@ Neue Route `/training` (Fokusmodus) auf Basis von `useWorkoutSession`, `usePlanE
 
 ### Fokusleiste
 
-- [ ] Keine Shell-Navigation während einer Session. Fokusleiste (`--bg-sidebar`): Verlassen (44 px, X), „{Tag-Label} · Tag {X}“ + „{Phase} · Woche x von 8“, Dauer (Geist Mono, tabular-nums), Pausieren (44 px). `SegmentedProgress` über alle Übungen des Tages, darunter „Übung x von y“ und „n von m Sätzen“.
-- [ ] Verlassen fragt per `Dialog`: „Pausieren“, „Abschließen“, „Abbrechen (Sätze bleiben gespeichert)“ – entspricht den heutigen Session-Buttons.
+- [x] Keine Shell-Navigation während einer Session. Fokusleiste (`--bg-sidebar`): Verlassen (44 px, X), „{Tag-Label} · Tag {X}“ + „{Phase} · Woche x von 8“, Dauer (Geist Mono, tabular-nums), Pausieren (44 px). `SegmentedProgress` über alle Übungen des Tages, darunter „Übung x von y“ und „n von m Sätzen“.
+- [x] Verlassen fragt per `Dialog`: „Pausieren“, „Abschließen“, „Abbrechen (Sätze bleiben gespeichert)“ – entspricht den heutigen Session-Buttons.
 
 ### Übungskarte
 
-- [ ] Kopf: Muskelgruppen-`Badge` (Info), Progressions-`Badge` je Phase („Gewicht steigern“ / „Wdh. steigern“ / „langsam ablassen“), Übungsname (24 px), Button „Technik“ → Übungsdetail im `Sheet` (Bilder, Beschreibung, Formanalyse).
-- [ ] Zeile „Letztes Mal {Sätze × Wdh. · kg}“ und „Vorschlag {kg}“ (Mint) aus der bestehenden Progressionslogik.
-- [ ] **Satztabelle:** Satz (Mono), Vorher (Mono, faint), kg, Wdh., `SetCheck`. Zustände erledigt / aktuell / offen wie in der Designsprache. Unter dem aktuellen Satz zwei `Stepper` (kg in 2,5er-Schritten, Wdh.) und RIR-Auswahl `0 1 2 3+` (bestehendes Feld). Vorbefüllt mit Vorschlag bzw. letztem Satz.
-- [ ] Abhaken speichert den Satz sofort (offline-fähig wie heute), Rückgängig über erneutes Tippen auf den erledigten Satz (bestehende Undo-Logik aus P1.x).
-- [ ] „+ Satz“ und „Supersatz“ (bestehende Supersatz-Gruppierung) als `dashed`-Buttons. Satzanzahl per +/− wie heute.
-- [ ] Sind alle Sätze erledigt, springt die Ansicht zur nächsten Übung (bestehendes Auto-Schließen).
+- [x] Kopf: Muskelgruppen-`Badge` (Info), Progressions-`Badge` je Phase („Gewicht steigern“ / „Wdh. steigern“ / „langsam ablassen“), Übungsname (24 px), Button „Technik“ → Übungsdetail im `Sheet` (Bilder, Beschreibung, Formanalyse).
+- [x] Zeile „Letztes Mal {Sätze × Wdh. · kg}“ und „Vorschlag {kg}“ (Mint) aus der bestehenden Progressionslogik.
+- [x] **Satztabelle:** Satz (Mono), Vorher (Mono, faint), kg, Wdh., `SetCheck`. Zustände erledigt / aktuell / offen wie in der Designsprache. Unter dem aktuellen Satz zwei `Stepper` (kg in 2,5er-Schritten, Wdh.) und RIR-Auswahl `0 1 2 3+` (bestehendes Feld). Vorbefüllt mit Vorschlag bzw. letztem Satz.
+- [x] Abhaken speichert den Satz sofort (offline-fähig wie heute), Rückgängig über erneutes Tippen auf den erledigten Satz (bestehende Undo-Logik aus P1.x).
+- [x] „+ Satz“ und „Supersatz“ (bestehende Supersatz-Gruppierung) als `dashed`-Buttons. Satzanzahl per +/− wie heute.
+- [x] Sind alle Sätze erledigt, springt die Ansicht zur nächsten Übung (bestehendes Auto-Schließen).
 
 ### Satzpause und Rückmeldung
 
-- [ ] **Satzpause** als Karte unter der Übung statt schwebendem Widget: Overline, Restzeit in Geist Mono 40 px, `ProgressBar`, „−15“ / „+15“, „von {Dauer} · Ton und Vibration an/aus“, „Überspringen“. Logik aus `timerStore` (Endzeitpunkt) unverändert.
-- [ ] **Rekord-Meldung** (P1.3) als Karte oben im Fokusmodus mit Pokal-Icon und Overline „Neuer Rekord“, verschwindet nach ~4,5 s. Kein Emoji.
-- [ ] **„Als Nächstes“:** die folgenden Übungen als `ListRow`.
-- [ ] Fußzeile: „Abbrechen“ (ghost) und „Training abschließen“ (secondary). Nach Abschluss Zusammenfassung (Dauer, Sätze, Volumen, Rekorde) mit Link „Zur Historie“.
+- [x] **Satzpause** als Karte unter der Übung statt schwebendem Widget: Overline, Restzeit in Geist Mono 40 px, `ProgressBar`, „−15“ / „+15“, „von {Dauer} · Ton und Vibration an/aus“, „Überspringen“. Logik aus `timerStore` (Endzeitpunkt) unverändert.
+- [x] **Rekord-Meldung** (P1.3) als Karte oben im Fokusmodus mit Pokal-Icon und Overline „Neuer Rekord“, verschwindet nach ~4,5 s. Kein Emoji.
+- [x] **„Als Nächstes“:** die folgenden Übungen als `ListRow`.
+- [x] Fußzeile: „Abbrechen“ (ghost) und „Training abschließen“ (secondary). Nach Abschluss Zusammenfassung (Dauer, Sätze, Volumen, Rekorde) mit Link „Zur Historie“.
 
-**Gate F4:** Screen 2 nachgebaut; ein komplettes Training offline (Start → Sätze → Pause → Abschluss → online → Sync) läuft als neuer E2E-Test grün; ein Satz ist mit höchstens zwei Tipps erfasst; 390 px ohne horizontale Scrollleiste.
+**Gate F4:** *(Plan-Status wird nicht offline gecacht: ein Neuladen ohne Netz im Fokusmodus zeigt den Plan erst nach Rückkehr des Netzes; laufende Sessions und Satz-Logging funktionieren offline.)* Screen 2 nachgebaut; ein komplettes Training offline (Start → Sätze → Pause → Abschluss → online → Sync) läuft als neuer E2E-Test grün; ein Satz ist mit höchstens zwei Tipps erfasst; 390 px ohne horizontale Scrollleiste.
 
 ---
 
@@ -253,9 +253,9 @@ Neue Route `/training` (Fokusmodus) auf Basis von `useWorkoutSession`, `usePlanE
 
 Route `/daily`.
 
-- [ ] **Tages-Challenge:** `SegmentedProgress` (3), je Übung eine Kachel mit Kategorie-`Badge` (Farben siehe Designsprache), Name, Zielwert mit Herleitung („22 Wdh. · 2 über deinem Bestwert“), Tausch-Button (Icon statt 🔀, deaktiviert wenn aufgebraucht, Hinweis „n× tauschen“) und `SetCheck`. Fußzeile „Aus deinem aktuellen Plan · je Übung zweimal tauschbar“.
-- [ ] **Dehnroutine:** `SegmentedControl` für den Fokus (Ganzkörper, Schultern, Hüfte, Rücken; Werte aus der bestehenden Auswahl), Liste mit Vorschaubild (44 px), Name, Muskel, Dauer (Mono), Primär-Button „Routine starten“. Die Dehnpläne je Trainingstag bleiben erreichbar.
-- [ ] **Cardio:** Kopf mit „optional“-Badge und „+ Eintragen“, drei Kennzahlen (Minuten, Strecke, Einheiten der Woche), letzte Einträge als `ListRow`.
+- [x] **Tages-Challenge:** `SegmentedProgress` (3), je Übung eine Kachel mit Kategorie-`Badge` (Farben siehe Designsprache), Name, Zielwert mit Herleitung („22 Wdh. · 2 über deinem Bestwert“), Tausch-Button (Icon statt 🔀, deaktiviert wenn aufgebraucht, Hinweis „n× tauschen“) und `SetCheck`. Fußzeile „Aus deinem aktuellen Plan · je Übung zweimal tauschbar“.
+- [x] **Dehnroutine:** `SegmentedControl` für den Fokus (Ganzkörper, Schultern, Hüfte, Rücken; Werte aus der bestehenden Auswahl), Liste mit Vorschaubild (44 px), Name, Muskel, Dauer (Mono), Primär-Button „Routine starten“. Die Dehnpläne je Trainingstag bleiben erreichbar.
+- [x] **Cardio:** Kopf mit „optional“-Badge und „+ Eintragen“, drei Kennzahlen (Minuten, Strecke, Einheiten der Woche), letzte Einträge als `ListRow`. *(Umgesetzt: Min. heute, Min. Woche, Einheiten – ein Streckenfeld gibt es im Datenmodell nicht; neu dafür `GET /cardio-logs/week`.)*
 
 **Gate F5:** Screen 3 nachgebaut; Tauschen und Abhaken offline wie bisher; Bilder ohne Verzerrung.
 
@@ -265,11 +265,11 @@ Route `/daily`.
 
 Route `/progress`. Reine Frontend-Auswertung wie heute, keine neuen Endpunkte.
 
-- [ ] Zeitraum als `SegmentedControl` (4W, 3M, 6M, 1J, Alles).
-- [ ] Vier `StatTile`: Trainingstage/Woche (Ziel), Volumen (Δ zum Vorzeitraum), neue Rekorde, Serie (längste).
-- [ ] **Kraft und Rekorde:** je Übung Name, Δ im Zeitraum, `Plateau`-Badge (Bernstein, statt ⏸), `Sparkline` (Mint, bei Plateau Bernstein), geschätztes 1RM. Aufklappen zeigt den Verlauf wie heute.
-- [ ] **Trainingstage pro Woche:** Säulen der letzten 12 Wochen, Ziel erreicht Mint, darunter Kalenderwochen (Mono).
-- [ ] **Körperdaten:** drei Kacheln (Gewicht, Körperfett, Muskelmasse) mit Δ, „Messung eintragen“, Zeile „Fortschrittsfotos“ mit Datum des letzten Fotos.
+- [x] Zeitraum als `SegmentedControl` (4W, 3M, 6M, 1J, Alles).
+- [x] Vier `StatTile`: Trainingstage/Woche (Ziel), Volumen (Δ zum Vorzeitraum), neue Rekorde, Serie (längste).
+- [x] **Kraft und Rekorde:** je Übung Name, Δ im Zeitraum, `Plateau`-Badge (Bernstein, statt ⏸), `Sparkline` (Mint, bei Plateau Bernstein), geschätztes 1RM. Aufklappen zeigt den Verlauf wie heute.
+- [x] **Trainingstage pro Woche:** Säulen der letzten 12 Wochen, Ziel erreicht Mint, darunter Kalenderwochen (Mono).
+- [x] **Körperdaten:** drei Kacheln (Gewicht, Körperfett, Muskelmasse) mit Δ, „Messung eintragen“, Zeile „Fortschrittsfotos“ mit Datum des letzten Fotos.
 
 **Gate F6:** Screen 4 nachgebaut; Diagramme haben Textalternativen (Δ und Wert als Text); alle Zeiträume mit wenig Daten gestaltet.
 
@@ -279,14 +279,14 @@ Route `/progress`. Reine Frontend-Auswertung wie heute, keine neuen Endpunkte.
 
 Route `/plan`.
 
-- [ ] **Hero „Aktuelle Phase“:** Phase (26 px), „Woche x von 8“, 8-teiliger `SegmentedProgress`, Satz zur Phase („Gewicht steigern bei 6–8 Wdh. Danach folgt {nächste Phase} ab {Datum}.“), Buttons „Pausieren“, „+1 Woche“, „Neu starten“.
-- [ ] **Rotation:** drei Kacheln Aufbau → Muskelausdauer → Negativ mit Farbpunkt und Regel, aktuelle hervorgehoben.
-- [ ] **Trainingstage:** `SegmentedControl` A–D (Kürzel + Tagesname), Titel mit „n Übungen · n Sätze“, Übungsliste mit Ziehgriff, Name, Muskel, Sätze × Wdh. (Mono), „+ Übung hinzufügen“. Bearbeiten über die bestehenden Dialoge, neu gestaltet.
-- [ ] **KI-Plan** als Zeile „Nächste Phase mit KI planen“ (Violett, „Eigener Schlüssel“) → `/plan/generate`. Export/Import und Bemerkungen in das `DropdownMenu` „Weitere Aktionen“.
+- [x] **Hero „Aktuelle Phase“:** Phase (26 px), „Woche x von 8“, 8-teiliger `SegmentedProgress`, Satz zur Phase („Gewicht steigern bei 6–8 Wdh. Danach folgt {nächste Phase} ab {Datum}.“), Buttons „Pausieren“, „+1 Woche“, „Neu starten“.
+- [x] **Rotation:** drei Kacheln Aufbau → Muskelausdauer → Negativ mit Farbpunkt und Regel, aktuelle hervorgehoben.
+- [x] **Trainingstage:** `SegmentedControl` A–D (Kürzel + Tagesname), Titel mit „n Übungen · n Sätze“, Übungsliste mit Ziehgriff, Name, Muskel, Sätze × Wdh. (Mono), „+ Übung hinzufügen“. Bearbeiten über die bestehenden Dialoge, neu gestaltet.
+- [x] **KI-Plan** als Zeile „Nächste Phase mit KI planen“ (Violett, „Eigener Schlüssel“) → `/plan/generate`. Export/Import und Bemerkungen in das `DropdownMenu` „Weitere Aktionen“.
 
 ### Datenanforderung
 
-- [ ] **Phase um eine Woche verlängern** (additionals P2.4): Feld am Trainingsplan (z. B. Zahl der Verlängerungswochen der aktuellen Phase), Scheduler und Phasenberechnung berücksichtigen es, Push-Erinnerung zum Phasenwechsel verschiebt sich mit. Migration, Unit-Test der Phasenberechnung, Offline-Verhalten wie bei „Pausieren“.
+- [x] **Phase um eine Woche verlängern** (additionals P2.4): Feld am Trainingsplan (z. B. Zahl der Verlängerungswochen der aktuellen Phase), Scheduler und Phasenberechnung berücksichtigen es, Push-Erinnerung zum Phasenwechsel verschiebt sich mit. Migration, Unit-Test der Phasenberechnung, Offline-Verhalten wie bei „Pausieren“.
 
 **Gate F7:** Screen 5 nachgebaut; „+1 Woche“ verschiebt den Phasenwechsel nachweislich (Test); Pausieren und Neustart wie bisher.
 
@@ -296,14 +296,14 @@ Route `/plan`.
 
 Ohne eigenen Screen; gebaut nur aus `components/ui` und den Mustern der Screens 1–5.
 
-- [ ] Fitnesstagebuch (`/diary`): Plan-Tabelle als `ListRow`s, „+ Satz“-Dialog mit `Stepper`, Heute-Sätze.
-- [ ] Historie (`/history`): nach Tag gruppiert, Tageskarte mit Sätzen, Bearbeiten/Löschen im `Dialog`, Übungsfilter als Such-/Auswahlfeld.
-- [ ] Übungen (`/exercises`, `/exercises/:id`): Suche, Filter-Pills (Muskelgruppe, Equipment), Karten mit Bild; Detailseite mit Bildern nebeneinander, Beschreibung, eigener Verlauf.
-- [ ] Ziele (`/goals`): Zielkarten mit `ProgressBar`, Vorschläge mit Stufen als `SegmentedControl` (Konservativ / Realistisch / Ambitioniert).
-- [ ] Ernährung (`/nutrition`): Profil-Formular, Supplements, Körperkomposition, Fortschrittsfotos (Kamera, Galerie, Vorher/Nachher).
-- [ ] Einstellungen (`/settings`): Gruppen als Karten (Timer, Benachrichtigungen, KI-Schlüssel, Export).
-- [ ] Login und Registrierung: zentrierte Karte, Logo-Kachel, Fehlermeldungen als `Callout` in Koralle.
-- [ ] Alle Emojis durch Icons ersetzt; `ink`- und `violet`-Palette aus `tailwind.config.js` entfernt; das Prüfskript aus F1 bricht ab jetzt die CI.
+- [x] Fitnesstagebuch (`/diary`): Plan-Tabelle als `ListRow`s, „+ Satz“-Dialog mit `Stepper`, Heute-Sätze.
+- [x] Historie (`/history`): nach Tag gruppiert, Tageskarte mit Sätzen, Bearbeiten/Löschen im `Dialog`, Übungsfilter als Such-/Auswahlfeld.
+- [x] Übungen (`/exercises`, `/exercises/:id`): Suche, Filter-Pills (Muskelgruppe, Equipment), Karten mit Bild; Detailseite mit Bildern nebeneinander, Beschreibung, eigener Verlauf.
+- [x] Ziele (`/goals`): Zielkarten mit `ProgressBar`, Vorschläge mit Stufen als `SegmentedControl` (Konservativ / Realistisch / Ambitioniert).
+- [x] Ernährung (`/nutrition`): Profil-Formular, Supplements, Körperkomposition, Fortschrittsfotos (Kamera, Galerie, Vorher/Nachher).
+- [x] Einstellungen (`/settings`): Gruppen als Karten (Timer, Benachrichtigungen, KI-Schlüssel, Export).
+- [x] Login und Registrierung: zentrierte Karte, Logo-Kachel, Fehlermeldungen als `Callout` in Koralle.
+- [x] Alle Emojis durch Icons ersetzt; `ink`- und `violet`-Palette aus `tailwind.config.js` entfernt; das Prüfskript aus F1 bricht ab jetzt die CI.
 
 **Gate F8:** Prüfskript ohne Treffer, keine Emojis, alle Seiten erfüllen die Definition of Done.
 

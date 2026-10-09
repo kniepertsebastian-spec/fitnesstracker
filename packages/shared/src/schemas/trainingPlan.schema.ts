@@ -18,6 +18,8 @@ export const trainingPlanDtoSchema = z.object({
   // while the clock isn't advancing.
   nextRotationOn: z.string().nullable(),
   pausedAt: z.string().nullable(),
+  // Weeks added to the current phase via "+1 Woche" (phase length = 8 + this).
+  extensionWeeks: z.number().int().min(0),
   remarks: z.string().nullable(),
   detectedAsymmetries: z.array(z.string()),
   asymmetryAnalyzedAt: z.string().nullable(),

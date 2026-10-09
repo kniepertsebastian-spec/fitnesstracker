@@ -23,7 +23,7 @@ export function NutritionPage() {
 
   return (
     <AppShell>
-      <h1 className="mb-4 text-xl font-semibold">Ernährung</h1>
+      <h1 className="mb-4 text-h1 text-text lg:text-h1-lg">Ernährung</h1>
 
       <PageTabs tabs={TABS} active={tab} onChange={(key) => setSearchParams({ tab: key })} />
 
@@ -32,7 +32,7 @@ export function NutritionPage() {
         <div className="flex flex-col gap-6">
           <BodyCompositionCard />
           <div>
-            <h2 className="mb-2 text-sm font-medium text-ink-400">Fortschritts-Fotos</h2>
+            <h2 className="mb-2 text-h2 text-text">Fortschrittsfotos</h2>
             <ProgressPhotosCard />
           </div>
         </div>

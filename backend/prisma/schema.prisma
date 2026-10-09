@@ -229,6 +229,9 @@ model TrainingPlan {
   // `phaseStartedOn` forward by the paused duration so the remaining time-to-rotation is
   // preserved instead of the pause silently eating into the 8-week cycle.
   pausedAt       DateTime?
+  // Extra weeks added to the *current* phase via "+1 Woche" (phase length = 8 + extensionWeeks);
+  // reset to 0 whenever the phase rotates or is restarted.
+  extensionWeeks Int           @default(0)
   remarks              String?
   detectedAsymmetries  String[] @default([])
   asymmetryAnalyzedAt  DateTime?

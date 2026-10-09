@@ -3,9 +3,11 @@ import { STRETCH_FOCUS_LABELS, type StretchFocusMuscle, type TrainingPhase } fro
 import { AppShell } from "../components/layout/AppShell";
 import { PageTabs } from "../components/layout/PageTabs";
 import { PhaseTabs } from "../components/trainingPlan/PhaseTabs";
-import { DailyStretchCard } from "../components/stretching/DailyStretchCard";
+import { StretchCard } from "../components/daily/StretchCard";
 import { StretchList } from "../components/stretching/StretchList";
 import { ApiError } from "../api/client";
+import { Badge, Button, Callout, Card, EmptyState, Skeleton } from "../components/ui";
+import { Activity } from "lucide-react";
 import { useTrainingPlan } from "../hooks/useTrainingPlan";
 import { useGenerateStretchPlan, useResetStretchPlan, useStretchPlan } from "../hooks/useStretching";
 
@@ -32,71 +34,65 @@ function StretchPlanView() {
   const hasAi = data?.days.some((d) => d.source === "ai") ?? false;
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       <PhaseTabs selected={phase} onSelect={setSelected} />
-      <p className="mb-3 text-xs text-ink-500">
+      <p className="text-small text-text-subtle">
         Zu jedem Trainingstag gibt es passende Dehnübungen für die belasteten Muskeln. Per KI lässt sich der
         Plan individuell erstellen (API-Key unter Einstellungen).
       </p>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        <button
-          onClick={() => generate.mutate()}
-          disabled={generate.isPending}
-          className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
-        >
+      <div className="flex flex-wrap gap-2">
+        <Button variant="primary" disabled={generate.isPending} onClick={() => generate.mutate()}>
           {generate.isPending ? "KI erstellt Dehnplan…" : "Dehnplan per KI erstellen"}
-        </button>
+        </Button>
         {hasAi && (
-          <button
-            onClick={() => reset.mutate()}
-            disabled={reset.isPending}
-            className="rounded-lg bg-ink-800 px-3 py-1.5 text-sm text-ink-200 hover:bg-ink-700 disabled:opacity-50"
-          >
+          <Button variant="secondary" disabled={reset.isPending} onClick={() => reset.mutate()}>
             Automatisch statt KI
-          </button>
+          </Button>
         )}
       </div>
       {generate.isError && (
-        <p className="mb-3 text-sm text-red-400">
+        <Callout tone="danger">
           {generate.error instanceof ApiError ? generate.error.message : "Dehnplan konnte nicht erstellt werden"}
-        </p>
+        </Callout>
       )}
 
       {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
+        <Skeleton className="h-40 w-full" />
       ) : !data ? null : !data.catalogAvailable ? (
-        <p className="text-sm text-ink-500">
-          Keine Dehnübungen im Katalog. Importiere zuerst den Übungskatalog (Menü „Übungen“) — er enthält die
-          Dehnübungen der free-exercise-db.
-        </p>
+        <Card>
+          <EmptyState
+            icon={<Activity size={18} aria-hidden />}
+            text="Keine Dehnübungen im Katalog. Importiere zuerst den Übungskatalog (Menü „Übungen“) — er enthält die Dehnübungen der free-exercise-db."
+          />
+        </Card>
       ) : data.days.length === 0 ? (
-        <p className="text-sm text-ink-500">
-          Für diese Phase gibt es noch keinen Trainingsplan. Lege unter „Plan“ Übungen an oder lass einen Plan
-          generieren — danach erscheint hier der passende Dehnplan je Trainingstag.
-        </p>
+        <Card>
+          <EmptyState
+            icon={<Activity size={18} aria-hidden />}
+            text="Für diese Phase gibt es noch keinen Trainingsplan. Lege unter „Plan“ Übungen an oder lass einen Plan generieren — danach erscheint hier der passende Dehnplan je Trainingstag."
+          />
+        </Card>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
           {data.days.map((day) => (
-            <div key={day.dayLabel ?? "all"} className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-ink-200">{day.dayLabel ?? "Ganzkörper"}</p>
-                <span className="shrink-0 rounded bg-ink-800 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-500">
-                  {day.source === "ai" ? "KI" : "Auto"}
-                </span>
-              </div>
+            <Card
+              key={day.dayLabel ?? "all"}
+              title={day.dayLabel ?? "Ganzkörper"}
+              action={<Badge tone={day.source === "ai" ? "violet" : "neutral"}>{day.source === "ai" ? "KI" : "Auto"}</Badge>}
+            >
               {day.muscles.length > 0 && (
-                <p className="mb-3 text-xs text-ink-500">Trainiert: {musclesLabel(day.muscles)}</p>
+                <p className="mb-3 text-small text-text-faint">Trainiert: {musclesLabel(day.muscles)}</p>
               )}
               {day.items.length === 0 ? (
-                <p className="text-sm text-ink-500">Keine passenden Dehnübungen gefunden.</p>
+                <p className="text-small text-text-subtle">Keine passenden Dehnübungen gefunden.</p>
               ) : (
                 <StretchList
                   items={day.items}
                   storageKey={`stretch-done:${new Date().toISOString().slice(0, 10)}:plan:${phase}:${day.dayLabel ?? ""}`}
                 />
               )}
-            </div>
+            </Card>
           ))}
         </div>
       )}
@@ -109,9 +105,9 @@ export function StretchingPage() {
 
   return (
     <AppShell>
-      <h1 className="mb-4 text-xl font-semibold">Dehnen</h1>
+      <h1 className="mb-4 text-h1 text-text lg:text-h1-lg">Dehnen</h1>
       <PageTabs tabs={TABS} active={tab} onChange={(key) => setTab(key as typeof tab)} />
-      {tab === "plan" ? <StretchPlanView /> : <DailyStretchCard />}
+      {tab === "plan" ? <StretchPlanView /> : <StretchCard />}
     </AppShell>
   );
 }

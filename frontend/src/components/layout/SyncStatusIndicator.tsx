@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useSyncStore } from "../../stores/syncStore";
 import { retryAllFailedMutations, retryFailedMutation } from "../../offline/retry";
 import type { MutationOp } from "../../offline/db";
+import { StatusPill } from "../ui";
+import type { StatusPillTone } from "../ui";
 
 const OP_LABELS: Record<MutationOp, string> = {
   create: "Erstellen",
@@ -37,16 +39,16 @@ export function SyncStatusIndicator() {
   // appearing in its own "X ausstehend" state) — being offline or mid-retry explains *why*
   // something is still pending, but shouldn't hide *how much* still is.
   const pendingSuffix = pendingCount > 0 ? ` · ${pendingCount} ausstehend` : "";
-  const pill =
+  const pill: { text: string; tone: StatusPillTone } =
     failedCount > 0
-      ? { text: `${failedCount} fehlgeschlagen`, className: "bg-red-950 text-red-400" }
+      ? { text: `${failedCount} fehlgeschlagen`, tone: "failed" }
       : !isOnline
-        ? { text: `Offline${pendingSuffix}`, className: "bg-amber-950 text-amber-400" }
+        ? { text: `Offline${pendingSuffix}`, tone: "offline" }
         : isSyncing
-          ? { text: `Synchronisiert…${pendingSuffix}`, className: "bg-violet-950 text-violet-400" }
+          ? { text: `Synchronisiert…${pendingSuffix}`, tone: "syncing" }
           : pendingCount > 0
-            ? { text: `${pendingCount} ausstehend`, className: "bg-ink-800 text-ink-400" }
-            : { text: "Synchronisiert", className: "bg-emerald-950 text-emerald-400" };
+            ? { text: `${pendingCount} ausstehend`, tone: "pending" }
+            : { text: "Synchronisiert", tone: "synced" };
 
   const handleRetry = async (id: number, mutation: Parameters<typeof retryFailedMutation>[0]) => {
     setRetryingId(id);
@@ -68,17 +70,13 @@ export function SyncStatusIndicator() {
 
   return (
     <div ref={panelRef} className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className={`rounded-full px-2 py-0.5 text-xs font-medium ${pill.className}`}
-      >
+      <StatusPill tone={pill.tone} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         {pill.text}
-      </button>
+      </StatusPill>
 
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-lg border border-ink-800 bg-ink-900 p-3 shadow-lg">
-          <p className="text-xs text-ink-500">
+        <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl border border-border bg-surface p-3 shadow-overlay">
+          <p className="text-xs text-text-subtle">
             {failedCount > 0
               ? "Einige Änderungen konnten nicht synchronisiert werden — deine Daten sind aber lokal gespeichert."
               : !isOnline
@@ -91,22 +89,22 @@ export function SyncStatusIndicator() {
           </p>
 
           {failedMutations.length > 0 && (
-            <div className="mt-3 flex flex-col gap-2 border-t border-ink-800 pt-3">
+            <div className="mt-3 flex flex-col gap-2 border-t border-border-subtle pt-3">
               {failedMutations.map((mutation) => (
-                <div key={mutation.id} className="rounded-lg bg-ink-800 p-2">
+                <div key={mutation.id} data-testid="failed-mutation" className="rounded-lg bg-surface-2 p-2">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-xs font-medium text-ink-200">
+                    <p className="truncate text-xs font-medium text-text-2">
                       {mutation.label} · {OP_LABELS[mutation.op]}
                     </p>
                     <button
                       onClick={() => handleRetry(mutation.id as number, mutation)}
                       disabled={retryingId === mutation.id || retryingAll}
-                      className="shrink-0 rounded-lg bg-ink-700 px-2 py-0.5 text-xs text-ink-200 hover:bg-ink-600 disabled:opacity-50"
+                      className="shrink-0 rounded-md bg-control px-2 py-1 text-xs text-text-2 hover:bg-track disabled:opacity-50"
                     >
                       {retryingId === mutation.id ? "…" : "Erneut versuchen"}
                     </button>
                   </div>
-                  <p className="mt-1 text-xs text-red-400">{mutation.reason}</p>
+                  <p className="mt-1 text-xs text-danger-text">{mutation.reason}</p>
                 </div>
               ))}
 
@@ -114,7 +112,7 @@ export function SyncStatusIndicator() {
                 <button
                   onClick={handleRetryAll}
                   disabled={retryingAll}
-                  className="rounded-lg bg-violet-500 py-1.5 text-xs font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
+                  className="rounded-md bg-accent py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50"
                 >
                   {retryingAll ? "Wird erneut versucht…" : "Alle erneut versuchen"}
                 </button>

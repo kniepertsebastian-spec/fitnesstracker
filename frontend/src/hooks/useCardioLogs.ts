@@ -4,9 +4,11 @@ import {
   createCardioLogRequest,
   deleteCardioLogRequest,
   listTodayCardioLogsRequest,
+  listWeekCardioLogsRequest,
 } from "../api/cardioLog.api";
 
 const CARDIO_LOGS_KEY = ["cardio-logs", "today"];
+const CARDIO_WEEK_KEY = ["cardio-logs", "week"];
 
 export function useTodayCardioLogs() {
   return useQuery({
@@ -15,11 +17,18 @@ export function useTodayCardioLogs() {
   });
 }
 
+export function useWeekCardioLogs() {
+  return useQuery({
+    queryKey: CARDIO_WEEK_KEY,
+    queryFn: () => listWeekCardioLogsRequest().then((r) => r.items),
+  });
+}
+
 export function useCreateCardioLog() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateCardioLogInput) => createCardioLogRequest(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CARDIO_LOGS_KEY }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cardio-logs"] }),
   });
 }
 
@@ -27,6 +36,6 @@ export function useDeleteCardioLog() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteCardioLogRequest(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: CARDIO_LOGS_KEY }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cardio-logs"] }),
   });
 }

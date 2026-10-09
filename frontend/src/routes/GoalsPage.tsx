@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { Plus, Target } from "lucide-react";
 import type { GoalDto } from "@fitnesstracker/shared";
 import { AppShell } from "../components/layout/AppShell";
 import { GoalCard } from "../components/goals/GoalCard";
 import { GoalFormDialog } from "../components/goals/GoalFormDialog";
 import { GoalSuggestionsCard } from "../components/goals/GoalSuggestionsCard";
+import { Button, Card, EmptyState, Skeleton } from "../components/ui";
 import { useGoals } from "../hooks/useGoals";
 
 export function GoalsPage() {
@@ -26,36 +28,45 @@ export function GoalsPage() {
 
   return (
     <AppShell>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Ziele</h1>
-        <button
-          onClick={openCreate}
-          className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-violet-400"
-        >
-          + Ziel
-        </button>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h1 className="text-h1 text-text lg:text-h1-lg">Ziele</h1>
+        <Button variant="primary" iconLeft={<Plus size={18} aria-hidden />} onClick={openCreate}>
+          Ziel
+        </Button>
       </div>
 
       <GoalSuggestionsCard />
 
       {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
+        <Skeleton className="h-32 w-full" />
       ) : !goals || goals.length === 0 ? (
-        <p className="text-ink-500">Noch keine Ziele gesetzt.</p>
+        <Card>
+          <EmptyState
+            icon={<Target size={18} aria-hidden />}
+            text="Noch keine Ziele gesetzt."
+            action={
+              <Button variant="primary" onClick={openCreate}>
+                Ziel anlegen
+              </Button>
+            }
+          />
+        </Card>
       ) : (
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            {open.length === 0 ? (
-              <p className="text-sm text-ink-600">Keine offenen Ziele.</p>
-            ) : (
-              open.map((goal) => <GoalCard key={goal.id} goal={goal} onEdit={openEdit} />)
-            )}
-          </div>
+          {open.length === 0 ? (
+            <p className="text-small text-text-faint">Keine offenen Ziele.</p>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {open.map((goal) => (
+                <GoalCard key={goal.id} goal={goal} onEdit={openEdit} />
+              ))}
+            </div>
+          )}
 
           {achieved.length > 0 && (
             <div>
-              <h2 className="mb-2 text-sm font-medium text-ink-400">Erreicht</h2>
-              <div className="flex flex-col gap-2">
+              <h2 className="mb-2 text-h2 text-text">Erreicht</h2>
+              <div className="grid gap-3 lg:grid-cols-2">
                 {achieved.map((goal) => (
                   <GoalCard key={goal.id} goal={goal} onEdit={openEdit} />
                 ))}
