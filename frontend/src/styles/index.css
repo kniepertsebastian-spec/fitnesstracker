@@ -1,6 +1,44 @@
+@import "./fonts.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Design tokens — source of truth is docs/ROADMAP-UI.md ("Designsprache"). Dark mode only. */
+:root {
+  --bg: #0a0c10;
+  --bg-sidebar: #0e1117;
+  --surface: #12161e;
+  --surface-2: #171d28;
+  --surface-inset: #0f1219;
+  --control: #1a212d;
+  --track: #1e2633;
+  --border: #222938;
+  --border-strong: #2a3242;
+  --border-subtle: #1c2230;
+  --text: #e8ecf3;
+  --text-2: #c9d0dc;
+  --text-muted: #aeb7c6;
+  --text-subtle: #9aa4b5;
+  --text-faint: #8c96a8;
+  --accent: #34e3a4;
+  --accent-hover: #7bf0c6;
+  --on-accent: #04140d;
+  --accent-soft: rgba(52, 227, 164, 0.12);
+  --accent-border: #1f4a3b;
+  --hero-border: #1f3a30;
+  --info: #6ea8ff;
+  --info-text: #8dbbff;
+  --info-soft: rgba(110, 168, 255, 0.13);
+  --warning: #f4b740;
+  --warning-soft: rgba(244, 183, 64, 0.13);
+  --danger: #ff7a66;
+  --danger-text: #ff9a8a;
+  --danger-soft: rgba(255, 122, 102, 0.13);
+  --violet: #c9a2ff;
+  --violet-soft: rgba(201, 162, 255, 0.13);
+  color-scheme: dark;
+}
 
 html,
 body,
@@ -16,4 +54,22 @@ h1,
 h2,
 h3 {
   font-family: theme("fontFamily.heading");
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

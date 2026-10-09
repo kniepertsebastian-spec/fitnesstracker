@@ -152,31 +152,31 @@ Schrift: **Geist** (Text), **Geist Mono** (Timer, Dauer, Satznummern, Satz-/Wdh.
 
 ### Tokens und Schrift
 
-- [ ] Alle Farb-Tokens aus der [Designsprache](#designsprache-verbindlich) als CSS-Variablen in `src/styles/index.css` (`:root`), in `tailwind.config.js` als Farben verfügbar (`bg-surface`, `text-muted`, `border-strong`, `bg-accent`, `text-on-accent`, …), Radius- und Schriftskala ebenso. Tailwind 3 bleibt (kein Versionssprung als Nebeneffekt).
-- [ ] Geist und Geist Mono selbst ausliefern; Google-Fonts-Links aus `index.html` entfernen. Prüfen, dass die Schriften im Service-Worker-Precache landen (offline).
-- [ ] `theme_color` und `background_color` in `vite.config.ts` auf `#0A0C10`.
-- [ ] Prüfskript (oder ESLint-Regel): keine Hex-Werte und keine Tailwind-Paletten (`ink-*`, `violet-*`, `red-*`, `emerald-*`, `amber-*`) im JSX außerhalb von `components/ui`. Zum Start erzeugt es nur die Liste der Treffer (im PR), ab F8 bricht es die CI.
+- [x] Alle Farb-Tokens aus der [Designsprache](#designsprache-verbindlich) als CSS-Variablen in `src/styles/index.css` (`:root`), in `tailwind.config.js` als Farben verfügbar (`bg-surface`, `text-muted`, `border-strong`, `bg-accent`, `text-on-accent`, …), Radius- und Schriftskala ebenso. Tailwind 3 bleibt (kein Versionssprung als Nebeneffekt).
+- [x] Geist und Geist Mono selbst ausliefern; Google-Fonts-Links aus `index.html` entfernen. Prüfen, dass die Schriften im Service-Worker-Precache landen (offline).
+- [x] `theme_color` und `background_color` in `vite.config.ts` auf `#0A0C10`.
+- [x] Prüfskript (oder ESLint-Regel): keine Hex-Werte und keine Tailwind-Paletten (`ink-*`, `violet-*`, `red-*`, `emerald-*`, `amber-*`) im JSX außerhalb von `components/ui`. Zum Start erzeugt es nur die Liste der Treffer (im PR), ab F8 bricht es die CI.
 
 ### Komponenten (`src/components/ui/`)
 
 Eigene, schlanke Komponenten auf Tailwind-Basis. **Radix-Primitives nur für `Dialog`, `Sheet` und `DropdownMenu`** (Fokusfalle, Esc, Portale); alles andere ohne neue Abhängigkeit.
 
-- [ ] `Button` – `primary` (Mint, Text `--on-accent`, 600), `secondary` (`--control`, Rahmen `--border-strong`), `ghost` (transparent, Rahmen), `dashed` (gestrichelt, für „+ Satz“, „+ Übung hinzufügen“), `danger`. Größen `sm 36`, `md 44`, `lg 48` px. Icon links/rechts optional. Ein `Button` kann als Link gerendert werden (React-Router `Link`).
-- [ ] `IconButton` – 44×44, `aria-label` Pflicht (Typprüfung).
-- [ ] `Card` – `surface`, Rahmen `border`, Radius 16, Padding 16 mobil / 20–22 Desktop. Variante `hero` (Verlauf, Rahmen `#1F3A30`, Radius 18). Optionaler Kopf mit Titel und Aktion rechts.
-- [ ] `Badge` – Radius `full`, 12 px, 500–600. Töne `accent | info | warning | danger | violet | neutral`, weiche Fläche (12–14 % Alpha) + farbiger Text.
-- [ ] `StatTile` – Label (12.5–13, subtle), Wert (26–28, 600, tabular-nums) mit Einheit klein, Unterzeile (12, optional farbig).
-- [ ] `ProgressBar` (5/6/8 px) und `SegmentedProgress` (N Segmente à 6–8 px, Lücke 4 px, Zustände offen/erledigt/aktuell).
-- [ ] `SegmentedControl` – Pillen auf `--surface-inset`, gewählter Eintrag `--track`; ersetzt `RangeTabs`, `PhaseTabs`, `PageTabs` optisch.
-- [ ] `Stepper` – Minus / Wert mit Einheit / Plus, 48 px hoch, auf `--surface-inset`; Schrittweite als Prop (2,5 kg, 1 Wdh.); Tastatur: Pfeiltasten.
-- [ ] `CheckRow` – Kreis-Checkbox 24 px + Titel + Meta + Pfeil, ganze Zeile klickbar (`button` mit `aria-pressed`), 52 px.
-- [ ] `SetCheck` – 44–48 px Quadrat zum Abhaken eines Satzes (offen / aktuell / erledigt).
-- [ ] `ListRow` – Zeile mit `--border-subtle` oben, ≥ 52 px, optional Mono-Präfix (Nummer) und Mono-Wert rechts.
-- [ ] `EmptyState` – Icon, ein Satz, eine Aktion. Ersetzt alle „Noch keine …“-Zeilen.
-- [ ] `Callout` – Töne `info | warning | danger`: Icon-Kachel 32 px + Text, Fläche 6–8 % Alpha, Rahmen im abgedunkelten Ton (Hinweise, Formularfehler, Sync-Fehler).
-- [ ] `Dialog`, `Sheet` (rechts, 320 px mobil / 360–420 px Desktop), `DropdownMenu`, `Toast` (Rekord, Ziel erreicht, Fehler), `Skeleton`.
-- [ ] `StatusPill` – Sync-Zustand (synchronisiert / offline · n ausstehend / n fehlgeschlagen), nutzt die Logik von `SyncStatusIndicator`, öffnet dessen Panel.
-- [ ] Übersichtsseite `/ui` (nur im Dev-Build oder hinter Einstellungen versteckt) mit allen Komponenten und Zuständen – dient als Sichtprüfung.
+- [x] `Button` – `primary` (Mint, Text `--on-accent`, 600), `secondary` (`--control`, Rahmen `--border-strong`), `ghost` (transparent, Rahmen), `dashed` (gestrichelt, für „+ Satz“, „+ Übung hinzufügen“), `danger`. Größen `sm 36`, `md 44`, `lg 48` px. Icon links/rechts optional. Ein `Button` kann als Link gerendert werden (React-Router `Link`).
+- [x] `IconButton` – 44×44, `aria-label` Pflicht (Typprüfung).
+- [x] `Card` – `surface`, Rahmen `border`, Radius 16, Padding 16 mobil / 20–22 Desktop. Variante `hero` (Verlauf, Rahmen `#1F3A30`, Radius 18). Optionaler Kopf mit Titel und Aktion rechts.
+- [x] `Badge` – Radius `full`, 12 px, 500–600. Töne `accent | info | warning | danger | violet | neutral`, weiche Fläche (12–14 % Alpha) + farbiger Text.
+- [x] `StatTile` – Label (12.5–13, subtle), Wert (26–28, 600, tabular-nums) mit Einheit klein, Unterzeile (12, optional farbig).
+- [x] `ProgressBar` (5/6/8 px) und `SegmentedProgress` (N Segmente à 6–8 px, Lücke 4 px, Zustände offen/erledigt/aktuell).
+- [x] `SegmentedControl` – Pillen auf `--surface-inset`, gewählter Eintrag `--track`; ersetzt `RangeTabs`, `PhaseTabs`, `PageTabs` optisch.
+- [x] `Stepper` – Minus / Wert mit Einheit / Plus, 48 px hoch, auf `--surface-inset`; Schrittweite als Prop (2,5 kg, 1 Wdh.); Tastatur: Pfeiltasten.
+- [x] `CheckRow` – Kreis-Checkbox 24 px + Titel + Meta + Pfeil, ganze Zeile klickbar (`button` mit `aria-pressed`), 52 px.
+- [x] `SetCheck` – 44–48 px Quadrat zum Abhaken eines Satzes (offen / aktuell / erledigt).
+- [x] `ListRow` – Zeile mit `--border-subtle` oben, ≥ 52 px, optional Mono-Präfix (Nummer) und Mono-Wert rechts.
+- [x] `EmptyState` – Icon, ein Satz, eine Aktion. Ersetzt alle „Noch keine …“-Zeilen.
+- [x] `Callout` – Töne `info | warning | danger`: Icon-Kachel 32 px + Text, Fläche 6–8 % Alpha, Rahmen im abgedunkelten Ton (Hinweise, Formularfehler, Sync-Fehler).
+- [x] `Dialog`, `Sheet` (rechts, 320 px mobil / 360–420 px Desktop), `DropdownMenu`, `Toast` (Rekord, Ziel erreicht, Fehler), `Skeleton`.
+- [x] `StatusPill` – Sync-Zustand (synchronisiert / offline · n ausstehend / n fehlgeschlagen), nutzt die Logik von `SyncStatusIndicator`, öffnet dessen Panel.
+- [x] Übersichtsseite `/ui` (nur im Dev-Build oder hinter Einstellungen versteckt) mit allen Komponenten und Zuständen – dient als Sichtprüfung.
 
 ### Gate F1
 

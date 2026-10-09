@@ -15,6 +15,7 @@ import { GoalsPage } from "./routes/GoalsPage";
 import { NutritionPage } from "./routes/NutritionPage";
 import { ProgressPage } from "./routes/ProgressPage";
 import { SettingsPage } from "./routes/SettingsPage";
+import { UiKitPage } from "./routes/UiKitPage";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { useAuthBootstrap } from "./hooks/useAuth";
 import { initWorkoutLogSync } from "./offline/workoutLogSync";
@@ -134,6 +135,7 @@ export function App() {
             </ProtectedRoute>
           }
         />
+        {import.meta.env.DEV && <Route path="/ui" element={<UiKitPage />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

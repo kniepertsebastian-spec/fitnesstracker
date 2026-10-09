@@ -7,6 +7,10 @@ fortgeführt.
 
 Format: `- **Titel** — was sich geändert hat und warum, falls nicht offensichtlich. Verifiziert: wie.`
 
+## 2026-10-09
+
+- **UI-Roadmap F1: Fundament (Tokens, Geist, `components/ui`)** — Alle Farb-, Radius- und Schrift-Tokens der Designsprache als CSS-Variablen (`src/styles/index.css`) und Tailwind-Farben/-Skalen; Geist und Geist Mono kommen selbst ausgeliefert aus `@fontsource-variable` (nur Latin/Latin-Ext) und liegen im Service-Worker-Precache, die Google-Fonts-Links sind weg; `theme_color`/`background_color` auf `#0A0C10`. Neue Basiskomponenten unter `src/components/ui/` (Button/ButtonLink, IconButton, Card, Badge, StatTile, ProgressBar, SegmentedProgress, SegmentedControl, Stepper, CheckRow, SetCheck, ListRow, EmptyState, Callout, Dialog, Sheet, DropdownMenu, Toast, Skeleton, StatusPill; Radix nur für Dialog/Sheet/DropdownMenu, Icons über `lucide-react`) samt Sichtprüfungsseite `/ui` (nur Dev-Build). `SyncStatusIndicator` nutzt `StatusPill` und Tokens; das Prüfskript `scripts/check-ui-tokens.mjs` listet Rohfarben/Alt-Paletten (bricht erst ab F8 mit `--strict`). Bestehende Seiten bleiben bis F2–F8 auf der alten `ink`/`violet`-Palette; die globale Radius-Skala und die Schrift gelten bereits app-weit. Verifiziert: Typecheck, Lint, `pnpm test:e2e` (4/4, jetzt inkl. Prüfung, dass Geist nach Offline-Reload aus dem Cache geladen ist; der E2E-Selektor der Fehlerkarte nutzt jetzt `data-testid`), Produktions-Build, Sichtprüfung `/ui` bei 390 und 1440 px ohne horizontalen Überlauf.
+
 ## 2026-10-05
 
 - **Dashboard entschlackt, neue Seiten „Daily“ und „Fitnesstagebuch“** — Das Dashboard zeigt nur noch „Heute dran“ (mit „Training starten“), eine Heute-Checkliste, die Wochenübersicht mit Serie, das nächste Ziel und das letzte Training. Tages-Challenge, Dehnroutine und Cardio wandern nach `/daily`, Trainingsplan-Tabelle, „+ Satz“, Session-Leiste und Heute-Sätze nach `/diary`. Der Menüpunkt „Dehnen“ entfällt; die Dehnpläne sind über die Dehnroutine in „Daily“ erreichbar. Verifiziert: Typecheck, Lint (E2E-Login-Helper navigiert jetzt ins Tagebuch, E2E nicht ausgeführt).

@@ -117,6 +117,14 @@ test.describe("Kritischer Offline-Flow", () => {
     await test.step("App neu laden (offline)", async () => {
       await page.reload();
       await expect(syncPill(page)).toHaveText("Offline · 1 ausstehend");
+      // Self-hosted Geist must come from the service-worker precache, not a CDN or fallback.
+      const loadedFonts = await page.evaluate(async () => {
+        await document.fonts.load("14px 'Geist Variable'");
+        await document.fonts.load("14px 'Geist Mono Variable'");
+        return [...document.fonts].filter((f) => f.status === "loaded").map((f) => f.family);
+      });
+      expect(loadedFonts.some((f) => f.includes("Geist Variable"))).toBe(true);
+      expect(loadedFonts.some((f) => f.includes("Geist Mono Variable"))).toBe(true);
     });
 
     await test.step("Lokale Daten prüfen", async () => {
@@ -257,7 +265,7 @@ test.describe("Sync-Fehler", () => {
     // Each failed item's card in SyncStatusIndicator.tsx — its label/retry row and its reason
     // text are siblings, so scope to the whole card rather than a bare hasText div filter (which
     // would just as happily match the inner row alone and miss the reason).
-    const failedItemCard = page.locator("div.rounded-lg.bg-ink-800.p-2").last();
+    const failedItemCard = page.getByTestId("failed-mutation").last();
     await expect(failedItemCard).toContainText("Simulierter Server-Fehler (E2E)");
 
     block = false;
