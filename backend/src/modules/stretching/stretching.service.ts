@@ -57,14 +57,14 @@ function toItemDto(
   };
 }
 
-interface PlanDay {
+export interface PlanDay {
   dayLabel: string | null;
   muscles: string[];
 }
 
 // Training days of a phase with the muscles each one loads. Order follows the plan's own
 // day-major `order`; a plan without split days is one unlabelled day.
-async function loadPlanDays(prisma: PrismaClient, userId: string, phase: TrainingPhase): Promise<PlanDay[]> {
+export async function loadPlanDays(prisma: PrismaClient, userId: string, phase: TrainingPhase): Promise<PlanDay[]> {
   const entries = await prisma.planExercise.findMany({
     where: { userId, phase },
     orderBy: { order: "asc" },

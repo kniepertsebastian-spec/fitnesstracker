@@ -20,6 +20,9 @@ export const trainingPlanDtoSchema = z.object({
   pausedAt: z.string().nullable(),
   // Weeks added to the current phase via "+1 Woche" (phase length = 8 + this).
   extensionWeeks: z.number().int().min(0),
+  // F9: null until the user picks one. Kept as a plain enum here (not imported from
+  // cardioPlan.schema) to avoid a circular import between the two schema files.
+  trainingGoal: z.enum(["MUSCLE_GAIN", "STRENGTH", "ENDURANCE", "FAT_LOSS", "GENERAL_FITNESS"]).nullable(),
   remarks: z.string().nullable(),
   detectedAsymmetries: z.array(z.string()),
   asymmetryAnalyzedAt: z.string().nullable(),

@@ -33,6 +33,7 @@
 - [F6 – Fortschritt (Screen 4)](#f6--fortschritt-screen-4)
 - [F7 – Trainingsplan (Screen 5)](#f7--trainingsplan-screen-5)
 - [F8 – Restliche Seiten](#f8--restliche-seiten)
+- [F9 – Cardio und Dehnen im Plan und im Training](#f9--cardio-und-dehnen-im-plan-und-im-training-screens-2-2b-3-5)
 - [Später](#später)
 - [Nicht-Ziele](#nicht-ziele)
 - [Reihenfolge und Abhängigkeiten](#reihenfolge-und-abhängigkeiten)
@@ -306,6 +307,38 @@ Ohne eigenen Screen; gebaut nur aus `components/ui` und den Mustern der Screens 
 - [x] Alle Emojis durch Icons ersetzt; `ink`- und `violet`-Palette aus `tailwind.config.js` entfernt; das Prüfskript aus F1 bricht ab jetzt die CI.
 
 **Gate F8:** Prüfskript ohne Treffer, keine Emojis, alle Seiten erfüllen die Definition of Done.
+
+---
+
+## F9 – Cardio und Dehnen im Plan und im Training (Screens 2, 2b, 3, 5)
+
+**Anlass (09.10.2026):** Cardio gehört nicht zu Daily, sondern zum Plan, und nach „Training starten“ zeigte der Fokusmodus nur die Kraftübungen. Cardio soll zum Trainingsziel und zum Trainingstag passen, Dehnen kommt aus dem bestehenden Dehnplan des Tages.
+
+**Festgelegt:** kein eigener Menüpunkt „Cardio“ (die zehn Menüpunkte bleiben). Freie Cardio-Einheiten stehen im Plan, der Cardio-Verlauf unter Fortschritt.
+
+### Trainingsziel und Cardio-Plan
+
+- [ ] **Trainingsziel am Plan** speichern (Muskelaufbau, Kraft, Ausdauer, Fettabbau, Allgemeine Fitness; leer = noch nicht gewählt), wählbar im Hero „Aktuelle Phase“. Der KI-Fragebogen übernimmt sein Ziel, wenn noch keins gewählt ist.
+- [ ] **Regelbasierter Cardio-Vorschlag** je Trainingstag (reine Funktion mit Unit-Tests, keine KI): Das Ziel bestimmt Umfang und Art (Aufwärmen, Einheit nach dem Krafttraining, Einheiten an freien Tagen), der Tag bestimmt Gerät und Intensität (Beintag: Rad zum Aufwärmen, danach Laufband ohne Steigung). In der Phase Muskelausdauer etwas länger. Ein Satz je Ziel erklärt den Vorschlag. Richtwerte, keine medizinische Beratung.
+- [ ] **Eigene Anpassung** je Tag und für die freien Tage (Gerät, Minuten, Intensität; Einheiten hinzufügen oder entfernen), „Auf Vorschlag zurücksetzen“. Gespeichert je Phase und Tag wie der Dehnplan.
+- [ ] Plan-Seite: im Trainingstag drei Bereiche **Kraft · Cardio · Dehnen** mit Minutenangabe; Dehnen zeigt den Dehnplan des Tages (KI-Erstellung wie bisher über die Dehnseite). Darunter „Cardio an freien Tagen“.
+
+### Training
+
+- [ ] Fokusmodus mit Abschnitten **Aufwärmen → Kraft → Cardio → Dehnen**; Abschnitte ohne Inhalt entfallen. Die Fokusleiste zeigt die Abschnitte mit Fortschritt, jeder ist antippbar.
+- [ ] **Cardio-Abschnitt (Screen 2b):** geplante Einheit vorbefüllt (Gerät, Minuten, Stufe, Intensität), Stoppuhr, „Überspringen“ und „Cardio speichern“, „Letztes Mal“ mit gleichem Gerät.
+- [ ] **Dehnen-Abschnitt:** Dehnplan des Tages zum Abhaken; „Halten“ startet den bestehenden Timer mit der Haltezeit.
+- [ ] Überspringen von Cardio oder Dehnen gilt nicht als Abbruch. Abschnittsstatus überlebt ein Neuladen.
+- [ ] **Cardio-Einträge offline** mit Warteschlange wie die Sätze (Client-ID, idempotent am Server, sichtbar im Sync-Status, Wiederholen bei Fehlern).
+- [ ] Zusammenfassung am Ende nennt die Cardio-Minuten.
+
+### Übrige Seiten
+
+- [ ] Daily ohne Cardio (nur Tages-Challenge und tägliche Dehnroutine).
+- [ ] Cardio-Verlauf und freies Eintragen auf der Fortschrittsseite.
+- [ ] Dashboard-Hero nennt den ganzen Ablauf („n Übungen · n Min. Cardio · n Min. Dehnen“).
+
+**Gate F9:** Screens 2, 2b, 3 und 5 nachgebaut; Regel mit Unit-Tests für alle Ziele, Beintag und Phase; Migration gegen echte DB; ein Training mit Cardio offline gespeichert und nach dem Online-Gehen synchronisiert; Lint, Typecheck, Tests, Build, E2E grün.
 
 ---
 

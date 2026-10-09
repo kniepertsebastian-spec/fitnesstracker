@@ -91,6 +91,7 @@ describe("aiPlanGenerator.service with GoogleGenAI", () => {
       },
       trainingPlan: {
         findUnique: vi.fn().mockResolvedValue(null),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       profile: {
         findUnique: vi.fn().mockResolvedValue(null),
@@ -143,5 +144,13 @@ describe("aiPlanGenerator.service with GoogleGenAI", () => {
       expect(res.items.length).toBe(1);
       expect(res.items[0].exerciseId).toBe("00000000-0000-0000-0000-000000000001");
     }
+
+    // F9: the questionnaire goal is kept on the plan, but only where none was chosen yet.
+    const updateMany = (fakePrisma as unknown as { trainingPlan: { updateMany: ReturnType<typeof vi.fn> } })
+      .trainingPlan.updateMany;
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", trainingGoal: null },
+      data: { trainingGoal: "MUSCLE_GAIN" },
+    });
   });
 });

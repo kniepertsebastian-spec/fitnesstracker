@@ -63,6 +63,14 @@ enum CardioMachine {
   STAIRMASTER
 }
 
+enum TrainingGoal {
+  MUSCLE_GAIN
+  STRENGTH
+  ENDURANCE
+  FAT_LOSS
+  GENERAL_FITNESS
+}
+
 enum WorkoutSessionStatus {
   ACTIVE
   PAUSED
@@ -116,6 +124,7 @@ model User {
   cardioLogs             CardioLog[]
   workoutSessions        WorkoutSession[]
   stretchPlanItems       StretchPlanItem[]
+  cardioPlanDays         CardioPlanDay[]
 }
 
 // One active BYOK provider config per user — "flexible Auswahl und Hinterlegung eines API-Keys"
@@ -232,6 +241,8 @@ model TrainingPlan {
   // Extra weeks added to the *current* phase via "+1 Woche" (phase length = 8 + extensionWeeks);
   // reset to 0 whenever the phase rotates or is restarted.
   extensionWeeks Int           @default(0)
+  // F9: drives the rule-based cardio suggestion (cardioSuggestion.ts). Null until chosen.
+  trainingGoal   TrainingGoal?
   remarks              String?
   detectedAsymmetries  String[] @default([])
   asymmetryAnalyzedAt  DateTime?
@@ -405,6 +416,9 @@ model ProgressPhoto {
 // a catalog Exercise) — a free-form addition alongside the strength plan, not slotted into it.
 model CardioLog {
   id              String        @id @default(uuid())
+  // F9: set by the offline queue; a retried create with the same clientId returns the existing
+  // row instead of logging the session twice. Null for entries made before F9.
+  clientId        String?       @unique
   userId          String
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   machine         CardioMachine
@@ -463,4 +477,21 @@ model StretchPlanItem {
 
   @@unique([userId, phase, dayLabel, exerciseId])
   @@index([userId, phase, order])
+}
+
+// F9: the user's own version of a day's cardio (overrides the rule-based suggestion). One row per
+// (phase, day); `items` is a JSON array validated with cardioPlanItemSchema on read and write, so
+// an explicitly empty list ("no cardio on this day") is representable. dayLabel "" = unlabelled
+// single day, "__free__" = the sessions on days without strength training.
+model CardioPlanDay {
+  id        String        @id @default(uuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phase     TrainingPhase
+  dayLabel  String        @default("")
+  items     Json
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([userId, phase, dayLabel])
 }
