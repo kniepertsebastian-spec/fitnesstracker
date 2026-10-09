@@ -320,7 +320,7 @@ Ohne eigenen Screen; gebaut nur aus `components/ui` und den Mustern der Screens 
 ### Trainingsziel und Cardio-Plan
 
 - [ ] **Trainingsziel am Plan** speichern (Muskelaufbau, Kraft, Ausdauer, Fettabbau, Allgemeine Fitness; leer = noch nicht gewählt), wählbar im Hero „Aktuelle Phase“. Der KI-Fragebogen übernimmt sein Ziel, wenn noch keins gewählt ist. **Ohne Ziel kein Cardio-Vorschlag** (Cardio ist Opt-in; bestehende Pläne ändern sich durch das Update nicht).
-- [ ] **Regelbasierter Cardio-Vorschlag** je Trainingstag (reine Funktion mit Unit-Tests, keine KI): Das Ziel bestimmt Umfang und Art (Aufwärmen, Einheit nach dem Krafttraining, Einheiten an freien Tagen), der Tag bestimmt Gerät und Intensität (Beintag: Rad zum Aufwärmen, danach Laufband ohne Steigung). In der Phase Muskelausdauer etwas länger. Ein Satz je Ziel erklärt den Vorschlag. Richtwerte, keine medizinische Beratung.
+- [x] **Regelbasierter Cardio-Vorschlag** je Trainingstag (reine Funktion mit Unit-Tests, keine KI): Das Ziel bestimmt Umfang und Art (Aufwärmen, Einheit nach dem Krafttraining, Einheiten an freien Tagen), der Tag bestimmt Gerät und Intensität (Beintag: Rad zum Aufwärmen, danach Laufband ohne Steigung). In der Phase Muskelausdauer etwas länger. Ein Satz je Ziel erklärt den Vorschlag. Richtwerte, keine medizinische Beratung.
 - [ ] **Eigene Anpassung** je Tag und für die freien Tage (Gerät, Minuten, Intensität; Einheiten hinzufügen oder entfernen), „Auf Vorschlag zurücksetzen“. Gespeichert je Phase und Tag wie der Dehnplan.
 - [ ] Plan-Seite: im Trainingstag drei Bereiche **Kraft · Cardio · Dehnen** mit Minutenangabe; Dehnen zeigt den Dehnplan des Tages (KI-Erstellung wie bisher über die Dehnseite). Darunter „Cardio an freien Tagen“.
 
@@ -330,7 +330,8 @@ Ohne eigenen Screen; gebaut nur aus `components/ui` und den Mustern der Screens 
 - [ ] **Cardio-Abschnitt (Screen 2b):** geplante Einheit vorbefüllt (Gerät, Minuten, Stufe, Intensität), Stoppuhr, „Überspringen“ und „Cardio speichern“, „Letztes Mal“ mit gleichem Gerät.
 - [ ] **Dehnen-Abschnitt:** Dehnplan des Tages zum Abhaken; „Halten“ startet den bestehenden Timer mit der Haltezeit.
 - [ ] Überspringen von Cardio oder Dehnen gilt nicht als Abbruch. Abschnittsstatus überlebt ein Neuladen.
-- [ ] **Cardio-Einträge offline** mit Warteschlange wie die Sätze (Client-ID, idempotent am Server, sichtbar im Sync-Status, Wiederholen bei Fehlern).
+- [x] **Cardio-Einträge offline** mit Warteschlange wie die Sätze (Client-ID, idempotent am Server, sichtbar im Sync-Status, Wiederholen bei Fehlern).
+  - _Geprüft:_ E2E `cardio-training.spec.ts` in der CI (Aufwärmen offline gespeichert → „1 ausstehend“ → online → genau ein Eintrag am Server mit Client-ID). Unit-Tests der Regel für alle Ziele, Beintag, Phase und „ohne Ziel“. Migration `20261009200000` in der CI gegen Postgres. **Offen für alle F9-Punkte:** Sichtprüfung im Browser bei 390 und 1440 px (in der Bau-Sitzung war die npm-Registry gesperrt).
 - [ ] Zusammenfassung am Ende nennt die Cardio-Minuten.
 
 ### Übrige Seiten
