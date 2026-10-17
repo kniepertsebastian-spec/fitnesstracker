@@ -4,6 +4,7 @@ import { PageTabs } from "../components/layout/PageTabs";
 import { ProfileForm } from "../components/nutrition/ProfileForm";
 import { SupplementCard } from "../components/nutrition/SupplementCard";
 import { BodyCompositionCard } from "../components/nutrition/BodyCompositionCard";
+import { BodyAnalysisCard } from "../components/nutrition/BodyAnalysisCard";
 import { ProgressPhotosCard } from "../components/nutrition/ProgressPhotosCard";
 
 const TABS = [
@@ -30,6 +31,7 @@ export function NutritionPage() {
       {tab === "rechner" && <ProfileForm />}
       {tab === "koerper" && (
         <div className="flex flex-col gap-6">
+          <BodyAnalysisCard />
           <BodyCompositionCard />
           <div>
             <h2 className="mb-2 text-h2 text-text">Fortschrittsfotos</h2>
