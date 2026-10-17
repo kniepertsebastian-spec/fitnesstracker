@@ -5,6 +5,7 @@ import {
   TRAINING_GOALS,
   TRAINING_PHASE_ROTATION,
   type TrainingGoalValue,
+  type TrainingPhase,
   type TrainingPlanDto,
 } from "@fitnesstracker/shared";
 import {
