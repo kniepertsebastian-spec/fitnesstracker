@@ -79,7 +79,7 @@ export async function fetchAndCacheWorkoutLogs(): Promise<LocalWorkoutLog[]> {
     await offlineDb.transaction("rw", offlineDb.workoutLogs, async () => {
       for (const dto of items) {
         if (!pendingClientIds.has(dto.clientId)) {
-          await offlineDb.workoutLogs.put(dto);
+          await offlineDb.workoutLogs.put({ ...dto, accountId: mutation.accountId });
         }
       }
     });
@@ -107,7 +107,7 @@ export async function createWorkoutLogLocal(input: CreateWorkoutLogInput, exerci
   };
   await offlineDb.workoutLogs.put(local);
   await enqueueMutation(input.clientId, "create", input);
-  await syncQueryCache();
+  await syncQueryCache(accountId);
   void flushPendingMutations();
 }
 
@@ -177,6 +177,7 @@ export async function flushPendingMutations() {
           // immediately, optimistically) — fall back to a generic label in that case.
           const localRow = await offlineDb.workoutLogs.get(next.clientId);
           await offlineDb.failedMutations.add({
+            accountId,
             kind: "workoutLog",
             clientId: next.clientId,
             op: next.op,
@@ -197,7 +198,7 @@ export async function flushPendingMutations() {
     flushing = false;
     endSync();
     await refreshSyncCounts();
-    await syncQueryCache();
+    if (useAuthStore.getState().user?.id === accountId) await syncQueryCache(accountId);
   }
 }
 
