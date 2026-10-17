@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { CreateWorkoutLogInput, UpdateWorkoutLogInput } from "@fitnesstracker/shared";
 import { listExercisesRequest } from "../api/exercise.api";
+import { useAuthStore } from "../stores/authStore";
 import {
   createWorkoutLogLocal,
   deleteWorkoutLogLocal,
@@ -12,9 +13,11 @@ import {
 const EXERCISES_KEY = ["exercises"];
 
 export function useWorkoutLogs() {
+  const userId = useAuthStore((state) => state.user?.id);
   return useQuery({
-    queryKey: WORKOUT_LOGS_QUERY_KEY,
-    queryFn: fetchAndCacheWorkoutLogs,
+    queryKey: [...WORKOUT_LOGS_QUERY_KEY, userId],
+    queryFn: () => userId ? fetchAndCacheWorkoutLogs(userId) : Promise.resolve([]),
+    enabled: Boolean(userId),
     // Default `networkMode: "online"` would leave this query stuck "pending" while offline
     // instead of running the queryFn — but the queryFn already falls back to the local cache
     // itself, so it needs to run regardless of connectivity.
