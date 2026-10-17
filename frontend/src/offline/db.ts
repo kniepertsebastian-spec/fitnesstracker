@@ -71,7 +71,7 @@ class OfflineDb extends Dexie {
       pendingSessionMutations: "++id, clientId, queuedAt",
     });
     this.version(3).stores({
-      failedMutations: "++id, clientId, failedAt, accountId",
+      failedMutations: "++id, clientId, failedAt",
     });
     this.version(4).stores({
       pendingCardioLogs: "++id, clientId, queuedAt",
