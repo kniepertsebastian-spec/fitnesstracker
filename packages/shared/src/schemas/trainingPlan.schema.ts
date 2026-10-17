@@ -3,6 +3,11 @@ import { TRAINING_PHASES } from "../enums.js";
 
 export const trainingPhaseSchema = z.enum(TRAINING_PHASES);
 
+export const changeTrainingPhaseSchema = z.object({
+  phase: trainingPhaseSchema,
+});
+export type ChangeTrainingPhaseInput = z.infer<typeof changeTrainingPhaseSchema>;
+
 export const trainingPlanPhaseHistoryDtoSchema = z.object({
   id: z.string().uuid(),
   phase: trainingPhaseSchema,

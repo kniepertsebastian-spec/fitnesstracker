@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  changeTrainingPhaseRequest,
   extendPhaseRequest,
   getTrainingPlanRequest,
   pauseTrainingPlanRequest,
@@ -8,7 +9,7 @@ import {
   updateTrainingGoalRequest,
   updateTrainingPlanRemarksRequest,
 } from "../api/trainingPlan.api";
-import type { TrainingGoalValue, UpdateTrainingPlanRemarksInput } from "@fitnesstracker/shared";
+import type { TrainingGoalValue, TrainingPhase, UpdateTrainingPlanRemarksInput } from "@fitnesstracker/shared";
 
 export { TRAINING_PHASE_LABELS } from "@fitnesstracker/shared";
 
@@ -26,6 +27,17 @@ function useTrainingPlanAction(action: () => Promise<unknown>) {
   return useMutation({
     mutationFn: action,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: TRAINING_PLAN_KEY }),
+  });
+}
+
+export function useChangeTrainingPhase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (phase: TrainingPhase) => changeTrainingPhaseRequest({ phase }),
+    onSuccess: (plan) => {
+      queryClient.setQueryData(TRAINING_PLAN_KEY, plan);
+      void queryClient.invalidateQueries({ queryKey: ["cardio", "plan"] });
+    },
   });
 }
 

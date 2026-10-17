@@ -120,6 +120,39 @@ export async function getCurrentTrainingPlan(prisma: PrismaClient, userId: strin
   return { plan: current, nextRotationOn, history };
 }
 
+// Manually switches the active phase and starts a fresh 8-week cycle. The outgoing phase is
+// closed in history; workout logs and the rest of the plan are left untouched.
+export async function changeTrainingPhase(
+  prisma: PrismaClient,
+  userId: string,
+  phase: TrainingPlan["currentPhase"],
+) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  if (plan.currentPhase === phase) return plan;
+
+  const phaseStartedOn = mostRecentMonday(new Date());
+  const [, updatedPlan] = await prisma.$transaction([
+    prisma.trainingPlanPhaseHistory.create({
+      data: {
+        trainingPlanId: plan.id,
+        phase: plan.currentPhase,
+        startedOn: plan.phaseStartedOn,
+        endedOn: phaseStartedOn,
+      },
+    }),
+    prisma.trainingPlan.update({
+      where: { id: plan.id },
+      data: {
+        currentPhase: phase,
+        phaseStartedOn,
+        extensionWeeks: 0,
+        pausedAt: null,
+      },
+    }),
+  ]);
+  return updatedPlan;
+}
+
 export async function updateTrainingPlanRemarks(
   prisma: PrismaClient,
   userId: string,
