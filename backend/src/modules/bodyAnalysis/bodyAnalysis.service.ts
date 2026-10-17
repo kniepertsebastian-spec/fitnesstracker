@@ -4,7 +4,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { decryptSecret } from "../../lib/crypto.js";
 import { env } from "../../config/env.js";
-import { ConflictError, HttpError } from "../../errors/httpErrors.js";
+import { ConflictError } from "../../errors/httpErrors.js";
 import { callChatCompletion, AiProviderError } from "../aiPlanGenerator/aiClient.js";
 
 const metricSchema = z.object({
@@ -36,7 +36,7 @@ function runTesseract(image: Buffer): Promise<string> {
     const stderr: Buffer[] = [];
     child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
     child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
-    child.on("error", (error) => {
+    child.on("error", () => {
       reject(new ConflictError("Lokale Texterkennung ist auf dem Server nicht verfügbar. Bitte Tesseract installieren oder das Docker-Image aktualisieren."));
     });
     child.on("close", (code) => {
