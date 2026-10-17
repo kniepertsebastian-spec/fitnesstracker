@@ -69,7 +69,7 @@ export function BodyAnalysisCard() {
     {draft && <Card title="Erkannte Werte prüfen" action={<button type="button" aria-label="Entwurf schließen" onClick={() => setDraft(null)} className="rounded-lg p-1 text-text-subtle hover:bg-surface-2"><X size={18}/></button>}>
       <div className="mb-4">
         <Field label="Messdatum">
-          {(props) => <Input {...props} type="date" value={draft.measuredAt.slice(0, 10)} onChange={(event) => setDraft({ ...draft, measuredAt: new Date(event.target.value + "T12:00:00").toISOString() })}/>}
+          {(props) => <Input {...props} type="date" value={draft.measuredAt.slice(0, 10)} onChange={(event) => { if (event.target.value) setDraft({ ...draft, measuredAt: new Date(event.target.value + "T12:00:00").toISOString() }); }}/>}
         </Field>
       </div>
       <Field label="Gesamtbewertung">
