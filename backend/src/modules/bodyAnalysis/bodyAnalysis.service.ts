@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import sharp from "sharp";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { z } from "zod";
+import { GoogleGenAI } from "@google/genai";
 import { decryptSecret } from "../../lib/crypto.js";
 import { env } from "../../config/env.js";
 import { ConflictError } from "../../errors/httpErrors.js";
@@ -93,15 +94,33 @@ confidence: high, medium oder low. Gib ausschließlich JSON in diesem Format zur
 OCR-TEXT:
 ${ocrText.slice(0, 12000)}`;
 
-  const raw = await callChatCompletion(
-    setting.provider,
-    apiKey,
-    setting.model,
-    [
-      { role: "system", content: "Du bist ein vorsichtiger Assistent für Fitnessmesswerte. Keine Diagnosen, keine erfundenen Werte. Antworte ausschließlich mit gültigem JSON." },
-      { role: "user", content: prompt },
-    ],
-  );
+  const systemPrompt = "Du bist ein vorsichtiger Assistent für Fitnessmesswerte. Keine Diagnosen, keine erfundenen Werte. Antworte ausschließlich mit gültigem JSON.";
+  let raw: string;
+  if (setting.provider === "GEMINI") {
+    // Use the same saved Gemini key and native SDK path as the training-plan generator.
+    const ai = new GoogleGenAI({ apiKey });
+    try {
+      const response = await ai.models.generateContent({
+        model: setting.model || "gemini-2.5-flash",
+        contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${prompt}` }] }],
+        config: { temperature: 0.2, responseMimeType: "application/json" },
+      });
+      raw = response.text ?? "";
+    } catch (error) {
+      throw new AiProviderError(`Gemini konnte die Körperanalyse nicht auswerten: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    if (!raw) throw new AiProviderError("Gemini hat eine leere Antwort für die Körperanalyse zurückgegeben.");
+  } else {
+    raw = await callChatCompletion(
+      setting.provider,
+      apiKey,
+      setting.model,
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt },
+      ],
+    );
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
