@@ -1,13 +1,16 @@
-import { CalendarPlus, Pause, Play, RotateCcw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeftRight, CalendarPlus, Pause, Play, RotateCcw } from "lucide-react";
 import {
   TRAINING_GOAL_LABELS,
   TRAINING_GOALS,
   TRAINING_PHASE_ROTATION,
   type TrainingGoalValue,
+  type TrainingPhase,
   type TrainingPlanDto,
 } from "@fitnesstracker/shared";
 import {
   TRAINING_PHASE_LABELS,
+  useChangeTrainingPhase,
   useExtendPhase,
   usePauseTrainingPlan,
   useRestartPhase,
@@ -16,7 +19,7 @@ import {
 } from "../../hooks/useTrainingPlan";
 import { PHASE_RULES } from "../../lib/phaseInfo";
 import { phaseLength, phaseWeek } from "../../lib/phase";
-import { Button, Callout, Card, Field, SegmentedProgress, Select } from "../ui";
+import { Button, Callout, Card, Dialog, Field, SegmentedProgress, Select } from "../ui";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "numeric", month: "long" });
@@ -28,11 +31,19 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
   const restart = useRestartPhase();
   const extend = useExtendPhase();
   const setGoal = useSetTrainingGoal();
+  const changePhase = useChangeTrainingPhase();
+  const [phaseChangeOpen, setPhaseChangeOpen] = useState(false);
+  const [phaseToSwitch, setPhaseToSwitch] = useState(plan.currentPhase);
+
+  useEffect(() => {
+    setPhaseToSwitch(plan.currentPhase);
+  }, [plan.currentPhase]);
 
   const total = phaseLength(plan);
   const week = phaseWeek(plan);
   const next = TRAINING_PHASE_ROTATION[(TRAINING_PHASE_ROTATION.indexOf(plan.currentPhase) + 1) % TRAINING_PHASE_ROTATION.length];
-  const busy = pause.isPending || resume.isPending || restart.isPending || extend.isPending;
+  const busy =
+    pause.isPending || resume.isPending || restart.isPending || extend.isPending || changePhase.isPending;
 
   return (
     <Card variant="hero" className="lg:p-6">
@@ -113,7 +124,63 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
         <Button variant="ghost" iconLeft={<RotateCcw size={16} aria-hidden />} disabled={busy} onClick={() => restart.mutate()}>
           Neu starten
         </Button>
+        <Button
+          variant="secondary"
+          iconLeft={<ArrowLeftRight size={16} aria-hidden />}
+          disabled={busy}
+          onClick={() => setPhaseChangeOpen(true)}
+        >
+          Phase wechseln
+        </Button>
       </div>
+
+      {changePhase.isError && (
+        <Callout tone="danger" className="mt-3">
+          Die Trainingsphase konnte nicht gewechselt werden. Bitte versuche es erneut.
+        </Callout>
+      )}
+
+      <Dialog
+        open={phaseChangeOpen}
+        onOpenChange={setPhaseChangeOpen}
+        title="Trainingsphase wechseln"
+        description="Die neue Phase beginnt mit einem frischen 8-Wochen-Zeitraum. Deine Trainingslogs bleiben erhalten."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPhaseChangeOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button
+              variant="primary"
+              disabled={busy || phaseToSwitch === plan.currentPhase}
+              onClick={() =>
+                changePhase.mutate(phaseToSwitch, {
+                  onSuccess: () => setPhaseChangeOpen(false),
+                })
+              }
+            >
+              Phase wechseln
+            </Button>
+          </>
+        }
+      >
+        <Field label="Neue Phase" hint="Die bisherige Phase wird im Verlauf mit ihrem Enddatum abgeschlossen.">
+          {(p) => (
+            <Select
+              {...p}
+              value={phaseToSwitch}
+              disabled={busy}
+              onChange={(event) => setPhaseToSwitch(event.target.value as TrainingPhase)}
+            >
+              {TRAINING_PHASE_ROTATION.map((phase) => (
+                <option key={phase} value={phase} disabled={phase === plan.currentPhase}>
+                  {TRAINING_PHASE_LABELS[phase]}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+      </Dialog>
     </Card>
   );
 }

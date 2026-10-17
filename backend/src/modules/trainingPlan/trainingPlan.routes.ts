@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import {
   getCurrentTrainingPlan,
+  changeTrainingPhase,
   extendCurrentPhase,
   pauseTrainingPlan,
   resumeTrainingPlan,
@@ -8,13 +9,27 @@ import {
   setTrainingGoal,
   updateTrainingPlanRemarks,
 } from "./trainingPlan.service.js";
-import { updateTrainingGoalSchema, updateTrainingPlanRemarksSchema } from "@fitnesstracker/shared";
+import {
+  changeTrainingPhaseSchema,
+  updateTrainingGoalSchema,
+  updateTrainingPlanRemarksSchema,
+} from "@fitnesstracker/shared";
 import { toTrainingPlanDto } from "./trainingPlan.types.js";
 
 export default async function trainingPlanRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
 
   fastify.get("/training-plan", async (request, reply) => {
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
+      fastify.prisma,
+      request.user.sub,
+    );
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  fastify.patch("/training-plan/phase", async (request, reply) => {
+    const { phase } = changeTrainingPhaseSchema.parse(request.body);
+    await changeTrainingPhase(fastify.prisma, request.user.sub, phase);
     const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
       fastify.prisma,
       request.user.sub,
