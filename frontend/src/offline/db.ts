@@ -4,7 +4,7 @@ import type { WorkoutLogDto, WorkoutSessionDto } from "@fitnesstracker/shared";
 // `id` is null until the row's create mutation has synced and the server assigned a real id —
 // a set logged offline is fully usable (editable, deletable) before that happens, so the app
 // can never require a server id to exist. `clientId` is the one stable identity throughout.
-export type LocalWorkoutLog = Omit<WorkoutLogDto, "id"> & { id: string | null };
+export type LocalWorkoutLog = Omit<WorkoutLogDto, "id"> & { id: string | null; accountId: string };
 
 // Same id-can-be-null-until-synced shape as LocalWorkoutLog — a session started offline is
 // immediately usable (Pause/Abbrechen/Abschließen all work locally) before it has a server id.
@@ -14,6 +14,7 @@ export type MutationOp = "create" | "update" | "delete";
 
 export interface PendingMutation {
   id?: number;
+  accountId?: string;
   clientId: string;
   op: MutationOp;
   payload: Record<string, unknown>;
@@ -26,6 +27,7 @@ export interface PendingMutation {
 // nothing a user entered offline disappears without a trace, even if it couldn't be saved.
 export interface FailedMutation {
   id?: number;
+  accountId?: string;
   kind: "workoutLog" | "workoutSession" | "cardioLog";
   clientId: string;
   op: MutationOp;
@@ -73,6 +75,13 @@ class OfflineDb extends Dexie {
     });
     this.version(4).stores({
       pendingCardioLogs: "++id, clientId, queuedAt",
+    });
+    // Account-scope history and its write queue. Legacy rows have no accountId and are
+    // intentionally invisible/unflushable until recreated under an authenticated account.
+    this.version(5).stores({
+      workoutLogs: "clientId, performedAt, accountId",
+      pendingMutations: "++id, clientId, queuedAt, accountId",
+      failedMutations: "++id, clientId, failedAt, accountId",
     });
   }
 }

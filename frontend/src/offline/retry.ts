@@ -8,6 +8,9 @@ import { flushPendingCardioLogs } from "./cardioLogSync";
 // original action. A retry can still fail again (e.g. the same validation issue), in which case
 // it lands right back in failedMutations with a fresh reason.
 export async function retryFailedMutation(failed: FailedMutation) {
+  if (failed.kind === "workoutLog" && !failed.accountId) {
+    throw new Error("Diese ältere Offline-Änderung hat keine Account-Zuordnung und kann nicht sicher erneut synchronisiert werden.");
+  }
   if (failed.kind === "cardioLog") {
     await offlineDb.pendingCardioLogs.add({
       clientId: failed.clientId,
@@ -22,6 +25,7 @@ export async function retryFailedMutation(failed: FailedMutation) {
   }
   const table = failed.kind === "workoutLog" ? offlineDb.pendingMutations : offlineDb.pendingSessionMutations;
   await table.add({
+    ...(failed.accountId ? { accountId: failed.accountId } : {}),
     clientId: failed.clientId,
     op: failed.op,
     payload: failed.payload,
