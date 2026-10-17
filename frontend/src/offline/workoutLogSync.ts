@@ -124,7 +124,7 @@ export async function updateWorkoutLogLocal(
   const accountId = useAuthStore.getState().user?.id;
   if (!accountId) throw new Error("Zum Bearbeiten muss ein Account angemeldet sein.");
   const existing = await offlineDb.workoutLogs.get(clientId);
-  if (existing && existing.accountId !== accountId) return;
+  if (!existing || existing.accountId !== accountId) return;
   if (existing) {
     await offlineDb.workoutLogs.put({
       ...existing,
@@ -135,7 +135,7 @@ export async function updateWorkoutLogLocal(
   }
   await enqueueMutation(accountId, clientId, "update", input);
   await syncQueryCache(accountId);
-  void flushPendingMutations();
+  void flushPendingMutations(accountId);
 }
 
 export async function deleteWorkoutLogLocal(clientId: string) {
@@ -146,7 +146,7 @@ export async function deleteWorkoutLogLocal(clientId: string) {
   await offlineDb.workoutLogs.delete(clientId);
   await enqueueMutation(accountId, clientId, "delete", {});
   await syncQueryCache(accountId);
-  void flushPendingMutations();
+  void flushPendingMutations(accountId);
 }
 
 async function applyMutation(mutation: { accountId: string; clientId: string; op: MutationOp; payload: Record<string, unknown> }) {
