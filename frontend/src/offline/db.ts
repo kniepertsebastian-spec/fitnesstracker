@@ -14,7 +14,7 @@ export type MutationOp = "create" | "update" | "delete";
 
 export interface PendingMutation {
   id?: number;
-  accountId: string;
+  accountId?: string;
   clientId: string;
   op: MutationOp;
   payload: Record<string, unknown>;
@@ -27,7 +27,7 @@ export interface PendingMutation {
 // nothing a user entered offline disappears without a trace, even if it couldn't be saved.
 export interface FailedMutation {
   id?: number;
-  accountId: string;
+  accountId?: string;
   kind: "workoutLog" | "workoutSession" | "cardioLog";
   clientId: string;
   op: MutationOp;
@@ -81,6 +81,7 @@ class OfflineDb extends Dexie {
     this.version(5).stores({
       workoutLogs: "clientId, performedAt, accountId",
       pendingMutations: "++id, clientId, queuedAt, accountId",
+      failedMutations: "++id, clientId, failedAt, accountId",
     });
   }
 }
