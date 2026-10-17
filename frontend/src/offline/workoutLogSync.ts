@@ -177,7 +177,7 @@ export async function flushPendingMutations(accountId = useAuthStore.getState().
       if (!next) break;
 
       try {
-        await applyMutation(next);
+        await applyMutation({ ...next, accountId });
         await offlineDb.pendingMutations.delete(next.id as number);
       } catch (error) {
         if (error instanceof ApiError) {
