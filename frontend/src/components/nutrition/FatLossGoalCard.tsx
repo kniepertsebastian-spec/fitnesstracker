@@ -45,6 +45,11 @@ export function FatLossGoalCard() {
     };
   }, [latest, target]);
 
+  // Use the existing profile's TDEE calculation, but explicitly target fat loss here even if
+  // the general nutrition profile is currently set to maintain or gain weight.
+  const dailyCalories = profile ? Math.round(profile.tdee - 500) : null;
+  const dailyProtein = latest ? Math.round(latest.weightKg * 2.2) : profile ? Math.round(profile.weightKg * 2.2) : null;
+
   if (isLoading) return <Card title="Dein Abnehmziel & Muskelerhalt"><Skeleton className="h-36 w-full" /></Card>;
 
   return (
@@ -78,6 +83,22 @@ export function FatLossGoalCard() {
             <Callout tone="info">Wähle einen Ziel-Körperfettanteil zwischen 3 % und deinem aktuellen Wert ({pct(latest.bodyFatPercent)} %), damit ein niedrigeres Zielgewicht berechnet werden kann.</Callout>
           )}
           <div className="rounded-xl border border-border p-3">
+            <h3 className="mb-2 text-body font-medium text-text">Deine tägliche Ernährungsempfehlung</h3>
+            {profile && dailyCalories !== null && dailyProtein !== null ? (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <StatTile className="p-3" label="Kalorien pro Tag" value={dailyCalories} unit="kcal" />
+                  <StatTile className="p-3" label="Protein pro Tag" value={dailyProtein} unit="g" />
+                </div>
+                <p className="mt-2 text-small text-text-subtle">
+                  Richtwert auf Basis deines geschätzten Gesamtumsatzes ({profile.tdee.toLocaleString("de-DE")} kcal) mit etwa 500 kcal Defizit und rund 2,2 g Protein pro kg aktuellem Körpergewicht. Aktualisiere dein Profil und deine Messungen regelmäßig, damit die Werte zu deiner Situation passen.
+                </p>
+              </>
+            ) : (
+              <p className="text-small text-text-subtle">Vervollständige zuerst dein Profil unter Ernährung → Rechner (Gewicht, Größe, Alter, Geschlecht und Aktivitätslevel), damit dein täglicher Kalorienbedarf geschätzt werden kann.</p>
+            )}
+          </div>
+          <div className="rounded-xl border border-border p-3">
             <h3 className="mb-2 text-body font-medium text-text">Fortschritt & Muskelerhalt</h3>
             {baseline && baseline.id !== latest.id ? (
               <p className="text-small text-text-subtle">
@@ -102,9 +123,9 @@ export function FatLossGoalCard() {
                 {latest.muscleMassKg !== null && baseline.muscleMassKg !== null ? `, Muskelmasse ${delta(latest.muscleMassKg - baseline.muscleMassKg)} kg` : ""}.
               </p>
             )}
-            {profile && <p className="mt-2 text-xs text-text-subtle">Profil berücksichtigt: {profile.age} Jahre, {profile.heightCm} cm, Geschlecht {profile.gender === "MALE" ? "männlich" : "weiblich"}. Diese Angaben dienen hier zur Einordnung; die Körperfett-Zielrechnung basiert auf den Messwerten.</p>}
+            {profile && <p className="mt-2 text-xs text-text-subtle">Profil berücksichtigt: {profile.age} Jahre, {profile.heightCm} cm, Geschlecht {profile.gender === "MALE" ? "männlich" : "weiblich"}. Diese Angaben dienen zur Schätzung des Kalorienbedarfs; die Körperfett-Zielrechnung basiert auf den Messwerten.</p>}
           </div>
-          <p className="text-xs text-text-subtle">Orientierung statt medizinischer Vorgabe. Für den Muskelerhalt sind unter anderem Krafttraining, ausreichende Ernährung und eine moderate Abnahmerate wichtig.</p>
+          <p className="text-xs text-text-subtle">Orientierung statt medizinischer Vorgabe. Für den Muskelerhalt sind unter anderem Krafttraining, ausreichende Ernährung und eine moderate Abnahmerate wichtig. Der Kalorienrichtwert ist eine Schätzung; bei sehr niedrigem Energiebedarf, Erkrankungen oder besonderen Ernährungsbedürfnissen sollte er individuell geprüft werden.</p>
         </div>
       )}
     </Card>
