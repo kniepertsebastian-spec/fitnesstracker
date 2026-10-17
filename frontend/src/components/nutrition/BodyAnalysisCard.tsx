@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { AlertCircle, ChevronDown, ChevronUp, FileImage, LoaderCircle, ScanText, Sparkles, Upload, X } from "lucide-react";
 import { ApiError } from "../../api/client";
 import type { BodyAnalysisDraft, BodyAnalysisEntry, BodyAnalysisMetric } from "../../api/bodyAnalysis.api";
@@ -23,7 +23,6 @@ export function BodyAnalysisCard() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState("");
-  const comparison = useMemo(() => entries?.[0], [entries]);
 
   async function onChoose(file?: File) {
     if (!file) return;
