@@ -21,6 +21,7 @@ import dailyChallengeRoutes from "./modules/dailyChallenge/dailyChallenge.routes
 import supplementRoutes from "./modules/supplements/supplement.routes.js";
 import supplementScheduler from "./modules/supplements/supplement.scheduler.js";
 import bodyCompositionRoutes from "./modules/bodyComposition/bodyComposition.routes.js";
+import bodyAnalysisRoutes from "./modules/bodyAnalysis/bodyAnalysis.routes.js";
 import progressPhotoRoutes from "./modules/progressPhotos/progressPhoto.routes.js";
 import progressPhotoScheduler from "./modules/progressPhotos/progressPhoto.scheduler.js";
 import workoutReminderScheduler from "./modules/workoutLogs/workoutReminder.scheduler.js";
@@ -72,6 +73,7 @@ export function buildApp() {
   app.register(dailyChallengeRoutes, { prefix: "/api" });
   app.register(supplementRoutes, { prefix: "/api" });
   app.register(bodyCompositionRoutes, { prefix: "/api" });
+  app.register(bodyAnalysisRoutes, { prefix: "/api" });
   app.register(progressPhotoRoutes, { prefix: "/api" });
   app.register(aiSettingsRoutes, { prefix: "/api" });
   app.register(aiPlanGeneratorRoutes, { prefix: "/api" });
