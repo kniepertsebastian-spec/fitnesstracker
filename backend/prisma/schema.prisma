@@ -118,6 +118,7 @@ model User {
   dailyChallengeItems    DailyChallengeItem[]
   supplements            Supplement[]
   bodyCompositionEntries BodyCompositionEntry[]
+  bodyAnalyses           BodyAnalysis[]
   progressPhotos         ProgressPhoto[]
   planExercises          PlanExercise[]
   aiProviderSetting      AiProviderSetting?
@@ -390,6 +391,22 @@ model BodyCompositionEntry {
   muscleMassKg     Decimal? @db.Decimal(5, 2)
   bodyWaterPercent Decimal? @db.Decimal(4, 1)
   createdAt        DateTime @default(now())
+
+  @@index([userId, measuredAt])
+}
+
+// Imported body-composition report. Only extracted text and the reviewed interpretation are stored;
+// the uploaded source image is processed in memory and discarded.
+model BodyAnalysis {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  measuredAt DateTime @default(now())
+  sourceName String?
+  ocrText    String
+  summary    String
+  metrics    Json
+  createdAt  DateTime @default(now())
 
   @@index([userId, measuredAt])
 }

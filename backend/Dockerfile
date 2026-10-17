@@ -4,7 +4,7 @@ WORKDIR /app
 # base image doesn't ship by default (Node bundles its own, statically linked, which doesn't
 # help other binaries) — without this, prisma commands fail at runtime with an engine load
 # error, not a helpful message (see https://pris.ly/d/openssl for Prisma's own Alpine note).
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl tesseract-ocr tesseract-ocr-data-deu tesseract-ocr-data-eng
 RUN corepack enable
 
 FROM base AS deps
