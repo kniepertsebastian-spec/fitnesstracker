@@ -72,9 +72,10 @@ export function BodyAnalysisCard() {
           {(props) => <Input {...props} type="date" value={draft.measuredAt.slice(0, 10)} onChange={(event) => { if (event.target.value) setDraft({ ...draft, measuredAt: new Date(event.target.value + "T12:00:00").toISOString() }); }}/>}
         </Field>
       </div>
-      <Field label="Gesamtbewertung">
-        {(props) => <textarea {...props} className="min-h-24 w-full rounded-lg border border-border bg-surface px-3 py-2 text-body text-text" value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })}/>}
+      <Field label="Ausführlicher Analysebericht">
+        {(props) => <textarea {...props} className="min-h-72 w-full rounded-lg border border-border bg-surface px-3 py-3 text-body leading-relaxed text-text" value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })}/>}
       </Field>
+      <p className="mt-1 text-xs text-text-subtle">Prüfe insbesondere die Gesamtbewertung, mögliche Widersprüche bei OCR-Werten und die Annahmen hinter Zielgewichts-Schätzungen.</p>
       <div className="mt-4 flex flex-col gap-3">
         {draft.metrics.map((metric, index) => <div key={metric.key + index} className="rounded-xl border border-border p-3">
           <div className="grid grid-cols-[1fr_110px_75px] gap-2">
@@ -93,7 +94,7 @@ export function BodyAnalysisCard() {
             {(props) => <textarea {...props} className="min-h-16 w-full rounded-lg border border-border bg-surface px-3 py-2 text-small text-text" value={metric.explanation} onChange={(event) => updateMetric(index, { explanation: event.target.value })}/>}
           </Field>
           <Field label="Einordnung">
-            {(props) => <textarea {...props} className="mt-2 min-h-16 w-full rounded-lg border border-border bg-surface px-3 py-2 text-small text-text" value={metric.assessment} onChange={(event) => updateMetric(index, { assessment: event.target.value })}/>}
+            {(props) => <textarea {...props} className="mt-2 min-h-16 w-full rounded-lg border border-border bg-surface px-3 py-2 text-small text-text" value={metric.assessment} onChange={(event) => updateMetric(index, { assessment: event.target.value })}/>
           </Field>
         </div>)}
       </div>
@@ -119,7 +120,8 @@ function AnalysisHistoryItem({ entry, previous, expanded, onToggle }: { entry: B
       {expanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}
     </button>
     {expanded && <div className="mt-3 rounded-xl bg-surface-2 p-3">
-      <p className="mb-3 text-small text-text-2">{entry.summary}</p>
+      <div className="mb-4 whitespace-pre-wrap break-words text-small leading-relaxed text-text-2">{entry.summary}</div>
+      <h3 className="mb-2 text-body font-semibold text-text">Einzelwerte und Verlauf</h3>
       <div className="flex flex-col gap-3">{entry.metrics.map((metric) => {
         const old = previous?.metrics.find((m) => m.key === metric.key);
         const delta = old ? metric.value - old.value : null;
