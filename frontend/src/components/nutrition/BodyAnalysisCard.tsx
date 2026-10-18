@@ -1,19 +1,40 @@
 import { useState } from "react";
-import { AlertCircle, ChevronDown, ChevronUp, FileImage, LoaderCircle, ScanText, Sparkles, Upload, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, CircleAlert, FileImage, HeartPulse, LoaderCircle, ScanText, Sparkles, Upload, X } from "lucide-react";
 import { ApiError } from "../../api/client";
 import type { BodyAnalysisDraft, BodyAnalysisEntry, BodyAnalysisMetric } from "../../api/bodyAnalysis.api";
 import { useAnalyzeBodyImage, useBodyAnalyses, useSaveBodyAnalysis } from "../../hooks/useBodyAnalysis";
 import { Button, Callout, Card, EmptyState, Field, Input, Skeleton } from "../ui";
 
 const confidenceLabel = { high: "Gut erkannt", medium: "Bitte prüfen", low: "Unsicher" } as const;
+const SUMMARY_HEADINGS = /^(?:\d+\.\s*)?(?:GESAMTFAZIT|GESAMTBILD|KURZÜBERSICHT(?: DER WERTE)?|DAS IST GUT|POSITIV|DARAUF SOLLTEST DU ACHTEN|DARAUF ACHTEN|KÖRPERZUSAMMENSETZUNG|MUSKELN & VERTEILUNG|FETTVERTEILUNG & WEITERE INDIKATOREN|ABNEHMZIEL & MUSKELERHALT|KONKRETE NÄCHSTE SCHRITTE|MESSQUALITÄT & GRENZEN)\s*:?[\s*]*$/i;
 function dateLabel(value: string) {
   return new Date(value).toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 }
-function shortDate(value: string) {
-  return new Date(value).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
 function numberInput(value: number) { return String(value).replace(".", ","); }
 function parseNumber(value: string) { return Number(value.replace(",", ".")); }
+
+function SummaryReport({ summary }: { summary: string }) {
+  const sections = summary.split(/\n(?=(?:\d+\.\s*)?(?:GESAMTFAZIT|GESAMTBILD|KURZÜBERSICHT(?: DER WERTE)?|DAS IST GUT|POSITIV|DARAUF SOLLTEST DU ACHTEN|DARAUF ACHTEN|KÖRPERZUSAMMENSETZUNG|MUSKELN & VERTEILUNG|FETTVERTEILUNG & WEITERE INDIKATOREN|ABNEHMZIEL & MUSKELERHALT|KONKRETE NÄCHSTE SCHRITTE|MESSQUALITÄT & GRENZEN)\s*:?\s*\n?)/i).filter(Boolean);
+  return <div className="flex flex-col gap-4">
+    {sections.map((section, index) => {
+      const lines = section.trim().split("\n");
+      const rawHeading = lines[0].replace(/^\*\*/, "").replace(/\*\*$/, "").trim();
+      const heading = rawHeading.replace(/^\d+\.\s*/, "").replace(/:$/, "").trim();
+      const isGood = /^(DAS IST GUT|POSITIV)$/i.test(heading);
+      const isAttention = /^(DARAUF SOLLTEST DU ACHTEN|DARAUF ACHTEN)$/i.test(heading);
+      const isOverall = /^(GESAMTFAZIT|GESAMTBILD)$/i.test(heading);
+      const hasHeading = SUMMARY_HEADINGS.test(rawHeading.replace(/^\*\*/, "").replace(/\*\*$/, "").trim());
+      const body = (hasHeading ? lines.slice(1) : lines).join("\n").trim();
+      return <section key={index} className="min-w-0">
+        {hasHeading && <h4 className="mb-2 flex items-center gap-2 text-body font-semibold text-text">
+          {isGood ? <CheckCircle2 size={17} aria-hidden="true"/> : isAttention ? <CircleAlert size={17} aria-hidden="true"/> : isOverall ? <HeartPulse size={17} aria-hidden="true"/> : null}
+          {heading}
+        </h4>}
+        <div className="whitespace-pre-wrap break-words text-small leading-relaxed text-text-2">{body}</div>
+      </section>;
+    })}
+  </div>;
+}
 
 export function BodyAnalysisCard() {
   const { data: entries, isLoading } = useBodyAnalyses();
@@ -75,7 +96,7 @@ export function BodyAnalysisCard() {
       <Field label="Ausführlicher Analysebericht">
         {(props) => <textarea {...props} className="min-h-72 w-full rounded-lg border border-border bg-surface px-3 py-3 text-body leading-relaxed text-text" value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })}/>}
       </Field>
-      <p className="mt-1 text-xs text-text-subtle">Prüfe insbesondere die Gesamtbewertung, mögliche Widersprüche bei OCR-Werten und die Annahmen hinter Zielgewichts-Schätzungen.</p>
+      <p className="mt-1 text-xs text-text-subtle">Prüfe insbesondere das Gesamtfazit, positive Befunde, Hinweise mit Handlungsbedarf, mögliche OCR-Widersprüche und Zielgewichts-Annahmen.</p>
       <div className="mt-4 flex flex-col gap-3">
         {draft.metrics.map((metric, index) => <div key={metric.key + index} className="rounded-xl border border-border p-3">
           <div className="grid grid-cols-[1fr_110px_75px] gap-2">
@@ -83,10 +104,10 @@ export function BodyAnalysisCard() {
               {(props) => <Input {...props} value={metric.label} onChange={(event) => updateMetric(index, { label: event.target.value })}/>}
             </Field>
             <Field label="Wert">
-              {(props) => <Input {...props} inputMode="decimal" value={numberInput(metric.value)} onChange={(event) => updateMetric(index, { value: parseNumber(event.target.value) })}/>}
+              {(props) => <Input {...props} inputMode="decimal" value={numberInput(metric.value)} onChange={(event) => updateMetric(index, { value: parseNumber(event.target.value) })}/>
             </Field>
             <Field label="Einheit">
-              {(props) => <Input {...props} value={metric.unit} onChange={(event) => updateMetric(index, { unit: event.target.value })}/>}
+              {(props) => <Input {...props} value={metric.unit} onChange={(event) => updateMetric(index, { unit: event.target.value })}/>
             </Field>
           </div>
           <p className="mt-2 text-xs text-text-subtle">{confidenceLabel[metric.confidence]}</p>
@@ -120,7 +141,7 @@ function AnalysisHistoryItem({ entry, previous, expanded, onToggle }: { entry: B
       {expanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}
     </button>
     {expanded && <div className="mt-3 rounded-xl bg-surface-2 p-3">
-      <div className="mb-4 whitespace-pre-wrap break-words text-small leading-relaxed text-text-2">{entry.summary}</div>
+      <div className="mb-4"><SummaryReport summary={entry.summary}/></div>
       <h3 className="mb-2 text-body font-semibold text-text">Einzelwerte und Verlauf</h3>
       <div className="flex flex-col gap-3">{entry.metrics.map((metric) => {
         const old = previous?.metrics.find((m) => m.key === metric.key);
