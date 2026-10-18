@@ -104,10 +104,10 @@ export function BodyAnalysisCard() {
               {(props) => <Input {...props} value={metric.label} onChange={(event) => updateMetric(index, { label: event.target.value })}/>}
             </Field>
             <Field label="Wert">
-              {(props) => <Input {...props} inputMode="decimal" value={numberInput(metric.value)} onChange={(event) => updateMetric(index, { value: parseNumber(event.target.value) })}/>
+              {(props) => <Input {...props} inputMode="decimal" value={numberInput(metric.value)} onChange={(event) => updateMetric(index, { value: parseNumber(event.target.value) })}/>}
             </Field>
             <Field label="Einheit">
-              {(props) => <Input {...props} value={metric.unit} onChange={(event) => updateMetric(index, { unit: event.target.value })}/>
+              {(props) => <Input {...props} value={metric.unit} onChange={(event) => updateMetric(index, { unit: event.target.value })}/>}
             </Field>
           </div>
           <p className="mt-2 text-xs text-text-subtle">{confidenceLabel[metric.confidence]}</p>
@@ -115,7 +115,7 @@ export function BodyAnalysisCard() {
             {(props) => <textarea {...props} className="min-h-16 w-full rounded-lg border border-border bg-surface px-3 py-2 text-small text-text" value={metric.explanation} onChange={(event) => updateMetric(index, { explanation: event.target.value })}/>}
           </Field>
           <Field label="Einordnung">
-            {(props) => <textarea {...props} className="mt-2 min-h-16 w-full rounded-lg border border-border bg-surface px-3 py-2 text-small text-text" value={metric.assessment} onChange={(event) => updateMetric(index, { assessment: event.target.value })}/>
+            {(props) => <textarea {...props} className="mt-2 min-h-16 w-full rounded-lg border border-border bg-surface px-3 py-2 text-small text-text" value={metric.assessment} onChange={(event) => updateMetric(index, { assessment: event.target.value })}/>}
           </Field>
         </div>)}
       </div>
