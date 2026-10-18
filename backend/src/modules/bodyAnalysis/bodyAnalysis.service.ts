@@ -13,12 +13,12 @@ const metricSchema = z.object({
   label: z.string().min(1).max(100),
   value: z.number().finite(),
   unit: z.string().max(30),
-  explanation: z.string().min(1).max(1200),
-  assessment: z.string().min(1).max(1200),
+  explanation: z.string().min(1).max(2000),
+  assessment: z.string().min(1).max(2000),
   confidence: z.enum(["high", "medium", "low"]),
 });
 const analysisSchema = z.object({
-  summary: z.string().min(1).max(3000),
+  summary: z.string().min(1).max(8000),
   metrics: z.array(metricSchema).min(1).max(40),
 });
 export type BodyAnalysisMetric = z.infer<typeof metricSchema>;
@@ -81,20 +81,34 @@ export async function analyzeBodyImage(
     throw new ConflictError("Der Server hat noch keinen AI_SETTINGS_ENCRYPTION_KEY konfiguriert.");
   }
   const apiKey = decryptSecret(setting.encryptedApiKey, env.AI_SETTINGS_ENCRYPTION_KEY);
-  const prompt = `Du interpretierst einen Körperzusammensetzungs-/Fitnessanalysebericht vorsichtig und auf Deutsch.
-Die lokale OCR hat folgenden Text erkannt. Erfinde niemals fehlende Zahlen, Einheiten oder Werte. Nimm nur
-konkret erkannte Körpermesswerte auf. Verwende eindeutige keys wie weightKg, bodyFatPercent,
-muscleMassKg, bodyWaterPercent, bmi, visceralFat, boneMassKg, basalMetabolicRateKcal oder einen
-kurzen englischen camelCase-key für andere tatsächlich erkannte Werte. Werte müssen numerisch sein.
-Für jeden Messwert gib eine verständliche Erklärung und eine vorsichtige Einordnung ohne Diagnose.
-Orientierungsbereiche sind abhängig von Alter, Geschlecht, Messgerät und Kontext; behaupte keine
-medizinische Sicherheit. Wenn sich ein Wert nicht zuverlässig erkennen lässt, lasse ihn weg.
-confidence: high, medium oder low. Gib ausschließlich JSON in diesem Format zurück:
-{"summary":"Gesamtüberblick mit klaren Einschränkungen","metrics":[{"key":"weightKg","label":"Gewicht","value":82.4,"unit":"kg","explanation":"...","assessment":"...","confidence":"high"}]}
+  const prompt = `Erstelle aus diesem Fitness-/Körperzusammensetzungsbericht eine wirklich detaillierte, verständliche und personalisierte Auswertung auf Deutsch. Arbeite ausschließlich mit den vorliegenden Angaben; erfinde keine Messwerte, biografischen Daten oder Verlaufspunkte.
+
+DATENQUALITÄT UND PRIORITÄTEN:
+- Bevorzuge aktuelle Werte aus der zentralen Übersicht bzw. den ausdrücklich als aktuell markierten Tabellen.
+- Verwechsle Achsenwerte, Grenzbereiche, frühere Messpunkte in Diagrammen, linke/rechte Segmentwerte oder Sollwerte niemals mit dem aktuellen Gesamtwert.
+- Wenn Werte einander widersprechen (z. B. Gewicht, Körperfettanteil oder Muskelmasse in verschiedenen Bereichen), markiere den Konflikt im Gesamtfazit und setze die betroffenen Metriken auf confidence "low" oder lasse nicht eindeutig zuordenbare Werte weg. Wähle nicht stillschweigend einen Wert.
+- Extrahiere so viele eindeutig erkennbare aktuelle Messwerte wie sinnvoll, nicht nur 4–5. Dazu gehören ggf. weightKg, bodyFatPercent, fatMassKg, fatFreeMassKg, muscleMassKg, skeletalMuscleKg, bodyWaterPercent, proteinMassKg, boneMassKg, bmi, visceralFat, basalMetabolicRateKcal, subcutaneousFatPercent, asmi, waistHipRatio, heightCm und ageYears. Verwende kurze englische camelCase-keys für weitere tatsächlich erkannte numerische Werte.
+- Körpergröße, Alter und andere Kontextangaben nur aufnehmen, wenn klar erkennbar. Geschlecht nicht als numerische Metrik darstellen.
+- Werte aus der aktuellen Übersicht haben Vorrang vor historischen Diagrammen. Übernimm Verlauf nur in die qualitative Einschätzung, wenn die Richtung klar ist; leite keine exakten früheren Messungen aus Diagrammachsen ab.
+
+GESAMTBEWERTUNG:
+Schreibe summary als ausführlichen Bericht mit klaren Überschriften und Absätzen (maximal 7.500 Zeichen). Nutze genau diese Abschnitte, soweit die Daten es zulassen:
+1. "GESAMTBILD" – 3–5 Sätze mit den wichtigsten Befunden und was sie zusammen bedeuten.
+2. "KÖRPERZUSAMMENSETZUNG" – verknüpfe Gewicht, Fettmasse, Körperfettanteil, fettfreie Masse, Muskel-/Skelettmuskelmasse und Wasser. Prüfe rechnerische Plausibilität, z. B. ob Fettmasse ungefähr Gewicht × Körperfettanteil entspricht und ob fettfreie Masse ungefähr Gewicht minus Fettmasse entspricht. Weise auf Abweichungen hin, ohne Messmethoden als exakt darzustellen.
+3. "MUSKELN & VERTEILUNG" – erkläre Muskelmasse, Skelettmuskel, ASMI und segmentale Verteilung nur soweit erkennbar; unterscheide Gesamtmuskelmasse und Skelettmuskelmasse. Keine Diagnose aus Waagenwerten ableiten.
+4. "FETTVERTEILUNG & WEITERE INDIKATOREN" – ordne BMI, viszerales/subkutanes Fett, WHR und Grundumsatz vorsichtig ein, falls vorhanden. Erkläre Grenzen von BMI und BIA-Waagen.
+5. "ABNEHMZIEL & MUSKELERHALT" – wenn Gewicht, Körperfettanteil und/oder fettfreie Masse verlässlich vorhanden sind, rechne transparent und gerundet mögliche Szenarien für einen moderaten Ziel-Körperfettanteil (bei erwachsenen Männern z. B. 18 % und 20 %, bei Frauen nicht dieselben Szenarien verwenden; wenn Geschlecht/Alter unklar ist, keine geschlechtsspezifischen Zielwerte vorgeben). Bei verfügbarer fettfreier Masse kann das theoretische Zielgewicht = fettfreie Masse / (1 − Ziel-Körperfettanteil) sein, aber nur als grobe Modellrechnung unter der Annahme, dass fettfreie Masse erhalten bleibt. Zeige die Annahme und mögliche Messunsicherheit. Nutze nicht die angegebene "Muskelmasse" allein als fettfreie Masse. Wenn die Daten nicht reichen, sage konkret, was fehlt. Kein aggressives oder medizinisch verbindliches Ziel verordnen.
+6. "KONKRETE NÄCHSTE SCHRITTE" – 3–5 praktische, priorisierte Hinweise zu Ernährung, Krafttraining, Alltagsbewegung, Erholung und sinnvoller Wiederholungsmessung. Keine erfundenen Kalorienvorgaben; Grundumsatz ist nicht gleich Gesamtverbrauch. Proteinempfehlungen nur als allgemeine Orientierung und ohne medizinische Gewissheit.
+7. "MESSQUALITÄT & GRENZEN" – benenne erkannte Widersprüche/Unsicherheiten und dass BIA-Waagenwerte von Hydration, Tageszeit und Gerät abhängen; keine Diagnose.
+
+Jede Messgröße bekommt zusätzlich eine kurze, spezifische Erklärung und Einordnung. Vermeide generische Floskeln wie "Wert beobachten" ohne zu sagen, was genau im Verlauf relevant wäre. Keine Diagnose und keine Angst erzeugende Sprache. Wenn ein Abschnitt mangels Daten nicht sinnvoll möglich ist, sage das offen.
+
+Gib ausschließlich gültiges JSON in diesem Format zurück:
+{"summary":"... ausführlicher Bericht mit Absätzen ...","metrics":[{"key":"weightKg","label":"Gewicht","value":82.4,"unit":"kg","explanation":"...","assessment":"...","confidence":"high"}]}
 OCR-TEXT:
 ${ocrText.slice(0, 12000)}`;
 
-  const systemPrompt = "Du bist ein vorsichtiger Assistent für Fitnessmesswerte. Keine Diagnosen, keine erfundenen Werte. Antworte ausschließlich mit gültigem JSON.";
+  const systemPrompt = "Du bist ein sorgfältiger Fitness- und Körperzusammensetzungs-Assistent. Liefere eine ausführliche, datenbasierte Auswertung mit transparenten Annahmen. Keine Diagnosen, keine erfundenen Werte, keine stillschweigend aufgelösten Widersprüche. Antworte ausschließlich mit gültigem JSON.";
   let raw: string;
   if (setting.provider === "GEMINI") {
     // Use the same saved Gemini key and native SDK path as the training-plan generator.
@@ -141,7 +155,7 @@ const saveSchema = z.object({
   measuredAt: z.string().datetime(),
   sourceName: z.string().max(255).optional(),
   ocrText: z.string().max(12000).default(""),
-  summary: z.string().min(1).max(3000),
+  summary: z.string().min(1).max(8000),
   metrics: z.array(metricSchema).min(1).max(40),
 });
 export type SaveBodyAnalysisInput = z.infer<typeof saveSchema>;
