@@ -133,7 +133,7 @@ export function BodyCompositionCard() {
       </div>
 
       <Card title="Was bedeuten die Werte?">
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {Object.values(BODY_METRIC_INFO).map((info) => (
             <div key={info.label}>
               <p className="text-body font-medium text-text-2">{info.label}</p>

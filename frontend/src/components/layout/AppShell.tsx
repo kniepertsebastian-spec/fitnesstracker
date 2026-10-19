@@ -36,10 +36,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-col">
         <header className="flex items-center justify-between gap-3 border-b border-border bg-bg-sidebar px-4 py-2 lg:justify-end lg:border-b-0 lg:bg-transparent lg:px-10 lg:pt-5">
-          <div className="lg:hidden">
-            <Logo />
+          <div className="min-w-0 lg:hidden">
+            <Logo compactBelowSm />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <SyncStatusIndicator />
             <IconButton
               aria-label="Menü öffnen"

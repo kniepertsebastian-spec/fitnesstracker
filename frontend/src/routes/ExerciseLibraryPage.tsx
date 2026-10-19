@@ -61,7 +61,7 @@ export function ExerciseLibraryPage() {
           <p className="tabular mb-2 text-small text-text-faint">
             {exercises.length} von {total}
           </p>
-          <div className="grid gap-2 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
             {exercises.map((exercise) => (
               <ExerciseCard key={exercise.id} exercise={exercise} />
             ))}

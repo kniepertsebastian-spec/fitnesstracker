@@ -56,7 +56,7 @@ export function GoalsPage() {
           {open.length === 0 ? (
             <p className="text-small text-text-faint">Keine offenen Ziele.</p>
           ) : (
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {open.map((goal) => (
                 <GoalCard key={goal.id} goal={goal} onEdit={openEdit} />
               ))}
@@ -66,7 +66,7 @@ export function GoalsPage() {
           {achieved.length > 0 && (
             <div>
               <h2 className="mb-2 text-h2 text-text">Erreicht</h2>
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {achieved.map((goal) => (
                   <GoalCard key={goal.id} goal={goal} onEdit={openEdit} />
                 ))}
