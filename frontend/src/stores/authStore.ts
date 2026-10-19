@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { UserDto } from "@fitnesstracker/shared";
+import { clearQueryCache } from "../queryClient";
 
 interface AuthState {
   user: UserDto | null;
@@ -46,12 +47,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   status: "idle",
   setSession: (user, accessToken) => {
+    // Another account on this device: drop the previous one's persisted plan data.
+    const previous = readCachedUser();
+    if (previous && previous.id !== user.id) void clearQueryCache();
     writeCachedUser(user);
     set({ user, accessToken, status: "authenticated" });
   },
   setAccessToken: (accessToken) => set({ accessToken }),
   clearSession: () => {
     writeCachedUser(null);
+    void clearQueryCache();
     set({ user: null, accessToken: null, status: "unauthenticated" });
   },
   setStatus: (status) => set({ status }),

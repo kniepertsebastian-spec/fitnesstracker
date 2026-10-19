@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  // Busts the persisted query cache (src/queryClient.ts) on every new build.
+  define: { __BUILD_ID__: JSON.stringify(new Date().toISOString()) },
   plugins: [
     react(),
     VitePWA({

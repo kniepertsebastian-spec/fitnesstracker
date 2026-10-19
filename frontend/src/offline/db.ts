@@ -59,6 +59,7 @@ class OfflineDb extends Dexie {
   pendingSessionMutations!: Table<PendingMutation, number>;
   failedMutations!: Table<FailedMutation, number>;
   pendingCardioLogs!: Table<PendingCardioLog, number>;
+  queryCache!: Table<{ key: string; value: string }, string>;
 
   constructor() {
     super("fitnesstracker-offline");
@@ -82,6 +83,10 @@ class OfflineDb extends Dexie {
       workoutLogs: "clientId, performedAt, accountId",
       pendingMutations: "++id, clientId, queuedAt, accountId",
       failedMutations: "++id, clientId, failedAt, accountId",
+    });
+    // Persisted React Query cache (queryClient.ts), so the app cold-starts offline with its plan.
+    this.version(6).stores({
+      queryCache: "key",
     });
   }
 }

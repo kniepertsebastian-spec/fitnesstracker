@@ -80,15 +80,15 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 - [x] Bei schmalem Viewport (~320 px, z. B. große System-Schrift nach Android-Update) lief jede
   Seite seitlich über. Behoben: Kopfzeile schrumpft, einspaltige Grids mit `grid-cols-1`,
   Wochen-Kacheln skalieren. Verifiziert bei 300–412 px.
-- [ ] Regressionsschutz: E2E-Test, der alle Seiten bei 320 px auf `scrollWidth <= innerWidth`
+- [x] Regressionsschutz: E2E-Test, der alle Seiten bei 320 px auf `scrollWidth <= innerWidth`
   prüft.
 
 ### P1.2 Training offline kaltstarten
 
-- [ ] React-Query-Cache in IndexedDB persistieren (`PersistQueryClientProvider` +
+- [x] React-Query-Cache in IndexedDB persistieren (`PersistQueryClientProvider` +
   Async-Storage-Persister, `gcTime` ≥ 24 h). Mindestens Plan, Wochenstatus, Übungen des Plans,
   Cardio- und Dehnplan.
-- [ ] E2E-Test: App offline frisch öffnen → Training starten → Satz loggen → online → Sync.
+- [x] E2E-Test: App offline frisch öffnen → Training starten → Satz loggen → online → Sync.
 
 ### P1.3 Bildschirm im Training wach halten, Pausen-Timer bei Sperrbildschirm
 
