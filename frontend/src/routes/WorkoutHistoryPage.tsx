@@ -281,7 +281,7 @@ export function WorkoutHistoryPage() {
     <AppShell>
       <h1 className="mb-4 text-h1 text-text lg:text-h1-lg">Historie</h1>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Input
           type="search"
           aria-label="Übung suchen"

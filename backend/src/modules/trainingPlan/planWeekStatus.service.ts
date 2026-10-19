@@ -1,6 +1,6 @@
 import type { Exercise, PlanExercise, PrismaClient, TrainingPhase } from "@prisma/client";
 import type { ProgressionSuggestion, WeeklyPlanStatusDto } from "@fitnesstracker/shared";
-import { toPlanExerciseDto } from "./planExercise.types.js";
+import { planExerciseInclude, toPlanExerciseDto } from "./planExercise.types.js";
 
 // Roadmap2 P0.3: "Klare Regeln für Steigerung, Fehlversuche und Deloads." Aufbau/Negativ progress
 // via weight (both are low/moderate-rep, load-driven phases per promptBuilder.ts's
@@ -136,7 +136,7 @@ export async function getWeeklyPlanStatus(
   const entries = await prisma.planExercise.findMany({
     where: { userId, phase },
     orderBy: { order: "asc" },
-    include: { exercise: true },
+    include: planExerciseInclude,
   });
 
   if (entries.length === 0) {

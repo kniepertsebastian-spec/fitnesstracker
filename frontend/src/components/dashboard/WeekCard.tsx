@@ -30,14 +30,14 @@ export function WeekCard({ weekKeys, today, trainedDays, volumeByDay, weekStreak
       }
     >
       {/* Mobile: seven day tiles */}
-      <div className="flex justify-between lg:hidden">
+      <div className="flex justify-between gap-1 lg:hidden">
         {weekKeys.map((key, i) => {
           const trained = trainedDays.has(key);
           return (
-            <div key={key} className="flex flex-col items-center gap-1.5">
+            <div key={key} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
               <span
                 className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-lg text-text",
+                  "flex aspect-square w-full max-w-10 items-center justify-center rounded-lg text-text",
                   trained
                     ? "bg-accent-soft text-accent"
                     : key === today

@@ -34,14 +34,14 @@ export const StatusPill = forwardRef<HTMLButtonElement, StatusPillProps>(functio
       ref={ref}
       type={type}
       className={cn(
-        "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-medium",
+        "inline-flex min-h-9 min-w-0 max-w-full items-center gap-1.5 rounded-full px-3 text-xs font-medium",
         TONES[tone],
         className,
       )}
       {...rest}
     >
-      <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", DOT[tone])} />
-      {children}
+      <span aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full", DOT[tone])} />
+      <span className="truncate">{children}</span>
     </button>
   );
 });

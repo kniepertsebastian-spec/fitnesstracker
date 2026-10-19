@@ -69,7 +69,7 @@ export function SyncStatusIndicator() {
   };
 
   return (
-    <div ref={panelRef} className="relative">
+    <div ref={panelRef} className="relative min-w-0">
       <StatusPill tone={pill.tone} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         {pill.text}
       </StatusPill>

@@ -89,7 +89,7 @@ export function GoalSuggestionsCard() {
   return (
     <div className="mb-4">
       <h2 className="mb-2 text-h2 text-text">Vorschläge</h2>
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {suggestions.map((suggestion) => (
           <SuggestionRow key={suggestion.exerciseId} suggestion={suggestion} />
         ))}

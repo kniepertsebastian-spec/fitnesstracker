@@ -74,7 +74,7 @@ function StretchPlanView() {
           />
         </Card>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
           {data.days.map((day) => (
             <Card
               key={day.dayLabel ?? "all"}

@@ -9,6 +9,7 @@ import { PlanExerciseFormDialog } from "../trainingPlan/PlanExerciseFormDialog";
 import { Button, Card, EmptyState, IconButton, ListRow, SegmentedControl, Skeleton, cn } from "../ui";
 import { DayCardioPanel } from "./DayCardioPanel";
 import { DayStretchPanel } from "./DayStretchPanel";
+import { formatSetsReps } from "../../lib/planPrescription";
 
 type Section = "kraft" | "cardio" | "stretch";
 
@@ -63,7 +64,7 @@ function Row({
       className={cn(dragging && "opacity-40")}
     >
       <ListRow
-        value={entry.targetSets || entry.targetReps ? `${entry.targetSets ?? "?"} × ${entry.targetReps ?? "?"}` : undefined}
+        value={entry.targetSets || entry.targetReps || entry.repRangeMax ? formatSetsReps(entry) : undefined}
       >
         <div className="flex items-center gap-2">
           <GripVertical size={16} aria-hidden className="shrink-0 cursor-grab text-text-faint" />

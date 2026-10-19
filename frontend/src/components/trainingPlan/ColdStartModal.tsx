@@ -1,17 +1,42 @@
 import { useState } from "react";
-import type { ColdStartInput } from "@fitnesstracker/shared";
+import {
+  DEFAULT_EQUIPMENT,
+  EQUIPMENT_TAGS,
+  type ColdStartInput,
+  type EquipmentTag,
+  type SplitPreference,
+} from "@fitnesstracker/shared";
+import { Check } from "lucide-react";
 import { Button, Dialog, Field, Input, Textarea, cn } from "../ui";
 
 interface Props {
   onSubmit: (input: ColdStartInput) => void;
   onCancel: () => void;
   isSubmitting: boolean;
+  // Last saved answers; the wizard starts prefilled with them.
+  initial?: ColdStartInput | null;
 }
 
-const EQUIPMENT_OPTIONS: { value: ColdStartInput["equipment"]; label: string }[] = [
-  { value: "homegym", label: "Homegym (Kurzhanteln, Bänder, Körpergewicht)" },
-  { value: "dumbbells", label: "Nur Kurzhanteln" },
-  { value: "fullgym", label: "Vollausgestattetes Studio" },
+const EQUIPMENT_LABELS: Record<EquipmentTag, string> = {
+  machine: "Geräte/Maschinen",
+  dumbbell: "Kurzhanteln",
+  barbell: "Langhantel (inkl. SZ-Stange)",
+  cable: "Kabelturm",
+  "body only": "Ohne Geräte (Körpergewicht)",
+  kettlebells: "Kettlebells",
+  bands: "Bänder",
+  "medicine ball": "Medizinball",
+  "exercise ball": "Gymnastikball",
+  "foam roll": "Faszienrolle",
+  other: "Sonstiges",
+};
+
+const SPLIT_OPTIONS: { value: SplitPreference; label: string }[] = [
+  { value: "auto", label: "Egal – passend zur Trainingshäufigkeit" },
+  { value: "full_body", label: "Ganzkörper" },
+  { value: "upper_lower", label: "Oberkörper / Unterkörper" },
+  { value: "push_pull_legs", label: "Push / Pull / Beine" },
+  { value: "bro_split", label: "Bro-Split (ein Muskel pro Tag, ideal ab 5×/Woche)" },
 ];
 
 const EXPERIENCE_OPTIONS: { value: ColdStartInput["experience"]; label: string }[] = [
@@ -28,22 +53,27 @@ const GOAL_OPTIONS: { value: ColdStartInput["goal"]; label: string }[] = [
   { value: "general_fitness", label: "Allgemeine Fitness" },
 ];
 
-const STEP_COUNT = 7;
+const STEP_COUNT = 8;
 
 // A step-by-step wizard rather than one long form. It opens before every generation, because
 // goals, available time, equipment and limitations can change even when history already exists.
-export function ColdStartModal({ onSubmit, onCancel, isSubmitting }: Props) {
+export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Props) {
   const [step, setStep] = useState(1);
-  const [frequencyPerWeek, setFrequencyPerWeek] = useState(3);
-  const [equipment, setEquipment] = useState<ColdStartInput["equipment"]>("homegym");
-  const [experience, setExperience] = useState<ColdStartInput["experience"]>("beginner");
-  const [goal, setGoal] = useState<ColdStartInput["goal"]>("muscle_gain");
-  const [sessionDurationMinutes, setSessionDurationMinutes] = useState(60);
-  const [equipmentDetails, setEquipmentDetails] = useState("");
-  const [priorityMuscles, setPriorityMuscles] = useState("");
-  const [preferredExercises, setPreferredExercises] = useState("");
-  const [avoidedExercises, setAvoidedExercises] = useState("");
-  const [limitations, setLimitations] = useState("");
+  const [frequencyPerWeek, setFrequencyPerWeek] = useState(initial?.frequencyPerWeek ?? 3);
+  const [split, setSplit] = useState<SplitPreference>(initial?.split ?? "auto");
+  const [equipment, setEquipment] = useState<EquipmentTag[]>(initial?.equipment ?? DEFAULT_EQUIPMENT);
+  const [experience, setExperience] = useState<ColdStartInput["experience"]>(initial?.experience ?? "intermediate");
+  const [goal, setGoal] = useState<ColdStartInput["goal"]>(initial?.goal ?? "muscle_gain");
+  const [sessionDurationMinutes, setSessionDurationMinutes] = useState(initial?.sessionDurationMinutes ?? 60);
+  const [equipmentDetails, setEquipmentDetails] = useState(initial?.equipmentDetails ?? "");
+  const [priorityMuscles, setPriorityMuscles] = useState(initial?.priorityMuscles ?? "");
+  const [preferredExercises, setPreferredExercises] = useState(initial?.preferredExercises ?? "");
+  const [avoidedExercises, setAvoidedExercises] = useState(initial?.avoidedExercises ?? "");
+  const [limitations, setLimitations] = useState(initial?.limitations ?? "");
+
+  const toggleEquipment = (tag: EquipmentTag) =>
+    setEquipment((current) => (current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]));
+  const canContinue = step !== 4 || equipment.length > 0;
 
   const next = () => setStep((s) => Math.min(STEP_COUNT, s + 1));
   const back = () => setStep((s) => Math.max(1, s - 1));
@@ -51,6 +81,7 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting }: Props) {
   const handleFinish = () => {
     onSubmit({
       frequencyPerWeek,
+      split,
       equipment,
       experience,
       goal,
@@ -75,7 +106,7 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting }: Props) {
             {step === 1 ? "Abbrechen" : "Zurück"}
           </Button>
           {step < STEP_COUNT ? (
-            <Button variant="primary" onClick={next}>
+            <Button variant="primary" onClick={next} disabled={!canContinue}>
               Weiter
             </Button>
           ) : (
@@ -109,24 +140,58 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting }: Props) {
       )}
 
       {step === 3 && (
+        <Choices label="Welchen Split bevorzugst du?" options={SPLIT_OPTIONS} value={split} onChange={setSplit} />
+      )}
+
+      {step === 4 && (
         <div className="flex flex-col gap-3">
-          <Choices label="Welches Equipment hast du?" options={EQUIPMENT_OPTIONS} value={equipment} onChange={setEquipment} />
+          <p className="text-small font-medium text-text-muted">Mit welchen Mitteln sollen Übungen vorkommen?</p>
+          <p className="text-xs text-text-subtle">Nicht angehakte Mittel werden komplett ausgeschlossen.</p>
+          <div role="group" aria-label="Erlaubte Mittel" className="flex flex-col gap-1.5">
+            {EQUIPMENT_TAGS.map((tag) => {
+              const on = equipment.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleEquipment(tag)}
+                  className={cn(
+                    "flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2 text-left text-body transition-colors duration-150",
+                    on ? "border-accent-border bg-accent-soft text-accent" : "border-border-strong text-text-muted hover:bg-surface-2",
+                  )}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded border",
+                      on ? "border-accent bg-accent text-on-accent" : "border-border-strong",
+                    )}
+                  >
+                    {on && <Check size={14} strokeWidth={3} />}
+                  </span>
+                  {EQUIPMENT_LABELS[tag]}
+                </button>
+              );
+            })}
+          </div>
+          {equipment.length === 0 && <p className="text-xs text-danger-text">Mindestens ein Mittel auswählen.</p>}
           <Textarea
             aria-label="Konkrete Geräte"
             value={equipmentDetails}
             onChange={(event) => setEquipmentDetails(event.target.value)}
             rows={2}
             maxLength={500}
-            placeholder="Optional: konkrete Geräte, z. B. Kabelzug, Klimmzugstange…"
+            placeholder="Optional: konkrete Geräte, z. B. Beinpresse, Klimmzugstange…"
           />
         </div>
       )}
 
-      {step === 4 && (
+      {step === 5 && (
         <Choices label="Wie ist dein Erfahrungsgrad?" options={EXPERIENCE_OPTIONS} value={experience} onChange={setExperience} />
       )}
 
-      {step === 5 && (
+      {step === 6 && (
         <Field label="Welche Bereiche möchtest du priorisieren?">
           {(p) => (
             <Textarea {...p} value={priorityMuscles} onChange={(event) => setPriorityMuscles(event.target.value)} rows={3} maxLength={500} placeholder="z. B. Rücken und Beinbeuger; Arme nur erhaltend…" />
@@ -134,7 +199,7 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting }: Props) {
         </Field>
       )}
 
-      {step === 6 && (
+      {step === 7 && (
         <div className="flex flex-col gap-3">
           <Field label="Bevorzugte Übungen (optional)">
             {(p) => (
@@ -149,7 +214,7 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting }: Props) {
         </div>
       )}
 
-      {step === 7 && (
+      {step === 8 && (
         <Field label="Körperliche Einschränkungen? (optional)">
           {(p) => (
             <Textarea {...p} value={limitations} onChange={(e) => setLimitations(e.target.value)} rows={3} placeholder="z. B. Knieprobleme, Rückenschmerzen…" />

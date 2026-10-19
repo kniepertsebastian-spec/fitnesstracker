@@ -57,6 +57,7 @@ import { createCardioLogLocal } from "../offline/cardioLogSync";
 import { detectPRs, prLabels } from "../lib/prDetection";
 import { unlockAudio } from "../lib/timerSound";
 import { formatDuration, formatKg, lastTimeSets, sessionSets } from "../lib/trainingSets";
+import { formatSetsReps } from "../lib/planPrescription";
 import { usePRToastStore } from "../stores/prToastStore";
 import { useTimerStore } from "../stores/timerStore";
 
@@ -264,7 +265,8 @@ export function TrainingPage() {
       }
       unlockAudio();
       if (autoStartEnabled) {
-        startRestTimer(autoStartSeconds, `${entry.exerciseName} · Satz ${setNumber} fertig`);
+        // The plan's own rest (AI plans set it per exercise) wins over the global default.
+        startRestTimer(entry.restSeconds ?? autoStartSeconds, `${entry.exerciseName} · Satz ${setNumber} fertig`);
       }
       // Last set of this exercise → move on to the next one that still has open sets.
       if (doneFor(entry).length + 1 >= setCountFor(entry)) {
@@ -612,7 +614,7 @@ export function TrainingPage() {
                 <ListRow
                   key={e.id}
                   prefix={i + 1}
-                  value={`${setCountFor(e)} × ${e.targetReps ?? "–"}`}
+                  value={formatSetsReps(e, setCountFor(e))}
                   className={isComplete(e) ? "opacity-60" : undefined}
                 >
                   <button

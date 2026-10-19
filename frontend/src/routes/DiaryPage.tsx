@@ -32,8 +32,8 @@ export function DiaryPage() {
   return (
     <AppShell>
       <div className="mb-5 flex items-center justify-between gap-3">
-        <h1 className="text-h1 text-text lg:text-h1-lg">Fitnesstagebuch</h1>
-        <Button variant="primary" iconLeft={<Plus size={18} aria-hidden />} onClick={openCreate}>
+        <h1 className="min-w-0 hyphens-auto break-words text-h1 text-text lg:text-h1-lg">Fitnesstagebuch</h1>
+        <Button variant="primary" iconLeft={<Plus size={18} aria-hidden />} onClick={openCreate} className="shrink-0">
           Satz
         </Button>
       </div>
