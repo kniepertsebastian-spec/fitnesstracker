@@ -23,6 +23,7 @@ import { useAuthBootstrap } from "./hooks/useAuth";
 import { initWorkoutLogSync } from "./offline/workoutLogSync";
 import { initWorkoutSessionSync } from "./offline/workoutSessionSync";
 import { initCardioLogSync } from "./offline/cardioLogSync";
+import { initPlanEditSync } from "./offline/planEditSync";
 
 // No reload prompt while a workout is in focus mode (/training) — it appears right after.
 function GlobalUpdatePrompt() {
@@ -35,6 +36,7 @@ export function App() {
   useEffect(() => initWorkoutLogSync(), []);
   useEffect(() => initWorkoutSessionSync(), []);
   useEffect(() => initCardioLogSync(), []);
+  useEffect(() => initPlanEditSync(), []);
 
   return (
     <BrowserRouter>

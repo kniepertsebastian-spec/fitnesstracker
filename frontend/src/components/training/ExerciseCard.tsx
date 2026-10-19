@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Link2, Plus } from "lucide-react";
+import { BookOpen, Link2, Plus, Repeat2 } from "lucide-react";
 import type { ExerciseDto, PlanDiaryExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../../offline/db";
 import { formatKg } from "../../lib/trainingSets";
@@ -34,6 +34,7 @@ interface Props {
   onUndoSet: (log: LocalWorkoutLog) => void;
   onToggleSuperset: () => void;
   onOpenTechnique: () => void;
+  onSwap: () => void;
 }
 
 function initialValues(entry: PlanDiaryExerciseDto, done: LocalWorkoutLog[], previous: LocalWorkoutLog[]): SetValues {
@@ -63,6 +64,7 @@ export function ExerciseCard({
   onUndoSet,
   onToggleSuperset,
   onOpenTechnique,
+  onSwap,
 }: Props) {
   const [values, setValues] = useState<SetValues>(() => initialValues(entry, done, previous));
 
@@ -90,14 +92,14 @@ export function ExerciseCard({
 
       <div className="mt-3 flex items-start justify-between gap-3">
         <h1 className="text-h1-focus text-text">{entry.exerciseName}</h1>
-        <Button
-          size="sm"
-          variant="ghost"
-          iconLeft={<BookOpen size={16} aria-hidden />}
-          onClick={onOpenTechnique}
-        >
-          Technik
-        </Button>
+        <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row">
+          <Button size="sm" variant="ghost" iconLeft={<Repeat2 size={16} aria-hidden />} onClick={onSwap}>
+            Tauschen
+          </Button>
+          <Button size="sm" variant="ghost" iconLeft={<BookOpen size={16} aria-hidden />} onClick={onOpenTechnique}>
+            Technik
+          </Button>
+        </div>
       </div>
 
       <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-small">

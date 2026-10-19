@@ -38,6 +38,8 @@ export const createPlanExerciseSchema = z.object({
 export type CreatePlanExerciseInput = z.infer<typeof createPlanExerciseSchema>;
 
 export const updatePlanExerciseSchema = z.object({
+  // Swapping the exercise drops its exercise-specific cue and start weight; the replaced exercise
+  // becomes the new alternative.
   exerciseId: z.string().uuid().optional(),
   targetSets: z.number().int().positive().nullable().optional(),
   targetReps: z.number().int().positive().nullable().optional(),
@@ -78,9 +80,21 @@ export type ProgressionSuggestion = z.infer<typeof progressionSuggestionSchema>;
 // A plan exercise plus whether it already has a WorkoutLog entry this week — lets the plan
 // diary (CurrentPlanCard) show a row as already-locked after a reload without the frontend
 // having to re-derive "this week" itself; that boundary is computed once, server-side.
+// A ready-made exercise choice for swapping or adding in the workout — shipped with the weekly
+// status so it works offline.
+export const exerciseOptionSchema = z.object({
+  exerciseId: z.string().uuid(),
+  exerciseName: z.string(),
+  equipment: z.string().nullable(),
+  primaryMuscle: z.string().nullable(),
+});
+export type ExerciseOptionDto = z.infer<typeof exerciseOptionSchema>;
+
 export const planDiaryExerciseDtoSchema = planExerciseDtoSchema.extend({
   loggedThisWeek: z.boolean(),
   progression: progressionSuggestionSchema.nullable(),
+  // Same main muscle, allowed equipment, not already on this day; the plan's alternative first.
+  swapOptions: z.array(exerciseOptionSchema),
 });
 export type PlanDiaryExerciseDto = z.infer<typeof planDiaryExerciseDtoSchema>;
 
@@ -90,6 +104,8 @@ export const planDayStatusDtoSchema = z.object({
   dayLabel: z.string().nullable(),
   exercises: z.array(planDiaryExerciseDtoSchema),
   completed: z.boolean(),
+  // Exercises for the day's muscles that could be added, not already on the day.
+  addOptions: z.array(exerciseOptionSchema),
 });
 export type PlanDayStatusDto = z.infer<typeof planDayStatusDtoSchema>;
 

@@ -9,16 +9,16 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ### P0.1 Plan im Fokusmodus anpassen
 
-- [ ] **Übungen direkt im Training ändern.** Im Fokusmodus („Training starten“) eine Übung des
+- [x] **Übungen direkt im Training ändern.** Im Fokusmodus („Training starten“) eine Übung des
   heutigen Tages austauschen, hinzufügen, entfernen und in der Reihenfolge verschieben, ohne den
   Fokusmodus zu verlassen.
-- [ ] **Austausch-Vorschläge.** Beim Tauschen werden Alternativen mit gleicher Hauptmuskelgruppe
+- [x] **Austausch-Vorschläge.** Beim Tauschen werden Alternativen mit gleicher Hauptmuskelgruppe
   und erlaubtem Equipment angeboten (siehe P0.2), z. B. wenn ein Gerät belegt ist.
-- [ ] **Nur heute oder dauerhaft.** Beim Ändern wählen, ob die Änderung nur für diese Einheit gilt
+- [x] **Nur heute oder dauerhaft.** Beim Ändern wählen, ob die Änderung nur für diese Einheit gilt
   oder in den Plan (Phase + Trainingstag) übernommen wird.
-- [ ] Bereits geloggte Sätze bleiben unverändert; Fortschritt, „Letztes Mal“ und PR-Erkennung
+- [x] Bereits geloggte Sätze bleiben unverändert; Fortschritt, „Letztes Mal“ und PR-Erkennung
   beziehen sich auf die tatsächlich trainierte Übung.
-- [ ] **Offline-fähig** wie das übrige Training: Die Änderung wird lokal gespeichert und
+- [x] **Offline-fähig** wie das übrige Training: Die Änderung wird lokal gespeichert und
   synchronisiert, sobald wieder Netz da ist.
 
 ### P0.2 KI-Plan-Generator: Split und Equipment abfragen
@@ -41,8 +41,8 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 - [x] **Standard für alle neuen Fragebögen:** nur Geräte, Kurzhanteln, Langhantel, Kabelturm und
   Körpergewicht. **Keine** Übungen mit Gymnastikball (`exercise ball`), Medizinball
   (`medicine ball`) oder ähnlichem Kleingerät.
-- [ ] Equipment-Präferenz gilt auch für die Austausch-Vorschläge aus P0.1. (Tages-Challenge ist
-  ohnehin geräte­frei, Ziel-Vorschläge beziehen sich nur auf bereits trainierte Übungen.)
+- [x] Equipment-Präferenz gilt auch für die Austausch-Vorschläge aus P0.1. (Tages-Challenge ist
+  ohnehin gerätefrei, Ziel-Vorschläge beziehen sich nur auf bereits trainierte Übungen.)
 
 ### P0.3 Dehnübungen ohne Partner
 

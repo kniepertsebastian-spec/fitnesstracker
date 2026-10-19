@@ -85,6 +85,7 @@ export async function updatePlanExercise(
     if (duplicate) throw new ConflictError("Exercise already assigned to this training day");
   }
 
+  const swapped = input.exerciseId !== undefined && input.exerciseId !== existing.exerciseId;
   return prisma.planExercise.update({
     where: { id },
     data: {
@@ -92,6 +93,8 @@ export async function updatePlanExercise(
       targetSets: input.targetSets,
       targetReps: input.targetReps,
       order: input.order,
+      // The cue and start weight belong to the old exercise; it becomes the way back.
+      ...(swapped ? { notes: null, startWeightKg: null, alternativeExerciseId: existing.exerciseId } : {}),
     },
     ...withExercise,
   });

@@ -1,6 +1,7 @@
 import type { Exercise, PlanExercise, PrismaClient, TrainingPhase } from "@prisma/client";
 import type { ProgressionSuggestion, WeeklyPlanStatusDto } from "@fitnesstracker/shared";
 import { planExerciseInclude, toPlanExerciseDto } from "./planExercise.types.js";
+import { addOptionsFor, loadOptionPool, swapOptionsFor } from "./exerciseOptions.js";
 
 // Roadmap2 P0.3: "Klare Regeln für Steigerung, Fehlversuche und Deloads." Aufbau/Negativ progress
 // via weight (both are low/moderate-rep, load-driven phases per promptBuilder.ts's
@@ -156,9 +157,13 @@ export async function getWeeklyPlanStatus(
   const trainedExerciseIds = new Set(trainedThisWeek.map((w) => w.exerciseId));
 
   const distinctExerciseIds = [...new Set(entries.map((e) => e.exerciseId))];
-  const recentSetsByExercise = await fetchRecentSetsByExercise(prisma, userId, distinctExerciseIds);
+  const [recentSetsByExercise, pool] = await Promise.all([
+    fetchRecentSetsByExercise(prisma, userId, distinctExerciseIds),
+    loadOptionPool(prisma, userId),
+  ]);
 
-  const toDiaryExercise = (entry: EntryWithExercise) => ({
+  const dayIds = (group: EntryWithExercise[]) => new Set(group.map((e) => e.exerciseId));
+  const toDiaryExercise = (entry: EntryWithExercise, group: EntryWithExercise[]) => ({
     ...toPlanExerciseDto(entry),
     loggedThisWeek: trainedExerciseIds.has(entry.exerciseId),
     progression: computeProgression(
@@ -166,7 +171,10 @@ export async function getWeeklyPlanStatus(
       entry.targetReps,
       recentSetsByExercise.get(entry.exerciseId) ?? [],
     ),
+    swapOptions: swapOptionsFor(pool, entry.exercise.primaryMuscles[0], dayIds(group), entry.alternativeExerciseId),
   });
+  const addOptions = (group: EntryWithExercise[]) =>
+    addOptionsFor(pool, [...new Set(group.flatMap((e) => e.exercise.primaryMuscles.slice(0, 1)))], dayIds(group));
 
   // A single group (Ganzkörper, or a flat manually-curated phase with no AI split at all) has
   // nothing to progress through — always "active", no weekly completion tracking to compute.
@@ -174,8 +182,9 @@ export async function getWeeklyPlanStatus(
     return {
       days: groups.map((g) => ({
         dayLabel: g.dayLabel,
-        exercises: g.entries.map(toDiaryExercise),
+        exercises: g.entries.map((e) => toDiaryExercise(e, g.entries)),
         completed: false,
+        addOptions: addOptions(g.entries),
       })),
       activeDayIndex: 0,
     };
@@ -188,8 +197,9 @@ export async function getWeeklyPlanStatus(
   // advance, which is the same bar either path has to clear.
   const days = groups.map((g) => ({
     dayLabel: g.dayLabel,
-    exercises: g.entries.map(toDiaryExercise),
+    exercises: g.entries.map((e) => toDiaryExercise(e, g.entries)),
     completed: g.entries.every((e) => trainedExerciseIds.has(e.exerciseId)),
+    addOptions: addOptions(g.entries),
   }));
 
   const firstIncomplete = days.findIndex((d) => !d.completed);
