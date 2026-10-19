@@ -23,11 +23,11 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ### P0.2 KI-Plan-Generator: Split und Equipment abfragen
 
-- [ ] **Bevorzugten Split abfragen.** Der Fragebogen fragt aktiv nach dem Split (z. B.
+- [x] **Bevorzugten Split abfragen.** Der Fragebogen fragt aktiv nach dem Split (z. B.
   Ganzkörper, Ober-/Unterkörper, Push/Pull/Beine, Bro-Split, „egal – KI entscheidet“), statt ihn
   nur aus der Trainingshäufigkeit abzuleiten (`SPLIT_TEMPLATES` in `promptBuilder.ts`). Die
   Auswahl wird gespeichert und bei der nächsten Generierung vorbelegt.
-- [ ] **Erlaubtes Equipment als Mehrfachauswahl** statt der drei Pauschalwerte
+- [x] **Erlaubtes Equipment als Mehrfachauswahl** statt der drei Pauschalwerte
   `homegym | dumbbells | fullgym`:
   - Geräte/Maschinen
   - Kurzhanteln
@@ -35,41 +35,41 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
   - Kabelturm
   - Ohne Geräte (Körpergewicht)
   - optional: Kettlebells, Bänder, Medizinball, Gymnastikball, Foam Roller, Sonstiges
-- [ ] **Ausschlüsse ausdrücklich abfragen** („Mit welchen Mitteln möchtest du keine Übungen?“).
+- [x] **Ausschlüsse ausdrücklich abfragen** („Mit welchen Mitteln möchtest du keine Übungen?“).
   Ausgeschlossenes Equipment wird hart herausgefiltert: im Kandidatenkatalog vor dem Prompt
   und zusätzlich in der Validierung der KI-Antwort, damit die KI nichts davon vorschlagen kann.
-- [ ] **Standard für diesen Account:** nur Geräte, Kurzhanteln, Langhantel, Kabelturm und
+- [x] **Standard für alle neuen Fragebögen:** nur Geräte, Kurzhanteln, Langhantel, Kabelturm und
   Körpergewicht. **Keine** Übungen mit Gymnastikball (`exercise ball`), Medizinball
   (`medicine ball`) oder ähnlichem Kleingerät.
-- [ ] Equipment-Präferenz gilt auch für die Tages-Challenge, die Ziel-Vorschläge und die
-  Austausch-Vorschläge aus P0.1.
+- [ ] Equipment-Präferenz gilt auch für die Austausch-Vorschläge aus P0.1. (Tages-Challenge ist
+  ohnehin geräte­frei, Ziel-Vorschläge beziehen sich nur auf bereits trainierte Übungen.)
 
 ### P0.3 Dehnübungen ohne Partner
 
-- [ ] **Partner-Dehnübungen streichen.** Dehnübungen, für die zwei Personen nötig sind (im
+- [x] **Partner-Dehnübungen streichen.** Dehnübungen, für die zwei Personen nötig sind (im
   free-exercise-db-Katalog z. B. Namen mit „Partner“ / „with partner“ / „assisted“), werden aus der
   Dehnplan-Auswahl (`stretching.service.ts`, `stretchSelection.ts`), der Daily-Dehnroutine und
   der KI-Dehnplan-Erstellung ausgeschlossen.
-- [ ] Bestehende Dehnpläne bereinigen (Migration oder einmaliges Neu-Erzeugen betroffener Tage).
-- [ ] Test: Kein Partner-Stretch landet mehr in einem generierten oder vorgeschlagenen Plan.
+- [x] Bestehende Dehnpläne bereinigen (Migration oder einmaliges Neu-Erzeugen betroffener Tage).
+- [x] Test: Kein Partner-Stretch landet mehr in einem generierten oder vorgeschlagenen Plan.
 
 ### P0.4 KI-Plan-Generator: Qualität und Kontrolle
 
-- [ ] **Ausgewogener Übungskatalog für den Prompt.** Bisher gingen die ersten 150 Übungen in
+- [x] **Ausgewogener Übungskatalog für den Prompt.** Bisher gingen die ersten 150 Übungen in
   Datenbank-Reihenfolge an die KI (bei „Vollausgestattetes Studio“ praktisch A–C; Beinpresse,
   Latzug, Rudern am Kabel, Klimmzüge, Rumänisches Kreuzheben fehlten). Neu: je Muskelgruppe
   eine feste Anzahl, bevorzugt Grundübungen und bereits geloggte Übungen.
-- [ ] **KI-Zusatzinfos speichern statt verwerfen:** Wiederholungsbereich, Ziel-RIR, Satzpause,
+- [x] **KI-Zusatzinfos speichern statt verwerfen:** Wiederholungsbereich, Ziel-RIR, Satzpause,
   Technik-Hinweis und Alternativübung je Plan-Übung; Begründung des Plans anzeigen. Die
   Satzpause startet den Pausen-Timer, die Alternative dient dem Übungstausch (P0.1).
-- [ ] **Vorschau vor dem Übernehmen.** Der generierte Plan ist zuerst ein Entwurf: übernehmen,
+- [x] **Vorschau vor dem Übernehmen.** Der generierte Plan ist zuerst ein Entwurf: übernehmen,
   verwerfen oder einzelne Tage neu generieren. Der vorherige Plan bleibt einmal
   wiederherstellbar.
-- [ ] **Fragebogen-Antworten speichern** und beim nächsten Mal vorbelegen (bisher jedes Mal
+- [x] **Fragebogen-Antworten speichern** und beim nächsten Mal vorbelegen (bisher jedes Mal
   „Homegym“ + „Anfänger“).
-- [ ] **Antwort prüfen:** Übungsanzahl je Tag, keine Duplikate am selben Tag; fehlende Einträge
+- [x] **Antwort prüfen:** Übungsanzahl je Tag, keine Duplikate am selben Tag; fehlende Einträge
   aus dem Katalog passend zum Tagesfokus auffüllen.
-- [ ] **Startgewicht vorschlagen** aus den Bestleistungen der letzten 8 Wochen.
+- [x] **Startgewicht vorschlagen** aus den Bestleistungen der letzten 8 Wochen.
 
 ---
 

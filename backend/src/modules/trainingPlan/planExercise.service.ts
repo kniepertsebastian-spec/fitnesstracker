@@ -1,8 +1,9 @@
 import type { PrismaClient, TrainingPhase } from "@prisma/client";
 import type { CreatePlanExerciseInput, UpdatePlanExerciseInput } from "@fitnesstracker/shared";
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
+import { planExerciseInclude } from "./planExercise.types.js";
 
-const withExercise = { include: { exercise: true } } as const;
+const withExercise = { include: planExerciseInclude } as const;
 
 export function listPlanExercises(prisma: PrismaClient, userId: string, phase: TrainingPhase) {
   return prisma.planExercise.findMany({

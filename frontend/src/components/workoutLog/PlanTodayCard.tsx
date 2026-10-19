@@ -7,6 +7,7 @@ import { useOpenWorkoutSession } from "../../hooks/useWorkoutSession";
 import { useWorkoutLogs } from "../../hooks/useWorkoutLogs";
 import { isToday } from "../../lib/dates";
 import { ButtonLink, Card, ListRow, SegmentedControl } from "../ui";
+import { formatSetsReps } from "../../lib/planPrescription";
 
 // Today's plan as list rows (name, planned sets × reps, sets logged today). Logging itself
 // happens in the focus mode (/training) — the diary keeps freely logging and correcting sets.
@@ -55,7 +56,7 @@ export function PlanTodayCard() {
           const done = todays.filter((l) => l.exerciseId === e.exerciseId).length;
           const planned = e.targetSets ?? 3;
           return (
-            <ListRow key={e.id} prefix={i + 1} value={`${planned} × ${e.targetReps ?? "–"}`}>
+            <ListRow key={e.id} prefix={i + 1} value={formatSetsReps(e, planned)}>
               <div className="flex items-center justify-between gap-2">
                 <Link to={`/exercises/${e.exerciseId}`} className="min-w-0 truncate hover:text-accent">
                   {e.exerciseName}

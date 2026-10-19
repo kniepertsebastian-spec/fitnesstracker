@@ -5,6 +5,7 @@ import type { LocalWorkoutLog } from "../../offline/db";
 import { formatKg } from "../../lib/trainingSets";
 import { Badge, Button, Card, SegmentedControl, SetCheck, Stepper, cn } from "../ui";
 import type { SetCheckState } from "../ui";
+import { formatPrescription } from "../../lib/planPrescription";
 
 const PROGRESSION_LABEL: Record<TrainingPhase, string> = {
   AUFBAU: "Gewicht steigern",
@@ -41,7 +42,7 @@ function initialValues(entry: PlanDiaryExerciseDto, done: LocalWorkoutLog[], pre
   const p = entry.progression;
   const prev = previous[0];
   return {
-    weightKg: p ? p.suggestedWeightKg : (prev?.weightKg ?? 0),
+    weightKg: p ? p.suggestedWeightKg : (prev?.weightKg ?? entry.startWeightKg ?? 0),
     reps: p ? p.suggestedReps : (entry.targetReps ?? prev?.reps ?? 10),
     rir: null,
   };
@@ -100,6 +101,12 @@ export function ExerciseCard({
       </div>
 
       <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-small">
+        {(entry.repRangeMax !== null || entry.restSeconds !== null) && (
+          <div className="flex gap-1.5">
+            <dt className="text-text-subtle">Ziel</dt>
+            <dd className="tabular font-mono text-text-2">{formatPrescription(entry)}</dd>
+          </div>
+        )}
         <div className="flex gap-1.5">
           <dt className="text-text-subtle">Letztes Mal</dt>
           <dd className="tabular font-mono text-text-2">
@@ -115,6 +122,7 @@ export function ExerciseCard({
           </div>
         )}
       </dl>
+      {entry.notes && <p className="mt-2 text-small text-text-subtle">{entry.notes}</p>}
 
       <div className="mt-4">
         <div className="grid grid-cols-[2rem_1fr_1fr_1fr_3rem] items-center gap-2 px-1 pb-2 text-overline uppercase text-text-faint">

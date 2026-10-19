@@ -8,6 +8,7 @@ import { cardioMinutes, matchDay, stretchMinutes } from "../../lib/dayPlan";
 import type { LocalWorkoutSession } from "../../offline/db";
 import { StartTrainingButton } from "../layout/StartTrainingButton";
 import { Badge, ButtonLink, Callout, Card, ListRow } from "../ui";
+import { formatSetsReps } from "../../lib/planPrescription";
 
 interface Props {
   plan: TrainingPlanDto | undefined;
@@ -129,7 +130,7 @@ export function HeroCard({ plan, status, session, lastTrainedDaysAgo }: Props) {
 
       <div className="mt-3">
         {shown.map((e, i) => (
-          <ListRow key={e.id} prefix={i + 1} value={`${e.targetSets ?? 3} × ${e.targetReps ?? "–"}`}>
+          <ListRow key={e.id} prefix={i + 1} value={formatSetsReps(e, e.targetSets ?? 3)}>
             {e.exerciseName}
           </ListRow>
         ))}

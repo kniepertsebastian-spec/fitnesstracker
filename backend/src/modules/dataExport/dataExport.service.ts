@@ -5,7 +5,7 @@ import { listGoals, computeCurrentValue } from "../goals/goal.service.js";
 import { toGoalDto } from "../goals/goal.types.js";
 import { getCurrentTrainingPlan } from "../trainingPlan/trainingPlan.service.js";
 import { toTrainingPlanDto } from "../trainingPlan/trainingPlan.types.js";
-import { toPlanExerciseDto } from "../trainingPlan/planExercise.types.js";
+import { planExerciseInclude, toPlanExerciseDto } from "../trainingPlan/planExercise.types.js";
 import { listEntries } from "../bodyComposition/bodyComposition.service.js";
 import { toBodyCompositionEntryDto } from "../bodyComposition/bodyComposition.types.js";
 import { toCardioLogDto } from "../cardioLogs/cardioLog.types.js";
@@ -52,7 +52,7 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     getCurrentTrainingPlan(prisma, userId),
     prisma.planExercise.findMany({
       where: { userId },
-      include: { exercise: true },
+      include: planExerciseInclude,
       orderBy: [{ phase: "asc" }, { order: "asc" }],
     }),
     listEntries(prisma, userId),

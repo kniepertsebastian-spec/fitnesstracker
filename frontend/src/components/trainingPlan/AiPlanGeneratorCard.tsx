@@ -4,21 +4,36 @@ import { Sparkles } from "lucide-react";
 import type { ColdStartInput, TrainingPhase } from "@fitnesstracker/shared";
 import { ApiError } from "../../api/client";
 import { useAiSettings } from "../../hooks/useAiSettings";
-import { useGeneratePlan } from "../../hooks/useAiPlanGenerator";
+import {
+  useAcceptPlanDraft,
+  useDiscardPlanDraft,
+  useGeneratePlan,
+  usePlanDraftState,
+  usePlanPreferences,
+  useRestorePlanBackup,
+} from "../../hooks/useAiPlanGenerator";
 import { PROVIDER_OPTIONS } from "../settings/AiKeyCard";
 import { Badge, Button, Callout, Card, Skeleton } from "../ui";
 import { ColdStartModal } from "./ColdStartModal";
+import { PlanDraftPreview } from "./PlanDraftPreview";
 
-// "Plan generieren" for the selected phase. The provider/API key itself is managed in the
-// Settings ("KI-Schlüssel"). The questionnaire opens for every generation so current
-// goals/preferences can be combined with any existing workout history.
+const errorText = (err: unknown, fallback: string) => (err instanceof ApiError ? err.message : fallback);
+
+// Generating never replaces the plan directly: it produces a draft shown for review, which is
+// then accepted (the replaced plan stays restorable once) or discarded.
 export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
   const { data: settings, isLoading } = useAiSettings();
+  const { data: prefsData } = usePlanPreferences();
+  const { data: draftState } = usePlanDraftState(phase);
   const generatePlan = useGeneratePlan();
+  const acceptDraft = useAcceptPlanDraft(phase);
+  const discardDraft = useDiscardPlanDraft(phase);
+  const restoreBackup = useRestorePlanBackup(phase);
 
   const [coldStartOpen, setColdStartOpen] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [generatedCount, setGeneratedCount] = useState<number | null>(null);
+  const [busyDay, setBusyDay] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (isLoading || !settings) {
     return (
@@ -36,20 +51,33 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
     );
   }
 
-  const runGenerate = async (coldStart?: ColdStartInput) => {
-    setGenerateError(null);
-    setGeneratedCount(null);
+  const preferences = prefsData?.preferences ?? null;
+  const draft = draftState?.draft ?? null;
+  const busy = generatePlan.isPending || acceptDraft.isPending || discardDraft.isPending || restoreBackup.isPending;
+
+  const runGenerate = async (coldStart?: ColdStartInput, day?: string) => {
+    setError(null);
+    setNotice(null);
+    setBusyDay(day ?? null);
     try {
-      const result = await generatePlan.mutateAsync({ phase, coldStart });
-      if (result.status === "needs_cold_start") {
-        setColdStartOpen(true);
-      } else {
-        setColdStartOpen(false);
-        setGeneratedCount(result.items.length);
-      }
+      const result = await generatePlan.mutateAsync({ phase, coldStart, day });
+      setColdStartOpen(result.status === "needs_cold_start");
     } catch (err) {
       setColdStartOpen(false);
-      setGenerateError(err instanceof ApiError ? err.message : "Plan konnte nicht generiert werden.");
+      setError(errorText(err, "Plan konnte nicht generiert werden."));
+    } finally {
+      setBusyDay(null);
+    }
+  };
+
+  const run = async (action: () => Promise<unknown>, success: string, fallback: string) => {
+    setError(null);
+    setNotice(null);
+    try {
+      await action();
+      setNotice(success);
+    } catch (err) {
+      setError(errorText(err, fallback));
     }
   };
 
@@ -71,29 +99,67 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
         </Link>
       </p>
 
-      <Button
-        variant="primary"
-        fullWidth
-        className="mt-3"
-        disabled={!settings.hasApiKey || generatePlan.isPending}
-        onClick={() => setColdStartOpen(true)}
-      >
-        {generatePlan.isPending ? "Generiert…" : "Plan konfigurieren & generieren"}
-      </Button>
+      {!draft && (
+        <div className="mt-3 flex flex-col gap-2">
+          <Button
+            variant="primary"
+            fullWidth
+            disabled={!settings.hasApiKey || busy}
+            onClick={() => setColdStartOpen(true)}
+          >
+            {generatePlan.isPending ? "Generiert…" : preferences ? "Antworten prüfen & generieren" : "Plan konfigurieren & generieren"}
+          </Button>
+          {preferences && (
+            <Button
+              variant="secondary"
+              fullWidth
+              disabled={!settings.hasApiKey || busy}
+              onClick={() => runGenerate()}
+            >
+              Mit gespeicherten Antworten generieren
+            </Button>
+          )}
+          {draftState?.hasBackup && (
+            <Button
+              variant="ghost"
+              fullWidth
+              disabled={busy}
+              onClick={() => run(() => restoreBackup.mutateAsync(), "Vorheriger Plan wiederhergestellt.", "Wiederherstellen fehlgeschlagen.")}
+            >
+              Vorherigen Plan wiederherstellen
+            </Button>
+          )}
+        </div>
+      )}
 
-      {generateError && (
+      {error && (
         <Callout tone="danger" className="mt-3">
-          {generateError}
+          {error}
         </Callout>
       )}
-      {generatedCount !== null && (
+      {notice && (
         <Callout tone="info" className="mt-3">
-          {generatedCount} Übungen generiert.
+          {notice}{" "}
+          <Link to="/plan" className="text-accent hover:text-accent-hover">
+            Zum Plan
+          </Link>
         </Callout>
+      )}
+
+      {draft && (
+        <PlanDraftPreview
+          draft={draft}
+          busyDay={busyDay}
+          disabled={busy}
+          onRegenerateDay={(day) => runGenerate(undefined, day)}
+          onAccept={() => run(() => acceptDraft.mutateAsync(), "Plan übernommen.", "Übernehmen fehlgeschlagen.")}
+          onDiscard={() => run(() => discardDraft.mutateAsync(), "Entwurf verworfen.", "Verwerfen fehlgeschlagen.")}
+        />
       )}
 
       {coldStartOpen && (
         <ColdStartModal
+          initial={preferences}
           isSubmitting={generatePlan.isPending}
           onCancel={() => setColdStartOpen(false)}
           onSubmit={(coldStart) => runGenerate(coldStart)}

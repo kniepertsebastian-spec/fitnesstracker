@@ -79,35 +79,35 @@ enum WorkoutSessionStatus {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  displayName  String?
+  id                               String    @id @default(uuid())
+  email                            String    @unique
+  passwordHash                     String
+  displayName                      String?
   // Per-reminder-type opt-out — a browser push subscription is a single endpoint shared by every
   // reminder kind this app sends, so without these a user can't turn off just one kind (e.g.
   // photo nudges) while keeping the others. Default true preserves existing subscribers' current
   // behavior (get everything) until they explicitly opt out of something (see Phase 30).
-  remindPhaseChange    Boolean  @default(true)
-  remindSupplements    Boolean  @default(true)
-  remindProgressPhoto  Boolean  @default(true)
+  remindPhaseChange                Boolean   @default(true)
+  remindSupplements                Boolean   @default(true)
+  remindProgressPhoto              Boolean   @default(true)
   // Added for the additionals-roadmap P1.7 full notification-category set — Training/Progress/
   // Challenges/System, "der Nutzer entscheidet selbst, welche Kategorien aktiviert sind".
   // remindSyncErrors/remindAppUpdates are opt-out flags with no current sender: a sync failure is
   // already known locally while the app is open (nothing for a push to add), and app-update
   // pushes need a deploy-triggered broadcast mechanism that doesn't exist yet (see roadmap P0.6).
   // Both stay here, ready, rather than added later as a second migration.
-  remindWorkout          Boolean   @default(true)
-  remindPersonalRecords  Boolean   @default(true)
-  remindGoalAchievements Boolean   @default(true)
-  remindDailyChallenge   Boolean   @default(true)
-  remindSyncErrors       Boolean   @default(true)
-  remindAppUpdates       Boolean   @default(true)
+  remindWorkout                    Boolean   @default(true)
+  remindPersonalRecords            Boolean   @default(true)
+  remindGoalAchievements           Boolean   @default(true)
+  remindDailyChallenge             Boolean   @default(true)
+  remindSyncErrors                 Boolean   @default(true)
+  remindAppUpdates                 Boolean   @default(true)
   // Same "at most once per local day" marker pattern as Supplement.lastRemindedOn, just scoped
   // to the user instead of a per-supplement row.
   lastWorkoutReminderSentOn        DateTime? @db.Date
   lastDailyChallengeReminderSentOn DateTime? @db.Date
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt                        DateTime  @default(now())
+  updatedAt                        DateTime  @updatedAt
 
   refreshTokens          RefreshToken[]
   workoutLogs            WorkoutLog[]
@@ -121,6 +121,9 @@ model User {
   bodyAnalyses           BodyAnalysis[]
   progressPhotos         ProgressPhoto[]
   planExercises          PlanExercise[]
+  planSnapshots          PlanSnapshot[]
+  // Last answers of the AI plan questionnaire (ColdStartInput), prefilled on the next run.
+  aiPlanPreferences      Json?
   aiProviderSetting      AiProviderSetting?
   cardioLogs             CardioLog[]
   workoutSessions        WorkoutSession[]
@@ -157,41 +160,42 @@ model RefreshToken {
 }
 
 model Exercise {
-  id          String   @id @default(uuid())
-  name        String
+  id               String   @id @default(uuid())
+  name             String
   // German display name, shown in the UI instead of `name` when present. Kept separate from
   // `name` (not overwritten in place) because re-importing a source overwrites `name` from the
   // upstream English dataset on every run — see exercise.service.ts's importExercisesFromSource.
-  nameDe      String?
+  nameDe           String?
   // Execution technique description. For imported exercises this is the source's
   // instructions joined into one text; edit freely afterwards.
-  description String?
+  description      String?
   // No free/open source used so far ships actual video — left for manual curation or a
   // future source adapter that provides one.
-  videoUrl    String?
-  imageUrls   String[] @default([])
-  equipment   String?
-  category    String?
+  videoUrl         String?
+  imageUrls        String[] @default([])
+  equipment        String?
+  category         String?
   primaryMuscles   String[] @default([])
   secondaryMuscles String[] @default([])
   // Provenance for idempotent re-imports, e.g. source="free-exercise-db", sourceId="3_4_Sit-Up".
   // Manually created exercises leave both null; Postgres allows unlimited NULL/NULL pairs
   // under a unique index, so this doesn't collide with imported rows.
-  source      String?
-  sourceId    String?
+  source           String?
+  sourceId         String?
   // Soft-deactivate instead of hard delete: an exercise in active use (referenced by a
   // WorkoutLog/PlanExercise/Goal) can never be hard-deleted (FK RESTRICT), so retiring one from
   // future use needs a flag rather than a row removal. Deactivated exercises are excluded from
   // pickers by default (see exercise.service.ts's listExercises) but stay fully intact for any
   // historical WorkoutLog/PlanExercise/Goal that already references them.
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   workoutLogs         WorkoutLog[]
   goals               Goal[]
   dailyChallengeItems DailyChallengeItem[]
   planExercises       PlanExercise[]
+  alternativeFor      PlanExercise[]       @relation("PlanExerciseAlternative")
   stretchPlanItems    StretchPlanItem[]
 
   @@unique([source, sourceId])
@@ -199,24 +203,24 @@ model Exercise {
 }
 
 model WorkoutLog {
-  id          String    @id @default(uuid())
+  id              String    @id @default(uuid())
   // Client-generated UUID, used as an idempotency key for the future offline-sync queue.
-  clientId    String    @unique
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exerciseId  String
-  exercise    Exercise  @relation(fields: [exerciseId], references: [id])
-  setNumber   Int
-  reps        Int
-  weightKg    Decimal   @db.Decimal(6, 2)
+  clientId        String    @unique
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId      String
+  exercise        Exercise  @relation(fields: [exerciseId], references: [id])
+  setNumber       Int
+  reps            Int
+  weightKg        Decimal   @db.Decimal(6, 2)
   // Reps In Reserve at the end of the set (0 = to failure). Optional — most historical rows and
   // casual logging won't set it; only used to compute a more informed 1RM estimate client-side.
-  rir         Int?
-  performedAt DateTime  @default(now())
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  rir             Int?
+  performedAt     DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   // Soft delete so offline clients can sync tombstones instead of losing deletes.
-  deletedAt   DateTime?
+  deletedAt       DateTime?
   // Client-generated UUID shared by sets logged as one superset/drop-set round — same
   // client-owns-the-id pattern as `clientId`, since grouping is decided at log time on the
   // client, not inferred after the fact from timestamps.
@@ -228,27 +232,27 @@ model WorkoutLog {
 
 // Roadmap: 8-week auto-rotating training focus (Aufbau -> Muskelausdauer -> Negativ -> Aufbau).
 model TrainingPlan {
-  id             String        @id @default(uuid())
-  userId         String        @unique
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  currentPhase   TrainingPhase @default(AUFBAU)
+  id                  String        @id @default(uuid())
+  userId              String        @unique
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentPhase        TrainingPhase @default(AUFBAU)
   // Always a Monday; the scheduler advances the phase 8 weeks after this date.
-  phaseStartedOn DateTime
+  phaseStartedOn      DateTime
   // Set while the rotation clock is paused (injury, vacation, ...) — the scheduler and the lazy
   // per-request rotation both skip a plan entirely while this is set. Resuming shifts
   // `phaseStartedOn` forward by the paused duration so the remaining time-to-rotation is
   // preserved instead of the pause silently eating into the 8-week cycle.
-  pausedAt       DateTime?
+  pausedAt            DateTime?
   // Extra weeks added to the *current* phase via "+1 Woche" (phase length = 8 + extensionWeeks);
   // reset to 0 whenever the phase rotates or is restarted.
-  extensionWeeks Int           @default(0)
+  extensionWeeks      Int           @default(0)
   // F9: drives the rule-based cardio suggestion (cardioSuggestion.ts). Null until chosen.
-  trainingGoal   TrainingGoal?
-  remarks              String?
-  detectedAsymmetries  String[] @default([])
-  asymmetryAnalyzedAt  DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  trainingGoal        TrainingGoal?
+  remarks             String?
+  detectedAsymmetries String[]      @default([])
+  asymmetryAnalyzedAt DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
   phaseHistory TrainingPlanPhaseHistory[]
 }
@@ -271,24 +275,34 @@ model TrainingPlanPhaseHistory {
 // by a specific TrainingPlan rotation instance, since the same phase recurs every 8-week cycle
 // and the assigned exercises should still be there next time it comes around.
 model PlanExercise {
-  id         String        @id @default(uuid())
-  userId     String
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  phase      TrainingPhase
-  exerciseId String
-  exercise   Exercise      @relation(fields: [exerciseId], references: [id])
-  targetSets Int?
-  targetReps Int?
+  id                    String        @id @default(uuid())
+  userId                String
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phase                 TrainingPhase
+  exerciseId            String
+  exercise              Exercise      @relation(fields: [exerciseId], references: [id])
+  targetSets            Int?
+  targetReps            Int?
   // Manual position within the phase's list; new entries append after the current max. For
   // AI-generated entries this is the position within `dayLabel`, not a global index across the
   // whole phase.
-  order      Int           @default(0)
+  order                 Int           @default(0)
   // Which split day (e.g. "Push (Brust, Schultern, Trizeps)") this entry belongs to — set only
   // by the AI plan generator for a multi-day split. Null for manually added entries and for a
   // single-day ("Ganzkörper") plan, which has nothing to group by.
-  dayLabel   String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  dayLabel              String?
+  // Coaching details the AI generator returns per exercise (all optional, manual entries leave
+  // them empty). targetReps stays the progression target and equals repRangeMax for AI entries.
+  repRangeMin           Int?
+  repRangeMax           Int?
+  targetRir             Int?
+  restSeconds           Int?
+  notes                 String?
+  startWeightKg         Decimal?      @db.Decimal(6, 2)
+  alternativeExerciseId String?
+  alternativeExercise   Exercise?     @relation("PlanExerciseAlternative", fields: [alternativeExerciseId], references: [id], onDelete: SetNull)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   @@unique([userId, phase, exerciseId, dayLabel])
   @@index([userId, phase, order])
@@ -511,4 +525,25 @@ model CardioPlanDay {
   updatedAt DateTime      @updatedAt
 
   @@unique([userId, phase, dayLabel])
+}
+
+enum PlanSnapshotKind {
+  DRAFT
+  BACKUP
+}
+
+// An AI-generated plan waiting for review (DRAFT) or the plan it replaced (BACKUP, restorable
+// once). Items are stored as JSON (PlanDraftItemDto[]) — they are never queried individually.
+model PlanSnapshot {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phase     TrainingPhase
+  kind      PlanSnapshotKind
+  days      String[]         @default([])
+  items     Json
+  rationale String?
+  createdAt DateTime         @default(now())
+
+  @@unique([userId, phase, kind])
 }
