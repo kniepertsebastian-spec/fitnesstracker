@@ -53,6 +53,24 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 - [ ] Bestehende Dehnpläne bereinigen (Migration oder einmaliges Neu-Erzeugen betroffener Tage).
 - [ ] Test: Kein Partner-Stretch landet mehr in einem generierten oder vorgeschlagenen Plan.
 
+### P0.4 KI-Plan-Generator: Qualität und Kontrolle
+
+- [ ] **Ausgewogener Übungskatalog für den Prompt.** Bisher gingen die ersten 150 Übungen in
+  Datenbank-Reihenfolge an die KI (bei „Vollausgestattetes Studio“ praktisch A–C; Beinpresse,
+  Latzug, Rudern am Kabel, Klimmzüge, Rumänisches Kreuzheben fehlten). Neu: je Muskelgruppe
+  eine feste Anzahl, bevorzugt Grundübungen und bereits geloggte Übungen.
+- [ ] **KI-Zusatzinfos speichern statt verwerfen:** Wiederholungsbereich, Ziel-RIR, Satzpause,
+  Technik-Hinweis und Alternativübung je Plan-Übung; Begründung des Plans anzeigen. Die
+  Satzpause startet den Pausen-Timer, die Alternative dient dem Übungstausch (P0.1).
+- [ ] **Vorschau vor dem Übernehmen.** Der generierte Plan ist zuerst ein Entwurf: übernehmen,
+  verwerfen oder einzelne Tage neu generieren. Der vorherige Plan bleibt einmal
+  wiederherstellbar.
+- [ ] **Fragebogen-Antworten speichern** und beim nächsten Mal vorbelegen (bisher jedes Mal
+  „Homegym“ + „Anfänger“).
+- [ ] **Antwort prüfen:** Übungsanzahl je Tag, keine Duplikate am selben Tag; fehlende Einträge
+  aus dem Katalog passend zum Tagesfokus auffüllen.
+- [ ] **Startgewicht vorschlagen** aus den Bestleistungen der letzten 8 Wochen.
+
 ---
 
 ## P1 – Kritisch (Kernnutzen im Studio)
@@ -133,6 +151,16 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
   bestätigen.
 - [ ] Eigenen Timer-Sound als Blob in IndexedDB statt als Data-URL im localStorage speichern.
 - [ ] Skeleton der App-Shell statt „Lädt…“ beim Offline-Kaltstart (`ProtectedRoute`).
+
+---
+
+## P3b – KI-Generator Ausbau
+
+- [ ] Alle drei Rotationsphasen in einem Durchgang generieren; Hauptübungen bleiben über die
+  Phasen gleich, nur Sätze/Wiederholungen/Tempo wechseln.
+- [ ] Plateau-Erkennung (aus den Ziel-Vorschlägen) nutzen: stagnierende Übungen durch Varianten
+  ersetzen.
+- [ ] Cardio und Dehnen im selben Fragebogen planen.
 
 ---
 

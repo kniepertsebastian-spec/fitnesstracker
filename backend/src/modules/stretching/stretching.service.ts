@@ -16,6 +16,7 @@ import {
   DEFAULT_HOLD_SECONDS,
   pickDailyStretches,
   pickStretchesForMuscles,
+  isPartnerStretch,
   rankMuscles,
   type StretchCandidate,
 } from "./stretchSelection.js";
@@ -30,15 +31,17 @@ async function loadStretchCandidates(prisma: PrismaClient): Promise<StretchCandi
     where: { isActive: true, category: { equals: STRETCH_CATEGORY, mode: "insensitive" } },
     orderBy: { name: "asc" },
   });
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    nameDe: r.nameDe,
-    description: r.description,
-    imageUrls: r.imageUrls,
-    primaryMuscles: r.primaryMuscles,
-    secondaryMuscles: r.secondaryMuscles,
-  }));
+  return rows
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      nameDe: r.nameDe,
+      description: r.description,
+      imageUrls: r.imageUrls,
+      primaryMuscles: r.primaryMuscles,
+      secondaryMuscles: r.secondaryMuscles,
+    }))
+    .filter((c) => !isPartnerStretch(c));
 }
 
 function toItemDto(
@@ -99,7 +102,8 @@ export async function getStretchPlan(
   ]);
 
   const days: StretchDayDto[] = planDays.map((day) => {
-    const savedForDay = saved.filter((s) => s.dayLabel === (day.dayLabel ?? ""));
+    // Saved AI plans may predate the partner filter — never show those items.
+    const savedForDay = saved.filter((s) => s.dayLabel === (day.dayLabel ?? "") && !isPartnerStretch(s.exercise));
     if (savedForDay.length > 0) {
       return {
         dayLabel: day.dayLabel,

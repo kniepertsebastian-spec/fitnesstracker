@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { pickDailyStretches, pickStretchesForMuscles, rankMuscles, type StretchCandidate } from "./stretchSelection.js";
+import {
+  isPartnerStretch,
+  pickDailyStretches,
+  pickStretchesForMuscles,
+  rankMuscles,
+  type StretchCandidate,
+} from "./stretchSelection.js";
 
 function stretch(id: string, primary: string[], secondary: string[] = []): StretchCandidate {
   return { id, name: id, nameDe: null, description: null, imageUrls: [], primaryMuscles: primary, secondaryMuscles: secondary };
@@ -47,5 +53,17 @@ describe("pickDailyStretches", () => {
     const picked = pickDailyStretches(catalog, "shoulders", "2026-10-05");
     expect(picked.length).toBeGreaterThan(0);
     for (const p of picked) expect([...p.primaryMuscles, ...p.secondaryMuscles]).toContain("shoulders");
+  });
+});
+
+describe("isPartnerStretch", () => {
+  it("flags stretches whose instructions need a partner", () => {
+    expect(isPartnerStretch({ name: "Seated Hamstring", description: "Have your partner stand behind you." })).toBe(true);
+    expect(isPartnerStretch({ name: "Partner Chest Stretch", description: null })).toBe(true);
+  });
+
+  it("keeps self-assisted stretches", () => {
+    expect(isPartnerStretch({ name: "Side Neck Stretch", description: "Assist stretch with a gentle pull." })).toBe(false);
+    expect(isPartnerStretch({ name: "Chest Stretch", description: null })).toBe(false);
   });
 });

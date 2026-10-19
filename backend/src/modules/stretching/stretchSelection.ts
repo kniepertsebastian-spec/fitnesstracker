@@ -10,6 +10,15 @@ export interface StretchCandidate {
   secondaryMuscles: string[];
 }
 
+// free-exercise-db has a handful of partner stretches ("Have your partner hold your feet…").
+// They can't be done alone, so they never belong in a routine. The catalog has no field for it,
+// only the instructions say so — the text check is the whole signal.
+const PARTNER_PATTERN = /\bpartner/i;
+
+export function isPartnerStretch(c: Pick<StretchCandidate, "name" | "description">): boolean {
+  return PARTNER_PATTERN.test(c.name) || PARTNER_PATTERN.test(c.description ?? "");
+}
+
 export const DEFAULT_HOLD_SECONDS = 30;
 const MAX_ITEMS_PER_DAY = 6;
 const DAILY_ITEMS = 5;
