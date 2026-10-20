@@ -228,6 +228,8 @@ model WorkoutLog {
 
   @@index([userId, performedAt])
   @@index([userId, supersetGroupId])
+  // Delta sync: "what changed since" (workoutLog.service.ts listWorkoutLogChanges).
+  @@index([userId, updatedAt])
 }
 
 // Roadmap: 8-week auto-rotating training focus (Aufbau -> Muskelausdauer -> Negativ -> Aufbau).

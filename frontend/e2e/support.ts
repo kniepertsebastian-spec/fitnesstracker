@@ -57,6 +57,10 @@ export async function login(page: Page, user: E2eUser): Promise<string> {
   // (not goto) so the in-memory access token survives.
   await openNav(page, "Fitnesstagebuch");
   await page.waitForURL("/diary");
+  // The diary is a lazy chunk that loads its data on mount, and `waitForURL` returns as soon as
+  // the URL changes. Let that settle: tests that go offline right after login would otherwise
+  // abort the page's own first requests (e.g. the exercise list the create dialog needs).
+  await page.waitForLoadState("networkidle");
   const body = await response.json();
   return body.accessToken as string;
 }
@@ -99,8 +103,13 @@ export async function goOnline(page: Page, context: BrowserContext) {
 // Clicks a main-menu entry — via the mobile menu sheet below 1024 px, directly in the sidebar above.
 export async function openNav(page: Page, name: string) {
   const menuButton = page.getByRole("button", { name: "Menü öffnen" });
+  const nav = page.getByRole("navigation", { name: "Hauptmenü" });
+  // Pages are lazy chunks and bring their own shell: right after a navigation neither the menu
+  // button (narrow) nor the sidebar (wide) exists yet. Wait for one of them before deciding how
+  // to reach the menu — `isVisible()` alone doesn't wait and skipped the click on narrow screens.
+  await expect(menuButton.or(nav).filter({ visible: true }).first()).toBeVisible();
   if (await menuButton.isVisible()) await menuButton.click();
-  await page.getByRole("navigation", { name: "Hauptmenü" }).getByRole("link", { name }).filter({ visible: true }).first().click();
+  await nav.getByRole("link", { name }).filter({ visible: true }).first().click();
 }
 
 // Fitnesstagebuch and Historie share one menu entry; the history is the "Verlauf" tab.
