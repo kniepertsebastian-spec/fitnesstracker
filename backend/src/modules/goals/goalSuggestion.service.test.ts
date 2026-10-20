@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { detectPlateau, roundToHalf, volumeHolding } from "./goalSuggestion.service.js";
+import { describe, expect, it, vi } from "vitest";
+import { detectPlateau, findPlateauExerciseIds, roundToHalf, volumeHolding } from "./goalSuggestion.service.js";
 import type { WorkoutLog } from "@prisma/client";
 
 describe("roundToHalf", () => {
@@ -44,5 +44,32 @@ describe("volumeHolding", () => {
   it("flags a drop when the second half's volume falls under half the first half's", () => {
     const logs = [log(10, 100), log(10, 100), log(5, 20), log(5, 20)];
     expect(volumeHolding(logs)).toBe(false);
+  });
+});
+
+describe("findPlateauExerciseIds", () => {
+  const entry = (exerciseId: string, reps: number, weightKg: number) =>
+    ({ exerciseId, reps, weightKg }) as unknown as WorkoutLog;
+  const prismaWith = (logs: WorkoutLog[]) =>
+    ({ workoutLog: { findMany: vi.fn().mockResolvedValue(logs) } }) as unknown as Parameters<typeof findPlateauExerciseIds>[0];
+
+  it("flags only the exercise whose recent weights never beat the earlier best", async () => {
+    const stuck = [80, 85, 83, 81, 82, 80].map((w) => entry("stuck", 8, w));
+    const growing = [60, 62.5, 65, 67.5, 70, 72.5].map((w) => entry("growing", 8, w));
+    const result = await findPlateauExerciseIds(prismaWith([...stuck, ...growing]), "u", ["stuck", "growing"]);
+    expect([...result]).toEqual(["stuck"]);
+  });
+
+  it("judges high-rep exercises by reps, not weight", async () => {
+    const logs = [20, 22, 21, 20, 21, 20].map((r) => entry("pushups", r, 0));
+    expect([...(await findPlateauExerciseIds(prismaWith(logs), "u", ["pushups"]))]).toEqual(["pushups"]);
+  });
+
+  it("ignores exercises without enough history and skips the query for an empty list", async () => {
+    const few = [entry("new", 8, 50), entry("new", 8, 50)];
+    expect((await findPlateauExerciseIds(prismaWith(few), "u", ["new"])).size).toBe(0);
+    const prisma = prismaWith([]);
+    await findPlateauExerciseIds(prisma, "u", []);
+    expect((prisma as unknown as { workoutLog: { findMany: ReturnType<typeof vi.fn> } }).workoutLog.findMany).not.toHaveBeenCalled();
   });
 });

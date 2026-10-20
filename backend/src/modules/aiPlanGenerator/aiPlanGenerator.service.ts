@@ -31,6 +31,7 @@ import {
 } from "./promptBuilder.js";
 import { assembleDays, resolveSplit, suggestStartWeights, type RawPlanItem } from "./planAssembly.js";
 import { buildExclusions } from "./injuryFilter.js";
+import { findPlateauExerciseIds } from "../goals/goalSuggestion.service.js";
 import { derivePhaseItems, TRAINING_PHASES } from "./phaseRotation.js";
 import { refreshDetectedAsymmetries } from "../trainingPlan/trainingAsymmetry.service.js";
 
@@ -236,7 +237,16 @@ export async function generatePlan(
   }
 
   const exclusions = buildExclusions(...(await loadLimitationTexts(prisma, userId, prefs)));
-  const catalog = await selectCatalog(prisma, userId, prefs.equipment, allDays, exclusions);
+  // Exercises of the current plan that stopped progressing are swapped for variants.
+  const planned = await prisma.planExercise.findMany({
+    where: { userId },
+    select: { exerciseId: true, exercise: { select: { name: true, nameDe: true } } },
+  });
+  const plateauIds = await findPlateauExerciseIds(prisma, userId, [...new Set(planned.map((p) => p.exerciseId))]);
+  const plateauNames = [
+    ...new Set(planned.filter((p) => plateauIds.has(p.exerciseId)).map((p) => p.exercise.nameDe ?? p.exercise.name)),
+  ];
+  const catalog = await selectCatalog(prisma, userId, prefs.equipment, allDays, exclusions, plateauIds);
   if (catalog.entries.length === 0) {
     throw new ConflictError("Keine passenden Übungen für diese Vorgaben gefunden");
   }
@@ -248,7 +258,12 @@ export async function generatePlan(
     input.day && existingDraft
       ? `Erstelle NUR den Tag "${input.day}" neu; die anderen Tage bleiben unverändert. Wähle möglichst andere Übungen als bisher an diesem Tag.`
       : "";
-  const context = [historyContext, buildColdStartContext(prefs), remarksContext, keepContext]
+  const plateauContext =
+    plateauNames.length > 0
+      ? `Diese Übungen stagnieren seit Wochen und stehen bewusst nicht im Katalog: ${plateauNames.join(", ")}. ` +
+        `Wähle als Ersatz Varianten mit gleicher Hauptmuskelgruppe (anderer Winkel, anderes Gerät oder andere Griffart).`
+      : "";
+  const context = [historyContext, buildColdStartContext(prefs), remarksContext, plateauContext, keepContext]
     .filter((part) => part.trim().length > 0)
     .join("\n");
   const perDay = exercisesPerDayForDuration(prefs.sessionDurationMinutes);
@@ -332,7 +347,7 @@ export async function generatePlan(
     });
 
   if (!input.allPhases || input.day) {
-    return { status: "draft", draft: snapshotToDraft(await upsertDraft(input.phase, data)) };
+    return { status: "draft", draft: snapshotToDraft(await upsertDraft(input.phase, data)), replacedPlateaus: plateauNames };
   }
 
   // One model call, three phases: the other phases reuse the chosen exercises.
@@ -348,7 +363,7 @@ export async function generatePlan(
       }),
     ),
   ]);
-  return { status: "draft", draft: snapshotToDraft(snapshot), otherDrafts: others.map(snapshotToDraft) };
+  return { status: "draft", draft: snapshotToDraft(snapshot), otherDrafts: others.map(snapshotToDraft), replacedPlateaus: plateauNames };
 }
 
 export async function getPlanDraftState(

@@ -135,6 +135,8 @@ export const generatePlanResponseSchema = z.discriminatedUnion("status", [
     draft: planDraftDtoSchema,
     // Drafts derived for the other phases when `allPhases` was requested.
     otherDrafts: z.array(planDraftDtoSchema).optional(),
+    // Plan exercises that stagnated and were deliberately left out in favour of variants.
+    replacedPlateaus: z.array(z.string()).optional(),
   }),
 ]);
 export type GeneratePlanResponse = z.infer<typeof generatePlanResponseSchema>;
