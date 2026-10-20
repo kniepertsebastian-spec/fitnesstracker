@@ -67,6 +67,82 @@ async function syncQueryCache(accountId: string) {
   queryClient.invalidateQueries({ queryKey: ["plan-exercises", "week-status"] });
 }
 
+// Delta sync (roadmap3 P2.1): after the first full download only what changed since the last
+// sync is fetched — a few rows instead of years of history on every app start. The cursor is the
+// server's own clock (`serverTime` of the previous response), kept per account in localStorage.
+// A full download still happens for a new device/account, an empty local cache and once a day,
+// as a safety net for anything a delta might not express.
+const SYNC_OVERLAP_MS = 5_000; // re-ask slightly back: covers rows committed while the last request ran
+const FULL_RESYNC_AFTER_MS = 24 * 60 * 60 * 1000;
+
+interface SyncState {
+  serverTime: string;
+  fullAt: number;
+}
+
+const syncStateKey = (accountId: string) => `fitnesstracker.workout-logs-sync.${accountId}`;
+
+function readSyncState(accountId: string): SyncState | null {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(syncStateKey(accountId)) ?? "null") as SyncState | null;
+    return parsed && typeof parsed.serverTime === "string" && typeof parsed.fullAt === "number" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSyncState(accountId: string, state: SyncState) {
+  try {
+    localStorage.setItem(syncStateKey(accountId), JSON.stringify(state));
+  } catch {
+    // Without storage every load is simply a full download again.
+  }
+}
+
+async function pendingClientIdsFor(accountId: string): Promise<Set<string>> {
+  return new Set(
+    (await offlineDb.pendingMutations.where("accountId").equals(accountId).toArray()).map((m) => m.clientId),
+  );
+}
+
+async function applyFullDownload(accountId: string) {
+  // Rows already synced before the request: the list (the account's complete history) must
+  // contain them, so one missing from it was deleted on another device (roadmap3 P1.4) —
+  // without this it would linger here forever and skew "Letztes Mal", PRs and volume. Taken
+  // before the request on purpose: a row that syncs while it's in flight isn't in the list yet
+  // and must not be mistaken for a deletion.
+  const syncedBefore = new Set(
+    (await offlineDb.workoutLogs.where("accountId").equals(accountId).toArray())
+      .filter((row) => row.id !== null)
+      .map((row) => row.clientId),
+  );
+  const { items, serverTime } = await listWorkoutLogsRequest();
+  const pendingClientIds = await pendingClientIdsFor(accountId);
+  const serverClientIds = new Set(items.map((dto) => dto.clientId));
+  await offlineDb.transaction("rw", offlineDb.workoutLogs, async () => {
+    const stale = [...syncedBefore].filter((id) => !serverClientIds.has(id) && !pendingClientIds.has(id));
+    await offlineDb.workoutLogs.bulkDelete(stale);
+    await offlineDb.workoutLogs.bulkPut(
+      items.filter((dto) => !pendingClientIds.has(dto.clientId)).map((dto) => ({ ...dto, accountId })),
+    );
+  });
+  if (serverTime) writeSyncState(accountId, { serverTime, fullAt: Date.now() });
+}
+
+async function applyDelta(accountId: string, state: SyncState) {
+  const since = new Date(new Date(state.serverTime).getTime() - SYNC_OVERLAP_MS).toISOString();
+  const { items, deletedClientIds, serverTime } = await listWorkoutLogsRequest(since);
+  const pendingClientIds = await pendingClientIdsFor(accountId);
+  await offlineDb.transaction("rw", offlineDb.workoutLogs, async () => {
+    await offlineDb.workoutLogs.bulkDelete((deletedClientIds ?? []).filter((id) => !pendingClientIds.has(id)));
+    await offlineDb.workoutLogs.bulkPut(
+      items.filter((dto) => !pendingClientIds.has(dto.clientId)).map((dto) => ({ ...dto, accountId })),
+    );
+  });
+  // Keep the old cursor (and `fullAt`) if the server didn't send one — the next load re-asks.
+  if (serverTime) writeSyncState(accountId, { serverTime, fullAt: state.fullAt });
+}
+
 // Cache-then-network read: tries the API first and merges the result into the local cache
 // (skipping rows with a not-yet-synced local mutation, so a background refresh can't clobber
 // an edit the server hasn't seen yet), then always serves from the cache — offline just means
@@ -74,28 +150,13 @@ async function syncQueryCache(accountId: string) {
 export async function fetchAndCacheWorkoutLogs(accountId: string): Promise<LocalWorkoutLog[]> {
   if (!accountId || useAuthStore.getState().user?.id !== accountId) return [];
   try {
-    // Rows already synced before the request: the list (the account's complete history) must
-    // contain them, so one missing from it was deleted on another device (roadmap3 P1.4) —
-    // without this it would linger here forever and skew "Letztes Mal", PRs and volume. Taken
-    // before the request on purpose: a row that syncs while it's in flight isn't in the list yet
-    // and must not be mistaken for a deletion.
-    const syncedBefore = new Set(
-      (await offlineDb.workoutLogs.where("accountId").equals(accountId).toArray())
-        .filter((row) => row.id !== null)
-        .map((row) => row.clientId),
-    );
-    const { items } = await listWorkoutLogsRequest();
-    const pendingClientIds = new Set(
-      (await offlineDb.pendingMutations.where("accountId").equals(accountId).toArray()).map((m) => m.clientId),
-    );
-    const serverClientIds = new Set(items.map((dto) => dto.clientId));
-    await offlineDb.transaction("rw", offlineDb.workoutLogs, async () => {
-      const stale = [...syncedBefore].filter((id) => !serverClientIds.has(id) && !pendingClientIds.has(id));
-      await offlineDb.workoutLogs.bulkDelete(stale);
-      await offlineDb.workoutLogs.bulkPut(
-        items.filter((dto) => !pendingClientIds.has(dto.clientId)).map((dto) => ({ ...dto, accountId })),
-      );
-    });
+    const state = readSyncState(accountId);
+    const cachedCount = await offlineDb.workoutLogs.where("accountId").equals(accountId).count();
+    if (state && cachedCount > 0 && Date.now() - state.fullAt < FULL_RESYNC_AFTER_MS) {
+      await applyDelta(accountId, state);
+    } else {
+      await applyFullDownload(accountId);
+    }
   } catch {
     // Offline or the request otherwise failed — fall through and serve what's cached.
   }

@@ -44,3 +44,15 @@ export const workoutLogDtoSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 export type WorkoutLogDto = z.infer<typeof workoutLogDtoSchema>;
+
+// GET /workout-logs. Without `updatedSince` it is the account's whole history; with it only what
+// changed after that moment — `items` are rows to upsert, `deletedClientIds` the tombstones
+// (deleted sets are soft-deleted and never purged, so a delta can always express a deletion).
+// `serverTime` is the server's clock from before the query ran; the client sends it back
+// (minus a small overlap) as the next `updatedSince`, so no clock of the device is involved.
+export const workoutLogListDtoSchema = z.object({
+  items: z.array(workoutLogDtoSchema),
+  deletedClientIds: z.array(z.string().uuid()),
+  serverTime: z.string().datetime(),
+});
+export type WorkoutLogListDto = z.infer<typeof workoutLogListDtoSchema>;

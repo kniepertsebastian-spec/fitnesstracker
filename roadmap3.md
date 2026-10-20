@@ -101,7 +101,7 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 - [x] `fetchAndCacheWorkoutLogs` gleicht ab: lokal synchronisierte Zeilen (`id !== null`), die
   der Server nicht mehr liefert und die nicht in der Pending-Queue stehen, werden entfernt.
-- [ ] Danach Delta-Sync (siehe P2.1). (`bulkPut` statt einzelner `put` ist schon umgesetzt.)
+- [x] Danach Delta-Sync (siehe P2.1). (`bulkPut` statt einzelner `put` ist schon umgesetzt.)
 
 ---
 
@@ -109,7 +109,7 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ### P2.1 Delta-Sync statt komplette Historie
 
-- [ ] `GET /workout-logs?updatedSince=…` plus Tombstones für Löschungen; `bulkPut` statt
+- [x] `GET /workout-logs?updatedSince=…` plus Tombstones für Löschungen; `bulkPut` statt
   einzelner `put`-Aufrufe.
 
 ### P2.2 Code-Splitting
