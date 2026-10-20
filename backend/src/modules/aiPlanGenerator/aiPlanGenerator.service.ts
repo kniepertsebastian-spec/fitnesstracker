@@ -31,6 +31,7 @@ import {
 } from "./promptBuilder.js";
 import { assembleDays, resolveSplit, suggestStartWeights, type RawPlanItem } from "./planAssembly.js";
 import { buildExclusions } from "./injuryFilter.js";
+import { derivePhaseItems, TRAINING_PHASES } from "./phaseRotation.js";
 import { refreshDetectedAsymmetries } from "../trainingPlan/trainingAsymmetry.service.js";
 
 const MIN_LOGGED_SETS_FOR_WARM_START = 5;
@@ -323,12 +324,31 @@ export async function generatePlan(
     items: items as unknown as Prisma.InputJsonValue,
     rationale,
   };
-  const snapshot = await prisma.planSnapshot.upsert({
-    where: { userId_phase_kind: { userId, phase: input.phase, kind: "DRAFT" } },
-    create: { userId, phase: input.phase, kind: "DRAFT", ...data },
-    update: { ...data, createdAt: new Date() },
-  });
-  return { status: "draft", draft: snapshotToDraft(snapshot) };
+  const upsertDraft = (phase: TrainingPhase, phaseData: typeof data) =>
+    prisma.planSnapshot.upsert({
+      where: { userId_phase_kind: { userId, phase, kind: "DRAFT" } },
+      create: { userId, phase, kind: "DRAFT", ...phaseData },
+      update: { ...phaseData, createdAt: new Date() },
+    });
+
+  if (!input.allPhases || input.day) {
+    return { status: "draft", draft: snapshotToDraft(await upsertDraft(input.phase, data)) };
+  }
+
+  // One model call, three phases: the other phases reuse the chosen exercises.
+  const otherPhases = TRAINING_PHASES.filter((p) => p !== input.phase);
+  const loggedSets = recentSets.map((s) => ({ exerciseId: s.exerciseId, weightKg: Number(s.weightKg), reps: s.reps }));
+  const [snapshot, ...others] = await prisma.$transaction([
+    upsertDraft(input.phase, data),
+    ...otherPhases.map((phase) =>
+      upsertDraft(phase, {
+        ...data,
+        items: derivePhaseItems(newItems, input.phase, phase, loggedSets) as unknown as Prisma.InputJsonValue,
+        rationale: `Abgeleitet aus dem Entwurf für ${input.phase}: gleiche Übungen, angepasste Sätze, Wiederholungen, Pausen und Tempo.`,
+      }),
+    ),
+  ]);
+  return { status: "draft", draft: snapshotToDraft(snapshot), otherDrafts: others.map(snapshotToDraft) };
 }
 
 export async function getPlanDraftState(

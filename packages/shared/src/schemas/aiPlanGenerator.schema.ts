@@ -78,6 +78,9 @@ export const generatePlanRequestSchema = z.object({
   coldStart: coldStartInputSchema.optional(),
   // Regenerates only this day of the existing draft (same questionnaire), keeping the others.
   day: z.string().min(1).optional(),
+  // Also writes drafts for the other two rotation phases: same exercises, only sets, reps, rest
+  // and tempo differ. Replaces their existing drafts; ignored together with `day`.
+  allPhases: z.boolean().optional(),
 });
 export type GeneratePlanRequest = z.input<typeof generatePlanRequestSchema>;
 
@@ -127,6 +130,11 @@ export const planPhaseRequestSchema = z.object({ phase: trainingPhaseSchema });
 // instead of a plan — the frontend then shows the 4-step modal and retries with it filled in.
 export const generatePlanResponseSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("needs_cold_start") }),
-  z.object({ status: z.literal("draft"), draft: planDraftDtoSchema }),
+  z.object({
+    status: z.literal("draft"),
+    draft: planDraftDtoSchema,
+    // Drafts derived for the other phases when `allPhases` was requested.
+    otherDrafts: z.array(planDraftDtoSchema).optional(),
+  }),
 ]);
 export type GeneratePlanResponse = z.infer<typeof generatePlanResponseSchema>;

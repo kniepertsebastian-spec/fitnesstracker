@@ -13,7 +13,7 @@ import {
   useRestorePlanBackup,
 } from "../../hooks/useAiPlanGenerator";
 import { PROVIDER_OPTIONS } from "../settings/AiKeyCard";
-import { Badge, Button, Callout, Card, Skeleton } from "../ui";
+import { Badge, Button, Callout, Card, Skeleton, Toggle } from "../ui";
 import { ColdStartModal } from "./ColdStartModal";
 import { PlanDraftPreview } from "./PlanDraftPreview";
 
@@ -32,6 +32,7 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
 
   const [coldStartOpen, setColdStartOpen] = useState(false);
   const [busyDay, setBusyDay] = useState<string | null>(null);
+  const [allPhases, setAllPhases] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -60,8 +61,11 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
     setNotice(null);
     setBusyDay(day ?? null);
     try {
-      const result = await generatePlan.mutateAsync({ phase, coldStart, day });
+      const result = await generatePlan.mutateAsync({ phase, coldStart, day, allPhases: allPhases || undefined });
       setColdStartOpen(result.status === "needs_cold_start");
+      if (result.status === "draft" && result.otherDrafts?.length) {
+        setNotice("Entwürfe für alle drei Phasen erstellt — wechsle zwischen den Phasen, um sie zu prüfen und zu übernehmen.");
+      }
     } catch (err) {
       setColdStartOpen(false);
       setError(errorText(err, "Plan konnte nicht generiert werden."));
@@ -101,6 +105,11 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
 
       {!draft && (
         <div className="mt-3 flex flex-col gap-2">
+          <Toggle
+            label="Alle drei Phasen in einem Durchgang (gleiche Übungen, nur Sätze/Wdh./Tempo wechseln)"
+            checked={allPhases}
+            onChange={setAllPhases}
+          />
           <Button
             variant="primary"
             fullWidth
