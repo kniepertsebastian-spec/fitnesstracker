@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { fetchAnyExercise, login, openNav, registerTestUser } from "./support";
+import { fetchAnyExercise, login, openHistory, registerTestUser } from "./support";
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:3000/api";
 
@@ -61,7 +61,7 @@ test.describe("Delta-Sync der Satz-Historie", () => {
     expect((await request.delete(`${API_URL}/workout-logs/${victim.id}`, { headers: auth })).ok()).toBeTruthy();
 
     // Back to a screen that reads the history (client-side, so the in-memory token survives).
-    await openNav(page, "Historie");
+    await openHistory(page);
     await expect
       .poll(() => listCalls.slice(callsBeforeChanges).some((c) => c.url.includes("updatedSince")))
       .toBeTruthy();
