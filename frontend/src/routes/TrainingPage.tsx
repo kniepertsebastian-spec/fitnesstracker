@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Dumbbell } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowDown, ArrowRight, ArrowUp, Dumbbell, Plus, Repeat2, Trash2 } from "lucide-react";
 import type { PlanDiaryExerciseDto } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../offline/db";
 import { PRToastHost } from "../components/layout/PRToastHost";
@@ -13,6 +13,7 @@ import { StageBar } from "../components/training/StageBar";
 import type { StageInfo } from "../components/training/StageBar";
 import { StretchList } from "../components/stretching/StretchList";
 import { RestCard } from "../components/training/RestCard";
+import { ExercisePickerDialog, type EditScope } from "../components/training/ExercisePickerDialog";
 import { TechniqueSheet } from "../components/training/TechniqueSheet";
 import {
   Badge,
@@ -22,7 +23,9 @@ import {
   Card,
   Dialog,
   EmptyState,
+  IconButton,
   ListRow,
+  SegmentedControl,
   Skeleton,
   StatTile,
 } from "../components/ui";
@@ -58,8 +61,11 @@ import { detectPRs, prLabels } from "../lib/prDetection";
 import { unlockAudio } from "../lib/timerSound";
 import { formatDuration, formatKg, lastTimeSets, sessionSets } from "../lib/trainingSets";
 import { formatSetsReps } from "../lib/planPrescription";
+import { applyPlanEdits, loadPlanEdits, savePlanEdits, toPlanEdit, type PlanEdit, type PlanEditInput } from "../lib/planEdits";
+import { dropQueuedPlanOps, enqueuePlanOp, PLAN_EDITS_EVENT, type PlanOp } from "../offline/planEditSync";
 import { usePRToastStore } from "../stores/prToastStore";
 import { useTimerStore } from "../stores/timerStore";
+import { useWakeLock } from "../hooks/useWakeLock";
 
 interface Summary {
   seconds: number;
@@ -78,6 +84,7 @@ interface Summary {
 // set elsewhere meanwhile, never leaves this view out of sync.
 export function TrainingPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: session, isLoading: sessionLoading } = useOpenWorkoutSession();
   const { data: plan, isLoading: planLoading } = useTrainingPlan();
   const { data: status, isLoading: statusLoading } = useWeeklyPlanStatus(plan?.currentPhase ?? "AUFBAU", {
@@ -109,7 +116,33 @@ export function TrainingPage() {
   const [manualStage, setManualStage] = useState<Stage | null>(null);
   const [stageState, setStageState] = useState<StageState>(emptyStageState);
   const [stretchDone, setStretchDone] = useState<string[]>([]);
+  const [planEdits, setPlanEdits] = useState<PlanEdit[]>([]);
+  const [editScope, setEditScope] = useState<EditScope>("today");
+  const [editing, setEditing] = useState(false);
+  const [picker, setPicker] = useState<{ mode: "swap"; key: string } | { mode: "add" } | null>(null);
   const sessionClientId = session?.clientId ?? null;
+
+  // The "Training starten" app shortcut opens /training?start=1: start a session right away
+  // (or just continue the open one). The parameter is consumed at once, so a reload or a
+  // finished workout can never start another session by itself.
+  const shortcutHandled = useRef(false);
+  useEffect(() => {
+    if (shortcutHandled.current || sessionLoading || searchParams.get("start") !== "1") return;
+    shortcutHandled.current = true;
+    setSearchParams({}, { replace: true });
+    if (!session) startSession.mutate(crypto.randomUUID());
+  }, [sessionLoading, session, searchParams, setSearchParams, startSession]);
+  // Screen stays on during an active workout (not while paused or on the summary).
+  useWakeLock(session?.status === "ACTIVE" && !summary);
+
+  // Plan changes made in this workout (P0.1) — reloaded when the sync queue marks some as saved.
+  useEffect(() => {
+    if (!sessionClientId) return;
+    const reload = () => setPlanEdits(loadPlanEdits(sessionClientId));
+    reload();
+    window.addEventListener(PLAN_EDITS_EVENT, reload);
+    return () => window.removeEventListener(PLAN_EDITS_EVENT, reload);
+  }, [sessionClientId]);
 
   // Per-session section status (skipped/done cardio, stretching) — loaded once per session.
   useEffect(() => {
@@ -134,7 +167,10 @@ export function TrainingPage() {
   }, [status, dayIndex]);
 
   const day = status && dayIndex !== null ? status.days[Math.min(dayIndex, status.days.length - 1)] : null;
-  const exercises: PlanDiaryExerciseDto[] = useMemo(() => day?.exercises ?? [], [day]);
+  const exercises: PlanDiaryExerciseDto[] = useMemo(
+    () => applyPlanEdits(day?.exercises ?? [], planEdits, day?.addOptions),
+    [day, planEdits],
+  );
   const allLogs = useMemo(() => logs ?? [], [logs]);
   const startedAt = session?.startedAt ?? "";
 
@@ -237,6 +273,77 @@ export function TrainingPage() {
   };
 
   const paused = session?.status === "PAUSED";
+
+  const storeEdits = (next: PlanEdit[]) => {
+    setPlanEdits(next);
+    if (sessionClientId) savePlanEdits(sessionClientId, next);
+  };
+
+  // Every change applies to this workout at once; with "Dauerhaft im Plan" it is also queued for
+  // the plan itself (sent now, or once back online).
+  const editPlan = (input: PlanEditInput) => {
+    if (!sessionClientId || !plan) return;
+    const isAdded = (key: string) => key.startsWith("added:");
+    const addEditFor = (key: string) => planEdits.find((e) => e.kind === "add" && e.key === key);
+    let next = planEdits;
+
+    // Exercises added in this workout only exist as an edit: change that edit instead.
+    if ((input.kind === "remove" || input.kind === "replace") && isAdded(input.key)) {
+      const added = addEditFor(input.key);
+      if (!added || added.kind !== "add") return;
+      dropQueuedPlanOps(added.id);
+      next = next.filter((e) => e.id !== added.id);
+      if (input.kind === "replace") {
+        const replacement = toPlanEdit({ ...added, kind: "add", exerciseId: input.exerciseId, exerciseName: input.exerciseName }, added.permanent);
+        next = [...next, replacement];
+        if (replacement.permanent) queueEdit(replacement);
+      }
+      storeEdits(next);
+      return;
+    }
+
+    const entry = (key: string) => exercises.find((e) => e.id === key);
+    let permanent = editScope === "plan";
+    let op: PlanOp | null = null;
+    if (input.kind === "replace") op = { type: "update", id: input.key, body: { exerciseId: input.exerciseId } };
+    else if (input.kind === "remove") op = { type: "delete", id: input.key };
+    else if (input.kind === "add")
+      op = {
+        type: "create",
+        body: { phase: input.phase, exerciseId: input.exerciseId, targetSets: input.targetSets ?? undefined, targetReps: input.targetReps ?? undefined, dayLabel: input.dayLabel },
+      };
+    else {
+      const a = entry(input.key);
+      const b = entry(input.otherKey);
+      // Order lives on plan entries only; moving an exercise added today stays a today change.
+      if (a && b && !isAdded(a.id) && !isAdded(b.id)) op = { type: "swapOrder", a: { id: a.id, order: a.order }, b: { id: b.id, order: b.order } };
+      else permanent = false;
+    }
+    const edit = toPlanEdit(input, permanent);
+    storeEdits([...next, edit]);
+    if (permanent && op) enqueuePlanOp({ editId: edit.id, sessionClientId, op });
+  };
+
+  const queueEdit = (edit: PlanEdit) => {
+    if (!sessionClientId || edit.kind !== "add") return;
+    enqueuePlanOp({
+      editId: edit.id,
+      sessionClientId,
+      op: {
+        type: "create",
+        body: { phase: edit.phase, exerciseId: edit.exerciseId, targetSets: edit.targetSets ?? undefined, targetReps: edit.targetReps ?? undefined, dayLabel: edit.dayLabel },
+      },
+    });
+  };
+
+  const moveExercise = (index: number, direction: -1 | 1) => {
+    const other = exercises[index + direction];
+    if (other) editPlan({ kind: "move", key: exercises[index].id, otherKey: other.id });
+  };
+
+  const pickerEntry = picker?.mode === "swap" ? exercises.find((e) => e.id === picker.key) : undefined;
+  const typicalSets = exercises[0]?.targetSets ?? 3;
+  const typicalReps = exercises[0]?.repRangeMax ?? exercises[0]?.targetReps ?? null;
 
   const logSet = async (entry: PlanDiaryExerciseDto, values: SetValues, setNumber: number) => {
     if (busy || !session) return;
@@ -491,6 +598,7 @@ export function TrainingPage() {
               onUndoSet={(log) => void undoSet(log)}
               onToggleSuperset={toggleSuperset}
               onOpenTechnique={() => setTechniqueOpen(true)}
+              onSwap={() => setPicker({ mode: "swap", key: current.id })}
             />
 
             <RestCard />
@@ -607,26 +715,77 @@ export function TrainingPage() {
           ))}
         </Card>
 
-        {stage === "kraft" && exercises.some((_, i) => i !== currentIndex) && (
-          <Card title="Als Nächstes">
-            {exercises.map((e, i) =>
-              i === currentIndex ? null : (
-                <ListRow
-                  key={e.id}
-                  prefix={i + 1}
-                  value={formatSetsReps(e, setCountFor(e))}
-                  className={isComplete(e) ? "opacity-60" : undefined}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setManualIndex(i)}
-                    className="block w-full py-3 text-left hover:text-accent"
+        {stage === "kraft" && (
+          <Card
+            title={editing ? "Übungen heute" : "Als Nächstes"}
+            action={
+              <Button size="sm" variant="ghost" onClick={() => setEditing((v) => !v)}>
+                {editing ? "Fertig" : "Anpassen"}
+              </Button>
+            }
+          >
+            {editing ? (
+              <div className="flex flex-col gap-3">
+                <SegmentedControl
+                  label="Gültigkeit der Änderungen"
+                  value={editScope}
+                  onChange={setEditScope}
+                  options={[
+                    { value: "today", label: "Nur heute" },
+                    { value: "plan", label: "Dauerhaft im Plan" },
+                  ]}
+                />
+                <div className="flex flex-col divide-y divide-border">
+                  {exercises.map((e, i) => (
+                    <div key={e.id} className="flex items-center gap-1 py-2">
+                      <span className="min-w-0 flex-1">
+                        <span className="block break-words text-body text-text">{e.exerciseName}</span>
+                        <span className="block text-xs text-text-subtle">{formatSetsReps(e, setCountFor(e))}</span>
+                      </span>
+                      <IconButton aria-label={`${e.exerciseName} tauschen`} className="h-10 w-10 border-transparent bg-transparent" onClick={() => setPicker({ mode: "swap", key: e.id })}>
+                        <Repeat2 size={16} aria-hidden />
+                      </IconButton>
+                      <IconButton aria-label={`${e.exerciseName} nach oben`} className="h-10 w-10 border-transparent bg-transparent" disabled={i === 0} onClick={() => moveExercise(i, -1)}>
+                        <ArrowUp size={16} aria-hidden />
+                      </IconButton>
+                      <IconButton aria-label={`${e.exerciseName} nach unten`} className="h-10 w-10 border-transparent bg-transparent" disabled={i === exercises.length - 1} onClick={() => moveExercise(i, 1)}>
+                        <ArrowDown size={16} aria-hidden />
+                      </IconButton>
+                      <IconButton aria-label={`${e.exerciseName} entfernen`} className="h-10 w-10 border-transparent bg-transparent" onClick={() => editPlan({ kind: "remove", key: e.id })}>
+                        <Trash2 size={16} aria-hidden />
+                      </IconButton>
+                    </div>
+                  ))}
+                </div>
+                <Button variant="secondary" iconLeft={<Plus size={16} aria-hidden />} onClick={() => setPicker({ mode: "add" })}>
+                  Übung hinzufügen
+                </Button>
+                <p className="text-xs text-text-subtle">
+                  Bereits geloggte Sätze bleiben unverändert. „Dauerhaft“ ändert den Plan, auch offline – gespeichert wird beim nächsten Netz.
+                </p>
+              </div>
+            ) : exercises.some((_, i) => i !== currentIndex) ? (
+              exercises.map((e, i) =>
+                i === currentIndex ? null : (
+                  <ListRow
+                    key={e.id}
+                    prefix={i + 1}
+                    value={formatSetsReps(e, setCountFor(e))}
+                    className={isComplete(e) ? "opacity-60" : undefined}
                   >
-                    {e.exerciseName}
-                    {isComplete(e) && <span className="ml-2 text-xs text-accent">erledigt</span>}
-                  </button>
-                </ListRow>
-              ),
+                    <button
+                      type="button"
+                      onClick={() => setManualIndex(i)}
+                      className="block w-full py-3 text-left hover:text-accent"
+                    >
+                      {e.exerciseName}
+                      {isComplete(e) && <span className="ml-2 text-xs text-accent">erledigt</span>}
+                    </button>
+                  </ListRow>
+                ),
+              )
+            ) : (
+              <p className="text-small text-text-subtle">Keine weiteren Übungen.</p>
             )}
           </Card>
         )}
@@ -652,6 +811,34 @@ export function TrainingPage() {
       </main>
 
       <TechniqueSheet exerciseId={current.exerciseId} open={techniqueOpen} onOpenChange={setTechniqueOpen} />
+
+      <ExercisePickerDialog
+        open={picker !== null}
+        title={picker?.mode === "add" ? "Übung hinzufügen" : "Übung tauschen"}
+        description={pickerEntry ? `Statt ${pickerEntry.exerciseName}` : undefined}
+        // `?? []`: plan data cached by an older app version has no options yet.
+        options={((pickerEntry ? pickerEntry.swapOptions : day?.addOptions) ?? []).filter(
+          (o) => !exercises.some((e) => e.exerciseId === o.exerciseId),
+        )}
+        recommendedId={pickerEntry?.alternativeExerciseId}
+        scope={editScope}
+        onScopeChange={setEditScope}
+        onClose={() => setPicker(null)}
+        onPick={({ exerciseId, exerciseName }) => {
+          if (picker?.mode === "swap") editPlan({ kind: "replace", key: picker.key, exerciseId, exerciseName });
+          else
+            editPlan({
+              kind: "add",
+              exerciseId,
+              exerciseName,
+              phase: plan.currentPhase,
+              dayLabel: day?.dayLabel ?? null,
+              targetSets: typicalSets,
+              targetReps: typicalReps,
+            });
+          setPicker(null);
+        }}
+      />
 
       <Dialog
         open={leaveOpen}

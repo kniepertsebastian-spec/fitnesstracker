@@ -40,8 +40,11 @@ export async function createPlanExercise(
     throw new ConflictError("Exercise already assigned to this phase");
   }
 
+  // Appended after the highest `order` of the whole phase, not of the day: the order of the split
+  // days is the order in which their first entry appears (planWeekStatus.groupByDayLabel), so
+  // every day restarting at 0 left that sequence — and with it "today's workout" — to chance.
   const last = await prisma.planExercise.findFirst({
-    where: { userId, phase: input.phase, dayLabel: input.dayLabel ?? null },
+    where: { userId, phase: input.phase },
     orderBy: { order: "desc" },
   });
 
@@ -85,6 +88,7 @@ export async function updatePlanExercise(
     if (duplicate) throw new ConflictError("Exercise already assigned to this training day");
   }
 
+  const swapped = input.exerciseId !== undefined && input.exerciseId !== existing.exerciseId;
   return prisma.planExercise.update({
     where: { id },
     data: {
@@ -92,6 +96,8 @@ export async function updatePlanExercise(
       targetSets: input.targetSets,
       targetReps: input.targetReps,
       order: input.order,
+      // The cue and start weight belong to the old exercise; it becomes the way back.
+      ...(swapped ? { notes: null, startWeightKg: null, alternativeExerciseId: existing.exerciseId } : {}),
     },
     ...withExercise,
   });

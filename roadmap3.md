@@ -9,16 +9,16 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ### P0.1 Plan im Fokusmodus anpassen
 
-- [ ] **Übungen direkt im Training ändern.** Im Fokusmodus („Training starten“) eine Übung des
+- [x] **Übungen direkt im Training ändern.** Im Fokusmodus („Training starten“) eine Übung des
   heutigen Tages austauschen, hinzufügen, entfernen und in der Reihenfolge verschieben, ohne den
   Fokusmodus zu verlassen.
-- [ ] **Austausch-Vorschläge.** Beim Tauschen werden Alternativen mit gleicher Hauptmuskelgruppe
+- [x] **Austausch-Vorschläge.** Beim Tauschen werden Alternativen mit gleicher Hauptmuskelgruppe
   und erlaubtem Equipment angeboten (siehe P0.2), z. B. wenn ein Gerät belegt ist.
-- [ ] **Nur heute oder dauerhaft.** Beim Ändern wählen, ob die Änderung nur für diese Einheit gilt
+- [x] **Nur heute oder dauerhaft.** Beim Ändern wählen, ob die Änderung nur für diese Einheit gilt
   oder in den Plan (Phase + Trainingstag) übernommen wird.
-- [ ] Bereits geloggte Sätze bleiben unverändert; Fortschritt, „Letztes Mal“ und PR-Erkennung
+- [x] Bereits geloggte Sätze bleiben unverändert; Fortschritt, „Letztes Mal“ und PR-Erkennung
   beziehen sich auf die tatsächlich trainierte Übung.
-- [ ] **Offline-fähig** wie das übrige Training: Die Änderung wird lokal gespeichert und
+- [x] **Offline-fähig** wie das übrige Training: Die Änderung wird lokal gespeichert und
   synchronisiert, sobald wieder Netz da ist.
 
 ### P0.2 KI-Plan-Generator: Split und Equipment abfragen
@@ -41,8 +41,8 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 - [x] **Standard für alle neuen Fragebögen:** nur Geräte, Kurzhanteln, Langhantel, Kabelturm und
   Körpergewicht. **Keine** Übungen mit Gymnastikball (`exercise ball`), Medizinball
   (`medicine ball`) oder ähnlichem Kleingerät.
-- [ ] Equipment-Präferenz gilt auch für die Austausch-Vorschläge aus P0.1. (Tages-Challenge ist
-  ohnehin geräte­frei, Ziel-Vorschläge beziehen sich nur auf bereits trainierte Übungen.)
+- [x] Equipment-Präferenz gilt auch für die Austausch-Vorschläge aus P0.1. (Tages-Challenge ist
+  ohnehin gerätefrei, Ziel-Vorschläge beziehen sich nur auf bereits trainierte Übungen.)
 
 ### P0.3 Dehnübungen ohne Partner
 
@@ -75,33 +75,33 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ## P1 – Kritisch (Kernnutzen im Studio)
 
-### P1.1 Mobile Darstellung bei großer Schrift/Anzeigegröße ✅ (PR #58)
+### P1.1 Mobile Darstellung bei großer Schrift/Anzeigegröße ✅
 
 - [x] Bei schmalem Viewport (~320 px, z. B. große System-Schrift nach Android-Update) lief jede
   Seite seitlich über. Behoben: Kopfzeile schrumpft, einspaltige Grids mit `grid-cols-1`,
   Wochen-Kacheln skalieren. Verifiziert bei 300–412 px.
-- [ ] Regressionsschutz: E2E-Test, der alle Seiten bei 320 px auf `scrollWidth <= innerWidth`
+- [x] Regressionsschutz: E2E-Test, der alle Seiten bei 320 px auf `scrollWidth <= innerWidth`
   prüft.
 
 ### P1.2 Training offline kaltstarten
 
-- [ ] React-Query-Cache in IndexedDB persistieren (`PersistQueryClientProvider` +
+- [x] React-Query-Cache in IndexedDB persistieren (`PersistQueryClientProvider` +
   Async-Storage-Persister, `gcTime` ≥ 24 h). Mindestens Plan, Wochenstatus, Übungen des Plans,
   Cardio- und Dehnplan.
-- [ ] E2E-Test: App offline frisch öffnen → Training starten → Satz loggen → online → Sync.
+- [x] E2E-Test: App offline frisch öffnen → Training starten → Satz loggen → online → Sync.
 
 ### P1.3 Bildschirm im Training wach halten, Pausen-Timer bei Sperrbildschirm
 
-- [ ] Screen Wake Lock (`navigator.wakeLock`) im Fokusmodus, bei `visibilitychange` neu
+- [x] Screen Wake Lock (`navigator.wakeLock`) im Fokusmodus, bei `visibilitychange` neu
   anfordern.
-- [ ] Pausen-Ende bei gesperrtem Bildschirm melden: beim Start der Pause einen verzögerten Push
+- [x] Pausen-Ende bei gesperrtem Bildschirm melden: beim Start der Pause einen verzögerten Push
   serverseitig planen, bei Abbruch/±15 s stornieren bzw. verschieben.
 
 ### P1.4 Gelöschte Sätze verschwinden auf allen Geräten
 
-- [ ] `fetchAndCacheWorkoutLogs` gleicht ab: lokal synchronisierte Zeilen (`id !== null`), die
+- [x] `fetchAndCacheWorkoutLogs` gleicht ab: lokal synchronisierte Zeilen (`id !== null`), die
   der Server nicht mehr liefert und die nicht in der Pending-Queue stehen, werden entfernt.
-- [ ] Danach Delta-Sync (siehe P2.1).
+- [ ] Danach Delta-Sync (siehe P2.1). (`bulkPut` statt einzelner `put` ist schon umgesetzt.)
 
 ---
 
@@ -119,21 +119,24 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ### P2.3 Caddy: Cache- und Security-Header
 
-- [ ] `Cache-Control: no-cache` für `/sw.js`, `/index.html`, `/manifest.webmanifest`.
-- [ ] `Cache-Control: public, max-age=31536000, immutable` für `/assets/*`.
-- [ ] CSP, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`.
-- [ ] Cloudflare-Caching für `sw.js` prüfen.
+- [x] `Cache-Control: no-cache` für `/sw.js`, `/index.html`, `/manifest.webmanifest`.
+- [x] `Cache-Control: public, max-age=31536000, immutable` für `/assets/*`.
+- [x] CSP, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`.
+- [ ] Cloudflare-Caching für `sw.js` prüfen (nur im Cloudflare-Dashboard möglich: keine Cache-Regel mit
+  eigenem „Edge TTL“ für `/sw.js`, `/index.html`, `/manifest.webmanifest`, sonst überschreibt sie das
+  `no-cache` des Servers).
 
 ### P2.4 Manifest vervollständigen
 
-- [ ] `lang: "de"` (Build erzeugt derzeit `"en"`), `id`.
-- [ ] `shortcuts`: „Training starten“, „Daily“, „Fortschritt“.
-- [ ] `screenshots` (schmal + breit) für den erweiterten Android-Installationsdialog.
-- [ ] `apple-touch-icon` in 180×180.
+- [x] `lang: "de"` (Build erzeugt derzeit `"en"`), `id`.
+- [x] `shortcuts`: „Training starten“, „Daily“, „Fortschritt“.
+- [x] `screenshots` (schmal + breit) für den erweiterten Android-Installationsdialog.
+- [x] `apple-touch-icon` in 180×180. Dabei aufgefallen: Die PWA-Icons waren ein blaues Platzhalter-Quadrat und
+  passten nicht zum App-Logo — jetzt aus dem Logo erzeugt (`scripts/generate-pwa-icons.mjs`).
 
 ### P2.5 Dauerhafter Speicher
 
-- [ ] `navigator.storage.persist()` nach dem Login anfordern, damit offline geloggte, noch nicht
+- [x] `navigator.storage.persist()` nach dem Login anfordern, damit offline geloggte, noch nicht
   synchronisierte Sätze nicht vom Browser gelöscht werden.
 
 ---

@@ -23,6 +23,10 @@ import { useAuthBootstrap } from "./hooks/useAuth";
 import { initWorkoutLogSync } from "./offline/workoutLogSync";
 import { initWorkoutSessionSync } from "./offline/workoutSessionSync";
 import { initCardioLogSync } from "./offline/cardioLogSync";
+import { initPlanEditSync } from "./offline/planEditSync";
+import { initRestTimerPush } from "./lib/restTimerPush";
+import { requestPersistentStorage } from "./lib/persistentStorage";
+import { useAuthStore } from "./stores/authStore";
 
 // No reload prompt while a workout is in focus mode (/training) — it appears right after.
 function GlobalUpdatePrompt() {
@@ -32,9 +36,16 @@ function GlobalUpdatePrompt() {
 
 export function App() {
   useAuthBootstrap();
+  const authStatus = useAuthStore((s) => s.status);
+  // Once someone is signed in there is data worth protecting from browser eviction.
+  useEffect(() => {
+    if (authStatus === "authenticated") void requestPersistentStorage();
+  }, [authStatus]);
   useEffect(() => initWorkoutLogSync(), []);
   useEffect(() => initWorkoutSessionSync(), []);
   useEffect(() => initCardioLogSync(), []);
+  useEffect(() => initPlanEditSync(), []);
+  useEffect(() => initRestTimerPush(), []);
 
   return (
     <BrowserRouter>

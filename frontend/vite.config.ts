@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  // Busts the persisted query cache (src/queryClient.ts) on every new build.
+  define: { __BUILD_ID__: JSON.stringify(new Date().toISOString()) },
   plugins: [
     react(),
     VitePWA({
@@ -16,12 +18,24 @@ export default defineConfig({
       // no update hook — disabled here so `useRegisterSW` (the `virtual:pwa-register/react`
       // hook used by UpdatePrompt) is the only thing registering the service worker.
       injectRegister: false,
-      includeAssets: ["icons/icon-192.png", "icons/icon-512.png", "sounds/timer-end.mp3"],
+      includeAssets: [
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "icons/apple-touch-icon.png",
+        "sounds/timer-end.mp3",
+      ],
       manifest: {
+        // The app's identity for the OS. Spelled out as "/" — the same value Chrome derives from
+        // start_url when `id` is missing — so apps already installed keep their identity.
+        id: "/",
         name: "Fitnesstracker",
         short_name: "Fitness",
         description: "Persönlicher Fitnesstracker ohne Werbung.",
+        // The plugin would otherwise emit "en" for a German-language app.
+        lang: "de",
+        categories: ["health", "fitness", "sports"],
         start_url: "/",
+        scope: "/",
         display: "standalone",
         background_color: "#0A0C10",
         theme_color: "#0A0C10",
@@ -35,10 +49,71 @@ export default defineConfig({
             purpose: "maskable",
           },
         ],
+        // Long-press on the home-screen icon. "Training starten" opens the focus mode and starts
+        // a session right away (TrainingPage consumes `start=1`).
+        shortcuts: [
+          {
+            name: "Training starten",
+            short_name: "Training",
+            url: "/training?start=1",
+            icons: [{ src: "icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+          },
+          {
+            name: "Daily",
+            url: "/daily",
+            icons: [{ src: "icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+          },
+          {
+            name: "Fortschritt",
+            url: "/progress",
+            icons: [{ src: "icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+          },
+        ],
+        // Chrome shows these in the richer install dialog (narrow = phones, wide = desktop).
+        // Regenerate when the UI changes noticeably — see public/screenshots.
+        screenshots: [
+          {
+            src: "screenshots/dashboard-narrow.png",
+            sizes: "780x1688",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "Heute: der nächste Trainingstag auf einen Blick",
+          },
+          {
+            src: "screenshots/training-narrow.png",
+            sizes: "780x1688",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "Fokusmodus: Satz für Satz, auch offline",
+          },
+          {
+            src: "screenshots/progress-narrow.png",
+            sizes: "780x1688",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "Fortschritt: Rekorde, Volumen und Serien",
+          },
+          {
+            src: "screenshots/dashboard-wide.png",
+            sizes: "1280x720",
+            type: "image/png",
+            form_factor: "wide",
+            label: "Dashboard am Desktop",
+          },
+          {
+            src: "screenshots/plan-wide.png",
+            sizes: "1280x720",
+            type: "image/png",
+            form_factor: "wide",
+            label: "Trainingsplan mit Phasen und Trainingstagen",
+          },
+        ],
       },
       workbox: {
         // Fonts are part of the shell: the offline reload must render with Geist, not a fallback.
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // Store screenshots are only fetched by the browser's install dialog — not app content.
+        globIgnores: ["**/screenshots/**"],
         // Never let the service worker serve cached API responses — a stale workout log
         // after a deploy is a much worse bug than a network round-trip.
         navigateFallbackDenylist: [/^\/api/],

@@ -74,16 +74,27 @@ async function syncQueryCache(accountId: string) {
 export async function fetchAndCacheWorkoutLogs(accountId: string): Promise<LocalWorkoutLog[]> {
   if (!accountId || useAuthStore.getState().user?.id !== accountId) return [];
   try {
+    // Rows already synced before the request: the list (the account's complete history) must
+    // contain them, so one missing from it was deleted on another device (roadmap3 P1.4) —
+    // without this it would linger here forever and skew "Letztes Mal", PRs and volume. Taken
+    // before the request on purpose: a row that syncs while it's in flight isn't in the list yet
+    // and must not be mistaken for a deletion.
+    const syncedBefore = new Set(
+      (await offlineDb.workoutLogs.where("accountId").equals(accountId).toArray())
+        .filter((row) => row.id !== null)
+        .map((row) => row.clientId),
+    );
     const { items } = await listWorkoutLogsRequest();
     const pendingClientIds = new Set(
       (await offlineDb.pendingMutations.where("accountId").equals(accountId).toArray()).map((m) => m.clientId),
     );
+    const serverClientIds = new Set(items.map((dto) => dto.clientId));
     await offlineDb.transaction("rw", offlineDb.workoutLogs, async () => {
-      for (const dto of items) {
-        if (!pendingClientIds.has(dto.clientId)) {
-          await offlineDb.workoutLogs.put({ ...dto, accountId });
-        }
-      }
+      const stale = [...syncedBefore].filter((id) => !serverClientIds.has(id) && !pendingClientIds.has(id));
+      await offlineDb.workoutLogs.bulkDelete(stale);
+      await offlineDb.workoutLogs.bulkPut(
+        items.filter((dto) => !pendingClientIds.has(dto.clientId)).map((dto) => ({ ...dto, accountId })),
+      );
     });
   } catch {
     // Offline or the request otherwise failed — fall through and serve what's cached.

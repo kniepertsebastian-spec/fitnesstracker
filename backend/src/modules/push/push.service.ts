@@ -66,6 +66,10 @@ export interface PushNotificationPayload {
   title: string;
   body: string;
   url?: string;
+  // Same tag replaces an earlier notification instead of stacking.
+  tag?: string;
+  // The service worker drops it when the app is open and visible (it has its own signal then).
+  skipIfVisible?: boolean;
 }
 
 // Sends to every subscription the user has (e.g. multiple installed devices). A subscription
@@ -75,6 +79,7 @@ export async function sendNotificationToUser(
   prisma: PrismaClient,
   userId: string,
   payload: PushNotificationPayload,
+  options?: { ttlSeconds?: number; urgency?: "high" | "normal" },
 ) {
   if (!isPushConfigured) return;
 
@@ -87,6 +92,7 @@ export async function sendNotificationToUser(
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           body,
+          options ? { TTL: options.ttlSeconds, urgency: options.urgency } : undefined,
         );
       } catch (error) {
         const statusCode = (error as { statusCode?: number }).statusCode;

@@ -43,3 +43,11 @@ export type PushSettingsDto = z.infer<typeof pushSettingsDtoSchema>;
 
 export const updatePushSettingsSchema = pushSettingsDtoSchema.partial();
 export type UpdatePushSettingsInput = z.infer<typeof updatePushSettingsSchema>;
+
+// The rest timer's end, so the server can notify a locked phone (the page's own timer can't run
+// while the OS has suspended it). Replaces any earlier one; cleared with DELETE.
+export const restTimerPushSchema = z.object({
+  endsAt: z.string().datetime(),
+  label: z.string().max(200).optional(),
+});
+export type RestTimerPushInput = z.infer<typeof restTimerPushSchema>;

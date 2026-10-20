@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { pushSubscribeSchema, pushUnsubscribeSchema, updatePushSettingsSchema } from "@fitnesstracker/shared";
+import { pushSubscribeSchema, pushUnsubscribeSchema, restTimerPushSchema, updatePushSettingsSchema } from "@fitnesstracker/shared";
+import { cancelRestTimerPush, scheduleRestTimerPush } from "./restTimerPush.js";
 import { env } from "../../config/env.js";
 import {
   getPushSettings,
@@ -37,5 +38,16 @@ export default async function pushRoutes(fastify: FastifyInstance) {
     const input = updatePushSettingsSchema.parse(request.body);
     const settings = await updatePushSettings(fastify.prisma, request.user.sub, input);
     return reply.send(settings);
+  });
+
+  fastify.put("/push/rest-timer", async (request, reply) => {
+    const input = restTimerPushSchema.parse(request.body);
+    const scheduled = scheduleRestTimerPush(fastify.prisma, request.user.sub, new Date(input.endsAt), input.label);
+    return reply.send({ scheduled });
+  });
+
+  fastify.delete("/push/rest-timer", async (request, reply) => {
+    cancelRestTimerPush(request.user.sub);
+    return reply.code(204).send();
   });
 }

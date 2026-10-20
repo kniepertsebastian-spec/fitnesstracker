@@ -62,6 +62,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # The production Caddyfile carries the cache and security headers (CSP, immutable assets).
+      # A typo there would only show up at deploy time — validate it with the image prod runs.
+      - name: Validate Caddyfile
+        run: docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+
   # Only on PRs — brings up a real Postgres + backend and runs the offline-sync Playwright suite
   # (frontend/e2e/) against a production build, covering integration, E2E and offline-sync
   # testing in one (there's no separate integration suite; the E2E tests exercise the real API
