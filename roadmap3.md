@@ -75,7 +75,7 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ## P1 – Kritisch (Kernnutzen im Studio)
 
-### P1.1 Mobile Darstellung bei großer Schrift/Anzeigegröße ✅ (PR #58)
+### P1.1 Mobile Darstellung bei großer Schrift/Anzeigegröße ✅
 
 - [x] Bei schmalem Viewport (~320 px, z. B. große System-Schrift nach Android-Update) lief jede
   Seite seitlich über. Behoben: Kopfzeile schrumpft, einspaltige Grids mit `grid-cols-1`,
@@ -99,9 +99,9 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ### P1.4 Gelöschte Sätze verschwinden auf allen Geräten
 
-- [ ] `fetchAndCacheWorkoutLogs` gleicht ab: lokal synchronisierte Zeilen (`id !== null`), die
+- [x] `fetchAndCacheWorkoutLogs` gleicht ab: lokal synchronisierte Zeilen (`id !== null`), die
   der Server nicht mehr liefert und die nicht in der Pending-Queue stehen, werden entfernt.
-- [ ] Danach Delta-Sync (siehe P2.1).
+- [ ] Danach Delta-Sync (siehe P2.1). (`bulkPut` statt einzelner `put` ist schon umgesetzt.)
 
 ---
 
