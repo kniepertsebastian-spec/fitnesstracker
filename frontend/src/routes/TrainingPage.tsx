@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowDown, ArrowRight, ArrowUp, Dumbbell, Plus, Repeat2, Trash2 } from "lucide-react";
 import type { PlanDiaryExerciseDto } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../offline/db";
@@ -84,6 +84,7 @@ interface Summary {
 // set elsewhere meanwhile, never leaves this view out of sync.
 export function TrainingPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: session, isLoading: sessionLoading } = useOpenWorkoutSession();
   const { data: plan, isLoading: planLoading } = useTrainingPlan();
   const { data: status, isLoading: statusLoading } = useWeeklyPlanStatus(plan?.currentPhase ?? "AUFBAU", {
@@ -120,6 +121,17 @@ export function TrainingPage() {
   const [editing, setEditing] = useState(false);
   const [picker, setPicker] = useState<{ mode: "swap"; key: string } | { mode: "add" } | null>(null);
   const sessionClientId = session?.clientId ?? null;
+
+  // The "Training starten" app shortcut opens /training?start=1: start a session right away
+  // (or just continue the open one). The parameter is consumed at once, so a reload or a
+  // finished workout can never start another session by itself.
+  const shortcutHandled = useRef(false);
+  useEffect(() => {
+    if (shortcutHandled.current || sessionLoading || searchParams.get("start") !== "1") return;
+    shortcutHandled.current = true;
+    setSearchParams({}, { replace: true });
+    if (!session) startSession.mutate(crypto.randomUUID());
+  }, [sessionLoading, session, searchParams, setSearchParams, startSession]);
   // Screen stays on during an active workout (not while paused or on the summary).
   useWakeLock(session?.status === "ACTIVE" && !summary);
 

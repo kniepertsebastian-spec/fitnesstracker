@@ -128,14 +128,15 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ### P2.4 Manifest vervollständigen
 
-- [ ] `lang: "de"` (Build erzeugt derzeit `"en"`), `id`.
-- [ ] `shortcuts`: „Training starten“, „Daily“, „Fortschritt“.
-- [ ] `screenshots` (schmal + breit) für den erweiterten Android-Installationsdialog.
-- [ ] `apple-touch-icon` in 180×180.
+- [x] `lang: "de"` (Build erzeugt derzeit `"en"`), `id`.
+- [x] `shortcuts`: „Training starten“, „Daily“, „Fortschritt“.
+- [x] `screenshots` (schmal + breit) für den erweiterten Android-Installationsdialog.
+- [x] `apple-touch-icon` in 180×180. Dabei aufgefallen: Die PWA-Icons waren ein blaues Platzhalter-Quadrat und
+  passten nicht zum App-Logo — jetzt aus dem Logo erzeugt (`scripts/generate-pwa-icons.mjs`).
 
 ### P2.5 Dauerhafter Speicher
 
-- [ ] `navigator.storage.persist()` nach dem Login anfordern, damit offline geloggte, noch nicht
+- [x] `navigator.storage.persist()` nach dem Login anfordern, damit offline geloggte, noch nicht
   synchronisierte Sätze nicht vom Browser gelöscht werden.
 
 ---
