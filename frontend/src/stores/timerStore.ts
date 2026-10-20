@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { playTimerEndSound, type TimerSoundId } from "../lib/timerSound";
+import { clearCustomSound, dataUrlToBlob, playTimerEndSound, saveCustomSound, type TimerSoundId } from "../lib/timerSound";
 
 const DEFAULT_AUTO_START_SECONDS = 90;
 
@@ -24,7 +24,6 @@ interface TimerState {
   soundId: TimerSoundId;
   soundVolume: number;
   soundRepeat: number;
-  customSoundDataUrl: string | null;
   customSoundName: string | null;
   // Label of what the running timer is for (e.g. "Bankdrücken · Satz 2 fertig"), shown in the banner.
   label: string | null;
@@ -32,7 +31,7 @@ interface TimerState {
   setSoundId: (id: TimerSoundId) => void;
   setSoundVolume: (volume: number) => void;
   setSoundRepeat: (repeat: number) => void;
-  setCustomSound: (dataUrl: string | null, name: string | null) => void;
+  setCustomSound: (file: File | null) => Promise<void>;
   testSound: () => void;
   // Shifts a running countdown by ±seconds (−15/+15 in the focus mode's Satzpause card).
   adjust: (deltaSeconds: number) => void;
@@ -61,8 +60,8 @@ export const useTimerStore = create<TimerState>()(
   persist(
     (set, get) => {
       function soundOptions() {
-        const { soundId, soundVolume, soundRepeat, customSoundDataUrl } = get();
-        return { soundId, volume: soundVolume, repeat: soundRepeat, customSoundDataUrl };
+        const { soundId, soundVolume, soundRepeat } = get();
+        return { soundId, volume: soundVolume, repeat: soundRepeat };
       }
 
       function syncFromClock() {
@@ -96,7 +95,6 @@ export const useTimerStore = create<TimerState>()(
         soundId: "mp3" as TimerSoundId,
         soundVolume: 1,
         soundRepeat: 1,
-        customSoundDataUrl: null,
         customSoundName: null,
         label: null,
 
@@ -155,8 +153,15 @@ export const useTimerStore = create<TimerState>()(
         setSoundId: (soundId) => set({ soundId }),
         setSoundVolume: (soundVolume) => set({ soundVolume: Math.min(1, Math.max(0, soundVolume)) }),
         setSoundRepeat: (soundRepeat) => set({ soundRepeat: Math.min(5, Math.max(1, Math.round(soundRepeat))) }),
-        setCustomSound: (customSoundDataUrl, customSoundName) =>
-          set({ customSoundDataUrl, customSoundName, ...(customSoundDataUrl ? { soundId: "custom" as TimerSoundId } : {}) }),
+        setCustomSound: async (file) => {
+          if (!file) {
+            await clearCustomSound();
+            set({ customSoundName: null, ...(get().soundId === "custom" ? { soundId: "mp3" as TimerSoundId } : {}) });
+            return;
+          }
+          await saveCustomSound(file, file.name);
+          set({ customSoundName: file.name, soundId: "custom" as TimerSoundId });
+        },
         testSound: () => playTimerEndSound(soundOptions()),
 
         syncFromClock,
@@ -164,6 +169,24 @@ export const useTimerStore = create<TimerState>()(
     },
     {
       name: "fitnesstracker-rest-timer",
+      version: 1,
+      // v0 kept the custom sound as a data URL in localStorage; move it into IndexedDB.
+      migrate: (persisted, version) => {
+        const state = (persisted ?? {}) as Record<string, unknown>;
+        if (version < 1) {
+          const dataUrl = state.customSoundDataUrl;
+          delete state.customSoundDataUrl;
+          const blob = typeof dataUrl === "string" ? dataUrlToBlob(dataUrl) : null;
+          const name = typeof state.customSoundName === "string" ? state.customSoundName : "Eigene Datei";
+          if (blob) {
+            void saveCustomSound(blob, name).catch(() => undefined);
+          } else {
+            state.customSoundName = null;
+            if (state.soundId === "custom") state.soundId = "mp3";
+          }
+        }
+        return state as unknown as TimerState;
+      },
       // Only preferences survive a reload — a running countdown/interval can't (and shouldn't
       // try to) resume across a page reload.
       partialize: (state) => ({
@@ -174,7 +197,6 @@ export const useTimerStore = create<TimerState>()(
         soundId: state.soundId,
         soundVolume: state.soundVolume,
         soundRepeat: state.soundRepeat,
-        customSoundDataUrl: state.customSoundDataUrl,
         customSoundName: state.customSoundName,
       }),
     },

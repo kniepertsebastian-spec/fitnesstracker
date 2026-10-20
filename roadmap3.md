@@ -149,11 +149,12 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
   „Heute: 82,5 kg × 8 (+2,5)“.
 - [x] **Untere Tab-Leiste** auf dem Handy (Heute · Training · Fortschritt · Plan · Mehr) statt
   Hamburger-Menü mit zehn Einträgen; Tagebuch und Historie zusammenlegen.
-- [ ] **App-Badge** (`navigator.setAppBadge`) für offene Session bzw. nicht synchronisierte Sätze.
+- [x] **App-Badge** (`navigator.setAppBadge`) für offene Session bzw. nicht synchronisierte Sätze.
 - [ ] **Aktionen in Benachrichtigungen**, z. B. Supplement-Erinnerung direkt mit „Genommen“
-  bestätigen.
-- [ ] Eigenen Timer-Sound als Blob in IndexedDB statt als Data-URL im localStorage speichern.
-- [ ] Skeleton der App-Shell statt „Lädt…“ beim Offline-Kaltstart (`ProtectedRoute`).
+  bestätigen. (Offen: Es gibt noch keine Einnahme-Erfassung — dafür braucht es zuerst ein Datenmodell,
+  einen Endpunkt und eine Authentifizierung im Service Worker.)
+- [x] Eigenen Timer-Sound als Blob in IndexedDB statt als Data-URL im localStorage speichern.
+- [x] Skeleton der App-Shell statt „Lädt…“ beim Offline-Kaltstart (`ProtectedRoute`).
 
 ---
 

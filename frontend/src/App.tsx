@@ -27,11 +27,25 @@ import { initPlanEditSync } from "./offline/planEditSync";
 import { initRestTimerPush } from "./lib/restTimerPush";
 import { requestPersistentStorage } from "./lib/persistentStorage";
 import { useAuthStore } from "./stores/authStore";
+import { useSyncStore } from "./stores/syncStore";
+import { useOpenWorkoutSession } from "./hooks/useWorkoutSession";
+import { updateAppBadge } from "./lib/appBadge";
 
 // No reload prompt while a workout is in focus mode (/training) — it appears right after.
 function GlobalUpdatePrompt() {
   const { pathname } = useLocation();
   return <UpdatePrompt suppressed={pathname.startsWith("/training")} />;
+}
+
+// Mirrors unsynced changes / an open session onto the installed app's icon badge.
+function AppBadge() {
+  const authenticated = useAuthStore((s) => s.status === "authenticated");
+  const pending = useSyncStore((s) => s.pendingCount + s.failedCount);
+  const { data: session } = useOpenWorkoutSession();
+  useEffect(() => {
+    updateAppBadge(authenticated ? pending : 0, authenticated && !!session);
+  }, [authenticated, pending, session]);
+  return null;
 }
 
 export function App() {
@@ -50,6 +64,7 @@ export function App() {
   return (
     <BrowserRouter>
       <GlobalUpdatePrompt />
+      <AppBadge />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

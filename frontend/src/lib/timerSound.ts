@@ -1,3 +1,45 @@
+import { offlineDb } from "../offline/db";
+
+const CUSTOM_SOUND_KEY = "timer";
+let customSoundUrl: string | null = null;
+
+function revokeCustomSoundUrl() {
+  if (customSoundUrl) URL.revokeObjectURL(customSoundUrl);
+  customSoundUrl = null;
+}
+
+export async function saveCustomSound(blob: Blob, name: string): Promise<void> {
+  await offlineDb.customSounds.put({ key: CUSTOM_SOUND_KEY, blob, name });
+  revokeCustomSoundUrl();
+}
+
+export async function clearCustomSound(): Promise<void> {
+  await offlineDb.customSounds.delete(CUSTOM_SOUND_KEY);
+  revokeCustomSoundUrl();
+}
+
+// Decodes a legacy `data:` URL (the sound used to live in localStorage) without fetch(), which a
+// connect-src CSP could block.
+export function dataUrlToBlob(dataUrl: string): Blob | null {
+  const match = /^data:([^;,]*)(;base64)?,(.*)$/s.exec(dataUrl);
+  if (!match) return null;
+  try {
+    const raw = match[2] ? atob(match[3]) : decodeURIComponent(match[3]);
+    const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+    return new Blob([bytes], { type: match[1] || "audio/mpeg" });
+  } catch {
+    return null;
+  }
+}
+
+async function getCustomSoundUrl(): Promise<string | null> {
+  if (customSoundUrl) return customSoundUrl;
+  const row = await offlineDb.customSounds.get(CUSTOM_SOUND_KEY);
+  if (!row) return null;
+  customSoundUrl = URL.createObjectURL(row.blob);
+  return customSoundUrl;
+}
+
 let audioContext: AudioContext | null = null;
 
 function getContext(): AudioContext {
@@ -69,7 +111,6 @@ function playTones(tones: Tone[], volume: number) {
 export interface TimerSoundOptions {
   soundId: TimerSoundId;
   volume: number; // 0..1
-  customSoundDataUrl: string | null;
   // How often the sound plays back-to-back — a single beep is easy to miss mid-set.
   repeat: number;
 }
@@ -80,12 +121,15 @@ function playFile(url: string, volume: number, onError: () => void) {
   audio.play().catch(onError);
 }
 
-function playOnce({ soundId, volume, customSoundDataUrl }: TimerSoundOptions) {
+function playOnce({ soundId, volume }: TimerSoundOptions) {
   if (soundId === "none") return;
   const fallback = () => playTones(TONE_SEQUENCES.beep!, volume);
   if (soundId === "mp3") return playFile("/sounds/timer-end.mp3", volume, fallback);
   if (soundId === "custom") {
-    return customSoundDataUrl ? playFile(customSoundDataUrl, volume, fallback) : fallback();
+    void getCustomSoundUrl()
+      .then((url) => (url ? playFile(url, volume, fallback) : fallback()))
+      .catch(fallback);
+    return;
   }
   playTones(TONE_SEQUENCES[soundId] ?? TONE_SEQUENCES.beep!, volume);
 }
