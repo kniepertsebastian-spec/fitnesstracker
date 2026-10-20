@@ -161,9 +161,9 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ## P3b – KI-Generator Ausbau
 
-- [ ] Alle drei Rotationsphasen in einem Durchgang generieren; Hauptübungen bleiben über die
+- [x] Alle drei Rotationsphasen in einem Durchgang generieren; Hauptübungen bleiben über die
   Phasen gleich, nur Sätze/Wiederholungen/Tempo wechseln.
-- [ ] Plateau-Erkennung (aus den Ziel-Vorschlägen) nutzen: stagnierende Übungen durch Varianten
+- [x] Plateau-Erkennung (aus den Ziel-Vorschlägen) nutzen: stagnierende Übungen durch Varianten
   ersetzen.
 - [ ] Cardio und Dehnen im selben Fragebogen planen.
 

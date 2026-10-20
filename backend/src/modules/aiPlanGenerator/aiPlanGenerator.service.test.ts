@@ -98,7 +98,7 @@ describe("aiPlanGenerator.service with GoogleGenAI", () => {
       },
       profile: { findUnique: vi.fn().mockResolvedValue(null) },
       planSnapshot: { findUnique: vi.fn().mockResolvedValue(null), upsert },
-      planExercise: { deleteMany: vi.fn(), createMany: vi.fn() },
+      planExercise: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn(), createMany: vi.fn() },
     } as unknown as Parameters<typeof generatePlan>[0];
 
     const res = await generatePlan(fakePrisma, "user-1", {
@@ -114,6 +114,7 @@ describe("aiPlanGenerator.service with GoogleGenAI", () => {
 
     expect(res.status).toBe("draft");
     if (res.status !== "draft") return;
+    expect(res.replacedPlateaus).toEqual([]);
     const { draft } = res;
     expect(draft.rationale).toBe("Ganzkörper mit Fokus auf Grundübungen.");
     // 45 min → 4 exercises; one from the model, three filled up — never the medicine ball.

@@ -86,6 +86,8 @@ export async function selectCatalog(
   equipment: EquipmentTag[],
   days: SplitDay[],
   exclusions: ExerciseExclusions = { muscles: [], nameKeywords: [] },
+  // Plateaued exercises: kept out of the catalog so the model has to pick variants instead.
+  excludedIds: ReadonlySet<string> = new Set(),
 ): Promise<CatalogSelection> {
   const allowedTags = new Set(equipment);
   const [rows, logged] = await Promise.all([
@@ -100,7 +102,9 @@ export async function selectCatalog(
     }),
   ]);
   const loggedCounts = new Map(logged.map((l) => [l.exerciseId, l._count._all]));
-  const usable = rows.filter((row) => allowedTags.has(equipmentTagOf(row.equipment)) && !isExcluded(row, exclusions));
+  const usable = rows.filter(
+    (row) => allowedTags.has(equipmentTagOf(row.equipment)) && !isExcluded(row, exclusions) && !excludedIds.has(row.id),
+  );
   const muscles = [...new Set(days.flatMap((d) => d.muscles))];
   const picked = selectBalancedCatalog(usable, muscles, loggedCounts, userId);
   return { entries: picked.map(toCatalogEntry), rows: picked, loggedCounts };

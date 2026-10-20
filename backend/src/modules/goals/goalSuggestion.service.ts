@@ -65,6 +65,41 @@ async function achievementAmbitionMultiplier(prisma: PrismaClient, userId: strin
   return 1;
 }
 
+// Of the given exercises, those whose last 90 days show a plateau by the same rule the goal
+// suggestions use (the last 3 entries never beat everything before) — on reps for high-rep
+// exercises, on weight otherwise. An exercise whose volume collapsed is skipped: that is a
+// deload or dropped exercise, not a plateau.
+export async function findPlateauExerciseIds(
+  prisma: PrismaClient,
+  userId: string,
+  exerciseIds: string[],
+): Promise<Set<string>> {
+  if (exerciseIds.length === 0) return new Set();
+  const logs = await prisma.workoutLog.findMany({
+    where: {
+      userId,
+      deletedAt: null,
+      exerciseId: { in: exerciseIds },
+      performedAt: { gte: new Date(Date.now() - LOOKBACK_DAYS * DAY_MS) },
+    },
+    orderBy: { performedAt: "asc" },
+  });
+  const byExercise = new Map<string, WorkoutLog[]>();
+  for (const log of logs) {
+    const arr = byExercise.get(log.exerciseId);
+    if (arr) arr.push(log);
+    else byExercise.set(log.exerciseId, [log]);
+  }
+  const plateaued = new Set<string>();
+  for (const [exerciseId, exerciseLogs] of byExercise) {
+    if (exerciseLogs.length < MIN_LOGS_REQUIRED || !volumeHolding(exerciseLogs)) continue;
+    const avgReps = exerciseLogs.reduce((sum, l) => sum + l.reps, 0) / exerciseLogs.length;
+    const series = exerciseLogs.map((l) => (avgReps >= REPS_GOAL_AVG_REPS_THRESHOLD ? l.reps : Number(l.weightKg)));
+    if (detectPlateau(series)) plateaued.add(exerciseId);
+  }
+  return plateaued;
+}
+
 export type GoalSuggestionType = "WEIGHT" | "REPS";
 
 export interface GoalSuggestionTier {
