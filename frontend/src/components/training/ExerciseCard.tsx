@@ -37,6 +37,31 @@ interface Props {
   onSwap: () => void;
 }
 
+function progressionHint(p: NonNullable<PlanDiaryExerciseDto["progression"]>): string {
+  const delta =
+    p.mode === "weight"
+      ? p.suggestedWeightKg - p.lastWeightKg
+      : p.suggestedReps - p.lastReps;
+  const sign = delta > 0 ? "+" : "";
+  const unit = p.mode === "weight" ? "" : " Wdh.";
+  const change = delta === 0 ? "" : ` (${sign}${String(delta).replace(".", ",")}${unit})`;
+  return `Heute: ${formatKg(p.suggestedWeightKg)} kg × ${p.suggestedReps}${change}${p.deloadSuggested ? " · Deload" : ""}`;
+}
+
+const STEP_OPTIONS = ["2.5", "5"] as const;
+
+function stepKey(exerciseName: string): string {
+  return `weightStep:${exerciseName}`;
+}
+
+function loadStep(exerciseName: string): number {
+  try {
+    return localStorage.getItem(stepKey(exerciseName)) === "5" ? 5 : 2.5;
+  } catch {
+    return 2.5;
+  }
+}
+
 function initialValues(entry: PlanDiaryExerciseDto, done: LocalWorkoutLog[], previous: LocalWorkoutLog[]): SetValues {
   const last = done.at(-1);
   if (last) return { weightKg: last.weightKg, reps: last.reps, rir: null };
@@ -67,6 +92,21 @@ export function ExerciseCard({
   onSwap,
 }: Props) {
   const [values, setValues] = useState<SetValues>(() => initialValues(entry, done, previous));
+  const [weightStep, setWeightStep] = useState(() => loadStep(entry.exerciseName));
+
+  useEffect(() => {
+    setWeightStep(loadStep(entry.exerciseName));
+  }, [entry.exerciseName]);
+
+  const changeStep = (next: string) => {
+    const step = Number(next);
+    setWeightStep(step);
+    try {
+      localStorage.setItem(stepKey(entry.exerciseName), String(step));
+    } catch {
+      // Remembering the step is a convenience; ignore blocked storage.
+    }
+  };
 
   // After a set is logged (or undone) the next one starts from the last logged values.
   useEffect(() => {
@@ -174,13 +214,17 @@ export function ExerciseCard({
                 />
               </div>
 
+              {state === "current" && p && (
+                <p className="mt-2 px-1 text-small text-accent">{progressionHint(p)}</p>
+              )}
+
               {state === "current" && (
                 <div className="mt-3 flex flex-col gap-3 rounded-lg bg-surface-2 p-3">
                   <div className="grid grid-cols-2 gap-3">
                     <Stepper
                       label="Gewicht"
                       value={values.weightKg}
-                      step={2.5}
+                      step={weightStep}
                       unit="kg"
                       disabled={disabled}
                       onChange={(weightKg) => setValues((v) => ({ ...v, weightKg }))}
@@ -204,10 +248,28 @@ export function ExerciseCard({
                         { value: "0", label: "0" },
                         { value: "1", label: "1" },
                         { value: "2", label: "2" },
-                        { value: "3", label: "3+" },
+                        { value: "3", label: "3" },
+                        { value: "4", label: "4" },
                       ]}
                     />
                   </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-small text-text-subtle">Schrittweite</span>
+                    <SegmentedControl
+                      label="Gewichts-Schrittweite"
+                      value={String(weightStep)}
+                      onChange={changeStep}
+                      options={STEP_OPTIONS.map((v) => ({ value: v, label: `${v.replace(".", ",")} kg` }))}
+                    />
+                  </div>
+                  <Button
+                    size="lg"
+                    className="h-16 w-full text-body font-semibold"
+                    disabled={disabled || busy}
+                    onClick={() => onLogSet(values, i + 1)}
+                  >
+                    Satz {i + 1} speichern
+                  </Button>
                 </div>
               )}
             </div>

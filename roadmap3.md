@@ -143,9 +143,9 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ## P3 – Bedienung und Effizienz
 
-- [ ] **Satz loggen mit einem Tap:** Speichern-Button als größte, daumennahe Fläche;
+- [x] **Satz loggen mit einem Tap:** Speichern-Button als größte, daumennahe Fläche;
   Gewichts-Schrittweite je Übung merken (2,5 / 5 kg); RIR als Auswahl 0–4 statt Eingabefeld.
-- [ ] **Progressionsvorschlag in der Satzzeile** (Logik aus Phase 24 sichtbar machen), z. B.
+- [x] **Progressionsvorschlag in der Satzzeile** (Logik aus Phase 24 sichtbar machen), z. B.
   „Heute: 82,5 kg × 8 (+2,5)“.
 - [ ] **Untere Tab-Leiste** auf dem Handy (Heute · Training · Fortschritt · Plan · Mehr) statt
   Hamburger-Menü mit zehn Einträgen; Tagebuch und Historie zusammenlegen.
