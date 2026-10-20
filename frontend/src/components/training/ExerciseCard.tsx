@@ -3,6 +3,7 @@ import { BookOpen, Link2, Plus, Repeat2 } from "lucide-react";
 import type { ExerciseDto, PlanDiaryExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../../offline/db";
 import { formatKg } from "../../lib/trainingSets";
+import { DEFAULT_BAR_KG, platesPerSide } from "../../lib/plates";
 import { Badge, Button, Card, SegmentedControl, SetCheck, Stepper, cn } from "../ui";
 import type { SetCheckState } from "../ui";
 import { formatPrescription } from "../../lib/planPrescription";
@@ -118,6 +119,7 @@ export function ExerciseCard({
   const complete = done.length >= setCount;
   const p = entry.progression;
   const lastTime = previous[0];
+  const plateLoad = exercise?.equipment?.toLowerCase() === "barbell" ? platesPerSide(values.weightKg) : null;
 
   return (
     <Card className="rounded-3xl p-5">
@@ -238,6 +240,18 @@ export function ExerciseCard({
                       onChange={(reps) => setValues((v) => ({ ...v, reps }))}
                     />
                   </div>
+                  {plateLoad && (
+                    <p className="text-small text-text-subtle">
+                      Pro Seite:{" "}
+                      <span className="tabular font-mono text-text-2">
+                        {plateLoad.plates.length > 0
+                          ? plateLoad.plates.map((plate) => formatKg(plate)).join(" + ")
+                          : "nur die Stange"}
+                      </span>{" "}
+                      (Stange {DEFAULT_BAR_KG} kg
+                      {plateLoad.remainderKg > 0 && `, ${formatKg(plateLoad.remainderKg)} kg pro Seite nicht belegbar`})
+                    </p>
+                  )}
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-small text-text-subtle">RIR</span>
                     <SegmentedControl
