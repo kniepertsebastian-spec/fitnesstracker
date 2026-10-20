@@ -52,6 +52,14 @@ export interface PendingCardioLog {
   queuedAt: string;
 }
 
+// The rest timer's own end-of-rest sound, kept as a Blob (a data URL in localStorage is ~33% larger
+// and counts against its small quota). One row, key "timer".
+export interface CustomSoundRow {
+  key: string;
+  blob: Blob;
+  name: string;
+}
+
 class OfflineDb extends Dexie {
   workoutLogs!: Table<LocalWorkoutLog, string>;
   pendingMutations!: Table<PendingMutation, number>;
@@ -60,6 +68,7 @@ class OfflineDb extends Dexie {
   failedMutations!: Table<FailedMutation, number>;
   pendingCardioLogs!: Table<PendingCardioLog, number>;
   queryCache!: Table<{ key: string; value: string }, string>;
+  customSounds!: Table<CustomSoundRow, string>;
 
   constructor() {
     super("fitnesstracker-offline");
@@ -87,6 +96,9 @@ class OfflineDb extends Dexie {
     // Persisted React Query cache (queryClient.ts), so the app cold-starts offline with its plan.
     this.version(6).stores({
       queryCache: "key",
+    });
+    this.version(7).stores({
+      customSounds: "key",
     });
   }
 }

@@ -22,7 +22,6 @@ export function TimerSettingsForm() {
     setSoundVolume,
     soundRepeat,
     setSoundRepeat,
-    customSoundDataUrl,
     customSoundName,
     setCustomSound,
     vibrationEnabled,
@@ -36,11 +35,7 @@ export function TimerSettingsForm() {
       window.alert("Die Datei ist zu groß (max. 1 MB).");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") setCustomSound(reader.result, file.name);
-    };
-    reader.readAsDataURL(file);
+    void setCustomSound(file);
   };
 
   const handleTest = () => {
@@ -74,7 +69,7 @@ export function TimerSettingsForm() {
           <Field label="Klang">
             {(p) => (
               <Select {...p} value={soundId} onChange={(e) => setSoundId(e.target.value as TimerSoundId)}>
-                {SOUND_IDS.filter((id) => id !== "custom" || customSoundDataUrl).map((id) => (
+                {SOUND_IDS.filter((id) => id !== "custom" || customSoundName).map((id) => (
                   <option key={id} value={id}>
                     {id === "custom" && customSoundName ? `Eigene: ${customSoundName}` : TIMER_SOUND_LABELS[id]}
                   </option>

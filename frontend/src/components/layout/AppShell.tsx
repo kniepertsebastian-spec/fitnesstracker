@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { IconButton, Sheet, SheetClose } from "../ui";
+import { BottomTabBar } from "./BottomTabBar";
 import { InstallButton } from "./InstallButton";
 import { Logo } from "./Logo";
 import { NavMenu } from "./NavMenu";
@@ -11,8 +12,8 @@ import { StartTrainingButton } from "./StartTrainingButton";
 import { SyncStatusIndicator } from "./SyncStatusIndicator";
 import { UserRow } from "./UserRow";
 
-// Mobile (< 1024 px): top bar + right-hand menu sheet. Desktop: fixed 248 px sidebar with the
-// same ten entries. Safe-area insets stay on the outer frame.
+// Mobile (< 1024 px): top bar, bottom tab bar and a right-hand menu sheet ("Mehr"). Desktop: fixed
+// 248 px sidebar with the same nine entries. Safe-area insets stay on the outer frame.
 export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
@@ -52,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-4 lg:px-10 lg:py-6">{children}</main>
+        <main className="flex-1 px-4 pb-24 pt-4 lg:px-10 lg:pb-6 lg:pt-6">{children}</main>
       </div>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen} title="Menü" className="gap-4 p-4">
@@ -72,6 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <UserRow />
       </Sheet>
 
+      <BottomTabBar onOpenMenu={() => setMenuOpen(true)} />
       <PRToastHost />
       <RestTimerWidget />
     </div>

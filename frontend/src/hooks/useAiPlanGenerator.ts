@@ -30,6 +30,14 @@ export function useGeneratePlan() {
           hasBackup: current?.hasBackup ?? false,
         }));
       }
+      if (result.status === "draft") {
+        for (const other of result.otherDrafts ?? []) {
+          queryClient.setQueryData(draftKey(other.phase), (current: { hasBackup: boolean } | undefined) => ({
+            draft: other,
+            hasBackup: current?.hasBackup ?? false,
+          }));
+        }
+      }
       if (variables.coldStart) queryClient.invalidateQueries({ queryKey: ["ai-plan-preferences"] });
     },
   });

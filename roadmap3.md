@@ -145,17 +145,17 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ## P3 – Bedienung und Effizienz
 
-- [ ] **Satz loggen mit einem Tap:** Speichern-Button als größte, daumennahe Fläche;
+- [x] **Satz loggen mit einem Tap:** Speichern-Button als größte, daumennahe Fläche;
   Gewichts-Schrittweite je Übung merken (2,5 / 5 kg); RIR als Auswahl 0–4 statt Eingabefeld.
-- [ ] **Progressionsvorschlag in der Satzzeile** (Logik aus Phase 24 sichtbar machen), z. B.
+- [x] **Progressionsvorschlag in der Satzzeile** (Logik aus Phase 24 sichtbar machen), z. B.
   „Heute: 82,5 kg × 8 (+2,5)“.
-- [ ] **Untere Tab-Leiste** auf dem Handy (Heute · Training · Fortschritt · Plan · Mehr) statt
+- [x] **Untere Tab-Leiste** auf dem Handy (Heute · Training · Fortschritt · Plan · Mehr) statt
   Hamburger-Menü mit zehn Einträgen; Tagebuch und Historie zusammenlegen.
-- [ ] **App-Badge** (`navigator.setAppBadge`) für offene Session bzw. nicht synchronisierte Sätze.
-- [ ] **Aktionen in Benachrichtigungen**, z. B. Supplement-Erinnerung direkt mit „Genommen“
-  bestätigen.
-- [ ] Eigenen Timer-Sound als Blob in IndexedDB statt als Data-URL im localStorage speichern.
-- [ ] Skeleton der App-Shell statt „Lädt…“ beim Offline-Kaltstart (`ProtectedRoute`).
+- [x] **App-Badge** (`navigator.setAppBadge`) für offene Session bzw. nicht synchronisierte Sätze.
+- [x] ~~**Aktionen in Benachrichtigungen**, z. B. Supplement-Erinnerung direkt mit „Genommen“
+  bestätigen.~~ Entfällt (Entscheidung des Nutzers): keine Einnahme-Erfassung geplant.
+- [x] Eigenen Timer-Sound als Blob in IndexedDB statt als Data-URL im localStorage speichern.
+- [x] Skeleton der App-Shell statt „Lädt…“ beim Offline-Kaltstart (`ProtectedRoute`).
 
 ---
 

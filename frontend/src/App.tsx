@@ -11,6 +11,9 @@ import { initPlanEditSync } from "./offline/planEditSync";
 import { initRestTimerPush } from "./lib/restTimerPush";
 import { requestPersistentStorage } from "./lib/persistentStorage";
 import { useAuthStore } from "./stores/authStore";
+import { useSyncStore } from "./stores/syncStore";
+import { useOpenWorkoutSession } from "./hooks/useWorkoutSession";
+import { updateAppBadge } from "./lib/appBadge";
 
 // Every screen is its own chunk, so a signed-in cold start doesn't download (or parse) the code
 // of the other fifteen — the JS of the whole app used to arrive as one 800 KB file, even for the
@@ -60,6 +63,17 @@ function GlobalUpdatePrompt() {
   return <UpdatePrompt suppressed={pathname.startsWith("/training")} />;
 }
 
+// Mirrors unsynced changes / an open session onto the installed app's icon badge.
+function AppBadge() {
+  const authenticated = useAuthStore((s) => s.status === "authenticated");
+  const pending = useSyncStore((s) => s.pendingCount + s.failedCount);
+  const { data: session } = useOpenWorkoutSession();
+  useEffect(() => {
+    updateAppBadge(authenticated ? pending : 0, authenticated && !!session);
+  }, [authenticated, pending, session]);
+  return null;
+}
+
 export function App() {
   useAuthBootstrap();
   const authStatus = useAuthStore((s) => s.status);
@@ -78,6 +92,7 @@ export function App() {
     // page on screen until it arrives, instead of blanking it with the Suspense fallback.
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <GlobalUpdatePrompt />
+      <AppBadge />
       <RoutedScreens>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

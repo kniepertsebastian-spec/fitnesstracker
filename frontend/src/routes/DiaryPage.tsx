@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import type { LocalWorkoutLog } from "../offline/db";
+import { DiaryTabs } from "../components/layout/DiaryTabs";
 import { AppShell } from "../components/layout/AppShell";
 import { WorkoutLogTable } from "../components/workoutLog/WorkoutLogTable";
 import { WorkoutLogFormDialog } from "../components/workoutLog/WorkoutLogFormDialog";
@@ -31,6 +32,7 @@ export function DiaryPage() {
 
   return (
     <AppShell>
+      <DiaryTabs />
       <div className="mb-5 flex items-center justify-between gap-3">
         <h1 className="min-w-0 hyphens-auto break-words text-h1 text-text lg:text-h1-lg">Fitnesstagebuch</h1>
         <Button variant="primary" iconLeft={<Plus size={18} aria-hidden />} onClick={openCreate} className="shrink-0">
@@ -49,9 +51,6 @@ export function DiaryPage() {
           title="Heute"
           action={
             <span className="flex gap-3 text-small">
-              <Link to="/history" className="text-accent hover:text-accent-hover">
-                Historie
-              </Link>
               <Link to="/progress" className="text-accent hover:text-accent-hover">
                 Fortschritt
               </Link>
