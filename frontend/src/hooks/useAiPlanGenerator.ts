@@ -49,6 +49,7 @@ function invalidatePlan(queryClient: ReturnType<typeof useQueryClient>, phase: T
   queryClient.invalidateQueries({ queryKey: ["plan-exercises", phase] });
   queryClient.invalidateQueries({ queryKey: ["plan-exercises", "week-status", phase] });
   queryClient.invalidateQueries({ queryKey: ["stretching"] });
+  queryClient.invalidateQueries({ queryKey: ["cardio"] });
 }
 
 export function useAcceptPlanDraft(phase: TrainingPhase) {

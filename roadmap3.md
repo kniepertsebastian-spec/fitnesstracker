@@ -165,7 +165,7 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
   Phasen gleich, nur Sätze/Wiederholungen/Tempo wechseln.
 - [x] Plateau-Erkennung (aus den Ziel-Vorschlägen) nutzen: stagnierende Übungen durch Varianten
   ersetzen.
-- [ ] Cardio und Dehnen im selben Fragebogen planen.
+- [x] Cardio und Dehnen im selben Fragebogen planen.
 
 ---
 

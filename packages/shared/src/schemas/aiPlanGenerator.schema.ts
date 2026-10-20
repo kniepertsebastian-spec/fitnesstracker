@@ -68,6 +68,12 @@ export const coldStartInputSchema = z.object({
   preferredExercises: z.string().max(500).optional(),
   avoidedExercises: z.string().max(500).optional(),
   limitations: z.string().max(500).optional(),
+  // Plan cardio / stretching along with the strength plan: when the draft is accepted, the
+  // phase's own cardio and stretching versions (tied to the old training days) are replaced by
+  // the suggestions for the new days; cardio also takes the questionnaire's goal. Off = those
+  // plans stay as they are.
+  includeCardio: z.boolean().default(false),
+  includeStretching: z.boolean().default(false),
 });
 export type ColdStartInput = z.infer<typeof coldStartInputSchema>;
 // What the client sends; `split` may be omitted and defaults to "auto".
