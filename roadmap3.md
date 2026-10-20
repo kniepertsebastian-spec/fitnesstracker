@@ -92,9 +92,9 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ### P1.3 Bildschirm im Training wach halten, Pausen-Timer bei Sperrbildschirm
 
-- [ ] Screen Wake Lock (`navigator.wakeLock`) im Fokusmodus, bei `visibilitychange` neu
+- [x] Screen Wake Lock (`navigator.wakeLock`) im Fokusmodus, bei `visibilitychange` neu
   anfordern.
-- [ ] Pausen-Ende bei gesperrtem Bildschirm melden: beim Start der Pause einen verzögerten Push
+- [x] Pausen-Ende bei gesperrtem Bildschirm melden: beim Start der Pause einen verzögerten Push
   serverseitig planen, bei Abbruch/±15 s stornieren bzw. verschieben.
 
 ### P1.4 Gelöschte Sätze verschwinden auf allen Geräten

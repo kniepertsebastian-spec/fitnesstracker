@@ -65,6 +65,7 @@ import { applyPlanEdits, loadPlanEdits, savePlanEdits, toPlanEdit, type PlanEdit
 import { dropQueuedPlanOps, enqueuePlanOp, PLAN_EDITS_EVENT, type PlanOp } from "../offline/planEditSync";
 import { usePRToastStore } from "../stores/prToastStore";
 import { useTimerStore } from "../stores/timerStore";
+import { useWakeLock } from "../hooks/useWakeLock";
 
 interface Summary {
   seconds: number;
@@ -119,6 +120,8 @@ export function TrainingPage() {
   const [editing, setEditing] = useState(false);
   const [picker, setPicker] = useState<{ mode: "swap"; key: string } | { mode: "add" } | null>(null);
   const sessionClientId = session?.clientId ?? null;
+  // Screen stays on during an active workout (not while paused or on the summary).
+  useWakeLock(session?.status === "ACTIVE" && !summary);
 
   // Plan changes made in this workout (P0.1) — reloaded when the sync queue marks some as saved.
   useEffect(() => {

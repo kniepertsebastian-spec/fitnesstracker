@@ -25,3 +25,11 @@ export function getPushSettingsRequest() {
 export function updatePushSettingsRequest(input: UpdatePushSettingsInput) {
   return apiFetch<PushSettingsDto>("/push/settings", { method: "PATCH", body: input });
 }
+
+export function scheduleRestTimerPushRequest(endsAt: string, label?: string) {
+  return apiFetch<{ scheduled: boolean }>("/push/rest-timer", { method: "PUT", body: { endsAt, label } });
+}
+
+export function cancelRestTimerPushRequest() {
+  return apiFetch<void>("/push/rest-timer", { method: "DELETE" });
+}
