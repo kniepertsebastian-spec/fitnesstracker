@@ -63,8 +63,16 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
     try {
       const result = await generatePlan.mutateAsync({ phase, coldStart, day, allPhases: allPhases || undefined });
       setColdStartOpen(result.status === "needs_cold_start");
-      if (result.status === "draft" && result.otherDrafts?.length) {
-        setNotice("Entwürfe für alle drei Phasen erstellt — wechsle zwischen den Phasen, um sie zu prüfen und zu übernehmen.");
+      if (result.status === "draft") {
+        const parts = [
+          result.otherDrafts?.length
+            ? "Entwürfe für alle drei Phasen erstellt — wechsle zwischen den Phasen, um sie zu prüfen und zu übernehmen."
+            : null,
+          result.replacedPlateaus?.length
+            ? `Wegen Stagnation durch Varianten ersetzt: ${result.replacedPlateaus.join(", ")}.`
+            : null,
+        ].filter((part): part is string => part !== null);
+        if (parts.length > 0) setNotice(parts.join(" "));
       }
     } catch (err) {
       setColdStartOpen(false);
