@@ -114,8 +114,10 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ### P2.2 Code-Splitting
 
-- [ ] Routen mit `React.lazy` laden (aktuell ein einziger JS-Chunk mit ca. 780 KB). Ui-Kit,
-  Kamera, KI-Generator, Körperanalyse zuerst auslagern.
+- [x] Routen mit `React.lazy` laden (aktuell ein einziger JS-Chunk mit ca. 780 KB). Ui-Kit,
+  Kamera, KI-Generator, Körperanalyse zuerst auslagern. Ergebnis: JS beim ersten Laden der Login-Seite
+  796 → 379 KB (−52 %), Weg bis zum Dashboard rund 470 KB; Vendor-Pakete getrennt, damit App-Updates
+  weniger Daten ziehen.
 
 ### P2.3 Caddy: Cache- und Security-Header
 
