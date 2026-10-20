@@ -4,6 +4,7 @@ import {
   checkAndNotifyPersonalRecord,
   createWorkoutLog,
   deleteWorkoutLog,
+  listWorkoutLogChanges,
   listWorkoutLogs,
   updateWorkoutLog,
 } from "./workoutLog.service.js";
@@ -15,15 +16,28 @@ const listQuerySchema = z.object({
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
   exerciseId: z.string().uuid().optional(),
+  // Only what changed after this moment (see workoutLogListDtoSchema).
+  updatedSince: z.string().datetime().optional(),
 });
 
 export default async function workoutLogRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
 
   fastify.get("/workout-logs", async (request, reply) => {
-    const filters = listQuerySchema.parse(request.query);
+    const { updatedSince, ...filters } = listQuerySchema.parse(request.query);
+    // Taken before the query: a row written while it runs has an updatedAt after this moment and
+    // so shows up in the next delta instead of falling between two requests.
+    const serverTime = new Date().toISOString();
+    if (updatedSince) {
+      const changes = await listWorkoutLogChanges(fastify.prisma, request.user.sub, new Date(updatedSince));
+      return reply.send({
+        items: changes.items.map(toWorkoutLogDto),
+        deletedClientIds: changes.deletedClientIds,
+        serverTime,
+      });
+    }
     const logs = await listWorkoutLogs(fastify.prisma, request.user.sub, filters);
-    return reply.send({ items: logs.map(toWorkoutLogDto) });
+    return reply.send({ items: logs.map(toWorkoutLogDto), deletedClientIds: [], serverTime });
   });
 
   fastify.post("/workout-logs", async (request, reply) => {
