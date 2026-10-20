@@ -21,8 +21,10 @@ export function lastTimeSets(logs: LocalWorkoutLog[], exerciseId: string, before
   return past.filter((l) => utcDayKey(new Date(l.performedAt)) === lastDay).sort(bySet);
 }
 
+// Always through the locale: whole numbers used to bypass it, so a 170543 kg volume read without
+// thousands separators ("170.543") while fractional weights had them.
 export function formatKg(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toLocaleString("de-DE", { maximumFractionDigits: 2 });
+  return value.toLocaleString("de-DE", { maximumFractionDigits: 2 });
 }
 
 export function formatDuration(totalSeconds: number): string {
