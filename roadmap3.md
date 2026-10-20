@@ -119,10 +119,12 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ### P2.3 Caddy: Cache- und Security-Header
 
-- [ ] `Cache-Control: no-cache` für `/sw.js`, `/index.html`, `/manifest.webmanifest`.
-- [ ] `Cache-Control: public, max-age=31536000, immutable` für `/assets/*`.
-- [ ] CSP, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`.
-- [ ] Cloudflare-Caching für `sw.js` prüfen.
+- [x] `Cache-Control: no-cache` für `/sw.js`, `/index.html`, `/manifest.webmanifest`.
+- [x] `Cache-Control: public, max-age=31536000, immutable` für `/assets/*`.
+- [x] CSP, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`.
+- [ ] Cloudflare-Caching für `sw.js` prüfen (nur im Cloudflare-Dashboard möglich: keine Cache-Regel mit
+  eigenem „Edge TTL“ für `/sw.js`, `/index.html`, `/manifest.webmanifest`, sonst überschreibt sie das
+  `no-cache` des Servers).
 
 ### P2.4 Manifest vervollständigen
 

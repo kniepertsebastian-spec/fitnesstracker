@@ -3,14 +3,52 @@
 # port is bound to this container, so there's nothing here for Caddy's automatic HTTPS
 # (Let's Encrypt) to do — an internet-facing hostname would just fail ACME validation.
 :80 {
+	# Sent with every response, API included.
+	#
+	# CSP: the app is a same-origin SPA with a same-origin API. The few exceptions are spelled
+	# out: inline style *attributes* (React `style={}`, Radix positioning) need 'unsafe-inline'
+	# for styles — scripts stay strictly 'self' (the build emits no inline script); exercise
+	# images come from free-exercise-db on raw.githubusercontent.com; photos, camera previews and
+	# the custom timer sound are blob:/data: URLs.
+	header {
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://raw.githubusercontent.com; media-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Only the progress-photo camera is used; everything else the app never asks for.
+		Permissions-Policy "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
+		-Server
+	}
+
 	handle /api/* {
 		reverse_proxy backend:3000
 	}
 
+	# Hashed build output (never changes under the same name): cache for a year. No SPA
+	# fallback here — a request for a chunk of an older build must 404 instead of being answered
+	# with index.html, which the immutable header would then pin in caches as "JavaScript".
+	handle /assets/* {
+		root * /srv/frontend
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Everything else — the HTML shell, the service worker, the manifest and the SPA routes —
+	# must be revalidated on every load: a stale sw.js or index.html delays app updates, and
+	# Cloudflare would otherwise serve them from its edge cache.
 	handle {
 		root * /srv/frontend
+		header Cache-Control "no-cache"
+		# Caddy has no MIME type for .webmanifest; with nosniff the type must be explicit.
+		header /manifest.webmanifest Content-Type "application/manifest+json"
 		try_files {path} /index.html
 		file_server
+	}
+
+	# Errors (a missing asset, an unreachable backend) must never be cached: the long lifetime
+	# above would otherwise be sent along with a 404 and stick in Cloudflare/the browser.
+	handle_errors {
+		header Cache-Control "no-store"
+		respond "{err.status_code} {err.status_text}"
 	}
 
 	encode gzip
