@@ -7,7 +7,7 @@ import {
   type SplitPreference,
 } from "@fitnesstracker/shared";
 import { Check } from "lucide-react";
-import { Button, Dialog, Field, Input, Textarea, cn } from "../ui";
+import { Button, Dialog, Field, Input, Textarea, Toggle, cn } from "../ui";
 
 interface Props {
   onSubmit: (input: ColdStartInput) => void;
@@ -53,7 +53,7 @@ const GOAL_OPTIONS: { value: ColdStartInput["goal"]; label: string }[] = [
   { value: "general_fitness", label: "Allgemeine Fitness" },
 ];
 
-const STEP_COUNT = 8;
+const STEP_COUNT = 9;
 
 // A step-by-step wizard rather than one long form. It opens before every generation, because
 // goals, available time, equipment and limitations can change even when history already exists.
@@ -70,6 +70,8 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
   const [preferredExercises, setPreferredExercises] = useState(initial?.preferredExercises ?? "");
   const [avoidedExercises, setAvoidedExercises] = useState(initial?.avoidedExercises ?? "");
   const [limitations, setLimitations] = useState(initial?.limitations ?? "");
+  const [includeCardio, setIncludeCardio] = useState(initial?.includeCardio ?? false);
+  const [includeStretching, setIncludeStretching] = useState(initial?.includeStretching ?? false);
 
   const toggleEquipment = (tag: EquipmentTag) =>
     setEquipment((current) => (current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]));
@@ -91,6 +93,8 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
       preferredExercises: preferredExercises.trim() || undefined,
       avoidedExercises: avoidedExercises.trim() || undefined,
       limitations: limitations.trim() || undefined,
+      includeCardio,
+      includeStretching,
     });
   };
 
@@ -220,6 +224,17 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
             <Textarea {...p} value={limitations} onChange={(e) => setLimitations(e.target.value)} rows={3} placeholder="z. B. Knieprobleme, Rückenschmerzen…" />
           )}
         </Field>
+      )}
+
+      {step === 9 && (
+        <div className="flex flex-col gap-3">
+          <p className="text-small text-text-subtle">
+            Beim Übernehmen des Plans werden Cardio und Dehnen passend zu den neuen Trainingstagen vorgeschlagen.
+            Ohne Häkchen bleiben deine bisherigen Cardio- und Dehnpläne unverändert.
+          </p>
+          <Toggle label="Cardio mitplanen (nach Hauptziel, Aufwärmen und danach)" checked={includeCardio} onChange={setIncludeCardio} />
+          <Toggle label="Dehnen mitplanen (eine Routine pro Trainingstag)" checked={includeStretching} onChange={setIncludeStretching} />
+        </div>
       )}
     </Dialog>
   );

@@ -54,6 +54,9 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
 
   const preferences = prefsData?.preferences ?? null;
   const draft = draftState?.draft ?? null;
+  const companions = [preferences?.includeCardio && "Cardio", preferences?.includeStretching && "Dehnen"].filter(Boolean);
+  const acceptedNotice =
+    companions.length > 0 ? `Plan übernommen — ${companions.join(" und ")} passend zu den neuen Tagen vorgeschlagen.` : "Plan übernommen.";
   const busy = generatePlan.isPending || acceptDraft.isPending || discardDraft.isPending || restoreBackup.isPending;
 
   const runGenerate = async (coldStart?: ColdStartInput, day?: string) => {
@@ -169,7 +172,7 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
           busyDay={busyDay}
           disabled={busy}
           onRegenerateDay={(day) => runGenerate(undefined, day)}
-          onAccept={() => run(() => acceptDraft.mutateAsync(), "Plan übernommen.", "Übernehmen fehlgeschlagen.")}
+          onAccept={() => run(() => acceptDraft.mutateAsync(), acceptedNotice, "Übernehmen fehlgeschlagen.")}
           onDiscard={() => run(() => discardDraft.mutateAsync(), "Entwurf verworfen.", "Verwerfen fehlgeschlagen.")}
         />
       )}

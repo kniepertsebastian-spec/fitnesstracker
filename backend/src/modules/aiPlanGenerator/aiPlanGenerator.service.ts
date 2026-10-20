@@ -210,6 +210,8 @@ export async function generatePlan(
       experience: "intermediate",
       goal: "muscle_gain",
       sessionDurationMinutes: 60,
+      includeCardio: false,
+      includeStretching: false,
     };
 
   const existingDraft = input.day
@@ -459,6 +461,24 @@ async function replacePlan(tx: Tx, userId: string, phase: TrainingPhase, items: 
   });
 }
 
+// Cardio and stretching follow the accepted strength plan: their per-day versions are keyed by the
+// old training days, so they are dropped and the rule-based suggestions for the new days apply.
+async function planCompanions(tx: Tx, userId: string, phase: TrainingPhase) {
+  const user = await tx.user.findUnique({ where: { id: userId }, select: { aiPlanPreferences: true } });
+  const prefs = coldStartInputSchema.safeParse(user?.aiPlanPreferences);
+  if (!prefs.success) return;
+  if (prefs.data.includeCardio) {
+    await tx.cardioPlanDay.deleteMany({ where: { userId, phase } });
+    await tx.trainingPlan.updateMany({
+      where: { userId },
+      data: { trainingGoal: COLD_START_GOAL_TO_PLAN_GOAL[prefs.data.goal] },
+    });
+  }
+  if (prefs.data.includeStretching) {
+    await tx.stretchPlanItem.deleteMany({ where: { userId, phase } });
+  }
+}
+
 export async function acceptPlanDraft(
   prisma: PrismaClient,
   userId: string,
@@ -470,6 +490,7 @@ export async function acceptPlanDraft(
     });
     if (!draft) throw new NotFoundError("Kein Entwurf für diese Phase vorhanden");
     const result = await replacePlan(tx, userId, phase, draft.items as unknown as PlanDraftItemDto[]);
+    await planCompanions(tx, userId, phase);
     await tx.planSnapshot.delete({ where: { id: draft.id } });
     return result;
   });

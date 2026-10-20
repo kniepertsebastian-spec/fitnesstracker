@@ -6,7 +6,7 @@ vi.mock("../../config/env.js", () => ({
   },
 }));
 
-import { generatePlan } from "./aiPlanGenerator.service.js";
+import { acceptPlanDraft, generatePlan } from "./aiPlanGenerator.service.js";
 
 vi.mock("@google/genai", () => {
   const generateContentMock = vi.fn().mockResolvedValue({
@@ -144,5 +144,50 @@ describe("aiPlanGenerator.service with GoogleGenAI", () => {
       where: { userId: "user-1", trainingGoal: null },
       data: { trainingGoal: "MUSCLE_GAIN" },
     });
+  });
+});
+
+describe("acceptPlanDraft companions", () => {
+  const run = async (prefs: Record<string, unknown>) => {
+    const tx = {
+      planSnapshot: {
+        findUnique: vi.fn().mockResolvedValue({ id: "snap", items: [] }),
+        upsert: vi.fn(),
+        delete: vi.fn(),
+      },
+      planExercise: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn(), createMany: vi.fn() },
+      exercise: { findMany: vi.fn().mockResolvedValue([]) },
+      user: { findUnique: vi.fn().mockResolvedValue({ aiPlanPreferences: prefs }) },
+      cardioPlanDay: { deleteMany: vi.fn() },
+      stretchPlanItem: { deleteMany: vi.fn() },
+      trainingPlan: { updateMany: vi.fn() },
+    };
+    const prisma = { $transaction: async (fn: (t: typeof tx) => unknown) => fn(tx) };
+    await acceptPlanDraft(prisma as unknown as Parameters<typeof acceptPlanDraft>[0], "user-1", "AUFBAU");
+    return tx;
+  };
+  const answers = {
+    frequencyPerWeek: 3,
+    equipment: ["barbell"],
+    experience: "intermediate",
+    goal: "fat_loss",
+    sessionDurationMinutes: 60,
+  };
+
+  it("resets the phase's cardio and stretching and takes the goal when both are requested", async () => {
+    const tx = await run({ ...answers, includeCardio: true, includeStretching: true });
+    expect(tx.cardioPlanDay.deleteMany).toHaveBeenCalledWith({ where: { userId: "user-1", phase: "AUFBAU" } });
+    expect(tx.stretchPlanItem.deleteMany).toHaveBeenCalledWith({ where: { userId: "user-1", phase: "AUFBAU" } });
+    expect(tx.trainingPlan.updateMany).toHaveBeenCalledWith({
+      where: { userId: "user-1" },
+      data: { trainingGoal: "FAT_LOSS" },
+    });
+  });
+
+  it("leaves cardio and stretching alone when the questionnaire did not ask for them", async () => {
+    const tx = await run(answers);
+    expect(tx.cardioPlanDay.deleteMany).not.toHaveBeenCalled();
+    expect(tx.stretchPlanItem.deleteMany).not.toHaveBeenCalled();
+    expect(tx.trainingPlan.updateMany).not.toHaveBeenCalled();
   });
 });
