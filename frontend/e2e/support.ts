@@ -103,6 +103,12 @@ export async function openNav(page: Page, name: string) {
   await page.getByRole("navigation", { name: "Hauptmenü" }).getByRole("link", { name }).filter({ visible: true }).first().click();
 }
 
+// Fitnesstagebuch and Historie share one menu entry; the history is the "Verlauf" tab.
+export async function openHistory(page: Page) {
+  await openNav(page, "Fitnesstagebuch");
+  await page.getByRole("navigation", { name: "Tagebuch" }).getByRole("link", { name: "Verlauf" }).click();
+}
+
 // Offline / Synchronisiert(…) / N ausstehend / N fehlgeschlagen, so matching on that text set is
 // an unambiguous way to find it regardless of which state it's currently in.
 export function syncPill(page: Page) {

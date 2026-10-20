@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { fetchAnyExercise, login, openNav, registerTestUser } from "./support";
+import { fetchAnyExercise, login, openHistory, openNav, registerTestUser } from "./support";
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:3000/api";
 
@@ -19,7 +19,7 @@ test.describe("Löschen auf anderem Gerät", () => {
     expect(created.ok(), await created.text()).toBeTruthy();
     const log = await created.json();
 
-    await openNav(page, "Historie");
+    await openHistory(page);
     // The day's exercise group in the history (not the exercise filter's <option>).
     const group = () => page.getByRole("main").getByRole("button", { name: exercise.name, exact: false });
     await expect(group().first()).toBeVisible();
@@ -29,7 +29,7 @@ test.describe("Löschen auf anderem Gerät", () => {
     expect(deleted.ok()).toBeTruthy();
 
     await openNav(page, "Dashboard");
-    await openNav(page, "Historie");
+    await openHistory(page);
     await expect(group()).toHaveCount(0);
   });
 });

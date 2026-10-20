@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import type { LocalWorkoutLog } from "../offline/db";
+import { DiaryTabs } from "../components/layout/DiaryTabs";
 import { AppShell } from "../components/layout/AppShell";
 import { WorkoutLogFormDialog } from "../components/workoutLog/WorkoutLogFormDialog";
 import { Button, Card, Dialog, EmptyState, IconButton, Input, ListRow, Select, Skeleton, cn } from "../components/ui";
@@ -279,6 +280,7 @@ export function WorkoutHistoryPage() {
 
   return (
     <AppShell>
+      <DiaryTabs />
       <h1 className="mb-4 text-h1 text-text lg:text-h1-lg">Historie</h1>
 
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
