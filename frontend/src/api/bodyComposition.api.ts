@@ -1,6 +1,8 @@
 import type {
   BodyCompositionEntryDto,
   CreateBodyCompositionEntryInput,
+  ImportBodyCompositionInput,
+  ImportBodyCompositionResult,
 } from "@fitnesstracker/shared";
 import { apiFetch } from "./client";
 
@@ -14,4 +16,8 @@ export function createBodyCompositionEntryRequest(input: CreateBodyCompositionEn
 
 export function deleteBodyCompositionEntryRequest(id: string) {
   return apiFetch<void>(`/body-composition/${id}`, { method: "DELETE" });
+}
+
+export function importBodyCompositionRequest(input: ImportBodyCompositionInput) {
+  return apiFetch<ImportBodyCompositionResult>("/body-composition/import", { method: "POST", body: input });
 }
