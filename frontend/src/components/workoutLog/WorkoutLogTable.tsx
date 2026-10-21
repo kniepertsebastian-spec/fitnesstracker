@@ -4,6 +4,9 @@ import { useDeleteWorkoutLog } from "../../hooks/useWorkoutLogs";
 import { estimateOneRepMax } from "../../lib/oneRepMax";
 import { formatKg } from "../../lib/trainingSets";
 import { EmptyState, IconButton, ListRow } from "../ui";
+import { useBurnProfile } from "../../hooks/useBurnProfile";
+import { formatKcal, setKcal } from "../../lib/calories";
+import { KcalEstimate } from "./KcalEstimate";
 import { Dumbbell } from "lucide-react";
 
 interface Props {
@@ -25,6 +28,7 @@ function supersetColor(groupId: string): string {
 // row stays readable at 390 px.
 export function WorkoutLogTable({ logs, onEdit }: Props) {
   const deleteLog = useDeleteWorkoutLog();
+  const burnProfile = useBurnProfile();
 
   if (logs.length === 0) {
     return <EmptyState icon={<Dumbbell size={18} aria-hidden />} text="Heute noch keine Sätze protokolliert." />;
@@ -35,6 +39,7 @@ export function WorkoutLogTable({ logs, onEdit }: Props) {
       {logs.map((log) => {
         const oneRepMax = estimateOneRepMax(log.weightKg, log.reps);
         const subtitle = [
+          burnProfile ? formatKcal(setKcal(burnProfile, log)) : null,
           log.rir !== null ? `RIR ${log.rir}` : null,
           log.note,
           oneRepMax ? `≈ 1RM ${Math.round(oneRepMax)} kg` : null,
@@ -83,6 +88,10 @@ export function WorkoutLogTable({ logs, onEdit }: Props) {
           </div>
         );
       })}
+      <p className="mt-2 flex items-center justify-between gap-2 border-t border-border-subtle pt-2 text-small text-text-subtle">
+        <span>Gesamt heute</span>
+        <KcalEstimate sets={logs} withHint />
+      </p>
     </div>
   );
 }

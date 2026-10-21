@@ -178,3 +178,5 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 - [x] **Health-Integration** (Health Connect bzw. Import aus Apple Health): Import von Gewicht und Körperfett aus Export-Dateien (Apple Health, Samsung Health, Google/CSV). Eine direkte Anbindung ist aus einer Web-App nicht möglich.
 - [x] **Trainingszusammenfassung teilen** (`navigator.share`).
 - [x] **Kalender-Heatmap der Trainingstage + Streak** auf dem Dashboard.
+- [x] **Geschätzter Kalorienverbrauch pro Übung** (aus Gewicht, Größe, Alter, Geschlecht sowie Wdh. und Gewicht
+  der Sätze) im Training, im Tagebuch und in der Historie.
