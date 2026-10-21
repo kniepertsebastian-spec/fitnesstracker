@@ -5,6 +5,7 @@ import type { LocalWorkoutLog } from "../../offline/db";
 import { formatKg } from "../../lib/trainingSets";
 import { DEFAULT_BAR_KG, platesPerSide } from "../../lib/plates";
 import { warmupSets } from "../../lib/warmup";
+import { KcalEstimate } from "../workoutLog/KcalEstimate";
 import { Badge, Button, Card, Input, SegmentedControl, SetCheck, Stepper, cn } from "../ui";
 import type { SetCheckState } from "../ui";
 import { formatPrescription } from "../../lib/planPrescription";
@@ -392,8 +393,11 @@ export function ExerciseCard({
         )}
       </div>
 
-      {complete && (
-        <p className="mt-3 text-small text-accent">Alle Sätze erledigt.</p>
+      {done.length > 0 && (
+        <p className="mt-3 flex flex-wrap items-center gap-x-3 text-small">
+          {complete && <span className="text-accent">Alle Sätze erledigt.</span>}
+          <KcalEstimate sets={done} />
+        </p>
       )}
     </Card>
   );

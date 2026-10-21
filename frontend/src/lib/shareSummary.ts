@@ -6,6 +6,7 @@ export interface ShareableSummary {
   volumeKg: number;
   records: number;
   cardioMinutes: number;
+  kcal?: number | null;
   aborted: boolean;
 }
 
@@ -16,6 +17,7 @@ export function summaryText(summary: ShareableSummary): string {
     `${formatKg(Math.round(summary.volumeKg))} kg Volumen`,
   ];
   if (summary.records > 0) parts.push(`${summary.records} ${summary.records === 1 ? "Rekord" : "Rekorde"}`);
+  if (summary.kcal) parts.push(`≈ ${Math.round(summary.kcal)} kcal`);
   if (summary.cardioMinutes > 0) parts.push(`${summary.cardioMinutes} Min. Cardio`);
   return `${summary.aborted ? "Training abgebrochen" : "Training abgeschlossen"}: ${parts.join(" · ")}`;
 }
