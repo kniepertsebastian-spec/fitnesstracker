@@ -1,6 +1,8 @@
 import type { PrismaClient } from "@prisma/client";
 import type {
   CreateBodyCompositionEntryInput,
+  ImportBodyCompositionInput,
+  ImportBodyCompositionResult,
   UpdateBodyCompositionEntryInput,
 } from "@fitnesstracker/shared";
 import { NotFoundError } from "../../errors/httpErrors.js";
@@ -26,6 +28,38 @@ export function createEntry(prisma: PrismaClient, userId: string, input: CreateB
       measuredAt: input.measuredAt ? new Date(input.measuredAt) : undefined,
     },
   });
+}
+
+// Skips measurements that exist already at the same moment (a re-import of the same file is a
+// no-op) and repeats within the payload itself. Values are rounded to the column precision.
+export async function importEntries(
+  prisma: PrismaClient,
+  userId: string,
+  input: ImportBodyCompositionInput,
+): Promise<ImportBodyCompositionResult> {
+  const times = input.entries.map((e) => new Date(e.measuredAt).getTime());
+  const existing = await prisma.bodyCompositionEntry.findMany({
+    where: { userId, measuredAt: { gte: new Date(Math.min(...times)), lte: new Date(Math.max(...times)) } },
+    select: { measuredAt: true },
+  });
+  const seen = new Set(existing.map((e) => e.measuredAt.getTime()));
+  const fresh = input.entries.filter((entry) => {
+    const time = new Date(entry.measuredAt).getTime();
+    if (seen.has(time)) return false;
+    seen.add(time);
+    return true;
+  });
+  if (fresh.length > 0) {
+    await prisma.bodyCompositionEntry.createMany({
+      data: fresh.map((entry) => ({
+        userId,
+        measuredAt: new Date(entry.measuredAt),
+        weightKg: Math.round(entry.weightKg * 100) / 100,
+        bodyFatPercent: entry.bodyFatPercent === undefined ? undefined : Math.round(entry.bodyFatPercent * 10) / 10,
+      })),
+    });
+  }
+  return { imported: fresh.length, skipped: input.entries.length - fresh.length };
 }
 
 export async function updateEntry(

@@ -175,6 +175,6 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 - [x] **Notiz pro Übung/Satz** (z. B. Sitzeinstellung, Beschwerden), im Training sichtbar.
 - [x] **Wochenvolumen pro Muskelgruppe** (Sätze pro Muskel) auf der Fortschrittsseite.
 - [x] **Körpergewicht schnell erfassen** vom Dashboard, mit gleitendem 7-Tage-Mittel.
-- [ ] **Health-Integration** (Health Connect bzw. Import aus Apple Health).
+- [x] **Health-Integration** (Health Connect bzw. Import aus Apple Health): Import von Gewicht und Körperfett aus Export-Dateien (Apple Health, Samsung Health, Google/CSV). Eine direkte Anbindung ist aus einer Web-App nicht möglich.
 - [x] **Trainingszusammenfassung teilen** (`navigator.share`).
 - [x] **Kalender-Heatmap der Trainingstage + Streak** auf dem Dashboard.
