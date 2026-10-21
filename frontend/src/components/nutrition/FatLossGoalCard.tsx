@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { CalcInfoButton } from "../components/info/CalcInfoButton";
+
 import { useBodyCompositionEntries } from "../../hooks/useBodyComposition";
 import { useProfile } from "../../hooks/useProfile";
 import { Card, Callout, Field, Input, Skeleton, StatTile } from "../ui";
@@ -48,7 +50,7 @@ export function FatLossGoalCard() {
   if (isLoading) return <Card title="Dein Abnehmziel & Muskelerhalt"><Skeleton className="h-36 w-full" /></Card>;
 
   return (
-    <Card title="Dein Abnehmziel & Muskelerhalt">
+    <Card title="Dein Abnehmziel & Muskelerhalt" action={<CalcInfoButton id="fat-loss-target" />}>
       {!latest ? (
         <p className="text-small text-text-subtle">Erfasse zuerst eine Körpermessung mit Gewicht und Körperfettanteil. Danach kann die App ein persönliches Orientierungsziel berechnen.</p>
       ) : latest.bodyFatPercent === null ? (

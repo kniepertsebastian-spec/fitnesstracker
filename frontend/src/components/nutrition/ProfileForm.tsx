@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { CalcInfoButton } from "../components/info/CalcInfoButton";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -115,10 +117,10 @@ export function ProfileForm() {
       {profile && (
         <Card title="Tagesbedarf">
           <div className="grid grid-cols-2 gap-3">
-            <StatTile label="Grundumsatz (BMR)" value={profile.bmr} unit="kcal" className="p-3" />
-            <StatTile label="Gesamtumsatz (TDEE)" value={profile.tdee} unit="kcal" className="p-3" />
-            <StatTile label="Ziel-Kalorien" value={profile.targetCalories} unit="kcal" className="p-3" />
-            <StatTile label="Ziel-Protein" value={profile.targetProteinG} unit="g" className="p-3" />
+            <StatTile label="Grundumsatz (BMR)" value={profile.bmr} unit="kcal" className="p-3" info={<CalcInfoButton id="bmr" />} />
+            <StatTile label="Gesamtumsatz (TDEE)" value={profile.tdee} unit="kcal" className="p-3" info={<CalcInfoButton id="tdee" />} />
+            <StatTile label="Ziel-Kalorien" value={profile.targetCalories} unit="kcal" className="p-3" info={<CalcInfoButton id="target-kcal" />} />
+            <StatTile label="Ziel-Protein" value={profile.targetProteinG} unit="g" className="p-3" info={<CalcInfoButton id="protein" />} />
           </div>
         </Card>
       )}

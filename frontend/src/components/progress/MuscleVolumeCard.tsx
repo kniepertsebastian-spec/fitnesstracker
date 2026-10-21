@@ -1,4 +1,6 @@
 import { Dumbbell } from "lucide-react";
+import { CalcInfoButton } from "../components/info/CalcInfoButton";
+
 import { STRETCH_FOCUS_LABELS, type StretchFocusMuscle } from "@fitnesstracker/shared";
 import { useWeeklyMuscleVolume } from "../../hooks/useMuscleVolume";
 import { Card, EmptyState, Skeleton, cn } from "../ui";
@@ -37,7 +39,12 @@ export function MuscleVolumeCard() {
   const scale = Math.max(TARGET_MAX, ...rows.map((r) => r.now));
 
   return (
-    <Card title="Sätze pro Muskel" action={<span className="text-small text-text-subtle">diese Woche</span>}>
+    <Card title="Sätze pro Muskel" action={
+        <span className="flex items-center gap-1 text-small text-text-subtle">
+          diese Woche <CalcInfoButton id="muscle-volume" />
+        </span>
+      }
+    >
       {isError ? (
         <p className="text-small text-text-subtle">Die Auswertung ist gerade nicht erreichbar.</p>
       ) : rows.length === 0 ? (

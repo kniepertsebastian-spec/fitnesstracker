@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { CalcInfoButton } from "../components/info/CalcInfoButton";
+
 import { ApiError } from "../../api/client";
 import { BODY_METRIC_INFO, categorizeBodyFat } from "../../data/bodyMetricsInfo";
 import {
@@ -105,6 +107,7 @@ export function BodyCompositionCard() {
                   value={<>{latest.bodyFatPercent} <Trend current={latest.bodyFatPercent} previous={previous?.bodyFatPercent} /></>}
                   unit="%"
                   sub={categorizeBodyFat(latest.bodyFatPercent, profile?.gender) ?? undefined}
+                  info={<CalcInfoButton id="body-fat-category" />}
                 />
               )}
               {latest.muscleMassKg !== null && (
