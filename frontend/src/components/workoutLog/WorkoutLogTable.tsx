@@ -36,6 +36,7 @@ export function WorkoutLogTable({ logs, onEdit }: Props) {
         const oneRepMax = estimateOneRepMax(log.weightKg, log.reps);
         const subtitle = [
           log.rir !== null ? `RIR ${log.rir}` : null,
+          log.note,
           oneRepMax ? `≈ 1RM ${Math.round(oneRepMax)} kg` : null,
         ]
           .filter(Boolean)

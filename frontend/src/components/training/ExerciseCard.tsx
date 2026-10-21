@@ -5,7 +5,7 @@ import type { LocalWorkoutLog } from "../../offline/db";
 import { formatKg } from "../../lib/trainingSets";
 import { DEFAULT_BAR_KG, platesPerSide } from "../../lib/plates";
 import { warmupSets } from "../../lib/warmup";
-import { Badge, Button, Card, SegmentedControl, SetCheck, Stepper, cn } from "../ui";
+import { Badge, Button, Card, Input, SegmentedControl, SetCheck, Stepper, cn } from "../ui";
 import type { SetCheckState } from "../ui";
 import { formatPrescription } from "../../lib/planPrescription";
 
@@ -19,6 +19,7 @@ export interface SetValues {
   weightKg: number;
   reps: number;
   rir: number | null;
+  note: string | null;
 }
 
 interface Props {
@@ -66,13 +67,14 @@ function loadStep(exerciseName: string): number {
 
 function initialValues(entry: PlanDiaryExerciseDto, done: LocalWorkoutLog[], previous: LocalWorkoutLog[]): SetValues {
   const last = done.at(-1);
-  if (last) return { weightKg: last.weightKg, reps: last.reps, rir: null };
+  if (last) return { weightKg: last.weightKg, reps: last.reps, rir: null, note: null };
   const p = entry.progression;
   const prev = previous[0];
   return {
     weightKg: p ? p.suggestedWeightKg : (prev?.weightKg ?? entry.startWeightKg ?? 0),
     reps: p ? p.suggestedReps : (entry.targetReps ?? prev?.reps ?? 10),
     rir: null,
+    note: null,
   };
 }
 
@@ -133,6 +135,8 @@ export function ExerciseCard({
   const complete = done.length >= setCount;
   const p = entry.progression;
   const lastTime = previous[0];
+  // The most recent note from the last time this exercise was trained, e.g. the seat setting.
+  const lastNote = previous.find((log) => log.note)?.note ?? null;
   const isBarbell = exercise?.equipment?.toLowerCase() === "barbell";
   // Offered before the first working set only, based on the weight that is about to be lifted.
   const warmups = done.length === 0 ? warmupSets(values.weightKg, isBarbell ? DEFAULT_BAR_KG : 0) : [];
@@ -175,6 +179,12 @@ export function ExerciseCard({
             {lastTime ? `${previous.length} × ${lastTime.reps} · ${formatKg(lastTime.weightKg)} kg` : "–"}
           </dd>
         </div>
+        {lastNote && (
+          <div className="flex gap-1.5">
+            <dt className="text-text-subtle">Notiz</dt>
+            <dd className="text-text-2">{lastNote}</dd>
+          </div>
+        )}
         {p && (
           <div className="flex gap-1.5">
             <dt className="text-text-subtle">Vorschlag</dt>
@@ -272,6 +282,8 @@ export function ExerciseCard({
                 />
               </div>
 
+              {log?.note && <p className="mt-1 px-1 text-small text-text-subtle">{log.note}</p>}
+
               {state === "current" && p && (
                 <p className="mt-2 px-1 text-small text-accent">{progressionHint(p)}</p>
               )}
@@ -332,6 +344,14 @@ export function ExerciseCard({
                       options={STEP_OPTIONS.map((v) => ({ value: v, label: `${v.replace(".", ",")} kg` }))}
                     />
                   </div>
+                  <Input
+                    aria-label="Notiz zum Satz"
+                    placeholder="Notiz (z. B. Sitz 4, Schulter zwickt)"
+                    maxLength={500}
+                    value={values.note ?? ""}
+                    disabled={disabled}
+                    onChange={(e) => setValues((v) => ({ ...v, note: e.target.value }))}
+                  />
                   <Button
                     size="lg"
                     className="h-16 w-full text-body font-semibold"
