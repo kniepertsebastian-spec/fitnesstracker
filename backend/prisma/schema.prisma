@@ -216,6 +216,9 @@ model WorkoutLog {
   // Reps In Reserve at the end of the set (0 = to failure). Optional — most historical rows and
   // casual logging won't set it; only used to compute a more informed 1RM estimate client-side.
   rir             Int?
+  // Free-text note on the set (seat setting, a twinge, ...), shown with the set and again as the
+  // reminder the next time the exercise is trained.
+  note            String?   @db.VarChar(500)
   performedAt     DateTime  @default(now())
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

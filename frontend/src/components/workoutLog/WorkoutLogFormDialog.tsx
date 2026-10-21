@@ -18,6 +18,7 @@ const formSchema = z.object({
   reps: z.coerce.number().int().positive(),
   weightKg: z.coerce.number().nonnegative(),
   rir: z.union([z.coerce.number().int().min(0).max(10), z.literal("")]).optional(),
+  note: z.string().max(500, { message: "Höchstens 500 Zeichen" }).optional(),
 });
 type FormValues = z.infer<typeof formSchema>;
 
@@ -132,10 +133,11 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
         reps: editingLog.reps,
         weightKg: editingLog.weightKg,
         rir: editingLog.rir ?? "",
+        note: editingLog.note ?? "",
       });
       setSupersetMode(editingLog.supersetGroupId ? "join" : "none");
     } else {
-      reset({ exerciseId: undefined, setNumber: 1, reps: 10, weightKg: 0, rir: "" });
+      reset({ exerciseId: undefined, setNumber: 1, reps: 10, weightKg: 0, rir: "", note: "" });
       setSupersetMode("none");
     }
     setShowWarmup(false);
@@ -183,12 +185,13 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
   const onSubmit = async (data: FormValues) => {
     const exerciseName = exercises?.find((e) => e.id === data.exerciseId)?.name ?? "";
     const rir = data.rir === "" || data.rir === undefined ? null : data.rir;
+    const note = data.note?.trim() || null;
     const supersetGroupId = resolveSupersetGroupId();
 
     if (editingLog) {
       await updateLog.mutateAsync({
         clientId: editingLog.clientId,
-        input: { ...data, rir },
+        input: { ...data, rir, note },
         exerciseName,
       });
       onClose();
@@ -203,7 +206,7 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
     ]);
 
     await createLog.mutateAsync({
-      input: { ...data, rir, supersetGroupId, clientId: crypto.randomUUID() },
+      input: { ...data, rir, note, supersetGroupId, clientId: crypto.randomUUID() },
       exerciseName,
     });
     if (prLabels(prs).length > 0) {
@@ -266,6 +269,10 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
             {(p) => <Input {...p} type="number" min={0} max={10} placeholder="–" {...register("rir")} />}
           </Field>
         </div>
+
+        <Field label="Notiz (optional)" error={errors.note?.message}>
+          {(p) => <Input {...p} type="text" maxLength={500} placeholder="z. B. Sitz 4, Schulter zwickt" {...register("note")} />}
+        </Field>
 
         <SteppedNumberField
           label="Wdh."

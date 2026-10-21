@@ -95,7 +95,7 @@ function csvEscape(value: string | number): string {
   return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 
-const WORKOUT_CSV_HEADERS = ["Datum", "Übung", "Satz", "Wiederholungen", "Gewicht (kg)", "RIR", "Superset-Gruppe"];
+const WORKOUT_CSV_HEADERS = ["Datum", "Übung", "Satz", "Wiederholungen", "Gewicht (kg)", "RIR", "Superset-Gruppe", "Notiz"];
 
 // A flat, spreadsheet-friendly view of the same workout log data the JSON backup carries — the
 // roadmap explicitly calls out CSV as its own minimum requirement alongside the JSON backup,
@@ -112,6 +112,7 @@ export async function buildWorkoutLogsCsv(prisma: PrismaClient, userId: string):
       Number(log.weightKg),
       log.rir ?? "",
       log.supersetGroupId ?? "",
+      log.note ?? "",
     ]
       .map(csvEscape)
       .join(","),
