@@ -173,7 +173,7 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 - [ ] **Automatische Aufwärmsätze** (z. B. 40/60/80 % des Arbeitsgewichts), zählen nicht ins
   Volumen und nicht als PR.
 - [ ] **Notiz pro Übung/Satz** (z. B. Sitzeinstellung, Beschwerden), im Training sichtbar.
-- [ ] **Wochenvolumen pro Muskelgruppe** (Sätze pro Muskel) auf der Fortschrittsseite.
+- [x] **Wochenvolumen pro Muskelgruppe** (Sätze pro Muskel) auf der Fortschrittsseite.
 - [x] **Körpergewicht schnell erfassen** vom Dashboard, mit gleitendem 7-Tage-Mittel.
 - [x] **Health-Integration** (Health Connect bzw. Import aus Apple Health): Import von Gewicht und Körperfett aus Export-Dateien (Apple Health, Samsung Health, Google/CSV). Eine direkte Anbindung ist aus einer Web-App nicht möglich.
 - [x] **Trainingszusammenfassung teilen** (`navigator.share`).

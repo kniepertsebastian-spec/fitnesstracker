@@ -9,6 +9,7 @@ import {
   updateWorkoutLog,
 } from "./workoutLog.service.js";
 import { toWorkoutLogDto } from "./workoutLog.types.js";
+import { muscleVolumeStart, weeklyMuscleSets } from "./muscleVolume.js";
 import { HttpError } from "../../errors/httpErrors.js";
 import { z } from "zod";
 
@@ -38,6 +39,21 @@ export default async function workoutLogRoutes(fastify: FastifyInstance) {
     }
     const logs = await listWorkoutLogs(fastify.prisma, request.user.sub, filters);
     return reply.send({ items: logs.map(toWorkoutLogDto), deletedClientIds: [], serverTime });
+  });
+
+  // Sets per primary muscle and week, for the progress page.
+  fastify.get("/workout-logs/muscle-volume", async (request, reply) => {
+    const { weeks } = z.object({ weeks: z.coerce.number().int().min(1).max(52).default(12) }).parse(request.query);
+    const logs = await fastify.prisma.workoutLog.findMany({
+      where: { userId: request.user.sub, deletedAt: null, performedAt: { gte: muscleVolumeStart(weeks) } },
+      select: { performedAt: true, exercise: { select: { primaryMuscles: true } } },
+    });
+    return reply.send(
+      weeklyMuscleSets(
+        logs.map((l) => ({ performedAt: l.performedAt, primaryMuscles: l.exercise.primaryMuscles })),
+        weeks,
+      ),
+    );
   });
 
   fastify.post("/workout-logs", async (request, reply) => {
