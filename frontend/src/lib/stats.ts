@@ -117,3 +117,41 @@ export function isoWeek(date: Date): number {
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return Math.ceil(((d.getTime() - yearStart.getTime()) / DAY_MS + 1) / 7);
 }
+
+export interface HeatmapCell {
+  key: string;
+  // 0 = no training; 1–3 = light to heavy relative to the shown period's busiest day.
+  level: 0 | 1 | 2 | 3;
+  future: boolean;
+}
+
+// The last `weeks` weeks as columns (oldest first), each Monday → Sunday. Intensity is the day's
+// volume relative to the busiest day shown, so a short day and a big day look different.
+export function heatmapWeeks(logs: LocalWorkoutLog[], weeks: number, now = new Date()): HeatmapCell[][] {
+  const volumes = volumeByDay(logs);
+  const todayKey = utcDayKey(now);
+  const firstMonday = mondayOf(new Date(now.getTime() - (weeks - 1) * 7 * DAY_MS));
+  const columns = Array.from({ length: weeks }, (_, w) =>
+    Array.from({ length: 7 }, (_, d) => {
+      const key = utcDayKey(new Date(firstMonday.getTime() + (w * 7 + d) * DAY_MS));
+      return { key, volume: volumes.get(key) ?? 0, future: key > todayKey };
+    }),
+  );
+  const max = Math.max(1, ...columns.flat().map((c) => c.volume));
+  return columns.map((column) =>
+    column.map(({ key, volume, future }) => ({
+      key,
+      future,
+      level: volume <= 0 ? 0 : volume / max > 0.66 ? 3 : volume / max > 0.33 ? 2 : 1,
+    })),
+  );
+}
+
+// Mean body weight of the entries within [from, to), or null without any.
+export function meanWeight(entries: { measuredAt: string; weightKg: number }[], from: Date, to: Date): number | null {
+  const inRange = entries.filter((e) => {
+    const t = new Date(e.measuredAt).getTime();
+    return t >= from.getTime() && t < to.getTime();
+  });
+  return inRange.length === 0 ? null : inRange.reduce((sum, e) => sum + e.weightKg, 0) / inRange.length;
+}

@@ -5,6 +5,8 @@ import { HeroCard } from "../components/dashboard/HeroCard";
 import { LastWorkoutTile, RecentWorkoutsTable, lastWorkoutDays } from "../components/dashboard/RecentWorkouts";
 import { TodayChecklist } from "../components/dashboard/TodayChecklist";
 import type { ChecklistRow } from "../components/dashboard/TodayChecklist";
+import { QuickWeightCard } from "../components/dashboard/QuickWeightCard";
+import { TrainingHeatmap } from "../components/dashboard/TrainingHeatmap";
 import { WeekCard } from "../components/dashboard/WeekCard";
 import { Skeleton, StatTile } from "../components/ui";
 import { useAuth } from "../hooks/useAuth";
@@ -21,6 +23,8 @@ import { phaseLength, phaseWeek } from "../lib/phase";
 import {
   daysAgo,
   formatDelta,
+  heatmapWeeks,
+  longestWeekStreak,
   mondayOf,
   recordsBetween,
   trainedDaysBetween,
@@ -54,6 +58,7 @@ export function DashboardPage() {
   const weekKeys = currentWeekDayKeys();
   const trainedDays = useMemo(() => new Set(allLogs.map((l) => utcDayKey(new Date(l.performedAt)))), [allLogs]);
   const dayVolumes = useMemo(() => volumeByDay(allLogs), [allLogs]);
+  const heatmap = useMemo(() => heatmapWeeks(allLogs, 12), [allLogs]);
   const workoutDays = useMemo(() => lastWorkoutDays(allLogs, 5), [allLogs]);
 
   const weekStart = mondayOf(now);
@@ -184,7 +189,7 @@ export function DashboardPage() {
             <div className="lg:col-start-2 lg:row-start-1">
               <TodayChecklist rows={rows} />
             </div>
-            <div className="lg:col-start-1 lg:row-start-2">
+            <div className="flex flex-col gap-4 lg:col-start-1 lg:row-start-2">
               <WeekCard
                 weekKeys={weekKeys}
                 today={today}
@@ -193,9 +198,18 @@ export function DashboardPage() {
                 weekStreak={weekStreak(allLogs, now)}
                 targetDays={targetDays}
               />
+              <TrainingHeatmap
+                weeks={heatmap}
+                trainedDays={heatmap.flat().filter((c) => c.level > 0).length}
+                currentStreak={weekStreak(allLogs, now)}
+                longestStreak={longestWeekStreak(allLogs)}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-2 lg:grid-cols-1">
               <GoalTile />
+              <div className="col-span-2 lg:col-span-1">
+                <QuickWeightCard />
+              </div>
               <div className="lg:hidden">
                 <LastWorkoutTile days={workoutDays} />
               </div>

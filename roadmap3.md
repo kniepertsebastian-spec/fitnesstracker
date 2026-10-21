@@ -174,7 +174,7 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
   Volumen und nicht als PR.
 - [ ] **Notiz pro Übung/Satz** (z. B. Sitzeinstellung, Beschwerden), im Training sichtbar.
 - [ ] **Wochenvolumen pro Muskelgruppe** (Sätze pro Muskel) auf der Fortschrittsseite.
-- [ ] **Körpergewicht schnell erfassen** vom Dashboard, mit gleitendem 7-Tage-Mittel.
+- [x] **Körpergewicht schnell erfassen** vom Dashboard, mit gleitendem 7-Tage-Mittel.
 - [ ] **Health-Integration** (Health Connect bzw. Import aus Apple Health).
 - [x] **Trainingszusammenfassung teilen** (`navigator.share`).
-- [ ] **Kalender-Heatmap der Trainingstage + Streak** auf dem Dashboard.
+- [x] **Kalender-Heatmap der Trainingstage + Streak** auf dem Dashboard.
