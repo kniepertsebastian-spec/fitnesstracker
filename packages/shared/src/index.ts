@@ -17,3 +17,4 @@ export * from "./schemas/workoutSession.schema.js";
 export * from "./schemas/formAnalysis.schema.js";
 export * from "./schemas/stretching.schema.js";
 export * from "./schemas/cardioPlan.schema.js";
+export * from "./schemas/muscleVolume.schema.js";
