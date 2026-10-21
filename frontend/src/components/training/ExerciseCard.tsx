@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Link2, Plus, Repeat2 } from "lucide-react";
+import { BookOpen, ChevronDown, Link2, Plus, Repeat2 } from "lucide-react";
 import type { ExerciseDto, PlanDiaryExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../../offline/db";
 import { formatKg } from "../../lib/trainingSets";
 import { DEFAULT_BAR_KG, platesPerSide } from "../../lib/plates";
+import { warmupSets } from "../../lib/warmup";
 import { Badge, Button, Card, Input, SegmentedControl, SetCheck, Stepper, cn } from "../ui";
 import type { SetCheckState } from "../ui";
 import { formatPrescription } from "../../lib/planPrescription";
@@ -77,6 +78,10 @@ function initialValues(entry: PlanDiaryExerciseDto, done: LocalWorkoutLog[], pre
   };
 }
 
+// Which warm-up sets were ticked off, per plan entry. Module-level so swiping to another exercise and
+// back keeps them for the rest of the visit; deliberately not persisted (warm-ups are never logged).
+const doneWarmups = new Map<string, boolean[]>();
+
 export function ExerciseCard({
   entry,
   phase,
@@ -117,13 +122,26 @@ export function ExerciseCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done.length, entry.id]);
 
+  const [warmupOpen, setWarmupOpen] = useState(false);
+  const [, rerender] = useState(0);
+  const toggleWarmup = (entryId: string, index: number) => {
+    const ticks = [...(doneWarmups.get(entryId) ?? [])];
+    ticks[index] = !ticks[index];
+    doneWarmups.set(entryId, ticks);
+    rerender((n) => n + 1);
+  };
+
   const currentIndex = done.length;
   const complete = done.length >= setCount;
   const p = entry.progression;
   const lastTime = previous[0];
   // The most recent note from the last time this exercise was trained, e.g. the seat setting.
   const lastNote = previous.find((log) => log.note)?.note ?? null;
-  const plateLoad = exercise?.equipment?.toLowerCase() === "barbell" ? platesPerSide(values.weightKg) : null;
+  const isBarbell = exercise?.equipment?.toLowerCase() === "barbell";
+  // Offered before the first working set only, based on the weight that is about to be lifted.
+  const warmups = done.length === 0 ? warmupSets(values.weightKg, isBarbell ? DEFAULT_BAR_KG : 0) : [];
+  const warmupTicks = doneWarmups.get(entry.id) ?? [];
+  const plateLoad = isBarbell ? platesPerSide(values.weightKg) : null;
 
   return (
     <Card className="rounded-3xl p-5">
@@ -177,6 +195,44 @@ export function ExerciseCard({
         )}
       </dl>
       {entry.notes && <p className="mt-2 text-small text-text-subtle">{entry.notes}</p>}
+
+      {warmups.length > 0 && (
+        <div className="mt-4 rounded-lg bg-surface-2">
+          <button
+            type="button"
+            aria-expanded={warmupOpen}
+            onClick={() => setWarmupOpen((open) => !open)}
+            className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-left text-small font-medium text-text-muted"
+          >
+            <span>
+              Aufwärmen · {warmupTicks.filter(Boolean).length} von {warmups.length}
+            </span>
+            <ChevronDown size={16} aria-hidden className={cn("transition-transform", warmupOpen && "rotate-180")} />
+          </button>
+          {warmupOpen && (
+            <ul className="px-3 pb-3">
+              {warmups.map((set, i) => (
+                <li key={set.percent} className="border-t border-border-subtle first:border-t-0">
+                  <label className="flex min-h-11 cursor-pointer items-center gap-3">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 accent-accent"
+                      checked={!!warmupTicks[i]}
+                      disabled={disabled}
+                      onChange={() => toggleWarmup(entry.id, i)}
+                    />
+                    <span className="tabular font-mono text-body text-text">
+                      {formatKg(set.weightKg)} kg × {set.reps}
+                    </span>
+                    <span className="text-small text-text-subtle">{set.percent} %</span>
+                  </label>
+                </li>
+              ))}
+              <li className="pt-1 text-small text-text-faint">Wird nicht protokolliert und zählt nicht zum Volumen.</li>
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="mt-4">
         <div className="grid grid-cols-[2rem_1fr_1fr_1fr_3rem] items-center gap-2 px-1 pb-2 text-overline uppercase text-text-faint">
