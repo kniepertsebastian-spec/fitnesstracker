@@ -3,6 +3,7 @@ import { FileUp } from "lucide-react";
 import { useImportBodyComposition } from "../../hooks/useBodyComposition";
 import { readHealthFile, type HealthMeasurement } from "../../lib/healthImport";
 import { formatKg } from "../../lib/trainingSets";
+import { CalcInfoButton } from "../info/CalcInfoButton";
 import { Button, Callout, Card } from "../ui";
 
 const dateText = (iso: string) => new Date(iso).toLocaleDateString("de-DE");
@@ -58,7 +59,7 @@ export function HealthImportCard() {
   const withFat = measurements?.filter((m) => m.bodyFatPercent !== undefined).length ?? 0;
 
   return (
-    <Card title="Gesundheitsdaten importieren">
+    <Card title="Gesundheitsdaten importieren" action={<CalcInfoButton id="health-import" />}>
       <p className="text-small text-text-subtle">
         Körpergewicht (und Körperfett, falls enthalten) aus Apple Health, Samsung Health oder Google Fit übernehmen.
         Direkt verbinden kann sich eine Web-App mit diesen Apps nicht, deshalb über die Exportdatei:

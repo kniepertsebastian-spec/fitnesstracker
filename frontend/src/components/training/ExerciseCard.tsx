@@ -6,6 +6,7 @@ import { formatKg } from "../../lib/trainingSets";
 import { DEFAULT_BAR_KG, platesPerSide } from "../../lib/plates";
 import { warmupSets } from "../../lib/warmup";
 import { KcalEstimate } from "../workoutLog/KcalEstimate";
+import { CalcInfoButton } from "../info/CalcInfoButton";
 import { Badge, Button, Card, Input, SegmentedControl, SetCheck, Stepper, cn } from "../ui";
 import type { SetCheckState } from "../ui";
 import { formatPrescription } from "../../lib/planPrescription";
@@ -199,17 +200,20 @@ export function ExerciseCard({
 
       {warmups.length > 0 && (
         <div className="mt-4 rounded-lg bg-surface-2">
-          <button
-            type="button"
-            aria-expanded={warmupOpen}
-            onClick={() => setWarmupOpen((open) => !open)}
-            className="flex min-h-11 w-full items-center justify-between gap-2 px-3 text-left text-small font-medium text-text-muted"
-          >
-            <span>
-              Aufwärmen · {warmupTicks.filter(Boolean).length} von {warmups.length}
-            </span>
-            <ChevronDown size={16} aria-hidden className={cn("transition-transform", warmupOpen && "rotate-180")} />
-          </button>
+          <div className="flex items-center pr-1">
+            <button
+              type="button"
+              aria-expanded={warmupOpen}
+              onClick={() => setWarmupOpen((open) => !open)}
+              className="flex min-h-11 flex-1 items-center justify-between gap-2 px-3 text-left text-small font-medium text-text-muted"
+            >
+              <span>
+                Aufwärmen · {warmupTicks.filter(Boolean).length} von {warmups.length}
+              </span>
+              <ChevronDown size={16} aria-hidden className={cn("transition-transform", warmupOpen && "rotate-180")} />
+            </button>
+            <CalcInfoButton id="warmup" />
+          </div>
           {warmupOpen && (
             <ul className="px-3 pb-3">
               {warmups.map((set, i) => (
@@ -286,7 +290,10 @@ export function ExerciseCard({
               {log?.note && <p className="mt-1 px-1 text-small text-text-subtle">{log.note}</p>}
 
               {state === "current" && p && (
-                <p className="mt-2 px-1 text-small text-accent">{progressionHint(p)}</p>
+                <p className="mt-2 flex items-center gap-1 px-1 text-small text-accent">
+                  {progressionHint(p)}
+                  <CalcInfoButton id="progression" />
+                </p>
               )}
 
               {state === "current" && (
@@ -310,7 +317,7 @@ export function ExerciseCard({
                     />
                   </div>
                   {plateLoad && (
-                    <p className="text-small text-text-subtle">
+                    <p className="flex flex-wrap items-center gap-x-1 text-small text-text-subtle">
                       Pro Seite:{" "}
                       <span className="tabular font-mono text-text-2">
                         {plateLoad.plates.length > 0
@@ -319,10 +326,13 @@ export function ExerciseCard({
                       </span>{" "}
                       (Stange {DEFAULT_BAR_KG} kg
                       {plateLoad.remainderKg > 0 && `, ${formatKg(plateLoad.remainderKg)} kg pro Seite nicht belegbar`})
+                      <CalcInfoButton id="plates" />
                     </p>
                   )}
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-small text-text-subtle">RIR</span>
+                    <span className="flex items-center text-small text-text-subtle">
+                      RIR <CalcInfoButton id="term-rir" />
+                    </span>
                     <SegmentedControl
                       label="Wiederholungen in Reserve"
                       value={values.rir === null ? "" : String(values.rir)}

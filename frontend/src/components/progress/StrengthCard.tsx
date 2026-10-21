@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CalcInfoButton } from "../info/CalcInfoButton";
 import { ChevronDown, Dumbbell, PauseCircle } from "lucide-react";
 import type { LocalWorkoutLog } from "../../offline/db";
 import { useWorkoutLogs } from "../../hooks/useWorkoutLogs";
@@ -81,7 +82,14 @@ export function StrengthCard({ range }: { range: ProgressRange }) {
     .slice(0, MAX_VISIBLE);
 
   return (
-    <Card title="Kraft und Rekorde">
+    <Card
+      title="Kraft und Rekorde"
+      action={
+        <span className="flex items-center text-small text-text-subtle">
+          1RM <CalcInfoButton id="one-rep-max" /> Plateau <CalcInfoButton id="plateau" />
+        </span>
+      }
+    >
       {rows.length === 0 ? (
         <EmptyState icon={<Dumbbell size={18} aria-hidden />} text="Keine Sätze in diesem Zeitraum." />
       ) : (

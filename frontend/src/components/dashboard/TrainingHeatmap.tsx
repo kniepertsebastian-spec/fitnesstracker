@@ -1,4 +1,6 @@
 import { Flame } from "lucide-react";
+import { CalcInfoButton } from "../info/CalcInfoButton";
+
 import { Card, cn } from "../ui";
 import type { HeatmapCell } from "../../lib/stats";
 
@@ -20,7 +22,7 @@ interface Props {
 // Training calendar of the last weeks: one square per day, darker = more volume.
 export function TrainingHeatmap({ weeks, trainedDays, currentStreak, longestStreak }: Props) {
   return (
-    <Card title={`Trainingskalender · ${weeks.length} Wochen`}>
+    <Card title={`Trainingskalender · ${weeks.length} Wochen`} action={<CalcInfoButton id="streak" />}>
       <div className="flex gap-2">
         <div aria-hidden className="flex flex-col justify-between py-0.5 text-xs text-text-faint">
           {WEEKDAYS.map((label, i) => (

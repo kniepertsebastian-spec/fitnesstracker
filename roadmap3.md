@@ -180,3 +180,5 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 - [x] **Kalender-Heatmap der Trainingstage + Streak** auf dem Dashboard.
 - [x] **Geschätzter Kalorienverbrauch pro Übung** (aus Gewicht, Größe, Alter, Geschlecht sowie Wdh. und Gewicht
   der Sätze) im Training, im Tagebuch und in der Historie.
+- [x] **Info-Bereich „Berechnungen & Quellen“** (Einstellungen) mit Formel, Eingaben und Herkunft jeder Berechnung
+  sowie (i)-Knöpfe an den berechneten Werten.

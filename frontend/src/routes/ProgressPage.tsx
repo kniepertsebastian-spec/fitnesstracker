@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CalcInfoButton } from "../components/info/CalcInfoButton";
 import { AppShell } from "../components/layout/AppShell";
 import { BodyDataCard } from "../components/progress/BodyDataCard";
 import { CardioCard } from "../components/progress/CardioCard";
@@ -67,13 +68,14 @@ export function ProgressPage() {
         />
         <StatTile
           label="Volumen"
+          info={<CalcInfoButton id="volume" />}
           value={formatKg(Math.round(volume))}
           unit="kg"
           sub={volumeDelta !== null ? `${formatDelta(Math.round(volumeDelta))} % zum Vorzeitraum` : undefined}
           subTone={volumeDelta !== null && volumeDelta >= 0 ? "accent" : "muted"}
         />
-        <StatTile label="Neue Rekorde" value={records} />
-        <StatTile label="Serie (längste)" value={streak} unit={streak === 1 ? "Woche" : "Wochen"} />
+        <StatTile label="Neue Rekorde" value={records} info={<CalcInfoButton id="records" />} />
+        <StatTile label="Serie (längste)" info={<CalcInfoButton id="streak" />} value={streak} unit={streak === 1 ? "Woche" : "Wochen"} />
       </div>
 
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">

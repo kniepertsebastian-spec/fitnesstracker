@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { CalcInfoButton } from "../info/CalcInfoButton";
+
 import { Card, Button, Field, Input } from "../ui";
 import { useBodyCompositionEntries, useCreateBodyCompositionEntry } from "../../hooks/useBodyComposition";
 import { meanWeight } from "../../lib/stats";
@@ -35,7 +37,7 @@ export function QuickWeightCard() {
   };
 
   return (
-    <Card title="Körpergewicht">
+    <Card title="Körpergewicht" action={<CalcInfoButton id="weight-mean" />}>
       <p className="tabular text-h2 text-text">
         {mean !== null ? formatKg(Math.round(mean * 10) / 10) : "–"}
         {mean !== null && <span className="ml-1 text-small text-text-subtle">kg · Ø 7 Tage</span>}

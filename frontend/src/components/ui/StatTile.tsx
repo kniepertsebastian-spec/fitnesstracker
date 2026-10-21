@@ -6,6 +6,8 @@ export interface StatTileProps {
   value: ReactNode;
   unit?: string;
   sub?: ReactNode;
+  /** Optional small control (e.g. an info button) shown next to the label. */
+  info?: ReactNode;
   subTone?: "accent" | "warning" | "danger" | "muted";
   className?: string;
 }
@@ -17,10 +19,13 @@ const SUB_TONES = {
   muted: "text-text-faint",
 };
 
-export function StatTile({ label, value, unit, sub, subTone = "muted", className }: StatTileProps) {
+export function StatTile({ label, value, unit, sub, subTone = "muted", info, className }: StatTileProps) {
   return (
     <div className={cn("rounded-xl border border-border bg-surface p-4", className)}>
-      <p className="text-small text-text-subtle">{label}</p>
+      <p className="flex items-center justify-between gap-1 text-small text-text-subtle">
+        <span>{label}</span>
+        {info && <span className="-my-1.5 -mr-1.5">{info}</span>}
+      </p>
       <p className="tabular mt-1 text-stat text-text">
         {value}
         {unit && <span className="ml-1 text-small font-medium text-text-subtle">{unit}</span>}
