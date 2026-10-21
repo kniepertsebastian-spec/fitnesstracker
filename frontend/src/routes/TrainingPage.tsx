@@ -61,6 +61,8 @@ import { detectPRs, prLabels } from "../lib/prDetection";
 import { unlockAudio } from "../lib/timerSound";
 import { formatDuration, formatKg, lastTimeSets, sessionSets } from "../lib/trainingSets";
 import { shareSummary } from "../lib/shareSummary";
+import { setsKcal } from "../lib/calories";
+import { useBurnProfile } from "../hooks/useBurnProfile";
 import { formatSetsReps } from "../lib/planPrescription";
 import { applyPlanEdits, loadPlanEdits, savePlanEdits, toPlanEdit, type PlanEdit, type PlanEditInput } from "../lib/planEdits";
 import { dropQueuedPlanOps, enqueuePlanOp, PLAN_EDITS_EVENT, type PlanOp } from "../offline/planEditSync";
@@ -72,6 +74,8 @@ interface Summary {
   seconds: number;
   sets: number;
   volumeKg: number;
+  // Estimated energy of the lifting sets; null without a profile (see lib/calories.ts).
+  kcal: number | null;
   records: number;
   cardioMinutes: number;
   stretchDone: number;
@@ -110,6 +114,7 @@ export function TrainingPage() {
     groupId: null,
   });
   const [summary, setSummary] = useState<Summary | null>(null);
+  const burnProfile = useBurnProfile();
   const [shareNote, setShareNote] = useState<string | null>(null);
   const recordCount = useRef(0);
   const { data: cardioPlan } = useCardioPlan(plan?.currentPhase, { enabled: !!plan });
@@ -414,6 +419,7 @@ export function TrainingPage() {
       seconds: (Date.now() - new Date(session.startedAt).getTime()) / 1000,
       sets: sessionLogs.length,
       volumeKg: sessionLogs.reduce((sum, l) => sum + l.weightKg * l.reps, 0),
+      kcal: burnProfile ? setsKcal(burnProfile, sessionLogs) : null,
       records: recordCount.current,
       cardioMinutes: stageState.warmup.minutesLogged + stageState.cardio.minutesLogged,
       stretchDone: stretchDoneCount,
@@ -459,6 +465,9 @@ export function TrainingPage() {
             <StatTile label="Sätze" value={summary.sets} />
             <StatTile label="Volumen" value={formatKg(Math.round(summary.volumeKg))} unit="kg" />
             <StatTile label="Rekorde" value={summary.records} />
+            {summary.kcal !== null && (
+              <StatTile label="Kraft-Energie" value={`≈ ${Math.round(summary.kcal)}`} unit="kcal" />
+            )}
             <StatTile label="Cardio" value={summary.cardioMinutes} unit="Min." />
             {summary.stretchTotal > 0 && (
               <StatTile label="Dehnen" value={`${summary.stretchDone} von ${summary.stretchTotal}`} />

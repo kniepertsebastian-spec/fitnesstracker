@@ -7,6 +7,7 @@ import { WorkoutLogFormDialog } from "../components/workoutLog/WorkoutLogFormDia
 import { Button, Card, Dialog, EmptyState, IconButton, Input, ListRow, Select, Skeleton, cn } from "../components/ui";
 import { useDeleteWorkoutLog, useExercises, useWorkoutLogs } from "../hooks/useWorkoutLogs";
 import { formatKg } from "../lib/trainingSets";
+import { KcalEstimate } from "../components/workoutLog/KcalEstimate";
 import { Dumbbell } from "lucide-react";
 
 // Same UTC-calendar-day convention as WorkoutLogPage's isToday() and the rest of the app.
@@ -161,6 +162,7 @@ function ExerciseLogGroup({ exerciseName, logs, onEdit }: ExerciseGroupProps) {
       >
         <span className="text-body font-medium text-text">{exerciseName}</span>
         <span className="flex items-center gap-2 text-small text-text-faint">
+          <KcalEstimate sets={logs} />
           {logs.length} {logs.length === 1 ? "Satz" : "Sätze"}
           <ChevronDown size={16} aria-hidden className={cn("transition-transform", open && "rotate-180")} />
         </span>
@@ -325,7 +327,10 @@ export function WorkoutHistoryPage() {
 
           {selectedDate && (
             <div>
-              <h2 className="mb-2 text-h2 text-text">{dayLabel(selectedDate)}</h2>
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
+                <h2 className="text-h2 text-text">{dayLabel(selectedDate)}</h2>
+                <KcalEstimate sets={selectedDayGroups.flatMap(([, exerciseLogs]) => exerciseLogs)} withHint />
+              </div>
               {selectedDayGroups.length === 0 ? (
                 <p className="text-small text-text-faint">Keine Einträge für diese Auswahl.</p>
               ) : (
