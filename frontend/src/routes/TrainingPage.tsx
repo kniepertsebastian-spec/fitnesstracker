@@ -363,6 +363,7 @@ export function TrainingPage() {
           reps: values.reps,
           weightKg: values.weightKg,
           rir: values.rir,
+          note: values.note?.trim() || null,
           supersetGroupId: superset.active ? superset.groupId : null,
         },
         exerciseName: entry.exerciseName,
