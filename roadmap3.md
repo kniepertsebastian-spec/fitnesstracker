@@ -124,9 +124,7 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 - [x] `Cache-Control: no-cache` für `/sw.js`, `/index.html`, `/manifest.webmanifest`.
 - [x] `Cache-Control: public, max-age=31536000, immutable` für `/assets/*`.
 - [x] CSP, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`.
-- [ ] Cloudflare-Caching für `sw.js` prüfen (nur im Cloudflare-Dashboard möglich: keine Cache-Regel mit
-  eigenem „Edge TTL“ für `/sw.js`, `/index.html`, `/manifest.webmanifest`, sonst überschreibt sie das
-  `no-cache` des Servers).
+- [x] ~~Cloudflare-Caching für `sw.js` prüfen~~ Entfällt (Entscheidung des Nutzers).
 
 ### P2.4 Manifest vervollständigen
 
@@ -171,12 +169,12 @@ Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Revie
 
 ## P4 – Fehlende Funktionen
 
-- [ ] **Plattenrechner** in der Satzzeile (welche Scheiben pro Seite).
+- [x] **Plattenrechner** in der Satzzeile (welche Scheiben pro Seite).
 - [ ] **Automatische Aufwärmsätze** (z. B. 40/60/80 % des Arbeitsgewichts), zählen nicht ins
   Volumen und nicht als PR.
 - [ ] **Notiz pro Übung/Satz** (z. B. Sitzeinstellung, Beschwerden), im Training sichtbar.
 - [ ] **Wochenvolumen pro Muskelgruppe** (Sätze pro Muskel) auf der Fortschrittsseite.
 - [x] **Körpergewicht schnell erfassen** vom Dashboard, mit gleitendem 7-Tage-Mittel.
 - [ ] **Health-Integration** (Health Connect bzw. Import aus Apple Health).
-- [ ] **Trainingszusammenfassung teilen** (`navigator.share`).
+- [x] **Trainingszusammenfassung teilen** (`navigator.share`).
 - [x] **Kalender-Heatmap der Trainingstage + Streak** auf dem Dashboard.

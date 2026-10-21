@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowDown, ArrowRight, ArrowUp, Dumbbell, Plus, Repeat2, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Dumbbell, Plus, Repeat2, Share2, Trash2 } from "lucide-react";
 import type { PlanDiaryExerciseDto } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../offline/db";
 import { PRToastHost } from "../components/layout/PRToastHost";
@@ -60,6 +60,7 @@ import { createCardioLogLocal } from "../offline/cardioLogSync";
 import { detectPRs, prLabels } from "../lib/prDetection";
 import { unlockAudio } from "../lib/timerSound";
 import { formatDuration, formatKg, lastTimeSets, sessionSets } from "../lib/trainingSets";
+import { shareSummary } from "../lib/shareSummary";
 import { formatSetsReps } from "../lib/planPrescription";
 import { applyPlanEdits, loadPlanEdits, savePlanEdits, toPlanEdit, type PlanEdit, type PlanEditInput } from "../lib/planEdits";
 import { dropQueuedPlanOps, enqueuePlanOp, PLAN_EDITS_EVENT, type PlanOp } from "../offline/planEditSync";
@@ -109,6 +110,7 @@ export function TrainingPage() {
     groupId: null,
   });
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [shareNote, setShareNote] = useState<string | null>(null);
   const recordCount = useRef(0);
   const { data: cardioPlan } = useCardioPlan(plan?.currentPhase, { enabled: !!plan });
   const { data: stretchPlan } = useStretchPlan(plan?.currentPhase ?? "AUFBAU");
@@ -430,6 +432,18 @@ export function TrainingPage() {
     navigate("/");
   };
 
+  const handleShare = async () => {
+    if (!summary) return;
+    const result = await shareSummary(summary);
+    setShareNote(
+      result === "copied"
+        ? "In die Zwischenablage kopiert."
+        : result === "failed"
+          ? "Teilen ist auf diesem Gerät nicht möglich."
+          : null,
+    );
+  };
+
   const togglePause = () => void setStatus(paused ? "ACTIVE" : "PAUSED");
 
   if (summary) {
@@ -453,10 +467,18 @@ export function TrainingPage() {
             <ButtonLink to="/history" variant="primary" size="lg">
               Zur Historie
             </ButtonLink>
+            <Button variant="secondary" size="lg" iconLeft={<Share2 size={18} aria-hidden />} onClick={() => void handleShare()}>
+              Teilen
+            </Button>
             <ButtonLink to="/" variant="ghost" size="lg">
               Zum Dashboard
             </ButtonLink>
           </div>
+          {shareNote && (
+            <p role="status" className="mt-2 text-small text-text-subtle">
+              {shareNote}
+            </p>
+          )}
         </Card>
       </Frame>
     );
