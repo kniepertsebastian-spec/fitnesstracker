@@ -333,6 +333,7 @@ export const CALCULATIONS: CalculationInfo[] = [
       "Betrachtet werden die letzten 90 Tage einer Übung (mindestens 4 Einträge; ab durchschnittlich 15 Wdh. zählen die Wiederholungen, sonst das Gewicht)",
       "Plateau, wenn der beste Wert der letzten 3 Einträge nicht über dem besten Wert davor liegt",
       "Kein Plateau, wenn das Volumen in der zweiten Hälfte unter 50 % der ersten fällt (das gilt als Deload oder aufgegebene Übung)",
+      "Fortschritt → „Kraft und Rekorde“: dieselbe Regel, aber mit einem Wert je Trainingstag (geschätztes 1RM des besten Satzes) und mindestens 4 Trainingstagen",
     ],
     inputs: "Protokollierte Sätze der letzten 90 Tage.",
     basis: "annahme",

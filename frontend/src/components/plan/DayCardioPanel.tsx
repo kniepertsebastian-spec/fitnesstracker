@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CalcInfoButton } from "../info/CalcInfoButton";
 import { Bike, RotateCcw, SlidersHorizontal } from "lucide-react";
 import {
   CARDIO_MACHINE_LABELS,
@@ -42,7 +43,12 @@ export function DayCardioPanel({ phase, dayLabel }: { phase: TrainingPhase; dayL
 
   return (
     <div className="flex flex-col gap-3">
-      <Callout tone={plan.goal === null && day.source === "auto" ? "warning" : "info"}>{plan.reason}</Callout>
+      <div className="flex items-start gap-1">
+        <div className="min-w-0 flex-1">
+          <Callout tone={plan.goal === null && day.source === "auto" ? "warning" : "info"}>{plan.reason}</Callout>
+        </div>
+        <CalcInfoButton id="cardio-rules" />
+      </div>
 
       {day.items.length === 0 ? (
         <p className="text-small text-text-subtle">

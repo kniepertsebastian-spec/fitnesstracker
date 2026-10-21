@@ -1,5 +1,5 @@
 import { Dumbbell } from "lucide-react";
-import { CalcInfoButton } from "../components/info/CalcInfoButton";
+import { CalcInfoButton } from "../info/CalcInfoButton";
 
 import { STRETCH_FOCUS_LABELS, type StretchFocusMuscle } from "@fitnesstracker/shared";
 import { useWeeklyMuscleVolume } from "../../hooks/useMuscleVolume";

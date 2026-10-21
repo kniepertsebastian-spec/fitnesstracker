@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalcInfoButton } from "../components/info/CalcInfoButton";
+import { CalcInfoButton } from "../info/CalcInfoButton";
 
 import { ApiError } from "../../api/client";
 import { BODY_METRIC_INFO, categorizeBodyFat } from "../../data/bodyMetricsInfo";

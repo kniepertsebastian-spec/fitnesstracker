@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CalcInfoButton } from "../components/info/CalcInfoButton";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowDown, ArrowRight, ArrowUp, Dumbbell, Plus, Repeat2, Share2, Trash2 } from "lucide-react";
 import type { PlanDiaryExerciseDto } from "@fitnesstracker/shared";
@@ -464,7 +465,7 @@ export function TrainingPage() {
             <StatTile label="Dauer" value={formatDuration(summary.seconds)} />
             <StatTile label="Sätze" value={summary.sets} />
             <StatTile label="Volumen" value={formatKg(Math.round(summary.volumeKg))} unit="kg" />
-            <StatTile label="Rekorde" value={summary.records} />
+            <StatTile label="Rekorde" value={summary.records} info={<CalcInfoButton id="records" />} />
             {summary.kcal !== null && (
               <StatTile label="Kraft-Energie" value={`≈ ${Math.round(summary.kcal)}`} unit="kcal" />
             )}

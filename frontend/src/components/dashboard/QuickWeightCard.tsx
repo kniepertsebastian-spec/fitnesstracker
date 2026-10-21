@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalcInfoButton } from "../components/info/CalcInfoButton";
+import { CalcInfoButton } from "../info/CalcInfoButton";
 
 import { Card, Button, Field, Input } from "../ui";
 import { useBodyCompositionEntries, useCreateBodyCompositionEntry } from "../../hooks/useBodyComposition";

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { CalcInfoButton } from "../components/info/CalcInfoButton";
 import { AppShell } from "../components/layout/AppShell";
 import { GoalTile } from "../components/dashboard/GoalTile";
 import { HeroCard } from "../components/dashboard/HeroCard";
@@ -164,6 +165,7 @@ export function DashboardPage() {
             />
             <StatTile
               label="Volumen der Woche"
+              info={<CalcInfoButton id="volume" />}
               value={formatKg(Math.round(weekVolume))}
               unit="kg"
               sub={
@@ -173,7 +175,7 @@ export function DashboardPage() {
               }
               subTone={weekVolume >= prevWeekVolume ? "accent" : "muted"}
             />
-            <StatTile label="Neue Rekorde im Monat" value={records} />
+            <StatTile label="Neue Rekorde im Monat" value={records} info={<CalcInfoButton id="records" />} />
             <StatTile
               label="Körpergewicht"
               value={latestBody ? formatKg(latestBody.weightKg) : "–"}

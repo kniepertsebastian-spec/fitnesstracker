@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CalcInfoButton } from "../info/CalcInfoButton";
 import type { GoalSuggestionDto } from "@fitnesstracker/shared";
 import { useCreateGoal, useGoalSuggestions } from "../../hooks/useGoals";
 import { Badge, Button, Card, SegmentedControl } from "../ui";
@@ -41,6 +42,7 @@ function SuggestionRow({ suggestion }: { suggestion: GoalSuggestionDto }) {
             Plateau
           </Badge>
         )}
+        <CalcInfoButton id="goal-suggestion" />
       </div>
 
       <SegmentedControl

@@ -1,5 +1,5 @@
 import { Flame } from "lucide-react";
-import { CalcInfoButton } from "../components/info/CalcInfoButton";
+import { CalcInfoButton } from "../info/CalcInfoButton";
 
 import { Card, cn } from "../ui";
 import type { HeatmapCell } from "../../lib/stats";

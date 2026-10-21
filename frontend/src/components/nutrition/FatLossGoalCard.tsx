@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalcInfoButton } from "../components/info/CalcInfoButton";
+import { CalcInfoButton } from "../info/CalcInfoButton";
 
 import { useBodyCompositionEntries } from "../../hooks/useBodyComposition";
 import { useProfile } from "../../hooks/useProfile";
