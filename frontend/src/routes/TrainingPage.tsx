@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalcInfoButton } from "../components/info/CalcInfoButton";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowDown, ArrowRight, ArrowUp, Dumbbell, Plus, Repeat2, Share2, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Check, Dumbbell, Plus, Repeat2, Share2, Trash2 } from "lucide-react";
 import type { PlanDiaryExerciseDto } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../offline/db";
 import { PRToastHost } from "../components/layout/PRToastHost";
@@ -596,6 +596,27 @@ export function TrainingPage() {
               Fortsetzen
             </button>
           </Callout>
+        )}
+
+        {status && status.days.length > 1 && (
+          <SegmentedControl
+            label="Trainingstag"
+            value={String(dayIndex ?? 0)}
+            onChange={(v) => {
+              setDayIndex(Number(v));
+              setManualIndex(null);
+              setManualStage(null);
+            }}
+            options={status.days.map((d, i) => ({
+              value: String(i),
+              label: (
+                <span className="flex items-center gap-1">
+                  Tag {i + 1}
+                  {d.completed && <Check size={14} aria-label="erledigt" />}
+                </span>
+              ),
+            }))}
+          />
         )}
 
         {stage === "warmup" && (
