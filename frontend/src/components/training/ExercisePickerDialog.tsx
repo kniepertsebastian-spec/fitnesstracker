@@ -33,7 +33,7 @@ export function ExercisePickerDialog({ open, title, description, options, recomm
   const query = search.trim();
   const { data: results, isFetching } = useQuery({
     queryKey: ["exercise-search", query],
-    queryFn: () => listExercisesRequest({ search: query, pageSize: 12 }).then((r) => r.items),
+    queryFn: () => listExercisesRequest({ search: query, pageSize: 30 }).then((r) => r.items),
     enabled: open && isOnline && query.length >= 2,
     staleTime: 60_000,
   });

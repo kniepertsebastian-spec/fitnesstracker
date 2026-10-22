@@ -28,7 +28,18 @@ export function useWorkoutLogs() {
 export function useExercises() {
   return useQuery({
     queryKey: EXERCISES_KEY,
-    queryFn: () => listExercisesRequest().then((r) => r.items),
+    queryFn: async () => {
+      // The API caps a page at 200 exercises; the library is larger, so fetch every page —
+      // otherwise everything alphabetically after the cut-off is missing from the pickers.
+      const first = await listExercisesRequest({ page: 1 });
+      const items = [...first.items];
+      for (let page = 2; items.length < first.total && page <= 20; page++) {
+        const next = await listExercisesRequest({ page });
+        if (next.items.length === 0) break;
+        items.push(...next.items);
+      }
+      return items;
+    },
   });
 }
 
