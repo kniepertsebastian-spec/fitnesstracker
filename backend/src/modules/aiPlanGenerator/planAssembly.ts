@@ -36,7 +36,7 @@ const BRO: SplitDay[] = [
   { label: "Arme", muscles: ["biceps", "triceps", "forearms"] },
 ];
 
-const BASES: Record<Exclude<SplitPreference, "auto">, SplitDay[]> = {
+const BASES: Record<Exclude<SplitPreference, "auto" | "custom">, SplitDay[]> = {
   full_body: [FULL_BODY],
   upper_lower: [UPPER, LOWER],
   push_pull_legs: [PUSH, PULL, LEGS],
