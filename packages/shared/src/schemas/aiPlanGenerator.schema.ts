@@ -44,7 +44,7 @@ export const equipmentTagSchema = z.enum(EQUIPMENT_TAGS);
 export type EquipmentTag = z.infer<typeof equipmentTagSchema>;
 export const DEFAULT_EQUIPMENT: EquipmentTag[] = ["machine", "dumbbell", "barbell", "cable", "body only"];
 
-export const SPLIT_PREFERENCES = ["auto", "full_body", "upper_lower", "push_pull_legs", "bro_split"] as const;
+export const SPLIT_PREFERENCES = ["auto", "full_body", "upper_lower", "push_pull_legs", "bro_split", "custom"] as const;
 export const splitPreferenceSchema = z.enum(SPLIT_PREFERENCES);
 export type SplitPreference = z.infer<typeof splitPreferenceSchema>;
 export const coldStartExperienceSchema = z.enum(["beginner", "intermediate", "advanced"]);
@@ -59,6 +59,8 @@ export const trainingGoalSchema = z.enum([
 export const coldStartInputSchema = z.object({
   frequencyPerWeek: z.number().int().min(1).max(7),
   split: splitPreferenceSchema.default("auto"),
+  // User-defined day labels and muscle groups, one day per line (e.g. Push: Brust, Trizeps).
+  customSplit: z.string().trim().max(2000).optional(),
   equipment: z.array(equipmentTagSchema).min(1),
   experience: coldStartExperienceSchema,
   goal: trainingGoalSchema,

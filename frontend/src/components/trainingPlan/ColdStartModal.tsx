@@ -31,12 +31,13 @@ const EQUIPMENT_LABELS: Record<EquipmentTag, string> = {
   other: "Sonstiges",
 };
 
-const SPLIT_OPTIONS: { value: SplitPreference; label: string }[] = [
+const SPLIT_OPTIONS: { value: SplitPreference | "custom"; label: string }[] = [
   { value: "auto", label: "Egal – passend zur Trainingshäufigkeit" },
   { value: "full_body", label: "Ganzkörper" },
   { value: "upper_lower", label: "Oberkörper / Unterkörper" },
   { value: "push_pull_legs", label: "Push / Pull / Beine" },
   { value: "bro_split", label: "Bro-Split (ein Muskel pro Tag, ideal ab 5×/Woche)" },
+  { value: "custom", label: "Custom Split – eigene Trainingstage und Muskelgruppen" },
 ];
 
 const EXPERIENCE_OPTIONS: { value: ColdStartInput["experience"]; label: string }[] = [
@@ -60,7 +61,8 @@ const STEP_COUNT = 9;
 export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Props) {
   const [step, setStep] = useState(1);
   const [frequencyPerWeek, setFrequencyPerWeek] = useState(initial?.frequencyPerWeek ?? 3);
-  const [split, setSplit] = useState<SplitPreference>(initial?.split ?? "auto");
+  const [split, setSplit] = useState<SplitPreference | "custom">(initial?.split ?? "auto");
+  const [customSplit, setCustomSplit] = useState(initial?.customSplit ?? "Push: Brust, Schultern, Trizeps\nPull: Rücken, Bizeps\nBeine: Quadrizeps, Beinbeuger, Gesäß, Waden");
   const [equipment, setEquipment] = useState<EquipmentTag[]>(initial?.equipment ?? DEFAULT_EQUIPMENT);
   const [experience, setExperience] = useState<ColdStartInput["experience"]>(initial?.experience ?? "intermediate");
   const [goal, setGoal] = useState<ColdStartInput["goal"]>(initial?.goal ?? "muscle_gain");
@@ -84,6 +86,7 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
     onSubmit({
       frequencyPerWeek,
       split,
+      customSplit: split === "custom" ? customSplit.trim() : undefined,
       equipment,
       experience,
       goal,
@@ -144,7 +147,15 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
       )}
 
       {step === 3 && (
-        <Choices label="Welchen Split bevorzugst du?" options={SPLIT_OPTIONS} value={split} onChange={setSplit} />
+        <div className="flex flex-col gap-3">
+          <Choices label="Welchen Split bevorzugst du?" options={SPLIT_OPTIONS} value={split} onChange={setSplit} />
+          {split === "custom" && (
+            <Field label="Trainingstage und Muskelgruppen (eine Zeile pro Tag)">
+              {(p) => <Textarea {...p} value={customSplit} onChange={(event) => setCustomSplit(event.target.value)} rows={5} maxLength={2000} placeholder={"Push: Brust, Schultern, Trizeps\nPull: Rücken, Bizeps\nBeine: Quadrizeps, Beinbeuger, Gesäß, Waden"} />}
+            </Field>
+          )}
+          {split === "custom" && <p className="text-xs text-text-subtle">Format: Tagesname: Muskelgruppe 1, Muskelgruppe 2. Unterstützt deutsche und englische Muskelbezeichnungen.</p>}
+        </div>
       )}
 
       {step === 4 && (
