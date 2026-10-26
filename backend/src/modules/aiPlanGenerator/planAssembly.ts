@@ -51,13 +51,46 @@ function autoBase(frequency: number): SplitDay[] {
   return [PUSH, PULL, LEGS];
 }
 
-// One split day per weekly session: the weekly plan status starts every week at the first day
-// not yet trained, so days beyond the weekly frequency would never come up. The base template is
-// cycled to that length; repeated day types get an A/B/C suffix so dayLabels stay unique
-// (PlanExercise is unique per (phase, exercise, dayLabel)).
-export function resolveSplit(split: SplitPreference, frequencyPerWeek: number): SplitDay[] {
+const MUSCLE_ALIASES: Record<string, string[]> = {
+  brust: ["chest"], chest: ["chest"],
+  rücken: ["lats", "middle back", "lower back"], rucken: ["lats", "middle back", "lower back"], back: ["lats", "middle back", "lower back"], lats: ["lats"],
+  schulter: ["shoulders"], schultern: ["shoulders"], shoulders: ["shoulders"], delts: ["shoulders"],
+  bizeps: ["biceps"], biceps: ["biceps"], trizeps: ["triceps"], triceps: ["triceps"],
+  arme: ["biceps", "triceps", "forearms"], arms: ["biceps", "triceps", "forearms"],
+  beine: LEG_MUSCLES, legs: LEG_MUSCLES, quadrizeps: ["quadriceps"], quadriceps: ["quadriceps"], quads: ["quadriceps"],
+  beinbeuger: ["hamstrings"], hamstrings: ["hamstrings"], gesäß: ["glutes"], gesass: ["glutes"], glutes: ["glutes"], po: ["glutes"],
+  waden: ["calves"], calves: ["calves"], bauch: CORE, bauchmuskeln: CORE, abs: CORE, abdominals: CORE,
+  unterarme: ["forearms"], forearms: ["forearms"], trapez: ["traps"], traps: ["traps"],
+  adduktoren: ["adductors"], adductors: ["adductors"], abduktoren: ["abductors"], abductors: ["abductors"],
+  "unterer rücken": ["lower back"], "lower back": ["lower back"],
+  "oberer rücken": ["middle back", "traps"],
+};
+
+function parseCustomSplit(value: string | undefined): SplitDay[] {
+  if (!value?.trim()) throw new Error("Bitte gib für den Custom Split mindestens einen Trainingstag an.");
+  const days = value.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
+    const separator = line.indexOf(":");
+    if (separator < 1) throw new Error(`Ungültige Zeile „${line}“. Format: Tagesname: Muskelgruppe 1, Muskelgruppe 2.`);
+    const label = line.slice(0, separator).trim().slice(0, 60);
+    const muscles = [...new Set(line.slice(separator + 1).split(/[,;]/).flatMap((part) => {
+      const key = part.trim().toLocaleLowerCase("de-DE");
+      return MUSCLE_ALIASES[key] ?? [];
+    }))];
+    if (!label || muscles.length === 0) throw new Error(`Für „${label || line}“ wurden keine erkannten Muskelgruppen gefunden.`);
+    return { label, muscles };
+  });
+  if (days.length > 6) throw new Error("Ein Custom Split darf höchstens 6 Trainingstage enthalten.");
+  if (new Set(days.map((d) => d.label.toLocaleLowerCase("de-DE"))).size !== days.length) {
+    throw new Error("Die Namen der Trainingstage müssen eindeutig sein.");
+  }
+  return days;
+}
+
+// Custom split days are used exactly as entered; predefined splits still follow weekly frequency.
+export function resolveSplit(split: SplitPreference, frequencyPerWeek: number, customSplit?: string): SplitDay[] {
   const frequency = Math.min(6, Math.max(1, Math.round(frequencyPerWeek)));
-  const base = split === "auto" ? autoBase(frequency) : BASES[split];
+  const base = split === "custom" ? parseCustomSplit(customSplit) : split === "auto" ? autoBase(frequency) : BASES[split];
+  if (split === "custom") return base;
   const days = Array.from({ length: frequency }, (_, i) => base[i % base.length]);
   const repeats = new Map<string, number>();
   for (const d of days) repeats.set(d.label, (repeats.get(d.label) ?? 0) + 1);
