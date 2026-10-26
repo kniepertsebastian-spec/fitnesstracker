@@ -68,7 +68,7 @@ const MUSCLE_ALIASES: Record<string, string[]> = {
 
 function parseCustomSplit(value: string | undefined): SplitDay[] {
   if (!value?.trim()) throw new Error("Bitte gib für den Custom Split mindestens einen Trainingstag an.");
-  const days = value.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
+  const days = value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
     const separator = line.indexOf(":");
     if (separator < 1) throw new Error(`Ungültige Zeile „${line}“. Format: Tagesname: Muskelgruppe 1, Muskelgruppe 2.`);
     const label = line.slice(0, separator).trim().slice(0, 60);
