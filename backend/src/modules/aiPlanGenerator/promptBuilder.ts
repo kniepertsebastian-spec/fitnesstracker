@@ -193,6 +193,7 @@ const SPLIT_LABELS: Record<SplitPreference, string> = {
   upper_lower: "Oberkörper/Unterkörper",
   push_pull_legs: "Push/Pull/Beine",
   bro_split: "Bro-Split (ein Muskel pro Tag)",
+  custom: "individuell definierter Split",
 };
 const EXPERIENCE_LABELS: Record<ColdStartInput["experience"], string> = {
   beginner: "Anfänger",
@@ -214,6 +215,7 @@ export function buildColdStartContext(input: ColdStartInput): string {
     `Hauptziel: ${GOAL_LABELS[input.goal]}. ` +
     `Trainingsfrequenz: ${input.frequencyPerWeek}x/Woche. ` +
     `Gewünschter Split: ${SPLIT_LABELS[input.split]}. ` +
+    (input.split === "custom" ? `Vom Nutzer definierte Trainingstage:\\n${input.customSplit ?? "keine Angaben"}. ` : "") +
     `Verfügbare Zeit pro Einheit: ${input.sessionDurationMinutes} Minuten. ` +
     `Erlaubtes Equipment: ${input.equipment.map((t) => EQUIPMENT_LABELS[t]).join(", ")} (alles andere ist ausgeschlossen). ` +
     `Konkretes Equipment: ${input.equipmentDetails?.trim() || "keine weiteren Angaben"}. ` +
