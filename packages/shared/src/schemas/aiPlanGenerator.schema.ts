@@ -59,6 +59,8 @@ export const trainingGoalSchema = z.enum([
 export const coldStartInputSchema = z.object({
   frequencyPerWeek: z.number().int().min(1).max(7),
   split: splitPreferenceSchema.default("auto"),
+  // User-defined day labels and muscle groups, one day per line (e.g. Push: Brust, Trizeps).
+  customSplit: z.string().trim().max(2000).optional(),
   equipment: z.array(equipmentTagSchema).min(1),
   experience: coldStartExperienceSchema,
   goal: trainingGoalSchema,
