@@ -146,7 +146,15 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
       )}
 
       {step === 3 && (
-        <Choices label="Welchen Split bevorzugst du?" options={SPLIT_OPTIONS} value={split} onChange={setSplit} />
+        <div className="flex flex-col gap-3">
+          <Choices label="Welchen Split bevorzugst du?" options={SPLIT_OPTIONS} value={split} onChange={setSplit} />
+          {split === "custom" && (
+            <Field label="Trainingstage und Muskelgruppen (eine Zeile pro Tag)">
+              {(p) => <Textarea {...p} value={customSplit} onChange={(event) => setCustomSplit(event.target.value)} rows={5} maxLength={2000} placeholder={"Push: Brust, Schultern, Trizeps\nPull: Rücken, Bizeps\nBeine: Quadrizeps, Beinbeuger, Gesäß, Waden"} />}
+            </Field>
+          )}
+          {split === "custom" && <p className="text-xs text-text-subtle">Format: Tagesname: Muskelgruppe 1, Muskelgruppe 2. Unterstützt deutsche und englische Muskelbezeichnungen.</p>}
+        </div>
       )}
 
       {step === 4 && (
