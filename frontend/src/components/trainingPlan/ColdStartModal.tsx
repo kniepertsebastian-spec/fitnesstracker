@@ -86,6 +86,7 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
     onSubmit({
       frequencyPerWeek,
       split,
+      customSplit: split === "custom" ? customSplit.trim() : undefined,
       equipment,
       experience,
       goal,
