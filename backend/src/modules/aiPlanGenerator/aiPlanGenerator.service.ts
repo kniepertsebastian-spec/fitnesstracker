@@ -232,7 +232,7 @@ export async function generatePlan(
     });
   }
 
-  const allDays = resolveSplit(prefs.split, prefs.frequencyPerWeek);
+  const allDays = resolveSplit(prefs.split, prefs.frequencyPerWeek, prefs.customSplit);
   const targetDays = input.day ? allDays.filter((d) => d.label === input.day) : allDays;
   if (targetDays.length === 0) {
     throw new ConflictError("Dieser Tag gehört nicht mehr zum Split — bitte den ganzen Plan neu generieren");
