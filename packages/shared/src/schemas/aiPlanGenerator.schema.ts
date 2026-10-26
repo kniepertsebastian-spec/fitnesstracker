@@ -44,7 +44,7 @@ export const equipmentTagSchema = z.enum(EQUIPMENT_TAGS);
 export type EquipmentTag = z.infer<typeof equipmentTagSchema>;
 export const DEFAULT_EQUIPMENT: EquipmentTag[] = ["machine", "dumbbell", "barbell", "cable", "body only"];
 
-export const SPLIT_PREFERENCES = ["auto", "full_body", "upper_lower", "push_pull_legs", "bro_split"] as const;
+export const SPLIT_PREFERENCES = ["auto", "full_body", "upper_lower", "push_pull_legs", "bro_split", "custom"] as const;
 export const splitPreferenceSchema = z.enum(SPLIT_PREFERENCES);
 export type SplitPreference = z.infer<typeof splitPreferenceSchema>;
 export const coldStartExperienceSchema = z.enum(["beginner", "intermediate", "advanced"]);
