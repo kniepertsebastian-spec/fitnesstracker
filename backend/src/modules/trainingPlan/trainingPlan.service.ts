@@ -1,15 +1,34 @@
-import type { PrismaClient, TrainingPlan, TrainingPlanPhaseHistory } from "@prisma/client";
-import { TRAINING_PHASE_LABELS, TRAINING_PHASE_ROTATION } from "@fitnesstracker/shared";
+import type { Prisma, PrismaClient, TrainingPhase, TrainingPlan, TrainingPlanPhaseHistory } from "@prisma/client";
+import {
+  CUSTOM_TRAINING_PHASES,
+  TRAINING_PHASE_ROTATION,
+  type AddTrainingPhaseInput,
+  type RenameTrainingPhaseInput,
+} from "@fitnesstracker/shared";
+import { BadRequestError, ConflictError, NotFoundError } from "../../errors/httpErrors.js";
 import { sendNotificationToUser } from "../push/push.service.js";
 import { refreshDetectedAsymmetries } from "./trainingAsymmetry.service.js";
+import {
+  getDefaultPhaseConfigs,
+  getPhaseLabel,
+  getRotationalPhases,
+  resolvePhaseConfigs,
+} from "./trainingPlan.types.js";
 
 const ROTATION_WEEKS = 8;
 // Upper bound for "+1 Woche" so a phase can't be stretched indefinitely by accident.
 export const MAX_EXTENSION_WEEKS = 8;
 
-function nextPhase(phase: TrainingPlan["currentPhase"]) {
-  const index = TRAINING_PHASE_ROTATION.indexOf(phase);
-  return TRAINING_PHASE_ROTATION[(index + 1) % TRAINING_PHASE_ROTATION.length];
+const ALL_ROTATIONAL_SLOTS: TrainingPhase[] = [
+  ...TRAINING_PHASE_ROTATION,
+  ...CUSTOM_TRAINING_PHASES,
+];
+
+function nextPhase(phase: TrainingPlan["currentPhase"], rotation: TrainingPhase[]) {
+  if (rotation.length === 0) return phase;
+  const index = rotation.indexOf(phase);
+  if (index === -1) return rotation[0];
+  return rotation[(index + 1) % rotation.length];
 }
 
 function addWeeks(date: Date, weeks: number) {
@@ -36,7 +55,12 @@ export async function getOrCreateTrainingPlan(
   if (existing) return existing;
 
   return prisma.trainingPlan.create({
-    data: { userId, currentPhase: "AUFBAU", phaseStartedOn: mostRecentMonday(new Date()) },
+    data: {
+      userId,
+      currentPhase: "AUFBAU",
+      phaseStartedOn: mostRecentMonday(new Date()),
+      phaseConfigs: getDefaultPhaseConfigs() as unknown as Prisma.InputJsonValue,
+    },
   });
 }
 
@@ -49,10 +73,16 @@ export interface RotationComputation {
 
 // Pure phase math. The current phase lasts 8 weeks plus any "+1 Woche" extension; every phase
 // after it is a plain 8 weeks (the extension belongs to the phase it was added to).
+// Non-rotational phases (such as DAILY) are ignored by the rotation cycle.
 export function computeRotation(
-  plan: Pick<TrainingPlan, "currentPhase" | "phaseStartedOn" | "extensionWeeks">,
+  plan: Pick<TrainingPlan, "currentPhase" | "phaseStartedOn" | "extensionWeeks"> & {
+    phaseConfigs?: unknown;
+  },
   now: Date,
 ): RotationComputation {
+  const configs = resolvePhaseConfigs(plan.phaseConfigs);
+  const rotation = getRotationalPhases(configs);
+
   let currentPhase = plan.currentPhase;
   let phaseStartedOn = plan.phaseStartedOn;
   let nextRotationOn = addWeeks(phaseStartedOn, ROTATION_WEEKS + plan.extensionWeeks);
@@ -60,7 +90,7 @@ export function computeRotation(
 
   while (nextRotationOn <= now) {
     closedHistory.push({ phase: currentPhase, startedOn: phaseStartedOn, endedOn: nextRotationOn });
-    currentPhase = nextPhase(currentPhase);
+    currentPhase = nextPhase(currentPhase, rotation);
     phaseStartedOn = nextRotationOn;
     nextRotationOn = addWeeks(phaseStartedOn, ROTATION_WEEKS);
   }
@@ -120,14 +150,25 @@ export async function getCurrentTrainingPlan(prisma: PrismaClient, userId: strin
   return { plan: current, nextRotationOn, history };
 }
 
-// Manually switches the active phase and starts a fresh 8-week cycle. The outgoing phase is
-// closed in history; workout logs and the rest of the plan are left untouched.
+// Manually switches the active rotational phase and starts a fresh 8-week cycle.
+// Switching to a daily phase is prevented here so the active rotation plan remains untouched.
 export async function changeTrainingPhase(
   prisma: PrismaClient,
   userId: string,
   phase: TrainingPlan["currentPhase"],
 ) {
   const plan = await getOrCreateTrainingPlan(prisma, userId);
+  const configs = resolvePhaseConfigs(plan.phaseConfigs);
+  const targetConfig = configs.find((c) => c.phase === phase);
+
+  if (!targetConfig) {
+    throw new NotFoundError("Trainingsphase existiert nicht im Plan");
+  }
+  if (targetConfig.isDaily) {
+    throw new BadRequestError(
+      "Die Daily-Phase läuft parallel und ersetzt nicht deine aktive Rotationsphase.",
+    );
+  }
   if (plan.currentPhase === phase) return plan;
 
   const phaseStartedOn = mostRecentMonday(new Date());
@@ -153,6 +194,116 @@ export async function changeTrainingPhase(
   return updatedPlan;
 }
 
+// Adds a new rotational training phase or the standalone DAILY phase without touching the
+// current rotational plan state.
+export async function addTrainingPhase(
+  prisma: PrismaClient,
+  userId: string,
+  input: AddTrainingPhaseInput,
+) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  const configs = resolvePhaseConfigs(plan.phaseConfigs);
+  const trimmedLabel = input.label.trim();
+
+  if (input.isDaily) {
+    if (configs.some((c) => c.isDaily || c.phase === "DAILY")) {
+      throw new ConflictError("Eine Daily-Trainingsphase existiert bereits.");
+    }
+    const nextConfigs = [...configs, { phase: "DAILY" as const, label: trimmedLabel, isDaily: true }];
+    return prisma.trainingPlan.update({
+      where: { id: plan.id },
+      data: { phaseConfigs: nextConfigs as unknown as Prisma.InputJsonValue },
+    });
+  }
+
+  const usedPhases = new Set(configs.map((c) => c.phase));
+  const availableSlot = ALL_ROTATIONAL_SLOTS.find((slot) => !usedPhases.has(slot));
+  if (!availableSlot) {
+    throw new ConflictError("Maximale Anzahl an Trainingsphasen (8) erreicht.");
+  }
+
+  // Insert rotational phases before DAILY if DAILY is present so rotation order stays clean.
+  const dailyEntries = configs.filter((c) => c.isDaily);
+  const rotationalEntries = configs.filter((c) => !c.isDaily);
+  const nextConfigs = [
+    ...rotationalEntries,
+    { phase: availableSlot, label: trimmedLabel, isDaily: false },
+    ...dailyEntries,
+  ];
+
+  return prisma.trainingPlan.update({
+    where: { id: plan.id },
+    data: { phaseConfigs: nextConfigs as unknown as Prisma.InputJsonValue },
+  });
+}
+
+// Renames any phase (standard, custom, or DAILY) without affecting exercises or rotation timing.
+export async function renameTrainingPhase(
+  prisma: PrismaClient,
+  userId: string,
+  phase: TrainingPhase,
+  input: RenameTrainingPhaseInput,
+) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  const configs = resolvePhaseConfigs(plan.phaseConfigs);
+  const idx = configs.findIndex((c) => c.phase === phase);
+
+  if (idx === -1) {
+    throw new NotFoundError("Trainingsphase nicht gefunden.");
+  }
+
+  const nextConfigs = configs.map((c, i) =>
+    i === idx ? { ...c, label: input.label.trim() } : c,
+  );
+
+  return prisma.trainingPlan.update({
+    where: { id: plan.id },
+    data: { phaseConfigs: nextConfigs as unknown as Prisma.InputJsonValue },
+  });
+}
+
+// Deletes a phase and removes its assigned exercises, cardio, and stretch items.
+// Protects the last remaining rotational phase so the plan always has an active phase.
+export async function deleteTrainingPhase(
+  prisma: PrismaClient,
+  userId: string,
+  phase: TrainingPhase,
+) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  const configs = resolvePhaseConfigs(plan.phaseConfigs);
+  const target = configs.find((c) => c.phase === phase);
+
+  if (!target) {
+    throw new NotFoundError("Trainingsphase nicht gefunden.");
+  }
+
+  const remainingConfigs = configs.filter((c) => c.phase !== phase);
+  const remainingRotational = remainingConfigs.filter((c) => !c.isDaily);
+
+  if (!target.isDaily && remainingRotational.length === 0) {
+    throw new BadRequestError("Mindestens eine reguläre Trainingsphase muss erhalten bleiben.");
+  }
+
+  const nextActivePhase =
+    plan.currentPhase === phase ? remainingRotational[0].phase : plan.currentPhase;
+
+  const [, , , , updatedPlan] = await prisma.$transaction([
+    prisma.planExercise.deleteMany({ where: { userId, phase } }),
+    prisma.cardioPlanDay.deleteMany({ where: { userId, phase } }),
+    prisma.stretchPlanItem.deleteMany({ where: { userId, phase } }),
+    prisma.planSnapshot.deleteMany({ where: { userId, phase } }),
+    prisma.trainingPlan.update({
+      where: { id: plan.id },
+      data: {
+        currentPhase: nextActivePhase,
+        phaseConfigs: remainingConfigs as unknown as Prisma.InputJsonValue,
+      },
+    }),
+  ]);
+
+  return updatedPlan;
+}
+
 export async function updateTrainingPlanRemarks(
   prisma: PrismaClient,
   userId: string,
@@ -167,10 +318,6 @@ export async function updateTrainingPlanRemarks(
 
 // Scheduler tick: rotates every plan with an overdue phase. Cheap to call often — plans that
 // aren't due are filtered out in SQL before any rotation logic runs.
-//
-// The push reminder fires only from here, not from the lazy per-request rotation in
-// getCurrentTrainingPlan — a push telling you the plan changed is pointless if you're the one
-// who just triggered the rotation by opening the training-plan page yourself.
 export async function rotateAllDuePlans(prisma: PrismaClient): Promise<{ rotatedPlans: number }> {
   const cutoff = addWeeks(new Date(), -ROTATION_WEEKS);
   const duePlans = await prisma.trainingPlan.findMany({
@@ -183,12 +330,11 @@ export async function rotateAllDuePlans(prisma: PrismaClient): Promise<{ rotated
     const { plan: updated, rotated } = await rotatePhaseIfDue(prisma, plan);
     if (rotated) {
       rotatedPlans += 1;
-      // Phase 30: per-reminder-type opt-out — the rotation itself always happens, only the push
-      // notification is gated.
       if (plan.user.remindPhaseChange) {
+        const configs = resolvePhaseConfigs(updated.phaseConfigs);
         await sendNotificationToUser(prisma, plan.userId, {
           title: "Trainingsplan-Wechsel",
-          body: `Neue Phase: ${TRAINING_PHASE_LABELS[updated.currentPhase]}`,
+          body: `Neue Phase: ${getPhaseLabel(configs, updated.currentPhase)}`,
           url: "/plan",
         });
       }
@@ -197,18 +343,12 @@ export async function rotateAllDuePlans(prisma: PrismaClient): Promise<{ rotated
   return { rotatedPlans };
 }
 
-// Idempotent no-op if already paused — pressing "Pausieren" twice shouldn't reset pausedAt to a
-// later time and silently extend the pause.
 export async function pauseTrainingPlan(prisma: PrismaClient, userId: string) {
   const plan = await getOrCreateTrainingPlan(prisma, userId);
   if (plan.pausedAt) return plan;
   return prisma.trainingPlan.update({ where: { id: plan.id }, data: { pausedAt: new Date() } });
 }
 
-// Shifts `phaseStartedOn` forward by exactly how long the plan was paused, so the remaining
-// time-to-rotation is preserved rather than the pause silently eating into the 8-week cycle —
-// e.g. paused after 2 weeks, resumed a month later, the next rotation is still 6 weeks out from
-// today, not "already overdue".
 export async function resumeTrainingPlan(prisma: PrismaClient, userId: string) {
   const plan = await getOrCreateTrainingPlan(prisma, userId);
   if (!plan.pausedAt) return plan;
@@ -222,9 +362,6 @@ export async function resumeTrainingPlan(prisma: PrismaClient, userId: string) {
   });
 }
 
-// Explicit "start this phase over" — resets the 8-week clock to today without changing
-// `currentPhase` or touching phase history (no phase was actually completed). Also clears any
-// pause, since restarting implies picking training back up.
 export async function restartCurrentPhase(prisma: PrismaClient, userId: string) {
   const plan = await getOrCreateTrainingPlan(prisma, userId);
   return prisma.trainingPlan.update({
@@ -233,9 +370,6 @@ export async function restartCurrentPhase(prisma: PrismaClient, userId: string) 
   });
 }
 
-// "+1 Woche": pushes the next phase change out by one week (capped at MAX_EXTENSION_WEEKS).
-// Because the scheduler and the lazy per-request rotation both go through computeRotation, the
-// "Trainingsplan-Wechsel" push moves with it. Like pausing, this is an online-only action.
 export async function extendCurrentPhase(prisma: PrismaClient, userId: string) {
   const plan = await getOrCreateTrainingPlan(prisma, userId);
   if (plan.extensionWeeks >= MAX_EXTENSION_WEEKS) return plan;
@@ -245,7 +379,6 @@ export async function extendCurrentPhase(prisma: PrismaClient, userId: string) {
   });
 }
 
-// F9: the goal the cardio suggestion is based on. Null clears it ("noch nicht gewählt").
 export async function setTrainingGoal(
   prisma: PrismaClient,
   userId: string,

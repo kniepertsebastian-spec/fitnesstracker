@@ -1,20 +1,30 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import {
-  getCurrentTrainingPlan,
+  addTrainingPhase,
   changeTrainingPhase,
+  deleteTrainingPhase,
   extendCurrentPhase,
+  getCurrentTrainingPlan,
   pauseTrainingPlan,
-  resumeTrainingPlan,
+  renameTrainingPhase,
   restartCurrentPhase,
+  resumeTrainingPlan,
   setTrainingGoal,
   updateTrainingPlanRemarks,
 } from "./trainingPlan.service.js";
 import {
+  addTrainingPhaseSchema,
   changeTrainingPhaseSchema,
+  renameTrainingPhaseSchema,
+  trainingPhaseSchema,
   updateTrainingGoalSchema,
   updateTrainingPlanRemarksSchema,
 } from "@fitnesstracker/shared";
 import { toTrainingPlanDto } from "./trainingPlan.types.js";
+import { HttpError } from "../../errors/httpErrors.js";
+
+const phaseParamSchema = z.object({ phase: trainingPhaseSchema });
 
 export default async function trainingPlanRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
@@ -29,12 +39,71 @@ export default async function trainingPlanRoutes(fastify: FastifyInstance) {
 
   fastify.patch("/training-plan/phase", async (request, reply) => {
     const { phase } = changeTrainingPhaseSchema.parse(request.body);
-    await changeTrainingPhase(fastify.prisma, request.user.sub, phase);
-    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
-      fastify.prisma,
-      request.user.sub,
-    );
-    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+    try {
+      await changeTrainingPhase(fastify.prisma, request.user.sub, phase);
+      const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
+        fastify.prisma,
+        request.user.sub,
+      );
+      return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+    } catch (error) {
+      if (error instanceof HttpError) {
+        return reply.code(error.statusCode).send({ message: error.message });
+      }
+      throw error;
+    }
+  });
+
+  fastify.post("/training-plan/phases", async (request, reply) => {
+    const input = addTrainingPhaseSchema.parse(request.body);
+    try {
+      await addTrainingPhase(fastify.prisma, request.user.sub, input);
+      const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
+        fastify.prisma,
+        request.user.sub,
+      );
+      return reply.code(201).send(toTrainingPlanDto(plan, nextRotationOn, history));
+    } catch (error) {
+      if (error instanceof HttpError) {
+        return reply.code(error.statusCode).send({ message: error.message });
+      }
+      throw error;
+    }
+  });
+
+  fastify.patch("/training-plan/phases/:phase", async (request, reply) => {
+    const { phase } = phaseParamSchema.parse(request.params);
+    const input = renameTrainingPhaseSchema.parse(request.body);
+    try {
+      await renameTrainingPhase(fastify.prisma, request.user.sub, phase, input);
+      const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
+        fastify.prisma,
+        request.user.sub,
+      );
+      return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+    } catch (error) {
+      if (error instanceof HttpError) {
+        return reply.code(error.statusCode).send({ message: error.message });
+      }
+      throw error;
+    }
+  });
+
+  fastify.delete("/training-plan/phases/:phase", async (request, reply) => {
+    const { phase } = phaseParamSchema.parse(request.params);
+    try {
+      await deleteTrainingPhase(fastify.prisma, request.user.sub, phase);
+      const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
+        fastify.prisma,
+        request.user.sub,
+      );
+      return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+    } catch (error) {
+      if (error instanceof HttpError) {
+        return reply.code(error.statusCode).send({ message: error.message });
+      }
+      throw error;
+    }
   });
 
   fastify.post("/training-plan/pause", async (request, reply) => {

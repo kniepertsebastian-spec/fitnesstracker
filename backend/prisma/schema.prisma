@@ -11,6 +11,12 @@ enum TrainingPhase {
   AUFBAU
   MUSKELAUSDAUER
   NEGATIV
+  DAILY
+  CUSTOM_1
+  CUSTOM_2
+  CUSTOM_3
+  CUSTOM_4
+  CUSTOM_5
 }
 
 enum GoalType {
@@ -256,6 +262,9 @@ model TrainingPlan {
   remarks             String?
   detectedAsymmetries String[]      @default([])
   asymmetryAnalyzedAt DateTime?
+  // Custom phase configuration: array of { phase, label, isDaily } items. Null uses the default
+  // 3-phase rotation (Aufbau, Muskelausdauer, Negativ).
+  phaseConfigs        Json?
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
@@ -276,9 +285,9 @@ model TrainingPlanPhaseHistory {
   @@index([trainingPlanId])
 }
 
-// An exercise assigned to a training phase (Aufbau/Muskelausdauer/Negativ) — keyed by phase, not
-// by a specific TrainingPlan rotation instance, since the same phase recurs every 8-week cycle
-// and the assigned exercises should still be there next time it comes around.
+// An exercise assigned to a training phase (Aufbau/Muskelausdauer/Negativ/Daily/Custom) — keyed by
+// phase, not by a specific TrainingPlan rotation instance, since the same phase recurs every
+// 8-week cycle and the assigned exercises should still be there next time it comes around.
 model PlanExercise {
   id                    String        @id @default(uuid())
   userId                String
@@ -419,7 +428,7 @@ model BodyCompositionEntry {
 model BodyAnalysis {
   id         String   @id @default(uuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   measuredAt DateTime @default(now())
   sourceName String?
   ocrText    String

@@ -1,15 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  addTrainingPhaseRequest,
   changeTrainingPhaseRequest,
+  deleteTrainingPhaseRequest,
   extendPhaseRequest,
   getTrainingPlanRequest,
   pauseTrainingPlanRequest,
+  renameTrainingPhaseRequest,
   restartPhaseRequest,
   resumeTrainingPlanRequest,
   updateTrainingGoalRequest,
   updateTrainingPlanRemarksRequest,
 } from "../api/trainingPlan.api";
-import type { TrainingGoalValue, TrainingPhase, UpdateTrainingPlanRemarksInput } from "@fitnesstracker/shared";
+import type {
+  AddTrainingPhaseInput,
+  RenameTrainingPhaseInput,
+  TrainingGoalValue,
+  TrainingPhase,
+  UpdateTrainingPlanRemarksInput,
+} from "@fitnesstracker/shared";
 
 export { TRAINING_PHASE_LABELS } from "@fitnesstracker/shared";
 
@@ -41,6 +50,39 @@ export function useChangeTrainingPhase() {
   });
 }
 
+export function useAddTrainingPhase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AddTrainingPhaseInput) => addTrainingPhaseRequest(input),
+    onSuccess: (plan) => {
+      queryClient.setQueryData(TRAINING_PLAN_KEY, plan);
+    },
+  });
+}
+
+export function useRenameTrainingPhase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ phase, input }: { phase: TrainingPhase; input: RenameTrainingPhaseInput }) =>
+      renameTrainingPhaseRequest(phase, input),
+    onSuccess: (plan) => {
+      queryClient.setQueryData(TRAINING_PLAN_KEY, plan);
+    },
+  });
+}
+
+export function useDeleteTrainingPhase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (phase: TrainingPhase) => deleteTrainingPhaseRequest(phase),
+    onSuccess: (plan) => {
+      queryClient.setQueryData(TRAINING_PLAN_KEY, plan);
+      void queryClient.invalidateQueries({ queryKey: ["plan-exercises"] });
+      void queryClient.invalidateQueries({ queryKey: ["cardio", "plan"] });
+    },
+  });
+}
+
 export function usePauseTrainingPlan() {
   return useTrainingPlanAction(pauseTrainingPlanRequest);
 }
@@ -49,7 +91,6 @@ export function useResumeTrainingPlan() {
   return useTrainingPlanAction(resumeTrainingPlanRequest);
 }
 
-// "+1 Woche": pushes the next phase change out by a week (online-only, like pausing).
 export function useExtendPhase() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -70,7 +111,6 @@ export function useUpdateTrainingPlanRemarks() {
   });
 }
 
-// F9: the goal changes the cardio suggestion, so the cardio plans of every phase are refetched.
 export function useSetTrainingGoal() {
   const queryClient = useQueryClient();
   return useMutation({

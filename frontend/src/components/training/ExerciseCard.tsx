@@ -15,6 +15,12 @@ const PROGRESSION_LABEL: Record<TrainingPhase, string> = {
   AUFBAU: "Gewicht steigern",
   MUSKELAUSDAUER: "Wdh. steigern",
   NEGATIV: "langsam ablassen",
+  DAILY: "Tägliche Routine",
+  CUSTOM_1: "Gewicht steigern",
+  CUSTOM_2: "Gewicht steigern",
+  CUSTOM_3: "Gewicht steigern",
+  CUSTOM_4: "Gewicht steigern",
+  CUSTOM_5: "Gewicht steigern",
 };
 
 export interface SetValues {
