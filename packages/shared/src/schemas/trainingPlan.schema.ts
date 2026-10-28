@@ -3,10 +3,28 @@ import { TRAINING_PHASES } from "../enums.js";
 
 export const trainingPhaseSchema = z.enum(TRAINING_PHASES);
 
+export const phaseConfigItemSchema = z.object({
+  phase: trainingPhaseSchema,
+  label: z.string().trim().min(1).max(40),
+  isDaily: z.boolean().default(false),
+});
+export type PhaseConfigItem = z.infer<typeof phaseConfigItemSchema>;
+
 export const changeTrainingPhaseSchema = z.object({
   phase: trainingPhaseSchema,
 });
 export type ChangeTrainingPhaseInput = z.infer<typeof changeTrainingPhaseSchema>;
+
+export const addTrainingPhaseSchema = z.object({
+  label: z.string().trim().min(1, "Name darf nicht leer sein").max(40, "Maximal 40 Zeichen"),
+  isDaily: z.boolean().optional().default(false),
+});
+export type AddTrainingPhaseInput = z.infer<typeof addTrainingPhaseSchema>;
+
+export const renameTrainingPhaseSchema = z.object({
+  label: z.string().trim().min(1, "Name darf nicht leer sein").max(40, "Maximal 40 Zeichen"),
+});
+export type RenameTrainingPhaseInput = z.infer<typeof renameTrainingPhaseSchema>;
 
 export const trainingPlanPhaseHistoryDtoSchema = z.object({
   id: z.string().uuid(),
@@ -31,6 +49,7 @@ export const trainingPlanDtoSchema = z.object({
   remarks: z.string().nullable(),
   detectedAsymmetries: z.array(z.string()),
   asymmetryAnalyzedAt: z.string().nullable(),
+  phases: z.array(phaseConfigItemSchema),
   history: z.array(trainingPlanPhaseHistoryDtoSchema),
 });
 export type TrainingPlanDto = z.infer<typeof trainingPlanDtoSchema>;

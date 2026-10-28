@@ -22,7 +22,8 @@ import {
   ListRow,
   Skeleton,
 } from "../components/ui";
-import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../hooks/useTrainingPlan";
+import { useTrainingPlan } from "../hooks/useTrainingPlan";
+import { getPhaseDisplayName } from "../lib/phaseInfo";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -33,10 +34,14 @@ export function TrainingPlanPage() {
   const [selectedPhase, setSelectedPhase] = useState<TrainingPhase | null>(null);
   const [remarksOpen, setRemarksOpen] = useState(false);
 
-  // Default the phase picker to the active phase once the plan has loaded — but only the first
-  // time, so switching to plan ahead isn't reset by a background refetch.
+  // Default the phase picker to the active phase once the plan has loaded — or fall back to
+  // currentPhase if the currently selected phase was deleted.
   useEffect(() => {
-    if (plan && selectedPhase === null) setSelectedPhase(plan.currentPhase);
+    if (!plan) return;
+    const exists = plan.phases?.some((p) => p.phase === selectedPhase);
+    if (selectedPhase === null || !exists) {
+      setSelectedPhase(plan.currentPhase);
+    }
   }, [plan, selectedPhase]);
 
   return (
@@ -77,7 +82,12 @@ export function TrainingPlanPage() {
           <PhaseHero plan={plan} />
 
           {selectedPhase && (
-            <PhaseRotation current={plan.currentPhase} selected={selectedPhase} onSelect={setSelectedPhase} />
+            <PhaseRotation
+              current={plan.currentPhase}
+              selected={selectedPhase}
+              phases={plan.phases}
+              onSelect={setSelectedPhase}
+            />
           )}
 
           <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] lg:items-start">
@@ -103,7 +113,7 @@ export function TrainingPlanPage() {
                 ) : (
                   plan.history.map((entry) => (
                     <ListRow key={entry.id} value={`${formatDate(entry.startedOn)} – ${entry.endedOn ? formatDate(entry.endedOn) : "…"}`}>
-                      {TRAINING_PHASE_LABELS[entry.phase]}
+                      {getPhaseDisplayName(entry.phase, plan.phases)}
                     </ListRow>
                   ))
                 )}
@@ -121,4 +131,3 @@ export function TrainingPlanPage() {
     </AppShell>
   );
 }
-

@@ -22,6 +22,12 @@ const PHASE_GUIDANCE: Record<TrainingPhase, string> = {
   NEGATIV:
     "Exzentrische Überlastung & Maximalkraft: 4-5 Sätze, 4-6 Wiederholungen, 3-4 Sekunden " +
     "langsame Negativbewegung pro Wiederholung.",
+  DAILY: "Daily training routine: focus on sustainable daily volume, mobility/core or light full-body work without excessive CNS fatigue.",
+  CUSTOM_1: "Custom training phase: balanced hypertrophy and progressive overload (8-12 reps).",
+  CUSTOM_2: "Custom training phase: balanced hypertrophy and progressive overload (8-12 reps).",
+  CUSTOM_3: "Custom training phase: balanced hypertrophy and progressive overload (8-12 reps).",
+  CUSTOM_4: "Custom training phase: balanced hypertrophy and progressive overload (8-12 reps).",
+  CUSTOM_5: "Custom training phase: balanced hypertrophy and progressive overload (8-12 reps).",
 };
 
 // Fallback values when the model omits a field or an exercise is filled in server-side —
@@ -30,6 +36,12 @@ export const PHASE_DEFAULTS: Record<TrainingPhase, PhaseDefaults> = {
   AUFBAU: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
   MUSKELAUSDAUER: { sets: 3, repMin: 15, repMax: 20, rir: 2, restSeconds: 60 },
   NEGATIV: { sets: 4, repMin: 4, repMax: 6, rir: 2, restSeconds: 180 },
+  DAILY: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
+  CUSTOM_1: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
+  CUSTOM_2: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
+  CUSTOM_3: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
+  CUSTOM_4: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
+  CUSTOM_5: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
 };
 
 // Per split day, not a total — a 3-day Push/Pull/Legs plan gets 18 exercises (6 per day), not 6

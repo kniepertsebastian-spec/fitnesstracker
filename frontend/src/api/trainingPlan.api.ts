@@ -1,5 +1,8 @@
 import type {
+  AddTrainingPhaseInput,
   ChangeTrainingPhaseInput,
+  RenameTrainingPhaseInput,
+  TrainingPhase,
   TrainingPlanDto,
   UpdateTrainingGoalInput,
   UpdateTrainingPlanRemarksInput,
@@ -12,6 +15,18 @@ export function getTrainingPlanRequest() {
 
 export function changeTrainingPhaseRequest(input: ChangeTrainingPhaseInput) {
   return apiFetch<TrainingPlanDto>("/training-plan/phase", { method: "PATCH", body: input });
+}
+
+export function addTrainingPhaseRequest(input: AddTrainingPhaseInput) {
+  return apiFetch<TrainingPlanDto>("/training-plan/phases", { method: "POST", body: input });
+}
+
+export function renameTrainingPhaseRequest(phase: TrainingPhase, input: RenameTrainingPhaseInput) {
+  return apiFetch<TrainingPlanDto>(`/training-plan/phases/${phase}`, { method: "PATCH", body: input });
+}
+
+export function deleteTrainingPhaseRequest(phase: TrainingPhase) {
+  return apiFetch<TrainingPlanDto>(`/training-plan/phases/${phase}`, { method: "DELETE" });
 }
 
 export function pauseTrainingPlanRequest() {

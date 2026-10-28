@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CalcInfoButton } from "../components/info/CalcInfoButton";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowDown, ArrowRight, ArrowUp, Check, Dumbbell, Plus, Repeat2, Share2, Trash2 } from "lucide-react";
-import type { PlanDiaryExerciseDto } from "@fitnesstracker/shared";
+import type { PlanDiaryExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../offline/db";
 import { PRToastHost } from "../components/layout/PRToastHost";
 import { ExerciseCard } from "../components/training/ExerciseCard";
@@ -36,7 +36,7 @@ import { useCardioPlan } from "../hooks/useCardioPlan";
 import { useExercise } from "../hooks/useExerciseLibrary";
 import { useStretchPlan } from "../hooks/useStretching";
 import { useWeeklyPlanStatus } from "../hooks/usePlanExercises";
-import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../hooks/useTrainingPlan";
+import { useTrainingPlan } from "../hooks/useTrainingPlan";
 import { useCreateWorkoutLog, useDeleteWorkoutLog, useWorkoutLogs } from "../hooks/useWorkoutLogs";
 import {
   useOpenWorkoutSession,
@@ -45,6 +45,7 @@ import {
 } from "../hooks/useWorkoutSession";
 import { cardioMinutes, matchDay, stretchMinutes } from "../lib/dayPlan";
 import { phaseLength, phaseWeek } from "../lib/phase";
+import { getPhaseDisplayName } from "../lib/phaseInfo";
 import {
   STAGE_LABELS,
   defaultStage,
@@ -75,7 +76,6 @@ interface Summary {
   seconds: number;
   sets: number;
   volumeKg: number;
-  // Estimated energy of the lifting sets; null without a profile (see lib/calories.ts).
   kcal: number | null;
   records: number;
   cardioMinutes: number;
@@ -84,16 +84,20 @@ interface Summary {
   aborted: boolean;
 }
 
-// Focus mode: one exercise at a time, no shell navigation. Every write goes through the same
-// offline-capable hooks as the diary (useCreateWorkoutLog, useUpdateWorkoutSessionStatus), and
-// "done" is derived from the logs written since the session started — so a reload, or logging a
-// set elsewhere meanwhile, never leaves this view out of sync.
 export function TrainingPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: session, isLoading: sessionLoading } = useOpenWorkoutSession();
   const { data: plan, isLoading: planLoading } = useTrainingPlan();
-  const { data: status, isLoading: statusLoading } = useWeeklyPlanStatus(plan?.currentPhase ?? "AUFBAU", {
+
+  // Allows switching between the active rotational phase and the standalone DAILY phase during a
+  // workout without touching the plan's active rotational phase.
+  const [trainingPhaseOverride, setTrainingPhaseOverride] = useState<TrainingPhase | null>(null);
+  const dailyPhaseConfig = plan?.phases?.find((p) => p.isDaily || p.phase === "DAILY") ?? null;
+  const activeTrainingPhase: TrainingPhase =
+    trainingPhaseOverride ?? plan?.currentPhase ?? "AUFBAU";
+
+  const { data: status, isLoading: statusLoading } = useWeeklyPlanStatus(activeTrainingPhase, {
     enabled: !!plan,
   });
   const { data: logs } = useWorkoutLogs();
@@ -118,8 +122,8 @@ export function TrainingPage() {
   const burnProfile = useBurnProfile();
   const [shareNote, setShareNote] = useState<string | null>(null);
   const recordCount = useRef(0);
-  const { data: cardioPlan } = useCardioPlan(plan?.currentPhase, { enabled: !!plan });
-  const { data: stretchPlan } = useStretchPlan(plan?.currentPhase ?? "AUFBAU");
+  const { data: cardioPlan } = useCardioPlan(activeTrainingPhase, { enabled: !!plan });
+  const { data: stretchPlan } = useStretchPlan(activeTrainingPhase);
   const { data: recentCardio } = useWeekCardioLogs();
   const [manualStage, setManualStage] = useState<Stage | null>(null);
   const [stageState, setStageState] = useState<StageState>(emptyStageState);
@@ -130,9 +134,6 @@ export function TrainingPage() {
   const [picker, setPicker] = useState<{ mode: "swap"; key: string } | { mode: "add" } | null>(null);
   const sessionClientId = session?.clientId ?? null;
 
-  // The "Training starten" app shortcut opens /training?start=1: start a session right away
-  // (or just continue the open one). The parameter is consumed at once, so a reload or a
-  // finished workout can never start another session by itself.
   const shortcutHandled = useRef(false);
   useEffect(() => {
     if (shortcutHandled.current || sessionLoading || searchParams.get("start") !== "1") return;
@@ -140,10 +141,9 @@ export function TrainingPage() {
     setSearchParams({}, { replace: true });
     if (!session) startSession.mutate(crypto.randomUUID());
   }, [sessionLoading, session, searchParams, setSearchParams, startSession]);
-  // Screen stays on during an active workout (not while paused or on the summary).
+
   useWakeLock(session?.status === "ACTIVE" && !summary);
 
-  // Plan changes made in this workout (P0.1) — reloaded when the sync queue marks some as saved.
   useEffect(() => {
     if (!sessionClientId) return;
     const reload = () => setPlanEdits(loadPlanEdits(sessionClientId));
@@ -152,7 +152,6 @@ export function TrainingPage() {
     return () => window.removeEventListener(PLAN_EDITS_EVENT, reload);
   }, [sessionClientId]);
 
-  // Per-session section status (skipped/done cardio, stretching) — loaded once per session.
   useEffect(() => {
     if (!sessionClientId) return;
     setStageState(loadStageState(sessionClientId));
@@ -166,8 +165,6 @@ export function TrainingPage() {
       return next;
     });
 
-  // The auto-detected active day is only the default, captured once — logging a set must never
-  // switch the view to another day underneath someone mid-workout.
   useEffect(() => {
     if (dayIndex === null && status && status.days.length > 0) {
       setDayIndex(status.activeDayIndex ?? 0);
@@ -195,7 +192,6 @@ export function TrainingPage() {
   const allDone = exercises.length > 0 && firstIncomplete === -1;
   const { data: currentExercise } = useExercise(current?.exerciseId);
 
-  // F9: Aufwärmen → Kraft → Cardio → Dehnen. Sections without planned content are left out.
   const dayLabel = day?.dayLabel ?? null;
   const cardioDay = matchDay(cardioPlan?.days, dayLabel);
   const warmupItems = cardioDay?.items.filter((i) => i.slot === "WARMUP") ?? [];
@@ -287,15 +283,12 @@ export function TrainingPage() {
     if (sessionClientId) savePlanEdits(sessionClientId, next);
   };
 
-  // Every change applies to this workout at once; with "Dauerhaft im Plan" it is also queued for
-  // the plan itself (sent now, or once back online).
   const editPlan = (input: PlanEditInput) => {
     if (!sessionClientId || !plan) return;
     const isAdded = (key: string) => key.startsWith("added:");
     const addEditFor = (key: string) => planEdits.find((e) => e.kind === "add" && e.key === key);
     let next = planEdits;
 
-    // Exercises added in this workout only exist as an edit: change that edit instead.
     if ((input.kind === "remove" || input.kind === "replace") && isAdded(input.key)) {
       const added = addEditFor(input.key);
       if (!added || added.kind !== "add") return;
@@ -323,7 +316,6 @@ export function TrainingPage() {
     else {
       const a = entry(input.key);
       const b = entry(input.otherKey);
-      // Order lives on plan entries only; moving an exercise added today stays a today change.
       if (a && b && !isAdded(a.id) && !isAdded(b.id)) op = { type: "swapOrder", a: { id: a.id, order: a.order }, b: { id: b.id, order: b.order } };
       else permanent = false;
     }
@@ -381,15 +373,11 @@ export function TrainingPage() {
       }
       unlockAudio();
       if (autoStartEnabled) {
-        // The plan's own rest (AI plans set it per exercise) wins over the global default.
         startRestTimer(entry.restSeconds ?? autoStartSeconds, `${entry.exerciseName} · Satz ${setNumber} fertig`);
       }
-      // Last set of this exercise → move on to the next one that still has open sets.
       if (doneFor(entry).length + 1 >= setCountFor(entry)) {
         const next = exercises.findIndex((e, i) => i !== currentIndex && !isComplete(e));
         setManualIndex(next === -1 ? currentIndex : next);
-        // The very last set: stay on Kraft (rest timer, undo) instead of jumping straight to the
-        // next section; the callout offers "Weiter mit …".
         if (next === -1) setManualStage("kraft");
       }
     } finally {
@@ -428,7 +416,6 @@ export function TrainingPage() {
       aborted,
     };
     setLeaveOpen(false);
-    // Summary first: once the session closes, `session` turns null and would flash "Kein Training".
     setSummary(result);
     useTimerStore.getState().reset();
     await setStatus(aborted ? "ABORTED" : "COMPLETED");
@@ -532,18 +519,42 @@ export function TrainingPage() {
     );
   }
 
-  const title = day?.dayLabel ?? (dayIndex !== null ? `Tag ${dayIndex + 1}` : "Training");
+  const title =
+    activeTrainingPhase === "DAILY"
+      ? getPhaseDisplayName("DAILY", plan?.phases)
+      : day?.dayLabel ?? (dayIndex !== null ? `Tag ${dayIndex + 1}` : "Training");
   const subtitle = plan
-    ? `${TRAINING_PHASE_LABELS[plan.currentPhase]} · Woche ${phaseWeek(plan)} von ${phaseLength(plan)}`
+    ? activeTrainingPhase === "DAILY"
+      ? `${getPhaseDisplayName("DAILY", plan.phases)} · außerhalb der Rotation`
+      : `${getPhaseDisplayName(plan.currentPhase, plan.phases)} · Woche ${phaseWeek(plan)} von ${phaseLength(plan)}`
     : "Freies Training";
+
+  const modeSwitcher =
+    plan && dailyPhaseConfig ? (
+      <SegmentedControl
+        label="Trainingsmodus"
+        value={activeTrainingPhase}
+        onChange={(nextPhase) => {
+          setTrainingPhaseOverride(nextPhase === plan.currentPhase ? null : nextPhase);
+          setDayIndex(null);
+          setManualIndex(null);
+          setManualStage(null);
+        }}
+        options={[
+          { value: plan.currentPhase, label: `Plan: ${getPhaseDisplayName(plan.currentPhase, plan.phases)}` },
+          { value: dailyPhaseConfig.phase, label: `Daily: ${dailyPhaseConfig.label}` },
+        ]}
+      />
+    ) : null;
 
   if (!plan || exercises.length === 0) {
     return (
       <Frame>
+        {modeSwitcher && <div className="mb-4">{modeSwitcher}</div>}
         <Card>
           <EmptyState
             icon={<Dumbbell size={20} aria-hidden />}
-            text="Für heute sind keine Plan-Übungen hinterlegt. Du kannst Sätze frei im Fitnesstagebuch loggen."
+            text="Für diese Auswahl sind noch keine Plan-Übungen hinterlegt. Du kannst Sätze frei im Fitnesstagebuch loggen oder den Plan ergänzen."
             action={
               <div className="flex flex-wrap justify-center gap-2">
                 <ButtonLink to="/diary" variant="primary" size="lg">
@@ -589,6 +600,8 @@ export function TrainingPage() {
       />
 
       <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-4">
+        {modeSwitcher}
+
         {paused && (
           <Callout tone="warning">
             Training pausiert.{" "}
@@ -639,7 +652,7 @@ export function TrainingPage() {
             <ExerciseCard
               key={current.id}
               entry={current}
-              phase={plan.currentPhase}
+              phase={activeTrainingPhase}
               exercise={currentExercise}
               done={doneFor(current)}
               previous={lastTimeSets(allLogs, current.exerciseId, startedAt)}
@@ -870,7 +883,6 @@ export function TrainingPage() {
         open={picker !== null}
         title={picker?.mode === "add" ? "Übung hinzufügen" : "Übung tauschen"}
         description={pickerEntry ? `Statt ${pickerEntry.exerciseName}` : undefined}
-        // `?? []`: plan data cached by an older app version has no options yet.
         options={((pickerEntry ? pickerEntry.swapOptions : day?.addOptions) ?? []).filter(
           (o) => !exercises.some((e) => e.exerciseId === o.exerciseId),
         )}
@@ -885,7 +897,7 @@ export function TrainingPage() {
               kind: "add",
               exerciseId,
               exerciseName,
-              phase: plan.currentPhase,
+              phase: activeTrainingPhase,
               dayLabel: day?.dayLabel ?? null,
               targetSets: typicalSets,
               targetReps: typicalReps,

@@ -9,7 +9,6 @@ import {
   type TrainingPlanDto,
 } from "@fitnesstracker/shared";
 import {
-  TRAINING_PHASE_LABELS,
   useChangeTrainingPhase,
   useExtendPhase,
   usePauseTrainingPlan,
@@ -17,7 +16,7 @@ import {
   useResumeTrainingPlan,
   useSetTrainingGoal,
 } from "../../hooks/useTrainingPlan";
-import { PHASE_RULES } from "../../lib/phaseInfo";
+import { getPhaseDisplayName, PHASE_RULES } from "../../lib/phaseInfo";
 import { phaseLength, phaseWeek } from "../../lib/phase";
 import { Button, Callout, Card, Dialog, Field, SegmentedProgress, Select } from "../ui";
 
@@ -39,9 +38,15 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
     setPhaseToSwitch(plan.currentPhase);
   }, [plan.currentPhase]);
 
+  const rotationalPhases =
+    plan.phases?.filter((p) => !p.isDaily).map((p) => p.phase) ?? TRAINING_PHASE_ROTATION;
+  const currentIdx = rotationalPhases.indexOf(plan.currentPhase);
+  const next =
+    rotationalPhases[(currentIdx === -1 ? 0 : currentIdx + 1) % rotationalPhases.length] ??
+    plan.currentPhase;
+
   const total = phaseLength(plan);
   const week = phaseWeek(plan);
-  const next = TRAINING_PHASE_ROTATION[(TRAINING_PHASE_ROTATION.indexOf(plan.currentPhase) + 1) % TRAINING_PHASE_ROTATION.length];
   const busy =
     pause.isPending || resume.isPending || restart.isPending || extend.isPending || changePhase.isPending;
 
@@ -49,7 +54,9 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
     <Card variant="hero" className="lg:p-6">
       <p className="text-overline uppercase text-accent">Aktuelle Phase</p>
       <div className="mt-1 flex items-baseline justify-between gap-3">
-        <h2 className="text-h2-hero text-text lg:text-[26px]">{TRAINING_PHASE_LABELS[plan.currentPhase]}</h2>
+        <h2 className="text-h2-hero text-text lg:text-[26px]">
+          {getPhaseDisplayName(plan.currentPhase, plan.phases)}
+        </h2>
         <span className="tabular font-mono text-small text-text-subtle">
           Woche {week} von {total}
         </span>
@@ -62,11 +69,11 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
         label={`Phasenfortschritt: Woche ${week} von ${total}`}
       />
       <p className="mt-3 text-small text-text-2">
-        {PHASE_RULES[plan.currentPhase].replace(/\.$/, "")}.{" "}
+        {(PHASE_RULES[plan.currentPhase] ?? "Individuelle Phase").replace(/\.$/, "")}.{" "}
         {plan.pausedAt
           ? `Pausiert seit ${formatDate(plan.pausedAt)}.`
-          : plan.nextRotationOn
-            ? `Danach folgt ${TRAINING_PHASE_LABELS[next]} ab ${formatDate(plan.nextRotationOn)}.`
+          : plan.nextRotationOn && rotationalPhases.length > 1
+            ? `Danach folgt ${getPhaseDisplayName(next, plan.phases)} ab ${formatDate(plan.nextRotationOn)}.`
             : null}
       </p>
 
@@ -124,14 +131,16 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
         <Button variant="ghost" iconLeft={<RotateCcw size={16} aria-hidden />} disabled={busy} onClick={() => restart.mutate()}>
           Neu starten
         </Button>
-        <Button
-          variant="secondary"
-          iconLeft={<ArrowLeftRight size={16} aria-hidden />}
-          disabled={busy}
-          onClick={() => setPhaseChangeOpen(true)}
-        >
-          Phase wechseln
-        </Button>
+        {rotationalPhases.length > 1 && (
+          <Button
+            variant="secondary"
+            iconLeft={<ArrowLeftRight size={16} aria-hidden />}
+            disabled={busy}
+            onClick={() => setPhaseChangeOpen(true)}
+          >
+            Phase wechseln
+          </Button>
+        )}
       </div>
 
       {changePhase.isError && (
@@ -172,9 +181,9 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
               disabled={busy}
               onChange={(event) => setPhaseToSwitch(event.target.value as TrainingPhase)}
             >
-              {TRAINING_PHASE_ROTATION.map((phase) => (
+              {rotationalPhases.map((phase) => (
                 <option key={phase} value={phase} disabled={phase === plan.currentPhase}>
-                  {TRAINING_PHASE_LABELS[phase]}
+                  {getPhaseDisplayName(phase, plan.phases)}
                 </option>
               ))}
             </Select>
