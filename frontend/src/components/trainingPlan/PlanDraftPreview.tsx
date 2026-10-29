@@ -23,7 +23,7 @@ export function PlanDraftPreview({ draft, busyDay, disabled, onRegenerateDay, on
   return (
     <div className="mt-3 flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone="violet">Entwurf</Badge>
+        <Badge tone="magenta">Entwurf</Badge>
         <span className="text-small text-text-subtle">Noch nicht übernommen – dein aktueller Plan bleibt bis dahin unverändert.</span>
       </div>
 

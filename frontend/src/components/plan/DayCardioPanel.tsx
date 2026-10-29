@@ -78,7 +78,7 @@ export function DayCardioPanel({ phase, dayLabel }: { phase: TrainingPhase; dayL
             >
               Auf Vorschlag zurücksetzen
             </Button>
-            <Badge tone="violet">Eigene Version</Badge>
+            <Badge tone="magenta">Eigene Version</Badge>
           </>
         )}
         {day.source === "auto" && plan.goal && <Badge tone="neutral">Vorschlag für {TRAINING_GOAL_LABELS[plan.goal]}</Badge>}

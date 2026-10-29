@@ -7,7 +7,7 @@ const WEEKS = 12;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Training days per week for the last 12 weeks (not raw set count, so three quick sets on one day
-// don't outweigh a full session on another). Goal-met weeks are mint, the rest neutral.
+// don't outweigh a full session on another). Goal-met weeks are violet, the rest neutral.
 export function WeeklyDaysCard({ targetDays }: { targetDays: number | null }) {
   const { data: logs } = useWorkoutLogs();
   const thisMonday = mondayOf(new Date());
@@ -41,12 +41,12 @@ export function WeeklyDaysCard({ targetDays }: { targetDays: number | null }) {
       </div>
       <div aria-hidden className="mt-1.5 flex gap-1.5">
         {weeks.map((w) => (
-          <span key={w.getTime()} className="tabular flex-1 text-center font-mono text-[10px] text-text-faint">
+          <span key={w.getTime()} className="tabular flex-1 text-center font-numeric text-[10px] text-text-faint">
             {isoWeek(w)}
           </span>
         ))}
       </div>
-      <p className="mt-2 text-xs text-text-faint">Mint: Ziel erreicht · Blau: Training, Ziel verfehlt · Zahlen: Kalenderwoche.</p>
+      <p className="mt-2 text-xs text-text-faint">Violett: Ziel erreicht · Blau: Training, Ziel verfehlt · Zahlen: Kalenderwoche.</p>
     </Card>
   );
 }

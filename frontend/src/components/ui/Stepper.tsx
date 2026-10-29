@@ -61,7 +61,7 @@ export function Stepper({ value, onChange, step = 1, min = 0, max, unit, label, 
       >
         <Minus size={18} strokeWidth={2} aria-hidden />
       </button>
-      <span className="tabular flex-1 text-center font-mono text-body font-medium text-text">
+      <span className="tabular flex-1 text-center font-numeric text-body font-medium text-text">
         {value}
         {unit && <span className="ml-1 text-small text-text-subtle">{unit}</span>}
       </span>

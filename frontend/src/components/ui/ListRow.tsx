@@ -18,11 +18,11 @@ export function ListRow({ prefix, value, className, children, ...rest }: ListRow
       {...rest}
     >
       {prefix !== undefined && (
-        <span className="tabular w-6 shrink-0 font-mono text-small text-text-faint">{prefix}</span>
+        <span className="tabular w-6 shrink-0 font-numeric text-small text-text-faint">{prefix}</span>
       )}
       <div className="min-w-0 flex-1 text-body text-text">{children}</div>
       {value !== undefined && (
-        <span className="tabular shrink-0 font-mono text-small text-text-2">{value}</span>
+        <span className="tabular shrink-0 font-numeric text-small text-text-2">{value}</span>
       )}
     </div>
   );

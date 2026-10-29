@@ -126,7 +126,7 @@ export function StrengthCard({ range }: { range: ProgressRange }) {
                   <span className="hidden w-24 shrink-0 sm:block">
                     <Sparkline values={row.series} tone={plateau ? "warning" : "accent"} label={alt} className="h-8 w-full" />
                   </span>
-                  <span className="tabular w-20 shrink-0 text-right font-mono text-small text-text-2">
+                  <span className="tabular w-20 shrink-0 text-right font-numeric text-small text-text-2">
                     {row.oneRepMax !== null ? `≈ ${Math.round(row.oneRepMax)} kg` : "–"}
                   </span>
                   <ChevronDown

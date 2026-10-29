@@ -65,7 +65,7 @@ export function GoalCard({ goal, onEdit }: Props) {
       <Button
         variant={achieved ? "secondary" : "ghost"}
         fullWidth
-        className={achieved ? "mt-3 text-accent" : "mt-3"}
+        className={achieved ? "mt-3 text-success" : "mt-3"}
         iconLeft={achieved ? <Check size={16} aria-hidden /> : undefined}
         disabled={updateGoal.isPending}
         onClick={toggleAchieved}

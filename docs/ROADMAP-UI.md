@@ -17,7 +17,7 @@
 >
 > **Regel:** Ein Punkt wird erst abgehakt, wenn er gebaut *und* geprüft ist. Eine Phase ist erst abgeschlossen, wenn ihr **Gate** erfüllt ist. UI-Punkte gelten erst als geprüft, wenn die [Definition of Done für UI](#definition-of-done-für-ui) erfüllt ist.
 >
-> **Festgelegt (09.10.2026):** nur Dunkelmodus · Oberfläche Deutsch (Englisch später möglich, siehe [Später](#später)) · Navigation behält die bisherigen zehn Menüpunkte in der bisherigen Reihenfolge, keine Tab-Leiste.
+> **Festgelegt (09.10.2026):** nur Dunkelmodus · **Redesign „Purple Performance“ (29.10.2026):** Violett ersetzt Mint als Markenfarbe, Grün nur noch für Bestätigungen; die Designsprache unten ist entsprechend aktualisiert, ältere Phasenbeschreibungen nennen noch Mint · Oberfläche Deutsch (Englisch später möglich, siehe [Später](#später)) · Navigation behält die bisherigen zehn Menüpunkte in der bisherigen Reihenfolge, keine Tab-Leiste.
 
 ---
 
@@ -78,59 +78,63 @@ Diese Werte sind die Quelle der Wahrheit. **Keine Farb-, Radius- oder Schattenwe
 
 | Token | Wert | Verwendung |
 |---|---|---|
-| `--bg` | `#0A0C10` | Seitenhintergrund |
-| `--bg-sidebar` | `#0E1117` | Kopfleiste, Seitenleiste, Fokusleiste, Menü-Sheet |
-| `--surface` | `#12161E` | Karten, Tabellen, Panels |
-| `--surface-2` | `#171D28` | Innenflächen, aktive Nav-Einträge, offene Checklisten-Zeilen |
-| `--surface-inset` | `#0F1219` | Segment-Control, Stepper |
-| `--control` | `#1A212D` | Sekundär-Buttons |
-| `--track` | `#1E2633` | Hintergrund von Balken, gewählter Segment-Eintrag |
-| `--border` | `#222938` | Standardrahmen |
-| `--border-strong` | `#2A3242` | Rahmen von Controls |
-| `--border-subtle` | `#1C2230` | Tabellenzeilen, Trenner |
-| `--text` | `#E8ECF3` | Haupttext |
-| `--text-2` | `#C9D0DC` | Werte in Listen |
-| `--text-muted` | `#AEB7C6` | Nav-Einträge, Sekundärtext |
-| `--text-subtle` | `#9AA4B5` | Untertitel, Labels |
-| `--text-faint` | `#8C96A8` | Meta-Angaben (nur ≥ 12 px) |
-| `--accent` | `#34E3A4` | Primär (Mint): Buttons, Fortschritt, erledigt, Rekord |
-| `--accent-hover` | `#7BF0C6` | Link-Hover |
-| `--on-accent` | `#04140D` | Text auf Mint |
-| `--accent-soft` | `rgba(52,227,164,0.12)` | Mint-Badges, Icon-Hintergründe |
-| `--accent-border` | `#1F4A3B` | Rahmen bei Mint-Flächen |
-| `--info` / `--info-text` | `#6EA8FF` / `#8DBBFF` | Laufende Übung, Muskelgruppen, Körperdaten |
-| `--warning` | `#F4B740` | Offline/ausstehend, Plateau, Serie |
-| `--danger` / `--danger-text` | `#FF7A66` / `#FF9A8A` | Sync-Fehler, Löschen, überfällig |
-| `--violet` | `#C9A2FF` | Nur Kategorie „Technik“ und KI-Funktionen |
+| `--bg` | `#070B14` | Seitenhintergrund (mit Lichtband, siehe unten) |
+| `--bg-sidebar` | `#0B1020` | Kopfleiste, Seitenleiste, Fokusleiste, Menü-Sheet |
+| `--surface` | `#111A2E` | Karten, Tabellen, Panels |
+| `--surface-2` | `#1B2542` | Erhöhte Flächen, aktive Nav-Einträge, offene Checklisten-Zeilen |
+| `--surface-inset` | `#0A1122` | Segment-Control, Stepper |
+| `--control` | `#18213A` | Sekundär-Buttons |
+| `--track` | `#222C4A` | Hintergrund von Balken, gewählter Segment-Eintrag, deaktivierte Buttons |
+| `--border` | `#1F2A45` | Standardrahmen |
+| `--border-strong` | `#2C3858` | Rahmen von Controls |
+| `--border-subtle` | `#172038` | Tabellenzeilen, Trenner |
+| `--text` | `#F3F0FF` | Haupttext |
+| `--text-2` | `#D9D6EC` | Werte in Listen |
+| `--text-muted` | `#B4B9CE` | Nav-Einträge, Sekundärtext |
+| `--text-subtle` | `#9BA3BD` | Untertitel, Labels |
+| `--text-faint` | `#8C93AD` | Meta-Angaben (nur ≥ 12 px) |
+| `--accent` | `#8B5CF6` | Primär (Violett): Flächen, Linien, aktive Zustände, Fortschritt, Satz erledigt |
+| `--accent-hover` / `--accent-text` / `--accent-text-hover` | `#A855F7` / `#C084FC` / `#D8B4FE` | Hover · violetter Text (`text-accent` zeigt auf `--accent-text`, weil `#8B5CF6` für kleinen Text zu dunkel ist) · Link-Hover |
+| `--on-accent` | `#FFFFFF` | Text auf Violett |
+| `--accent-soft` | `rgba(139,92,246,0.16)` | Violette Badges, Icon-Hintergründe |
+| `--accent-border` / `--hero-border` | `#44316F` | Rahmen bei violetten Flächen und Hero-Karten |
+| `--success` / `--success-soft` | `#34D399` / 13 % | **Nur Bestätigung:** synchronisiert, Ziel erreicht, neuer Rekord. Nie Markenfarbe. |
+| `--info` / `--info-text` | `#60A5FA` / `#93C5FD` | Laufende Übung, Muskelgruppen, Körperdaten |
+| `--warning` | `#F59E0B` | Offline/ausstehend, Plateau, Serie |
+| `--danger` / `--danger-text` | `#F87171` / `#FCA5A5` | Sync-Fehler, Löschen, überfällig |
+| `--magenta` | `#F472B6` | Nur Kategorie „Technik“ und KI-Funktionen (früher `--violet`; umbenannt, damit sie sich vom Hauptlila abhebt) |
 
-Hero-Fläche („Heute dran“, „Aktuelle Phase“): `linear-gradient(135deg, #12201B 0%, #12161E 55%)`, Rahmen `#1F3A30`. **Sonst keine Verläufe.**
+Hero-Fläche („Heute dran“, „Aktuelle Phase“): `bg-hero` = `linear-gradient(135deg, #24164A 0%, #161C38 45%, #111A2E 75%)`, Rahmen `--hero-border`, Lichtkante `.light-edge` (1 px heller Innenrand oben). Primär-Button: `bg-accent-fill` (vertikaler Violett-Verlauf) + Lichtkante. **Sonst keine Verläufe.**
+
+**Lichtband:** das einzige grafische Motiv (`components/layout/LightBand.tsx`) – geschwungene violette SVG-Bänder oben rechts hinter dem Inhalt, fest, `aria-hidden`, ohne Unschärfe, mobil schwächer. Gerendert in `AppShell` und `AuthLayout`, **nie im Trainings-Fokusmodus**. Keine Personen, Fotos oder Bilddateien als Hintergrund.
 
 ### Feste Bedeutungsfarben
 
 | Bedeutung | Farbe |
 |---|---|
-| Phase Aufbau / Muskelausdauer / Negativ | Mint / Info-Blau / Bernstein |
-| Challenge Progression / Volumen / Konsistenz / Technik / Erholung | Mint / Info-Blau / Bernstein / Violett / Neutral (`--track`, `--text-muted`) |
-| Sync: synchronisiert / offline oder ausstehend / fehlgeschlagen | Mint / Bernstein / Koralle |
-| Satz erledigt / aktueller Satz / offen | Mint gefüllt / Mint-Rahmen / `--border-strong` |
+| Phase Aufbau / Muskelausdauer / Negativ | Violett / Info-Blau / Bernstein |
+| Challenge Progression / Volumen / Konsistenz / Technik / Erholung | Violett / Info-Blau / Bernstein / Magenta / Neutral (`--track`, `--text-muted`) |
+| Sync: synchronisiert / offline oder ausstehend / fehlgeschlagen | Grün (`--success`) / Bernstein / Koralle |
+| Satz erledigt / aktueller Satz / offen | Violett gefüllt / Violett-Rahmen / `--border-strong` |
 
 Farbe trägt nie allein Bedeutung: immer Text oder Icon dazu.
 
 ### Typografie
 
-Schrift: **Geist** (Text), **Geist Mono** (Timer, Dauer, Satznummern, Satz-/Wdh.-Angaben wie `4 × 6–8`, Kalenderwochen). **Selbst ausgeliefert** aus dem Repo bzw. einem npm-Paket, nicht vom Google-CDN. Zahlen in Statistiken, Tabellen und Timern mit `font-variant-numeric: tabular-nums`.
+Schrift: **Geist** (Text, Bedienelemente), **Archivo Variable** (Überschriften und alle wichtigen Zahlen: kg, Wdh., Timer, Stat-Werte – Klasse `font-numeric`; bei großen Stufen auf 82 % Breite verengt, Überschriften 88 %). **Geist Mono** nur noch für Formeln (`CalculationDetails`). Alle selbst ausgeliefert über `@fontsource-variable`, nicht vom Google-CDN. Zahlen in Statistiken, Tabellen und Timern mit `font-variant-numeric: tabular-nums`.
 
 | Stufe | Größe / Zeilenhöhe | Gewicht | Laufweite | Einsatz |
 |---|---|---|---|---|
-| H1 | 28 px mobil / 34 px Desktop, 1.15 | 600 | −0.025em | Seitentitel, Begrüßung |
-| H1 Fokus | 24 px / 1.2 | 600 | −0.02em | Übungsname im Training |
-| H2 Hero | 24–26 px / 1.2 | 600 | −0.02em | Titel in Hero-Karten |
+| H1 | 32 px mobil / 40 px Desktop, 1.05 | 800 | −0.015em | Seitentitel, Begrüßung (Archivo) |
+| H1 Fokus | 26 px / 1.1 | 700 | −0.01em | Übungsname im Training |
+| H2 Hero | 28 px / 1.1 | 700 | −0.01em | Titel in Hero-Karten |
 | H2 | 16–17 px | 600 | 0 | Kartentitel |
-| Wert groß | 26–28 px | 600 | −0.02em | Stat-Kacheln |
-| Timer | Geist Mono 40 px | 500 | −0.02em | Satzpause |
+| Wert groß | 30 px | 700 | −0.01em | Stat-Kacheln (`font-numeric`) |
+| Satzwert | 22 px | 600 | 0 | kg und Wdh. in der Satzzeile im Training |
+| Timer | Archivo 56 px, verengt | 700 | −0.01em | Satzpause, Cardio |
 | Body | 14–15 px / 1.5 | 400–500 | 0 | Standard |
 | Small | 12–13 px | 400–500 | 0 | Meta, Tabellen |
-| Overline | 11–12 px, GROSS | 600 | 0.06–0.08em | „Heute dran“, „Satzpause“, „Als Nächstes“ |
+| Overline | 12 px, normale Schreibung | 600 | 0.01em | „Heute dran“, „Satzpause“, „Als Nächstes“ – keine Großbuchstaben |
 
 ### Radius, Abstände, Schatten, Bewegung
 
@@ -390,7 +394,7 @@ Ein UI-Punkt ist erst erledigt, wenn alles davon stimmt:
 
 - [ ] Sieht aus wie der zugehörige Screen (Abstände, Größen, Farben, Zustände) – Vergleich per Screenshot im PR.
 - [ ] Funktioniert bei **390 px** ohne horizontale Seitenscroll-Leiste und bei **1440 px** mit Seitenleiste.
-- [ ] Vollständig per **Tastatur** bedienbar, sichtbarer Fokusring (2 px, Mint).
+- [ ] Vollständig per **Tastatur** bedienbar, sichtbarer Fokusring (2 px, Violett).
 - [ ] Kontrast ≥ 4.5:1 für Text (≥ 3:1 ab 24 px); Zustände nie nur über Farbe.
 - [ ] Touch-Ziele ≥ 44 px, im Training ≥ 48 px.
 - [ ] Nur Tokens und `components/ui/*`, keine Rohfarben, keine Emojis.

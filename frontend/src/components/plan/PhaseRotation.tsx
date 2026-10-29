@@ -200,9 +200,9 @@ export function PhaseRotation({ current, selected, phases, onSelect }: Props) {
             className="min-w-0 flex-1 text-left"
           >
             <div className="flex flex-wrap items-center gap-2">
-              <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-violet" />
+              <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full bg-magenta" />
               <span className="text-body font-semibold text-text">{dailyItem.label}</span>
-              <Badge tone="violet">Daily · berührt deinen Rotationsplan nicht</Badge>
+              <Badge tone="magenta">Daily · berührt deinen Rotationsplan nicht</Badge>
             </div>
             <span className="mt-1 block text-small text-text-subtle">
               Tägliche Übungen &amp; Routinen separat verwalten, ohne deine aktuelle Trainingsphase zu ändern.

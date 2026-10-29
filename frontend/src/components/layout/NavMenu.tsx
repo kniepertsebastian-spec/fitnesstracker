@@ -46,7 +46,7 @@ export function NavMenu({ className }: { className?: string }) {
                 <span
                   aria-hidden
                   className={cn(
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
+                    "-ml-1 h-5 w-[3px] shrink-0 rounded-full",
                     isActive ? "bg-accent" : "bg-transparent",
                   )}
                 />

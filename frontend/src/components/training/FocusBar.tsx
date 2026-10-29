@@ -62,7 +62,7 @@ export function FocusBar({
         <p
           role="timer"
           aria-label="Trainingsdauer"
-          className="tabular font-mono text-h2 text-text"
+          className="tabular font-numeric text-h2 text-text"
         >
           {formatDuration(elapsed)}
         </p>

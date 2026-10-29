@@ -50,11 +50,11 @@ export function RestCard() {
 
   return (
     <Card role="timer" aria-label="Satzpause" className={cn(finished && "border-accent-border")}>
-      <p className={cn("text-overline uppercase", finished ? "text-accent" : "text-text-subtle")}>
+      <p className={cn("text-overline", finished ? "text-accent" : "text-text-subtle")}>
         {finished ? "Pause vorbei – nächster Satz" : "Satzpause"}
       </p>
       <p className="mt-1 truncate text-xs text-text-faint">{label}</p>
-      <p className={cn("tabular my-2 font-mono text-timer", finished ? "text-accent" : "text-text")}>
+      <p className={cn("tabular my-2 font-numeric text-timer", finished ? "text-accent" : "text-text")}>
         {formatDuration(remainingSeconds)}
       </p>
       <ProgressBar value={progress} size={6} label="Satzpause" />

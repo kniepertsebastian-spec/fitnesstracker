@@ -5,7 +5,7 @@ import { cn } from "./cn";
 export type StatusPillTone = "synced" | "syncing" | "pending" | "offline" | "failed";
 
 const TONES: Record<StatusPillTone, string> = {
-  synced: "bg-accent-soft text-accent",
+  synced: "bg-success-soft text-success",
   syncing: "bg-info-soft text-info-text",
   pending: "bg-track text-text-muted",
   offline: "bg-warning-soft text-warning",
@@ -13,7 +13,7 @@ const TONES: Record<StatusPillTone, string> = {
 };
 
 const DOT: Record<StatusPillTone, string> = {
-  synced: "bg-accent",
+  synced: "bg-success",
   syncing: "bg-info",
   pending: "bg-text-faint",
   offline: "bg-warning",

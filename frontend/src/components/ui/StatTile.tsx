@@ -26,7 +26,7 @@ export function StatTile({ label, value, unit, sub, subTone = "muted", info, cla
         <span>{label}</span>
         {info && <span className="-my-1.5 -mr-1.5">{info}</span>}
       </p>
-      <p className="tabular mt-1 text-stat text-text">
+      <p className="tabular mt-1 font-numeric text-stat text-text">
         {value}
         {unit && <span className="ml-1 text-small font-medium text-text-subtle">{unit}</span>}
       </p>

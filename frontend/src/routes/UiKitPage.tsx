@@ -28,13 +28,13 @@ import {
 } from "../components/ui";
 import type { BadgeTone, StatusPillTone } from "../components/ui";
 
-const BADGE_TONES: BadgeTone[] = ["accent", "info", "warning", "danger", "violet", "neutral"];
+const BADGE_TONES: BadgeTone[] = ["accent", "info", "warning", "danger", "magenta", "neutral"];
 const PILL_TONES: StatusPillTone[] = ["synced", "syncing", "pending", "offline", "failed"];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-8">
-      <h2 className="mb-3 text-overline uppercase text-text-subtle">{title}</h2>
+      <h2 className="mb-3 text-overline text-text-subtle">{title}</h2>
       <div className="flex flex-wrap items-start gap-3">{children}</div>
     </section>
   );
@@ -84,7 +84,7 @@ export function UiKitPage() {
           <p className="text-body text-text-muted">Inhalt der Karte.</p>
         </Card>
         <Card variant="hero" className="w-72">
-          <p className="text-overline uppercase text-accent">Heute dran</p>
+          <p className="text-overline text-accent">Heute dran</p>
           <p className="mt-1 text-h2-hero">Tag A – Brust</p>
         </Card>
       </Section>

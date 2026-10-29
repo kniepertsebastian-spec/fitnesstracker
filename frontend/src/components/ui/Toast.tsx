@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { cn } from "./cn";
 
-export type ToastTone = "accent" | "info" | "danger";
+export type ToastTone = "accent" | "success" | "info" | "danger";
 
 const TONES: Record<ToastTone, { box: string; overline: string; icon: string }> = {
   accent: { box: "border-accent-border", overline: "text-accent", icon: "bg-accent-soft text-accent" },
+  success: { box: "border-success/40", overline: "text-success", icon: "bg-success-soft text-success" },
   info: { box: "border-border-strong", overline: "text-info-text", icon: "bg-info-soft text-info" },
   danger: { box: "border-danger/40", overline: "text-danger-text", icon: "bg-danger-soft text-danger" },
 };
@@ -33,7 +34,7 @@ export function Toast({ tone = "accent", icon, overline, children, className }: 
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        {overline && <p className={cn("text-overline uppercase", t.overline)}>{overline}</p>}
+        {overline && <p className={cn("text-overline", t.overline)}>{overline}</p>}
         <div className="text-body font-medium text-text">{children}</div>
       </div>
     </div>

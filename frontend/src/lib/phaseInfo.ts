@@ -31,7 +31,7 @@ export const PHASE_DOT: Record<TrainingPhase, string> = {
   AUFBAU: "bg-accent",
   MUSKELAUSDAUER: "bg-info",
   NEGATIV: "bg-warning",
-  DAILY: "bg-violet",
+  DAILY: "bg-magenta",
   CUSTOM_1: "bg-accent",
   CUSTOM_2: "bg-info",
   CUSTOM_3: "bg-warning",

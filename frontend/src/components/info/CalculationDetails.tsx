@@ -12,12 +12,12 @@ export function CalculationDetails({ info }: { info: CalculationInfo }) {
         <Badge tone={BASIS_TONE[info.basis]}>{BASIS_LABELS[info.basis]}</Badge>
       </div>
       <section>
-        <h4 className="text-overline uppercase text-text-faint">Wo du es siehst</h4>
+        <h4 className="text-overline text-text-faint">Wo du es siehst</h4>
         <p className="mt-0.5">{info.shows}</p>
       </section>
       {info.formula.length > 0 && (
         <section>
-          <h4 className="text-overline uppercase text-text-faint">Formel / Regel</h4>
+          <h4 className="text-overline text-text-faint">Formel / Regel</h4>
           <div className="mt-1 rounded-lg bg-surface-2 p-3 font-mono text-xs leading-relaxed text-text">
             {info.formula.map((line, i) => (
               <p key={i} className={line.startsWith("  ") ? "pl-4" : i > 0 ? "mt-1.5" : undefined}>
@@ -29,12 +29,12 @@ export function CalculationDetails({ info }: { info: CalculationInfo }) {
       )}
       {info.inputs && (
         <section>
-          <h4 className="text-overline uppercase text-text-faint">Eingaben</h4>
+          <h4 className="text-overline text-text-faint">Eingaben</h4>
           <p className="mt-0.5">{info.inputs}</p>
         </section>
       )}
       <section>
-        <h4 className="text-overline uppercase text-text-faint">Herkunft</h4>
+        <h4 className="text-overline text-text-faint">Herkunft</h4>
         <ul className="mt-0.5 flex flex-col gap-1.5">
           {info.sources.map((source, i) => (
             <li key={i}>{source}</li>
@@ -43,7 +43,7 @@ export function CalculationDetails({ info }: { info: CalculationInfo }) {
       </section>
       {info.note && (
         <section>
-          <h4 className="text-overline uppercase text-text-faint">Gut zu wissen</h4>
+          <h4 className="text-overline text-text-faint">Gut zu wissen</h4>
           <p className="mt-0.5">{info.note}</p>
         </section>
       )}

@@ -107,7 +107,7 @@ export function StretchList({ items, storageKey, onDoneChange }: Props) {
                 <span className="truncate">{item.name}</span>
                 <ChevronDown size={14} aria-hidden className={cn("shrink-0 transition-transform", isOpen && "rotate-180")} />
               </button>
-              <span className="tabular shrink-0 font-mono text-small text-text-faint">
+              <span className="tabular shrink-0 font-numeric text-small text-text-faint">
                 {item.sets > 1 ? `${item.sets} × ` : ""}
                 {item.holdSeconds}s
               </span>

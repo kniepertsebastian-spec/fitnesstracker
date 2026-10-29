@@ -31,7 +31,7 @@ export function RecommendedSplitsSection() {
                 <div className="mt-3 flex flex-col gap-3 rounded-lg bg-surface-2 p-3">
                   {split.days.map((day) => (
                     <div key={day.label}>
-                      <p className="mb-1 text-overline uppercase text-text-faint">{day.label}</p>
+                      <p className="mb-1 text-overline text-text-faint">{day.label}</p>
                       <ul className="flex flex-col gap-1">
                         {day.exercises.map((exercise) => (
                           <li key={exercise} className="text-small text-text-2">

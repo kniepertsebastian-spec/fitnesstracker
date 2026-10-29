@@ -178,12 +178,12 @@ export function ExerciseCard({
         {(entry.repRangeMax !== null || entry.restSeconds !== null) && (
           <div className="flex gap-1.5">
             <dt className="text-text-subtle">Ziel</dt>
-            <dd className="tabular font-mono text-text-2">{formatPrescription(entry)}</dd>
+            <dd className="tabular font-numeric text-text-2">{formatPrescription(entry)}</dd>
           </div>
         )}
         <div className="flex gap-1.5">
           <dt className="text-text-subtle">Letztes Mal</dt>
-          <dd className="tabular font-mono text-text-2">
+          <dd className="tabular font-numeric text-text-2">
             {lastTime ? `${previous.length} × ${lastTime.reps} · ${formatKg(lastTime.weightKg)} kg` : "–"}
           </dd>
         </div>
@@ -196,7 +196,7 @@ export function ExerciseCard({
         {p && (
           <div className="flex gap-1.5">
             <dt className="text-text-subtle">Vorschlag</dt>
-            <dd className="tabular font-mono text-accent">
+            <dd className="tabular font-numeric text-accent">
               {p.mode === "weight" ? `${formatKg(p.suggestedWeightKg)} kg` : `${p.suggestedReps} Wdh.`}
             </dd>
           </div>
@@ -232,7 +232,7 @@ export function ExerciseCard({
                       disabled={disabled}
                       onChange={() => toggleWarmup(entry.id, i)}
                     />
-                    <span className="tabular font-mono text-body text-text">
+                    <span className="tabular font-numeric text-body text-text">
                       {formatKg(set.weightKg)} kg × {set.reps}
                     </span>
                     <span className="text-small text-text-subtle">{set.percent} %</span>
@@ -246,7 +246,7 @@ export function ExerciseCard({
       )}
 
       <div className="mt-4">
-        <div className="grid grid-cols-[2rem_1fr_1fr_1fr_3rem] items-center gap-2 px-1 pb-2 text-overline uppercase text-text-faint">
+        <div className="grid grid-cols-[2rem_1fr_1fr_1fr_3rem] items-center gap-2 px-1 pb-2 text-overline text-text-faint">
           <span>Satz</span>
           <span>Vorher</span>
           <span>kg</span>
@@ -263,13 +263,13 @@ export function ExerciseCard({
           return (
             <div key={i} className="border-t border-border-subtle py-2 first:border-t-0">
               <div className="grid grid-cols-[2rem_1fr_1fr_1fr_3rem] items-center gap-2 px-1">
-                <span className="tabular font-mono text-small text-text-subtle">{i + 1}</span>
-                <span className="tabular font-mono text-small text-text-faint">
+                <span className="tabular font-numeric text-small text-text-subtle">{i + 1}</span>
+                <span className="tabular font-numeric text-small text-text-faint">
                   {prev ? `${formatKg(prev.weightKg)} × ${prev.reps}` : "–"}
                 </span>
                 <span
                   className={cn(
-                    "tabular font-mono text-body",
+                    "tabular font-numeric text-set-value",
                     state === "open" ? "text-text-faint" : "text-text",
                   )}
                 >
@@ -277,7 +277,7 @@ export function ExerciseCard({
                 </span>
                 <span
                   className={cn(
-                    "tabular font-mono text-body",
+                    "tabular font-numeric text-set-value",
                     state === "open" ? "text-text-faint" : "text-text",
                   )}
                 >
@@ -325,7 +325,7 @@ export function ExerciseCard({
                   {plateLoad && (
                     <p className="flex flex-wrap items-center gap-x-1 text-small text-text-subtle">
                       Pro Seite:{" "}
-                      <span className="tabular font-mono text-text-2">
+                      <span className="tabular font-numeric text-text-2">
                         {plateLoad.plates.length > 0
                           ? plateLoad.plates.map((plate) => formatKg(plate)).join(" + ")
                           : "nur die Stange"}

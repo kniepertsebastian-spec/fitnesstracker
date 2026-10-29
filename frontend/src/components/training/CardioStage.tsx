@@ -158,8 +158,8 @@ function CardioItemForm({
 
       <div className="mt-4 flex items-center gap-4 border-t border-border-subtle pt-4">
         <div className="min-w-0">
-          <p className="text-overline uppercase text-text-subtle">{stopwatch.running ? "Läuft" : stopwatch.elapsedSeconds > 0 ? "Pausiert" : "Bereit"}</p>
-          <p role="timer" aria-label="Cardio-Zeit" className="tabular font-mono text-timer text-text">
+          <p className="text-overline text-text-subtle">{stopwatch.running ? "Läuft" : stopwatch.elapsedSeconds > 0 ? "Pausiert" : "Bereit"}</p>
+          <p role="timer" aria-label="Cardio-Zeit" className="tabular font-numeric text-timer text-text">
             {formatDuration(stopwatch.elapsedSeconds)}
           </p>
           <p className="text-small text-text-faint">geplant {item.durationMinutes} Min.</p>

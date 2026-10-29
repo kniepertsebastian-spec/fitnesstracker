@@ -50,7 +50,7 @@ export function FreeCardioCard({ phase }: { phase: TrainingPhase }) {
             >
               Auf Vorschlag zurücksetzen
             </Button>
-            <Badge tone="violet">Eigene Version</Badge>
+            <Badge tone="magenta">Eigene Version</Badge>
           </>
         )}
       </div>
