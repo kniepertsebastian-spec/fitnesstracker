@@ -110,8 +110,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Fonts are part of the shell: the offline reload must render with Geist, not a fallback.
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // Fonts and timer MP3 are part of the shell: the offline reload must render with Geist and audio.
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,mp3}"],
         // Store screenshots are only fetched by the browser's install dialog — not app content.
         globIgnores: ["**/screenshots/**"],
         // Never let the service worker serve cached API responses — a stale workout log
@@ -121,6 +121,20 @@ export default defineConfig({
           {
             urlPattern: /\/api\/.*/,
             handler: "NetworkOnly",
+          },
+          {
+            urlPattern: /^https:\/\/raw\.githubusercontent\.com\/yuhonas\/free-exercise-db\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "exercise-images-cache",
+              expiration: {
+                maxEntries: 250,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
           },
         ],
         // Adds push/notificationclick handling to the generated service worker — see

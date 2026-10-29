@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import type { CreateSupplementInput, UpdateSupplementInput } from "@fitnesstracker/shared";
 import { NotFoundError } from "../../errors/httpErrors.js";
 import { sendNotificationToUser } from "../push/push.service.js";
@@ -8,7 +8,16 @@ export function listSupplements(prisma: PrismaClient, userId: string) {
 }
 
 export function createSupplement(prisma: PrismaClient, userId: string, input: CreateSupplementInput) {
-  return prisma.supplement.create({ data: { userId, ...input } });
+  const { aiAnalysis, ...rest } = input;
+  return prisma.supplement.create({
+    data: {
+      userId,
+      ...rest,
+      ...(aiAnalysis !== undefined
+        ? { aiAnalysis: (aiAnalysis ?? null) as unknown as Prisma.InputJsonValue }
+        : {}),
+    },
+  });
 }
 
 export async function updateSupplement(
@@ -21,7 +30,16 @@ export async function updateSupplement(
   if (!existing) {
     throw new NotFoundError("Supplement not found");
   }
-  return prisma.supplement.update({ where: { id }, data: input });
+  const { aiAnalysis, ...rest } = input;
+  return prisma.supplement.update({
+    where: { id },
+    data: {
+      ...rest,
+      ...(aiAnalysis !== undefined
+        ? { aiAnalysis: (aiAnalysis ?? null) as unknown as Prisma.InputJsonValue }
+        : {}),
+    },
+  });
 }
 
 export async function deleteSupplement(prisma: PrismaClient, userId: string, id: string) {
