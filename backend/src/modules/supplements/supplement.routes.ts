@@ -1,12 +1,17 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { createSupplementSchema, updateSupplementSchema } from "@fitnesstracker/shared";
+import {
+  analyzeSupplementRequestSchema,
+  createSupplementSchema,
+  updateSupplementSchema,
+} from "@fitnesstracker/shared";
 import {
   createSupplement,
   deleteSupplement,
   listSupplements,
   updateSupplement,
 } from "./supplement.service.js";
+import { analyzeSupplementForUser } from "./supplementAdvisor.service.js";
 import { toSupplementDto } from "./supplement.types.js";
 import { HttpError } from "../../errors/httpErrors.js";
 
@@ -18,6 +23,19 @@ export default async function supplementRoutes(fastify: FastifyInstance) {
   fastify.get("/supplements", async (request, reply) => {
     const items = await listSupplements(fastify.prisma, request.user.sub);
     return reply.send({ items: items.map(toSupplementDto) });
+  });
+
+  fastify.post("/supplements/analyze", async (request, reply) => {
+    const input = analyzeSupplementRequestSchema.parse(request.body);
+    try {
+      const analysis = await analyzeSupplementForUser(fastify.prisma, request.user.sub, input);
+      return reply.send(analysis);
+    } catch (error) {
+      if (error instanceof HttpError) {
+        return reply.code(error.statusCode).send({ message: error.message });
+      }
+      throw error;
+    }
   });
 
   fastify.post("/supplements", async (request, reply) => {

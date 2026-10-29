@@ -401,8 +401,23 @@ model Supplement {
   timeZone       String
   enabled        Boolean  @default(true)
   lastRemindedOn String?
+  aiAnalysis     Json?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model SupplementKnowledgeCache {
+  id                     String   @id @default(uuid())
+  canonicalKey           String   @unique
+  displayNameDe          String
+  evidenceTier           String
+  generalEvidenceSummary String
+  standardDosageRule     String
+  optimalTimingRule      String
+  defaultReminderTime    String
+  cautions               String[] @default([])
+  updatedAt              DateTime @updatedAt
+  createdAt              DateTime @default(now())
 }
 
 // One row per manual scale reading, not an upsert-by-day running total — a body-comp reading is a

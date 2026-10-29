@@ -49,10 +49,22 @@ export function RestCard() {
   };
 
   return (
-    <Card role="timer" aria-label="Satzpause" className={cn(finished && "border-accent-border")}>
-      <p className={cn("text-overline", finished ? "text-accent" : "text-text-subtle")}>
-        {finished ? "Pause vorbei – nächster Satz" : "Satzpause"}
-      </p>
+    <Card
+      role="timer"
+      aria-label="Satzpause"
+      className={cn(
+        "transition-colors duration-300",
+        finished && "animate-pulse border-accent-border bg-accent-soft"
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className={cn("text-overline", finished ? "text-accent" : "text-text-subtle")}>
+          {finished ? "Pause vorbei – nächster Satz" : "Satzpause"}
+        </p>
+        {typeof navigator !== "undefined" && !navigator.onLine && !finished && (
+          <span className="text-xs text-text-faint">Offline · Display für Ton anlassen</span>
+        )}
+      </div>
       <p className="mt-1 truncate text-xs text-text-faint">{label}</p>
       <p className={cn("tabular my-2 font-numeric text-timer", finished ? "text-accent" : "text-text")}>
         {formatDuration(remainingSeconds)}

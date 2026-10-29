@@ -1,4 +1,10 @@
-import type { CreateSupplementInput, SupplementDto, UpdateSupplementInput } from "@fitnesstracker/shared";
+import type {
+  AnalyzeSupplementInput,
+  CreateSupplementInput,
+  SupplementAnalysisDto,
+  SupplementDto,
+  UpdateSupplementInput,
+} from "@fitnesstracker/shared";
 import { apiFetch } from "./client";
 
 export function listSupplementsRequest() {
@@ -15,4 +21,8 @@ export function updateSupplementRequest(id: string, input: UpdateSupplementInput
 
 export function deleteSupplementRequest(id: string) {
   return apiFetch<void>(`/supplements/${id}`, { method: "DELETE" });
+}
+
+export function analyzeSupplementRequest(input: AnalyzeSupplementInput) {
+  return apiFetch<SupplementAnalysisDto>("/supplements/analyze", { method: "POST", body: input });
 }
