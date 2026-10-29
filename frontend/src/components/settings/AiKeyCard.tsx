@@ -46,7 +46,7 @@ export function AiKeyCard() {
   return (
     <Card
       title="KI-Schlüssel"
-      action={settings.hasApiKey ? <Badge tone="violet">Eigener Schlüssel</Badge> : undefined}
+      action={settings.hasApiKey ? <Badge tone="magenta">Eigener Schlüssel</Badge> : undefined}
     >
       <p className="mb-3 text-small text-text-subtle">
         Eigener API-Key (BYOK) für die KI-Planung — der Key verlässt den Server nie außer für Aufrufe an den

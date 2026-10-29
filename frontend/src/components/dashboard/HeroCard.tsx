@@ -33,7 +33,7 @@ export function HeroCard({ plan, status, session, lastTrainedDaysAgo }: Props) {
   if (!plan) {
     return (
       <Card variant="hero">
-        <p className="text-overline uppercase text-accent">Heute dran</p>
+        <p className="text-overline text-accent">Heute dran</p>
         <h2 className="mt-1 text-h2-hero text-text">Noch kein Trainingsplan</h2>
         <p className="mt-1 text-small text-text-subtle">Lege einen Plan an, dann siehst du hier dein Training für heute.</p>
         <ButtonLink to="/plan" variant="primary" size="lg" className="mt-4" fullWidth>
@@ -49,7 +49,7 @@ export function HeroCard({ plan, status, session, lastTrainedDaysAgo }: Props) {
   if (plan.pausedAt) {
     return (
       <Card variant="hero">
-        <p className="text-overline uppercase text-accent">Heute dran</p>
+        <p className="text-overline text-accent">Heute dran</p>
         <h2 className="mt-1 text-h2-hero text-text">Plan pausiert</h2>
         <Callout tone="warning" className="mt-3">
           Dein Trainingsplan ist pausiert, die Phase läuft nicht weiter.{" "}
@@ -64,7 +64,7 @@ export function HeroCard({ plan, status, session, lastTrainedDaysAgo }: Props) {
   if (allDone) {
     return (
       <Card variant="hero">
-        <p className="text-overline uppercase text-accent">Heute dran</p>
+        <p className="text-overline text-accent">Heute dran</p>
         <h2 className="mt-1 flex items-center gap-2 text-h2-hero text-text">
           <CalendarCheck size={24} aria-hidden className="text-accent" /> Woche geschafft
         </h2>
@@ -81,7 +81,7 @@ export function HeroCard({ plan, status, session, lastTrainedDaysAgo }: Props) {
   if (!activeDay) {
     return (
       <Card variant="hero">
-        <p className="text-overline uppercase text-accent">Heute dran</p>
+        <p className="text-overline text-accent">Heute dran</p>
         <h2 className="mt-1 text-h2-hero text-text">Keine Übungen im Plan</h2>
         <p className="mt-1 text-small text-text-subtle">
           Für die Phase {TRAINING_PHASE_LABELS[plan.currentPhase]} sind noch keine Übungen hinterlegt.
@@ -104,7 +104,7 @@ export function HeroCard({ plan, status, session, lastTrainedDaysAgo }: Props) {
   return (
     <Card variant="hero" className="lg:p-6">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-overline uppercase text-accent">Heute dran</p>
+        <p className="text-overline text-accent">Heute dran</p>
         {session ? (
           <Badge tone="info">
             {session.status === "PAUSED" ? <PauseCircle size={12} aria-hidden /> : null}

@@ -100,10 +100,10 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
     <Card
       title={
         <span className="flex items-center gap-2">
-          <Sparkles size={16} aria-hidden className="text-violet" /> KI-Trainingsplan
+          <Sparkles size={16} aria-hidden className="text-magenta" /> KI-Trainingsplan
         </span>
       }
-      action={settings.hasApiKey ? <Badge tone="violet">Eigener Schlüssel</Badge> : undefined}
+      action={settings.hasApiKey ? <Badge tone="magenta">Eigener Schlüssel</Badge> : undefined}
     >
       <p className="text-small text-text-subtle">
         {settings.hasApiKey

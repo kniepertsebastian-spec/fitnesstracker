@@ -42,7 +42,7 @@ export function DayStretchPanel({ phase, dayLabel }: { phase: TrainingPhase; day
         <ButtonLink to="/stretching" variant="secondary">
           Dehnplan bearbeiten
         </ButtonLink>
-        <Badge tone={day.source === "ai" ? "violet" : "neutral"}>{day.source === "ai" ? "Von der KI" : "Automatisch"}</Badge>
+        <Badge tone={day.source === "ai" ? "magenta" : "neutral"}>{day.source === "ai" ? "Von der KI" : "Automatisch"}</Badge>
       </div>
     </div>
   );

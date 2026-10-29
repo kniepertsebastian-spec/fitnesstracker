@@ -1,14 +1,15 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "./cn";
 
-export type BadgeTone = "accent" | "info" | "warning" | "danger" | "violet" | "neutral";
+export type BadgeTone = "accent" | "success" | "info" | "warning" | "danger" | "magenta" | "neutral";
 
 const TONES: Record<BadgeTone, string> = {
   accent: "bg-accent-soft text-accent",
+  success: "bg-success-soft text-success",
   info: "bg-info-soft text-info-text",
   warning: "bg-warning-soft text-warning",
   danger: "bg-danger-soft text-danger-text",
-  violet: "bg-violet-soft text-violet",
+  magenta: "bg-magenta-soft text-magenta",
   neutral: "bg-track text-text-muted",
 };
 

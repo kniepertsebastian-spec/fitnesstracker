@@ -11,7 +11,7 @@ export interface StageInfo {
 
 // Relative width per section, roughly by how long each one takes.
 const WEIGHT: Record<Stage, number> = { warmup: 1, kraft: 3, cardio: 1.6, stretch: 1.3 };
-const FILL: Record<Stage, string> = { warmup: "bg-accent", kraft: "bg-accent", cardio: "bg-info", stretch: "bg-violet" };
+const FILL: Record<Stage, string> = { warmup: "bg-accent", kraft: "bg-accent", cardio: "bg-info", stretch: "bg-magenta" };
 
 export function StageBar({
   stages,

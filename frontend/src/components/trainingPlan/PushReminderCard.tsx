@@ -81,7 +81,7 @@ export function PushReminderCard() {
             <div className="mt-3 flex flex-col gap-3 border-t border-border-subtle pt-3">
               {REMINDER_GROUPS.map((group) => (
                 <div key={group.title}>
-                  <p className="mb-1 text-overline uppercase text-text-faint">{group.title}</p>
+                  <p className="mb-1 text-overline text-text-faint">{group.title}</p>
                   <div className="flex flex-col">
                     {group.types.map(({ key, label, note }) => (
                       <Toggle

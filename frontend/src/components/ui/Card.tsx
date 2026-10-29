@@ -13,7 +13,7 @@ export function Card({ variant = "default", title, action, className, children, 
     <div
       className={cn(
         "border p-4 lg:p-5",
-        hero ? "rounded-3xl border-border-hero bg-hero" : "rounded-2xl border-border bg-surface",
+        hero ? "light-edge rounded-3xl border-border-hero bg-hero" : "rounded-2xl border-border bg-surface",
         className,
       )}
       {...rest}

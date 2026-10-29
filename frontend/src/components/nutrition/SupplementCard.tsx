@@ -47,7 +47,7 @@ export function SupplementCard() {
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className={s.enabled ? "text-body text-text-2" : "text-body text-text-faint line-through"}>{s.name}</p>
-                  <p className="tabular font-mono text-xs text-text-faint">{s.reminderTime}</p>
+                  <p className="tabular font-numeric text-xs text-text-faint">{s.reminderTime}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Button

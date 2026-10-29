@@ -121,10 +121,10 @@ export function RestTimerWidget() {
       <ProgressBar value={finished ? 100 : progress * 100} size={6} label="Satzpause" className="rounded-none" />
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
-          <p className="truncate text-overline uppercase text-text-subtle">
+          <p className="truncate text-overline text-text-subtle">
             {finished ? "Pause vorbei – nächster Satz!" : (label ?? "Satzpause")}
           </p>
-          <p className={cn("tabular font-mono text-timer", finished ? "text-accent" : "text-text")}>
+          <p className={cn("tabular font-numeric text-timer", finished ? "text-accent" : "text-text")}>
             {formatTime(remainingSeconds)}
           </p>
         </div>

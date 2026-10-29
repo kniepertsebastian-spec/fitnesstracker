@@ -4,6 +4,7 @@ import { Menu, X } from "lucide-react";
 import { IconButton, Sheet, SheetClose } from "../ui";
 import { BottomTabBar } from "./BottomTabBar";
 import { InstallButton } from "./InstallButton";
+import { LightBand } from "./LightBand";
 import { Logo } from "./Logo";
 import { NavMenu } from "./NavMenu";
 import { PRToastHost } from "./PRToastHost";
@@ -25,7 +26,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-bg pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-text lg:grid lg:grid-cols-[248px_1fr]">
-      <aside className="sticky top-0 hidden h-screen flex-col gap-4 border-r border-border bg-bg-sidebar p-4 lg:flex">
+      <LightBand />
+      <aside className="sticky top-0 z-10 hidden h-screen flex-col gap-4 border-r border-border bg-bg-sidebar p-4 lg:flex">
         <Logo />
         <StartTrainingButton size="lg" fullWidth />
         <div className="-mx-1 flex-1 overflow-y-auto px-1">
@@ -35,8 +37,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <UserRow />
       </aside>
 
-      <div className="flex min-w-0 flex-col">
-        <header className="flex items-center justify-between gap-3 border-b border-border bg-bg-sidebar px-4 py-2 lg:justify-end lg:border-b-0 lg:bg-transparent lg:px-10 lg:pt-5">
+      <div className="relative z-10 flex min-w-0 flex-col">
+        <header className="flex items-center justify-between gap-3 border-b border-border bg-bg-sidebar/80 px-4 py-2 lg:justify-end lg:border-b-0 lg:bg-transparent lg:px-10 lg:pt-5">
           <div className="min-w-0 lg:hidden">
             <Logo compactBelowSm />
           </div>

@@ -8,7 +8,7 @@ export function Logo({ compactBelowSm = false }: { compactBelowSm?: boolean }) {
     <div className="flex min-w-0 items-center gap-2.5">
       <span
         aria-hidden
-        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-sm bg-accent text-on-accent"
+        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center light-edge rounded-sm bg-accent bg-accent-fill text-on-accent"
       >
         <Dumbbell size={17} strokeWidth={2.2} />
       </span>

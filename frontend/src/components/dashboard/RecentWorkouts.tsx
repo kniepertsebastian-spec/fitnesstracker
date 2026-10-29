@@ -84,7 +84,7 @@ export function RecentWorkoutsTable({ days }: { days: WorkoutDay[] }) {
       ) : (
         <table className="w-full text-small">
           <thead>
-            <tr className="text-left text-overline uppercase text-text-faint">
+            <tr className="text-left text-overline text-text-faint">
               <th className="pb-2 font-semibold">Datum</th>
               <th className="pb-2 font-semibold">Training</th>
               <th className="pb-2 text-right font-semibold">Sätze</th>
@@ -100,9 +100,9 @@ export function RecentWorkoutsTable({ days }: { days: WorkoutDay[] }) {
                   {d.exercises.slice(0, 3).join(", ")}
                   {d.exercises.length > 3 ? ` +${d.exercises.length - 3}` : ""}
                 </td>
-                <td className="tabular py-3 text-right font-mono text-text-2">{d.sets}</td>
-                <td className="tabular py-3 text-right font-mono text-text-2">{formatKg(Math.round(d.volume))} kg</td>
-                <td className="tabular py-3 text-right font-mono text-text-2">{d.records}</td>
+                <td className="tabular py-3 text-right font-numeric text-text-2">{d.sets}</td>
+                <td className="tabular py-3 text-right font-numeric text-text-2">{formatKg(Math.round(d.volume))} kg</td>
+                <td className="tabular py-3 text-right font-numeric text-text-2">{d.records}</td>
               </tr>
             ))}
           </tbody>

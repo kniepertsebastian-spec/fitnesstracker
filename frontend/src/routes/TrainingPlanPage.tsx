@@ -100,11 +100,11 @@ export function TrainingPlanPage() {
                 to="/plan/generate"
                 className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors duration-150 hover:bg-surface-2"
               >
-                <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-soft text-violet">
+                <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-magenta-soft text-magenta">
                   <Sparkles size={18} />
                 </span>
                 <span className="min-w-0 flex-1 text-body font-medium text-text">Nächste Phase mit KI planen</span>
-                <Badge tone="violet">Eigener Schlüssel</Badge>
+                <Badge tone="magenta">Eigener Schlüssel</Badge>
               </Link>
 
               <Card title="Verlauf">

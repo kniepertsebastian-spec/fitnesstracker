@@ -19,7 +19,7 @@ export function PRToastHost() {
           className="pointer-events-auto w-full max-w-sm text-left"
           aria-label="Meldung schließen"
         >
-          <Toast icon={<Trophy size={20} strokeWidth={1.8} />} overline="Neuer Rekord">
+          <Toast tone="success" icon={<Trophy size={20} strokeWidth={1.8} />} overline="Neuer Rekord">
             {toast.exerciseName}
             <span className="block text-small font-normal text-text-subtle">{toast.labels.join(" · ")}</span>
           </Toast>

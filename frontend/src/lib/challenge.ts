@@ -6,7 +6,7 @@ export const CHALLENGE_CATEGORIES: Record<DailyChallengeCategory, { label: strin
   PROGRESSION: { label: "Progression", tone: "accent" },
   VOLUME: { label: "Volumen", tone: "info" },
   CONSISTENCY: { label: "Konsistenz", tone: "warning" },
-  TECHNIQUE: { label: "Technik", tone: "violet" },
+  TECHNIQUE: { label: "Technik", tone: "magenta" },
   RECOVERY: { label: "Erholung", tone: "neutral" },
 };
 

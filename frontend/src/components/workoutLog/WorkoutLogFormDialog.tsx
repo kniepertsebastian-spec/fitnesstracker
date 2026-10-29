@@ -82,7 +82,7 @@ function SteppedNumberField({
             // than the browser's default whole-number step, which the +/- buttons intentionally
             // produce for weight (2.5kg increments).
             step="any"
-            className="h-12 text-center font-mono"
+            className="h-12 text-center font-numeric"
             {...inputProps}
           />
           <IconButton
@@ -326,8 +326,8 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
                     className="rounded-lg border border-border bg-surface-2 px-2 py-1.5 text-center"
                   >
                     <p className="text-xs text-text-faint">{step.percent}%</p>
-                    <p className="tabular font-mono text-small font-medium text-text">{step.weightKg} kg</p>
-                    <p className="tabular font-mono text-xs text-text-faint">×{step.reps}</p>
+                    <p className="tabular font-numeric text-small font-medium text-text">{step.weightKg} kg</p>
+                    <p className="tabular font-numeric text-xs text-text-faint">×{step.reps}</p>
                   </div>
                 ))}
               </div>

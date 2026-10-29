@@ -86,10 +86,10 @@ function Routine({ items, focus }: { items: StretchItemDto[]; focus: StretchFocu
 
       {active && (
         <div className="mb-3 rounded-xl border border-accent-border bg-accent-soft p-3">
-          <p className="text-overline uppercase text-accent">Jetzt</p>
+          <p className="text-overline text-accent">Jetzt</p>
           <div className="mt-1 flex items-center justify-between gap-3">
             <p className="min-w-0 truncate text-body font-medium text-text">{active.name}</p>
-            <p role="timer" aria-label="Restzeit" className="tabular font-mono text-h2 text-text">
+            <p role="timer" aria-label="Restzeit" className="tabular font-numeric text-h2 text-text">
               {remaining}s
             </p>
           </div>
@@ -131,7 +131,7 @@ function Routine({ items, focus }: { items: StretchItemDto[]; focus: StretchFocu
                 </span>
                 <span className="block truncate text-xs text-text-faint">{item.primaryMuscles[0] ?? ""}</span>
               </span>
-              <span className="tabular shrink-0 font-mono text-small text-text-2">
+              <span className="tabular shrink-0 font-numeric text-small text-text-2">
                 {item.sets > 1 ? `${item.sets} × ` : ""}
                 {item.holdSeconds}s
               </span>

@@ -8,7 +8,8 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "dashed" | "dang
 export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-accent text-on-accent font-semibold hover:bg-accent-hover border border-transparent",
+  primary:
+    "bg-accent bg-accent-fill light-edge text-on-accent font-semibold hover:brightness-110 active:brightness-95 border border-transparent",
   secondary: "bg-control text-text border border-border-strong hover:bg-track",
   ghost: "bg-transparent text-text-muted border border-border-strong hover:bg-surface-2",
   dashed: "bg-transparent text-text-muted border border-dashed border-border-strong hover:bg-surface-2",
@@ -32,7 +33,9 @@ interface CommonProps {
 function classes({ variant = "secondary", size = "md", fullWidth }: CommonProps, extra?: string) {
   return cn(
     "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors duration-150",
-    "disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50",
+    // Disabled reads as "not now", not as a faded primary: flat track fill, faint text, no light edge.
+    "disabled:pointer-events-none disabled:border-border disabled:bg-none disabled:bg-track disabled:text-text-faint disabled:shadow-none",
+    "aria-disabled:pointer-events-none aria-disabled:border-border aria-disabled:bg-none aria-disabled:bg-track aria-disabled:text-text-faint aria-disabled:shadow-none",
     VARIANTS[variant],
     SIZES[size],
     fullWidth && "w-full",

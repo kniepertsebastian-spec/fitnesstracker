@@ -5,10 +5,16 @@ import { useOpenWorkoutSession, useStartWorkoutSession } from "../../hooks/useWo
 import { cn } from "../ui";
 
 const ITEM =
-  "flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-overline font-medium transition-colors duration-150";
+  "relative flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-overline font-medium transition-colors duration-150";
 
+// The active tab carries a short violet bar on the bar's top edge, in addition to its color.
 function linkClass({ isActive }: { isActive: boolean }) {
-  return cn(ITEM, isActive ? "text-accent" : "text-text-muted hover:text-text");
+  return cn(
+    ITEM,
+    isActive
+      ? "text-accent before:absolute before:inset-x-5 before:top-0 before:h-0.5 before:rounded-full before:bg-accent"
+      : "text-text-muted hover:text-text",
+  );
 }
 
 function Tab({ to, label, icon, end }: { to: string; label: string; icon: ReactNode; end?: boolean }) {
@@ -40,7 +46,7 @@ export function BottomTabBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   return (
     <nav
       aria-label="Schnellzugriff"
-      className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-bg-sidebar pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-bg-sidebar/95 pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       <Tab to="/" end label="Heute" icon={<Sun size={20} aria-hidden />} />
       <button
@@ -49,8 +55,13 @@ export function BottomTabBar({ onOpenMenu }: { onOpenMenu: () => void }) {
         disabled={start.isPending}
         onClick={openTraining}
       >
-        <Dumbbell size={20} aria-hidden />
-        <span>Training</span>
+        <span
+          aria-hidden
+          className="light-edge -mt-0.5 flex h-9 w-12 items-center justify-center rounded-full bg-accent bg-accent-fill text-on-accent"
+        >
+          <Dumbbell size={19} />
+        </span>
+        <span className="text-text">Training</span>
       </button>
       <Tab to="/progress" label="Fortschritt" icon={<LineChart size={20} aria-hidden />} />
       <Tab to="/plan" label="Plan" icon={<CalendarDays size={20} aria-hidden />} />

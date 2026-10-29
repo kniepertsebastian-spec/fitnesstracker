@@ -60,7 +60,7 @@ export function ChallengeCard() {
                     {item.exerciseName}
                   </Link>
                   <p className="text-small text-text-subtle">
-                    <span className="tabular font-mono text-text-2">{item.targetReps} Wdh.</span> ·{" "}
+                    <span className="tabular font-numeric text-text-2">{item.targetReps} Wdh.</span> ·{" "}
                     {challengeReason(item, logs ?? [])}
                   </p>
                 </div>
@@ -94,7 +94,7 @@ export function ChallengeCard() {
                   size={6}
                   label={`${item.exerciseName}: ${item.completedReps} von ${item.targetReps}`}
                 />
-                <span className="tabular shrink-0 font-mono text-small text-text-2">
+                <span className="tabular shrink-0 font-numeric text-small text-text-2">
                   {item.completedReps}/{item.targetReps}
                 </span>
               </div>

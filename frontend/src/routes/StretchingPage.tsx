@@ -79,7 +79,7 @@ function StretchPlanView() {
             <Card
               key={day.dayLabel ?? "all"}
               title={day.dayLabel ?? "Ganzkörper"}
-              action={<Badge tone={day.source === "ai" ? "violet" : "neutral"}>{day.source === "ai" ? "KI" : "Auto"}</Badge>}
+              action={<Badge tone={day.source === "ai" ? "magenta" : "neutral"}>{day.source === "ai" ? "KI" : "Auto"}</Badge>}
             >
               {day.muscles.length > 0 && (
                 <p className="mb-3 text-small text-text-faint">Trainiert: {musclesLabel(day.muscles)}</p>

@@ -445,7 +445,7 @@ export function TrainingPage() {
     return (
       <Frame>
         <Card variant="hero">
-          <p className="text-overline uppercase text-accent">{summary.aborted ? "Abgebrochen" : "Training abgeschlossen"}</p>
+          <p className="text-overline text-accent">{summary.aborted ? "Abgebrochen" : "Training abgeschlossen"}</p>
           <h1 className="mt-1 text-h2-hero text-text">{summary.aborted ? "Training abgebrochen" : "Stark gemacht."}</h1>
           <p className="mt-1 text-small text-text-subtle">Alle Sätze und Cardio-Einheiten sind gespeichert.</p>
           <div className="mt-4 grid grid-cols-2 gap-3">
@@ -713,7 +713,7 @@ export function TrainingPage() {
 
         {stage === "stretch" && (
           <Card>
-            <Badge tone="violet">Dehnplan {title}</Badge>
+            <Badge tone="magenta">Dehnplan {title}</Badge>
             <h1 className="mt-2 text-h1-focus text-text">Dehnen</h1>
             <p className="mt-1 text-small text-text-subtle">
               Für die heute trainierten Muskeln. Ruhig atmen, nicht federn. „Halten“ startet den Timer.
