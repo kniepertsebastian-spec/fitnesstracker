@@ -123,7 +123,8 @@ export function TrainingPage() {
   const burnProfile = useBurnProfile();
   const [shareNote, setShareNote] = useState<string | null>(null);
   const recordCount = useRef(0);
-  const lastLogTapRef = useRef<number>(0);
+  // Swallows an accidental double tap on the same set's check; a different set logs right away.
+  const lastLogTapRef = useRef<{ key: string; at: number } | null>(null);
   const { data: cardioPlan } = useCardioPlan(activeTrainingPhase, { enabled: !!plan });
   const { data: stretchPlan } = useStretchPlan(activeTrainingPhase);
   const { data: recentCardio } = useWeekCardioLogs();
@@ -348,9 +349,11 @@ export function TrainingPage() {
   const typicalReps = exercises[0]?.repRangeMax ?? exercises[0]?.targetReps ?? null;
 
   const logSet = async (entry: PlanDiaryExerciseDto, values: SetValues, setNumber: number) => {
+    const tapKey = `${entry.id}:${setNumber}`;
     const nowMs = Date.now();
-    if (busy || !session || nowMs - lastLogTapRef.current < 350) return;
-    lastLogTapRef.current = nowMs;
+    const lastTap = lastLogTapRef.current;
+    if (busy || !session || (lastTap && lastTap.key === tapKey && nowMs - lastTap.at < 350)) return;
+    lastLogTapRef.current = { key: tapKey, at: nowMs };
     setBusy(true);
     try {
       const performedAt = new Date().toISOString();
