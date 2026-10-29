@@ -61,6 +61,7 @@ import { loadStretchDone } from "../lib/stretchStorage";
 import { createCardioLogLocal } from "../offline/cardioLogSync";
 import { detectPRs, prLabels } from "../lib/prDetection";
 import { unlockAudio } from "../lib/timerSound";
+import { triggerHaptic, withViewTransition } from "../lib/haptic";
 import { formatDuration, formatKg, lastTimeSets, sessionSets } from "../lib/trainingSets";
 import { shareSummary } from "../lib/shareSummary";
 import { setsKcal } from "../lib/calories";
@@ -122,6 +123,8 @@ export function TrainingPage() {
   const burnProfile = useBurnProfile();
   const [shareNote, setShareNote] = useState<string | null>(null);
   const recordCount = useRef(0);
+  // Swallows an accidental double tap on the same set's check; a different set logs right away.
+  const lastLogTapRef = useRef<{ key: string; at: number } | null>(null);
   const { data: cardioPlan } = useCardioPlan(activeTrainingPhase, { enabled: !!plan });
   const { data: stretchPlan } = useStretchPlan(activeTrainingPhase);
   const { data: recentCardio } = useWeekCardioLogs();
@@ -233,7 +236,7 @@ export function TrainingPage() {
   }));
 
   const goToStage = (next: Stage | null) => {
-    if (next) setManualStage(next);
+    if (next) withViewTransition(() => setManualStage(next));
     window.scrollTo({ top: 0 });
   };
 
@@ -346,7 +349,11 @@ export function TrainingPage() {
   const typicalReps = exercises[0]?.repRangeMax ?? exercises[0]?.targetReps ?? null;
 
   const logSet = async (entry: PlanDiaryExerciseDto, values: SetValues, setNumber: number) => {
-    if (busy || !session) return;
+    const tapKey = `${entry.id}:${setNumber}`;
+    const nowMs = Date.now();
+    const lastTap = lastLogTapRef.current;
+    if (busy || !session || (lastTap && lastTap.key === tapKey && nowMs - lastTap.at < 350)) return;
+    lastLogTapRef.current = { key: tapKey, at: nowMs };
     setBusy(true);
     try {
       const performedAt = new Date().toISOString();
@@ -369,15 +376,37 @@ export function TrainingPage() {
       const labels = prLabels(prs);
       if (labels.length > 0) {
         recordCount.current += 1;
+        triggerHaptic("pr");
         showPR(entry.exerciseName, labels);
+      } else {
+        triggerHaptic("tap");
       }
       unlockAudio();
+
+      const nextOpenPartnerIndex = superset.active
+        ? exercises.findIndex((e, i) => i > currentIndex && !isComplete(e) && doneFor(e).length < setNumber)
+        : -1;
+      const previousOpenPartnerIndex = superset.active
+        ? exercises.findIndex((e, i) => i < currentIndex && !isComplete(e) && doneFor(e).length === setNumber)
+        : -1;
+
+      if (nextOpenPartnerIndex !== -1) {
+        withViewTransition(() => setManualIndex(nextOpenPartnerIndex));
+        return;
+      }
+
       if (autoStartEnabled) {
         startRestTimer(entry.restSeconds ?? autoStartSeconds, `${entry.exerciseName} · Satz ${setNumber} fertig`);
       }
+
+      if (previousOpenPartnerIndex !== -1 && !isComplete(exercises[previousOpenPartnerIndex])) {
+        withViewTransition(() => setManualIndex(previousOpenPartnerIndex));
+        return;
+      }
+
       if (doneFor(entry).length + 1 >= setCountFor(entry)) {
         const next = exercises.findIndex((e, i) => i !== currentIndex && !isComplete(e));
-        setManualIndex(next === -1 ? currentIndex : next);
+        withViewTransition(() => setManualIndex(next === -1 ? currentIndex : next));
         if (next === -1) setManualStage("kraft");
       }
     } finally {
