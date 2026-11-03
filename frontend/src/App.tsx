@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, type ComponentType, type ReactNode } from "r
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { RouteErrorBoundary } from "./components/layout/RouteErrorBoundary";
+import { ForgottenSessionPrompt } from "./components/workoutLog/ForgottenSessionPrompt";
 import { UpdatePrompt } from "./components/layout/UpdatePrompt";
 import { useAuthBootstrap } from "./hooks/useAuth";
 import { initWorkoutLogSync } from "./offline/workoutLogSync";
@@ -93,6 +94,7 @@ export function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <GlobalUpdatePrompt />
       <AppBadge />
+      <ForgottenSessionPrompt />
       <RoutedScreens>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

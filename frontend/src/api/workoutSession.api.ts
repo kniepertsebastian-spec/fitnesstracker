@@ -16,3 +16,7 @@ export function createWorkoutSessionRequest(input: CreateWorkoutSessionInput) {
 export function updateWorkoutSessionRequest(id: string, input: UpdateWorkoutSessionInput) {
   return apiFetch<WorkoutSessionDto>(`/workout-sessions/${id}`, { method: "PATCH", body: input });
 }
+
+export function keepWorkoutSessionAliveRequest(id: string) {
+  return apiFetch<WorkoutSessionDto>(`/workout-sessions/${id}/keep-alive`, { method: "POST" });
+}

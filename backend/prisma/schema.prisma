@@ -512,6 +512,11 @@ model WorkoutSession {
   status    WorkoutSessionStatus @default(ACTIVE)
   startedAt DateTime             @default(now())
   endedAt   DateTime?
+  // "Training vergessen zu beenden": set when the 2h "läuft noch?" push went out; the session is
+  // auto-completed if it is still unanswered 30 min later. Cleared by "Weiter" (keepAliveAt
+  // restarts the 2h clock) or by a set logged after the prompt.
+  stopPromptSentAt DateTime?
+  keepAliveAt      DateTime?
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
 
