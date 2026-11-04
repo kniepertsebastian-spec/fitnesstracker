@@ -36,6 +36,7 @@ const StretchingPage = lazyPage(() => import("./routes/StretchingPage"), "Stretc
 const GoalsPage = lazyPage(() => import("./routes/GoalsPage"), "GoalsPage");
 const NutritionPage = lazyPage(() => import("./routes/NutritionPage"), "NutritionPage");
 const ProgressPage = lazyPage(() => import("./routes/ProgressPage"), "ProgressPage");
+const ActivityReportPage = lazyPage(() => import("./routes/ActivityReportPage"), "ActivityReportPage");
 const SettingsPage = lazyPage(() => import("./routes/SettingsPage"), "SettingsPage");
 const TrainingPage = lazyPage(() => import("./routes/TrainingPage"), "TrainingPage");
 // Dev-only: the ternary is folded away in production builds, so the chunk isn't emitted.
@@ -206,6 +207,14 @@ export function App() {
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/report"
+            element={
+              <ProtectedRoute>
+                <ActivityReportPage />
               </ProtectedRoute>
             }
           />

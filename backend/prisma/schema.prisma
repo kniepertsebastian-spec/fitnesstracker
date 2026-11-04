@@ -62,6 +62,14 @@ enum AiProvider {
   OPENROUTER
 }
 
+// Where a record came from. The activity report shows it, because a health insurer cares whether
+// a value was typed in by hand or recorded by a device.
+enum DataSource {
+  MANUAL
+  IMPORT
+  FITBIT
+}
+
 enum CardioMachine {
   TREADMILL
   BIKE
@@ -89,6 +97,10 @@ model User {
   email                            String    @unique
   passwordHash                     String
   displayName                      String?
+  // Real name for the activity report that goes to the health insurer ("Name, Vorname"). Kept
+  // apart from displayName, which is just a nickname for the greeting.
+  firstName                        String?
+  lastName                         String?
   // Per-reminder-type opt-out — a browser push subscription is a single endpoint shared by every
   // reminder kind this app sends, so without these a user can't turn off just one kind (e.g.
   // photo nudges) while keeping the others. Default true preserves existing subscribers' current
@@ -132,6 +144,7 @@ model User {
   aiPlanPreferences      Json?
   aiProviderSetting      AiProviderSetting?
   cardioLogs             CardioLog[]
+  activityDays           ActivityDay[]
   workoutSessions        WorkoutSession[]
   stretchPlanItems       StretchPlanItem[]
   cardioPlanDays         CardioPlanDay[]
@@ -489,12 +502,39 @@ model CardioLog {
   // an incline %, or just "mittel") — no single numeric unit fits all four.
   intensity       String
   durationMinutes Int
+  // Distance covered, for the activity report. Null for sessions logged before it existed or
+  // when the machine/user gave none.
+  distanceKm      Decimal?      @db.Decimal(6, 2)
+  source          DataSource    @default(MANUAL)
+  // Id of the record at the source (e.g. a Fitbit activity), so a re-sync updates instead of
+  // duplicating. Null for manual entries.
+  externalId      String?
   performedAt     DateTime      @default(now())
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   deletedAt       DateTime?
 
+  @@unique([userId, source, externalId])
   @@index([userId, performedAt])
+}
+
+// One row per user and calendar day: steps and distance walked, as recorded by a device (Fitbit
+// sync) or read from a health-app export. A day is rewritten, not added to, when it is synced
+// again — the device's running total for that day is the truth.
+model ActivityDay {
+  id         String     @id @default(uuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Calendar day in the user's own timezone as reported by the source, stored as a plain date.
+  date       DateTime   @db.Date
+  steps      Int
+  distanceKm Decimal    @db.Decimal(6, 2)
+  source     DataSource
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
 
 // A lightweight lifecycle wrapper around a gym visit — Start/Pause/Fortsetzen/Abbrechen/

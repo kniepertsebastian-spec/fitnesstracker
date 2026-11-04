@@ -93,3 +93,18 @@ h3 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Printing the activity report: a white page with a normal margin, whatever the app theme is. */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  :root {
+    color-scheme: light;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+}

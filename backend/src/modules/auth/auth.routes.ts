@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { loginSchema, registerSchema } from "@fitnesstracker/shared";
+import { loginSchema, registerSchema, updateNameSchema } from "@fitnesstracker/shared";
 import {
   issueRefreshToken,
   registerUser,
@@ -90,6 +90,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
     if (!user) {
       return reply.code(401).send({ message: "Unauthorized" });
     }
+    return reply.send(toUserDto(user));
+  });
+
+  fastify.put("/me/name", { preHandler: fastify.authenticate }, async (request, reply) => {
+    const input = updateNameSchema.parse(request.body);
+    const user = await fastify.prisma.user.update({
+      where: { id: request.user.sub },
+      data: { firstName: input.firstName, lastName: input.lastName },
+    });
     return reply.send(toUserDto(user));
   });
 }

@@ -16,6 +16,7 @@ function CardioForm({ onClose }: { onClose: () => void }) {
   const [level, setLevel] = useState("");
   const [intensity, setIntensity] = useState("");
   const [minutes, setMinutes] = useState("");
+  const [distance, setDistance] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
@@ -24,8 +25,18 @@ function CardioForm({ onClose }: { onClose: () => void }) {
     if (levelValue !== null && (!Number.isInteger(levelValue) || levelValue <= 0)) return setError("Stufe muss eine ganze Zahl sein.");
     if (!Number.isInteger(duration) || duration <= 0) return setError("Bitte die Zeit in ganzen Minuten angeben.");
     if (!intensity.trim()) return setError("Bitte die Intensität angeben.");
+    const distanceValue = distance.trim() === "" ? null : Number(distance.replace(",", "."));
+    if (distanceValue !== null && (!Number.isFinite(distanceValue) || distanceValue <= 0 || distanceValue > 999)) {
+      return setError("Strecke muss eine Zahl größer 0 sein, z. B. 12,5.");
+    }
     setError(null);
-    const input: CreateCardioLogInput = { machine, level: levelValue, intensity: intensity.trim(), durationMinutes: duration };
+    const input: CreateCardioLogInput = {
+      machine,
+      level: levelValue,
+      intensity: intensity.trim(),
+      durationMinutes: duration,
+      distanceKm: distanceValue,
+    };
     try {
       await create.mutateAsync(input);
       onClose();
@@ -63,6 +74,9 @@ function CardioForm({ onClose }: { onClose: () => void }) {
       </div>
       <Field label="Intensität" hint="z. B. 9 km/h, 120 W oder „mittel“">
         {(p) => <Input {...p} value={intensity} onChange={(e) => setIntensity(e.target.value)} />}
+      </Field>
+      <Field label="Strecke in km (optional)" hint="Für den Aktivitätsnachweis, z. B. bei Radfahrten">
+        {(p) => <Input {...p} type="text" inputMode="decimal" value={distance} onChange={(e) => setDistance(e.target.value)} />}
       </Field>
       {error && <Callout tone="danger">{error}</Callout>}
       <div className="flex justify-end gap-2 pt-1">
@@ -117,6 +131,7 @@ export function CardioCard() {
                   <p className="truncate text-xs text-text-faint">
                     {new Date(log.performedAt).toLocaleDateString("de-DE", { weekday: "short" })}
                     {log.level ? ` · Stufe ${log.level}` : ""} · {log.intensity}
+                    {log.distanceKm !== null ? ` · ${log.distanceKm.toLocaleString("de-DE")} km` : ""}
                   </p>
                 </div>
                 <IconButton
