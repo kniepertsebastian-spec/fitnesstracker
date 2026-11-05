@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { ActivityWeek } from "@fitnesstracker/shared";
-import { useActivityReport, useHealthSyncStatus } from "../../hooks/useActivity";
+import { useHealthSyncStatus, useWeeklyActivityReport } from "../../hooks/useActivity";
 import { CalcInfoButton } from "../info/CalcInfoButton";
 import { Card, Skeleton } from "../ui";
 
@@ -37,7 +37,7 @@ function WeekSummary({ week, title }: { week: ActivityWeek; title: string }) {
 // This week's steps per day, plus this and last week side by side. Fed by the weekly report that
 // the exports use; the phone pushes Health Connect data in the background.
 export function ActivityWeekCard() {
-  const { data: report, isLoading } = useActivityReport(2);
+  const { data: report, isLoading } = useWeeklyActivityReport(2);
   const { data: sync } = useHealthSyncStatus();
 
   if (isLoading || !report) return <Skeleton className="h-48 w-full" />;
