@@ -32,11 +32,15 @@ vi.mock("@google/genai", () => {
   });
 
   return {
-    GoogleGenAI: vi.fn().mockImplementation(() => ({
-      models: {
-        generateContent: generateContentMock,
-      },
-    })),
+    // `function`, not an arrow: the service calls `new GoogleGenAI(...)`, and vitest 4+ only lets
+    // `new` call a mock whose implementation is a function or class (an arrow can't be constructed).
+    GoogleGenAI: vi.fn().mockImplementation(function () {
+      return {
+        models: {
+          generateContent: generateContentMock,
+        },
+      };
+    }),
     Type: {
       OBJECT: "OBJECT",
       ARRAY: "ARRAY",
