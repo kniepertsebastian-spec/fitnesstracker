@@ -3,7 +3,8 @@
 // apps), so the supported route is the export file each of them can produce:
 //   - Apple Health: export.zip (or the export.xml inside it)
 //   - Samsung Health: "Download personal data" -> ZIP with one CSV per category
-//   - Google / anything else: a CSV with a date column and a weight column
+//   - Scale apps (Fitdays and similar) and anything else: a CSV with a date column and a weight
+//     column, plus body fat, muscle mass and body water columns when present
 // Everything stays on the device until the user confirms the import.
 import { Unzip, UnzipInflate } from "fflate";
 
@@ -11,6 +12,8 @@ export interface HealthMeasurement {
   measuredAt: string; // ISO
   weightKg: number;
   bodyFatPercent?: number;
+  muscleMassKg?: number;
+  bodyWaterPercent?: number;
 }
 
 const MIN_WEIGHT_KG = 20;
@@ -79,7 +82,7 @@ export class AppleHealthScanner {
   }
 }
 
-// --- CSV (Samsung Health, Google Takeout, spreadsheets) --------------------------------------
+// --- CSV (Samsung Health, Google Takeout, scale apps like Fitdays, spreadsheets) --------------
 
 function splitCsvLine(line: string, delimiter: string): string[] {
   const cells: string[] = [];
@@ -108,7 +111,9 @@ function detectDelimiter(line: string): string {
   return counts.sort((a, b) => b.n - a.n)[0].d;
 }
 
-const DATE_HEADER = /^(start_?time|create_?time|update_?time|measured_?at|date|datum|timestamp|zeit|time)\b/i;
+const DATE_HEADER =
+  /^(start_?time|create_?time|update_?time|measured_?at|measure_?time|test_?time|mess_?zeit|test_?zeit|mess_?datum|zeitpunkt|date|datum|timestamp|zeit|time)\b/i;
+const DATE_PREFERRED = /^(start_?time|measure_?time|test_?time|mess_?zeit|test_?zeit|mess_?datum|date|datum)/i;
 
 function findColumn(headers: string[], test: (h: string) => boolean, prefer: (h: string) => boolean = () => false): number {
   const hits = headers.map((h, i) => ({ h, i })).filter(({ h }) => test(h));
@@ -124,10 +129,21 @@ export function parseFlexibleDate(value: string): string | null {
     const n = Number(v);
     return new Date(n > 1e11 ? n : n * 1000).toISOString();
   }
-  let m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[ T](\d{1,2}):(\d{2}))?/.exec(v);
+  // "18.10.2026 06:42[:07]" and "18/10/2026 06:42:07" are day-first; a slash date whose second
+  // number cannot be a month ("10/18/2026") is read month-first.
+  let m = /^(\d{1,2})([./])(\d{1,2})\2(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(v);
   if (m) {
-    const date = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), m[4] ? Number(m[4]) : 12, m[5] ? Number(m[5]) : 0);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    const monthFirst = m[2] === "/" && Number(m[3]) > 12 && Number(m[1]) <= 12;
+    const [day, month] = monthFirst ? [Number(m[3]), Number(m[1])] : [Number(m[1]), Number(m[3])];
+    const date = new Date(
+      Number(m[4]),
+      month - 1,
+      day,
+      m[5] ? Number(m[5]) : 12,
+      m[6] ? Number(m[6]) : 0,
+      m[7] ? Number(m[7]) : 0,
+    );
+    return Number.isNaN(date.getTime()) || date.getDate() !== day ? null : date.toISOString();
   }
   m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
   if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0).toISOString();
@@ -135,38 +151,73 @@ export function parseFlexibleDate(value: string): string | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
+// "76,4", "76.4", "20.4%" and "120.3 kg" all read as numbers; anything else is NaN.
 function parseNumber(value: string): number {
-  return Number(value.replace(",", "."));
+  const cleaned = value.replace(",", ".").replace(/[^\d.-]/g, "");
+  return cleaned === "" ? Number.NaN : Number(cleaned);
 }
 
+const WATER_PERCENT_RANGE = [20, 85] as const;
+
 // Finds the header row (Samsung puts a one-line description above it), then the date, weight and —
-// when present — body fat columns by name. Returns [] when no weight column can be identified.
+// when present — body fat, muscle mass and body water columns by name. Returns [] when no weight
+// column can be identified.
 export function parseHealthCsv(text: string): HealthMeasurement[] {
   const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter((l) => l.trim() !== "");
   for (let headerRow = 0; headerRow < Math.min(3, lines.length - 1); headerRow++) {
     const delimiter = detectDelimiter(lines[headerRow]);
     const headers = splitCsvLine(lines[headerRow], delimiter).map((h) => (h.startsWith("com.") ? h.slice(h.lastIndexOf(".") + 1) : h));
-    const dateCol = findColumn(headers, (h) => DATE_HEADER.test(h), (h) => /^(start_?time|date|datum)/i.test(h));
+    const dateCol = findColumn(headers, (h) => DATE_HEADER.test(h), (h) => DATE_PREFERRED.test(h));
     const weightCol = findColumn(
       headers,
-      (h) => /(weight|gewicht)/i.test(h) && !/(height|muscle|goal|mass_index|ziel)/i.test(h),
-      (h) => /^(weight|gewicht)$/i.test(h) || /(average|durchschnitt).*(weight|gewicht)/i.test(h),
+      (h) =>
+        /(weight|gewicht)/i.test(h) &&
+        !/(height|muscle|goal|mass_index|ziel|fat[\s_-]?free|fettfrei|lean|ideal|target)/i.test(h),
+      (h) => /^(weight|gewicht|körpergewicht)\s*(\(.*\))?$/i.test(h) || /(average|durchschnitt).*(weight|gewicht)/i.test(h),
     );
-    const fatCol = findColumn(headers, (h) => /(body_?fat|körperfett|koerperfett|fat_?percent)/i.test(h) && !/mass/i.test(h));
+    const fatCol = findColumn(
+      headers,
+      (h) =>
+        /(body[\s_-]?fat|körperfett|koerperfett|fat[\s_-]?(percent|rate)|\bkfa\b)/i.test(h) &&
+        !/(mass|masse|free|frei|subcut|subkutan|visceral|viszeral|kg)/i.test(h),
+    );
+    // Skeletal muscle is a different (smaller) figure than total muscle mass, and a "%" or "rate"
+    // column is a share, not kilograms — neither belongs in the muscle-mass field.
+    const muscleCol = findColumn(headers, (h) => /(muscle|muskel)/i.test(h) && !/(skelet|rate|percent|prozent|anteil|gehalt|%)/i.test(h));
+    // Body water comes as a share or in kilograms depending on the app; prefer the share.
+    const waterCol = findColumn(
+      headers,
+      (h) => /(water|wasser)/i.test(h) && !/(subcut|extra|intra|extrazell|intrazell)/i.test(h),
+      (h) => /(%|percent|rate|anteil|gehalt|prozent)/i.test(h),
+    );
     if (dateCol < 0 || weightCol < 0) continue;
+
+    const weightInPounds = /\blbs?\b/i.test(headers[weightCol]);
+    // Kilograms only when the header says so (Samsung's "total_body_water"); an unlabeled water
+    // column is read as a share, which is what the scale apps export.
+    const waterIsKg = waterCol >= 0 && /(kg|mass|masse|total)/i.test(headers[waterCol]) && !/(%|percent|prozent)/i.test(headers[waterCol]);
 
     const result: HealthMeasurement[] = [];
     for (const line of lines.slice(headerRow + 1)) {
       const cells = splitCsvLine(line, delimiter);
       const measuredAt = parseFlexibleDate(cells[dateCol] ?? "");
-      const weightKg = parseNumber(cells[weightCol] ?? "");
+      const rawWeight = parseNumber(cells[weightCol] ?? "");
+      const weightKg = weightInPounds ? rawWeight * LB_TO_KG : rawWeight;
       if (!measuredAt || !plausible(weightKg)) continue;
-      const fat = fatCol >= 0 ? parseNumber(cells[fatCol] ?? "") : NaN;
-      result.push(
-        Number.isFinite(fat) && fat > 0 && fat < 100
-          ? { measuredAt, weightKg, bodyFatPercent: fat }
-          : { measuredAt, weightKg },
-      );
+
+      const measurement: HealthMeasurement = { measuredAt, weightKg };
+      const fat = fatCol >= 0 ? parseNumber(cells[fatCol] ?? "") : Number.NaN;
+      if (Number.isFinite(fat) && fat > 0 && fat < 100) measurement.bodyFatPercent = fat;
+
+      const muscle = muscleCol >= 0 ? parseNumber(cells[muscleCol] ?? "") : Number.NaN;
+      if (Number.isFinite(muscle) && muscle > 0 && muscle < weightKg) measurement.muscleMassKg = muscle;
+
+      const water = waterCol >= 0 ? parseNumber(cells[waterCol] ?? "") : Number.NaN;
+      const waterPercent = waterIsKg ? (water / weightKg) * 100 : water;
+      if (Number.isFinite(waterPercent) && waterPercent >= WATER_PERCENT_RANGE[0] && waterPercent <= WATER_PERCENT_RANGE[1]) {
+        measurement.bodyWaterPercent = waterPercent;
+      }
+      result.push(measurement);
     }
     return result;
   }

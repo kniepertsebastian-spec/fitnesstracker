@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateBodyCompositionEntryInput, ImportBodyCompositionResult } from "@fitnesstracker/shared";
+import type {
+  CreateBodyCompositionEntryInput,
+  ImportBodyCompositionInput,
+  ImportBodyCompositionResult,
+} from "@fitnesstracker/shared";
 import {
   createBodyCompositionEntryRequest,
   deleteBodyCompositionEntryRequest,
@@ -38,7 +42,7 @@ const IMPORT_CHUNK = 500;
 export function useImportBodyComposition() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (entries: { measuredAt: string; weightKg: number; bodyFatPercent?: number }[]) => {
+    mutationFn: async (entries: ImportBodyCompositionInput["entries"]) => {
       const total: ImportBodyCompositionResult = { imported: 0, skipped: 0 };
       for (let i = 0; i < entries.length; i += IMPORT_CHUNK) {
         const result = await importBodyCompositionRequest({ entries: entries.slice(i, i + IMPORT_CHUNK) });

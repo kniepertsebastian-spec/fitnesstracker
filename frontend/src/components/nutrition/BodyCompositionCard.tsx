@@ -9,6 +9,7 @@ import {
   useDeleteBodyCompositionEntry,
 } from "../../hooks/useBodyComposition";
 import { useProfile } from "../../hooks/useProfile";
+import { BodyFatEstimateCard } from "./BodyFatEstimateCard";
 import { ArrowDown, ArrowRight, ArrowUp, Scale, Trash2 } from "lucide-react";
 import { Button, Callout, Card, EmptyState, Field, IconButton, Input, ListRow, Skeleton, StatTile } from "../ui";
 
@@ -27,7 +28,7 @@ function Trend({ current, previous }: { current: number; previous: number | null
 
 export function BodyCompositionCard() {
   const { data: entries, isLoading } = useBodyCompositionEntries();
-  const { data: profile } = useProfile();
+  const { data: profile, isLoading: profileLoading } = useProfile();
   const createEntry = useCreateBodyCompositionEntry();
   const deleteEntry = useDeleteBodyCompositionEntry();
 
@@ -134,6 +135,8 @@ export function BodyCompositionCard() {
           </Card>
         )}
       </div>
+
+      {latest && !profileLoading && <BodyFatEstimateCard latest={latest} profile={profile} />}
 
       <Card title="Was bedeuten die Werte?">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">

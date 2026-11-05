@@ -31,7 +31,8 @@ export function createEntry(prisma: PrismaClient, userId: string, input: CreateB
 }
 
 // Skips measurements that exist already at the same moment (a re-import of the same file is a
-// no-op) and repeats within the payload itself. Values are rounded to the column precision.
+// no-op) and repeats within the payload itself. Values are rounded to the column precision
+// (weight and muscle mass: 2 decimals, percentages: 1).
 export async function importEntries(
   prisma: PrismaClient,
   userId: string,
@@ -56,6 +57,8 @@ export async function importEntries(
         measuredAt: new Date(entry.measuredAt),
         weightKg: Math.round(entry.weightKg * 100) / 100,
         bodyFatPercent: entry.bodyFatPercent === undefined ? undefined : Math.round(entry.bodyFatPercent * 10) / 10,
+        muscleMassKg: entry.muscleMassKg === undefined ? undefined : Math.round(entry.muscleMassKg * 100) / 100,
+        bodyWaterPercent: entry.bodyWaterPercent === undefined ? undefined : Math.round(entry.bodyWaterPercent * 10) / 10,
       })),
     });
   }

@@ -57,12 +57,15 @@ export function HealthImportCard() {
   const first = measurements?.[0];
   const last = measurements?.at(-1);
   const withFat = measurements?.filter((m) => m.bodyFatPercent !== undefined).length ?? 0;
+  const withMuscle = measurements?.filter((m) => m.muscleMassKg !== undefined).length ?? 0;
+  const withWater = measurements?.filter((m) => m.bodyWaterPercent !== undefined).length ?? 0;
 
   return (
     <Card title="Gesundheitsdaten importieren" action={<CalcInfoButton id="health-import" />}>
       <p className="text-small text-text-subtle">
-        Körpergewicht (und Körperfett, falls enthalten) aus Apple Health, Samsung Health oder Google Fit übernehmen.
-        Direkt verbinden kann sich eine Web-App mit diesen Apps nicht, deshalb über die Exportdatei:
+        Körpergewicht (und Körperfett, Muskelmasse und Wasseranteil, falls enthalten) aus Apple Health, Samsung Health,
+        Google Fit oder der Waagen-App übernehmen. Direkt verbinden kann sich eine Web-App mit diesen Apps nicht,
+        deshalb über die Exportdatei:
       </p>
       <ul className="mt-2 list-disc pl-5 text-small text-text-subtle">
         <li>
@@ -74,6 +77,10 @@ export function HealthImportCard() {
         </li>
         <li>
           <span className="text-text-2">Google Fit:</span> Google Takeout → Fit → CSV (oder jede CSV mit Datum und Gewicht)
+        </li>
+        <li>
+          <span className="text-text-2">Waagen-App (z. B. Fitdays):</span> CSV-Export der Messungen, sofern die App einen
+          anbietet. Spalten wie „Gewicht“, „Körperfett“, „Muskelmasse“ und „Wasser“ werden am Namen erkannt.
         </li>
       </ul>
 
@@ -99,7 +106,8 @@ export function HealthImportCard() {
         <Callout tone="info" className="mt-3">
           <p>
             <span className="font-medium">{measurements.length} Messungen</span> in {fileName} gefunden (
-            {dateText(first.measuredAt)} – {dateText(last.measuredAt)}), davon {withFat} mit Körperfett. Zuletzt:{" "}
+            {dateText(first.measuredAt)} – {dateText(last.measuredAt)}), davon {withFat} mit Körperfett, {withMuscle} mit
+            Muskelmasse und {withWater} mit Wasseranteil. Zuletzt:{" "}
             {formatKg(Math.round(last.weightKg * 10) / 10)} kg am {dateText(last.measuredAt)}.
           </p>
           <div className="mt-2 flex gap-2">

@@ -9,8 +9,9 @@ export const createBodyCompositionEntrySchema = z.object({
 });
 export type CreateBodyCompositionEntryInput = z.infer<typeof createBodyCompositionEntrySchema>;
 
-// Bulk import of weight (and body fat) measurements read from a health-app export. Every entry
-// carries its own timestamp; entries already present at the same moment are skipped.
+// Bulk import of weight (and body fat, muscle mass, body water) measurements read from a
+// health-app or scale-app export. Every entry carries its own timestamp; entries already present
+// at the same moment are skipped.
 export const importBodyCompositionSchema = z.object({
   entries: z
     .array(
@@ -18,6 +19,8 @@ export const importBodyCompositionSchema = z.object({
         measuredAt: z.string().datetime(),
         weightKg: z.number().positive().max(500),
         bodyFatPercent: z.number().min(0).max(100).optional(),
+        muscleMassKg: z.number().positive().max(500).optional(),
+        bodyWaterPercent: z.number().min(0).max(100).optional(),
       }),
     )
     .min(1)
