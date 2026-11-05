@@ -9,6 +9,8 @@ Format: `- **Titel** — was sich geändert hat und warum, falls nicht offensich
 
 ## 2026-11-05
 
+- **React 18 → 19** — `react`/`react-dom` 19.3.1 und die Typen; der Code brauchte keine Anpassung (kein `forwardRef`-Zwang, keine `defaultProps`, kein `ReactDOM.render`). `zustand` bleibt vorerst auf 4 (läuft unter React 19). Verifiziert: Typecheck, Lint, Unit-Tests, Build, Playwright-Suite 15/15.
+
 - **React Router 6 → 7 (schließt zwei mittlere Audit-Funde)** — `react-router-dom` 7.18.5 (Open Redirect über Backslash in `Link`/`useNavigate`, Konstruktor-Injektion beim SSR-Hydrieren). Die `future`-Flags am `BrowserRouter` sind in v7 Standard und entfallen. Neu: `API_PROXY_TARGET` für Dev- und Preview-Server, damit die E2E-Suite gegen ein Backend auf anderem Port läuft. Verifiziert: Typecheck, Lint, Unit-Tests, Produktions-Build und die komplette Playwright-Suite (15/15, im Playwright-Container gegen Backend und Postgres), die damit auch die Offline-/Konto-Änderungen der Härtung im Browser abdeckt. `pnpm audit --prod`: keine Funde mehr.
 
 - **zod 3 → 4 (schließt den hohen Audit-Fund)** — `zod` 4.6.7 in Shared, Backend und Frontend (Speicherverbrauch bei übergroßen Listen, GHSA-mrhx-c7xc-m3w5), `@hookform/resolvers` 7. Die Formulare mit `z.coerce`/`z.preprocess` tippen Eingabe und Ausgabe jetzt getrennt (`useForm<Input, unknown, Output>`), sonst keine Code-Änderung nötig. Verifiziert: Typecheck, Unit-Tests, 29 Integrationstests (neu: 400 mit Validierungsdetails), Lint.
