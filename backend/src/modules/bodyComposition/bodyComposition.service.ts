@@ -1,8 +1,9 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import type {
   CreateBodyCompositionEntryInput,
   ImportBodyCompositionInput,
   ImportBodyCompositionResult,
+  SaveScaleReportInput,
   UpdateBodyCompositionEntryInput,
 } from "@fitnesstracker/shared";
 import { NotFoundError } from "../../errors/httpErrors.js";
@@ -31,7 +32,8 @@ export function createEntry(prisma: PrismaClient, userId: string, input: CreateB
 }
 
 // Skips measurements that exist already at the same moment (a re-import of the same file is a
-// no-op) and repeats within the payload itself. Values are rounded to the column precision.
+// no-op) and repeats within the payload itself. Values are rounded to the column precision
+// (weight and muscle mass: 2 decimals, percentages: 1).
 export async function importEntries(
   prisma: PrismaClient,
   userId: string,
@@ -56,10 +58,29 @@ export async function importEntries(
         measuredAt: new Date(entry.measuredAt),
         weightKg: Math.round(entry.weightKg * 100) / 100,
         bodyFatPercent: entry.bodyFatPercent === undefined ? undefined : Math.round(entry.bodyFatPercent * 10) / 10,
+        muscleMassKg: entry.muscleMassKg === undefined ? undefined : Math.round(entry.muscleMassKg * 100) / 100,
+        bodyWaterPercent: entry.bodyWaterPercent === undefined ? undefined : Math.round(entry.bodyWaterPercent * 10) / 10,
       })),
     });
   }
   return { imported: fresh.length, skipped: input.entries.length - fresh.length };
+}
+
+// A scale report read from a screenshot becomes one measurement carrying the full details. Saving
+// the same report twice (same test time) updates that measurement instead of adding a second one.
+export async function saveScaleReport(prisma: PrismaClient, userId: string, input: SaveScaleReportInput) {
+  const measuredAt = new Date(input.measuredAt);
+  const data = {
+    weightKg: Math.round(input.weightKg * 100) / 100,
+    bodyFatPercent: Math.round(input.bodyFatPercent * 10) / 10,
+    muscleMassKg: Math.round(input.muscleMassKg * 100) / 100,
+    bodyWaterPercent: Math.round(input.bodyWaterPercent * 10) / 10,
+    scaleDetails: input.details as Prisma.InputJsonValue,
+  };
+  const existing = await prisma.bodyCompositionEntry.findFirst({ where: { userId, measuredAt }, select: { id: true } });
+  return existing
+    ? prisma.bodyCompositionEntry.update({ where: { id: existing.id }, data })
+    : prisma.bodyCompositionEntry.create({ data: { userId, measuredAt, ...data } });
 }
 
 export async function updateEntry(

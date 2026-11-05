@@ -3,8 +3,10 @@ import type {
   CreateBodyCompositionEntryInput,
   ImportBodyCompositionInput,
   ImportBodyCompositionResult,
+  SaveScaleReportInput,
+  ScaleReportDraft,
 } from "@fitnesstracker/shared";
-import { apiFetch } from "./client";
+import { apiFetch, apiUpload } from "./client";
 
 export function listBodyCompositionEntriesRequest() {
   return apiFetch<{ items: BodyCompositionEntryDto[] }>("/body-composition");
@@ -20,4 +22,15 @@ export function deleteBodyCompositionEntryRequest(id: string) {
 
 export function importBodyCompositionRequest(input: ImportBodyCompositionInput) {
   return apiFetch<ImportBodyCompositionResult>("/body-composition/import", { method: "POST", body: input });
+}
+
+// Reads a scale-report screenshot on the server (OCR, no AI); nothing is stored yet.
+export function parseScaleReportRequest(file: File, timeZone: string) {
+  const form = new FormData();
+  form.append("image", file);
+  return apiUpload<ScaleReportDraft>(`/body-composition/report/parse?tz=${encodeURIComponent(timeZone)}`, form);
+}
+
+export function saveScaleReportRequest(input: SaveScaleReportInput) {
+  return apiFetch<BodyCompositionEntryDto>("/body-composition/report", { method: "POST", body: input });
 }

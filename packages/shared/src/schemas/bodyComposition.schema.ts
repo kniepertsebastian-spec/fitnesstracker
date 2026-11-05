@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { scaleDetailsSchema } from "./scaleDetails.schema.js";
 
 export const createBodyCompositionEntrySchema = z.object({
   weightKg: z.number().positive().max(500),
@@ -9,8 +10,9 @@ export const createBodyCompositionEntrySchema = z.object({
 });
 export type CreateBodyCompositionEntryInput = z.infer<typeof createBodyCompositionEntrySchema>;
 
-// Bulk import of weight (and body fat) measurements read from a health-app export. Every entry
-// carries its own timestamp; entries already present at the same moment are skipped.
+// Bulk import of weight (and body fat, muscle mass, body water) measurements read from a
+// health-app or scale-app export. Every entry carries its own timestamp; entries already present
+// at the same moment are skipped.
 export const importBodyCompositionSchema = z.object({
   entries: z
     .array(
@@ -18,6 +20,8 @@ export const importBodyCompositionSchema = z.object({
         measuredAt: z.string().datetime(),
         weightKg: z.number().positive().max(500),
         bodyFatPercent: z.number().min(0).max(100).optional(),
+        muscleMassKg: z.number().positive().max(500).optional(),
+        bodyWaterPercent: z.number().min(0).max(100).optional(),
       }),
     )
     .min(1)
@@ -40,5 +44,7 @@ export const bodyCompositionEntryDtoSchema = z.object({
   bodyFatPercent: z.number().nullable(),
   muscleMassKg: z.number().nullable(),
   bodyWaterPercent: z.number().nullable(),
+  // Full scale report (all values and impedances) when the measurement came from one.
+  scaleDetails: scaleDetailsSchema.nullable(),
 });
 export type BodyCompositionEntryDto = z.infer<typeof bodyCompositionEntryDtoSchema>;

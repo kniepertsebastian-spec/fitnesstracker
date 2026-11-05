@@ -148,6 +148,9 @@ model User {
   workoutSessions        WorkoutSession[]
   stretchPlanItems       StretchPlanItem[]
   cardioPlanDays         CardioPlanDay[]
+  dailyActivities        DailyActivity[]
+  cyclingSessions        CyclingSession[]
+  healthSyncToken        HealthSyncToken?
 }
 
 // One active BYOK provider config per user — "flexible Auswahl und Hinterlegung eines API-Keys"
@@ -446,6 +449,9 @@ model BodyCompositionEntry {
   bodyFatPercent   Decimal? @db.Decimal(4, 1)
   muscleMassKg     Decimal? @db.Decimal(5, 2)
   bodyWaterPercent Decimal? @db.Decimal(4, 1)
+  // Everything else a scale report states plus the raw impedances (see ScaleDetails in the shared
+  // package); null for manually entered measurements.
+  scaleDetails     Json?
   createdAt        DateTime @default(now())
 
   @@index([userId, measuredAt])
@@ -456,7 +462,7 @@ model BodyCompositionEntry {
 model BodyAnalysis {
   id         String   @id @default(uuid())
   userId     String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   measuredAt DateTime @default(now())
   sourceName String?
   ocrText    String
@@ -620,4 +626,56 @@ model PlanSnapshot {
   createdAt DateTime         @default(now())
 
   @@unique([userId, phase, kind])
+}
+
+// One local calendar day of step counts, pushed from Health Connect by an Android companion app
+// (the PWA itself cannot read Health Connect). `date` is the phone's local day. Today's value is a
+// running total, so a newer payload (higher `sequence`) replaces the stored figure for that day.
+model DailyActivity {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date           DateTime @db.Date
+  steps          Int
+  distanceMeters Float?
+  // Per-install counter of the companion app; guards against an older payload arriving late.
+  sequence       Int?
+  source         String   @default("health_connect")
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, date])
+}
+
+// An outdoor bike ride (Health Connect exercise type "biking"). `externalId` is the Health Connect
+// record id, so a resent payload updates the ride instead of adding it twice. Studio bike
+// sessions are not stored here: they come from CardioLog (machine BIKE).
+model CyclingSession {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  externalId      String
+  startedAt       DateTime
+  endedAt         DateTime
+  durationSeconds Int
+  distanceMeters  Float?
+  title           String?  @db.VarChar(200)
+  source          String   @default("health_connect")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, externalId])
+  @@index([userId, startedAt])
+}
+
+// Secret the companion app sends as "Authorization: Bearer <token>" to the webhook. Only the
+// SHA-256 hash is stored; the plaintext is shown once when it is created. One token per user —
+// creating a new one replaces (revokes) the old.
+model HealthSyncToken {
+  id           String    @id @default(uuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String    @unique
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+  lastSequence Int?
 }

@@ -151,6 +151,48 @@ export const CALCULATIONS: CalculationInfo[] = [
     code: "frontend/src/data/bodyMetricsInfo.ts",
   },
   {
+    id: "body-fat-estimate",
+    group: "ernaehrung",
+    title: "Körperfett-Schätzung (CUN-BAE)",
+    shows: "Ernährung → Körperdaten: Karte „Körperfett-Schätzung“ unter der letzten Messung.",
+    formula: [
+      "BMI = Gewicht (kg) ÷ Größe (m)²; Geschlecht: Mann = 0, Frau = 1",
+      "Körperfett % = −44,988 + 0,503 × Alter + 10,689 × Geschlecht + 3,172 × BMI − 0,026 × BMI² + 0,181 × BMI × Geschlecht − 0,02 × BMI × Alter − 0,005 × BMI² × Geschlecht + 0,00021 × BMI² × Alter",
+      "Spanne: Schätzung ± 5 Prozentpunkte (grober Wert für den Fehler der Gleichung)",
+      "Hinweis zur Waage: Liegt ihr Wert mindestens 8 Punkte darunter oder ergibt er eine fettfreie Masse über 25 kg/m² (FFMI = Gewicht × (1 − Körperfett) ÷ Größe²), warnt die App, dass der Waagenwert vermutlich zu niedrig ist",
+    ],
+    inputs: "Gewicht der letzten Messung sowie Größe, Alter und Geschlecht aus dem Profil. Ohne Profil entfällt die Schätzung.",
+    basis: "literatur",
+    sources: [
+      "Gómez-Ambrosi J et al.: Clinical usefulness of a new equation for estimating body fat. Diabetes Care 2012; 35(2): 383–388 (an 6.510 Erwachsenen gegen Luftverdrängungsplethysmografie geprüft, auch bei Adipositas).",
+      "Die FFMI-Grenze von etwa 25 kg/m² ist ein gängiger Richtwert für natürlich trainierte Menschen, keine feste Schwelle.",
+    ],
+    note: "Die Gleichung kennt nur BMI, Alter und Geschlecht, nicht deine Muskelmasse: Bei sehr muskulösen Menschen schätzt sie zu hoch. Sie dient als Gegenprobe für den Waagenwert, nicht als Messung und nicht als medizinische Aussage.",
+    code: "packages/shared/src/bodyFat.ts",
+  },
+  {
+    id: "scale-analysis",
+    group: "ernaehrung",
+    title: "Waagen-Analyse: Rauschen und Herleitung",
+    shows: "Ernährung → Körperdaten: Karten „Waagenbericht einlesen“ und „Waagen-Analyse“.",
+    formula: [
+      "Sitzung = Messungen, die jeweils höchstens 60 Minuten nach der vorigen liegen; ein größerer Abstand beginnt eine neue Sitzung",
+      "Rauschen = gepoolte Standardabweichung innerhalb der Sitzungen: Wurzel aus (Summe der quadrierten Abweichungen vom Sitzungsmittel ÷ Summe von (Messungen − 1)); dazu die größte Spanne (Maximum − Minimum) innerhalb einer Sitzung",
+      "Summe oder Differenz: Ein Wert gilt als berechnet, wenn die Rechnung bei allen Messungen innerhalb der Rundung aufgeht (z. B. fettfreie Masse = Gewicht − Fettmasse, Muskelmasse = fettfreie Masse − Knochenmasse)",
+      "Fester Anteil: Wert ÷ Basis schwankt kaum (höchstens etwa 0,8 bis 1,5 % und deutlich weniger als der Wert selbst), ab drei Messungen",
+      "Gerade mit Achsenabschnitt: ab fünf Messungen, wenn R² mindestens 0,995 ist und die Gerade klar besser passt als ein fester Anteil",
+      "Antrieb: Korrelation (Pearson) des Körperfetts mit jeder Impedanz, ab sechs Berichten",
+    ],
+    inputs:
+      "Alle gespeicherten Messungen. Details und Impedanzen gibt es nur bei Messungen aus „Waagenbericht einlesen“. Die Trendpfeile in den Körperdaten zeigen nur das Gewicht.",
+    basis: "annahme",
+    sources: [
+      "Eigene statistische Auswertung, keine Literaturformel. Der Bericht wird per Texterkennung (Tesseract) gelesen; die Prüfungen beim Einlesen folgen den Regeln des Berichts selbst, etwa Wasser + Eiweiß + Knochen = fettfreie Masse.",
+    ],
+    note: "Mit wenigen Wiederholungen ist das Rauschen nur grob geschätzt (bei einem Paar: Differenz ÷ √2). Ein gefundener fester Anteil ist ein Hinweis aus den Daten und sagt nichts sicher über die Rechenwege des Herstellers.",
+    code: "packages/shared/src/scaleAnalysis.ts, backend/src/modules/bodyComposition/scaleReport.parser.ts",
+  },
+  {
     id: "weight-mean",
     group: "ernaehrung",
     title: "Gleitendes 7-Tage-Mittel des Körpergewichts",
@@ -427,13 +469,39 @@ export const CALCULATIONS: CalculationInfo[] = [
     shows: "Einstellungen → „Gesundheitsdaten importieren“.",
     formula: [
       "Apple Health: Körpergewicht (BodyMass) in kg, bei Pfund × 0,45359237; Körperfett (BodyFatPercentage) als Anteil × 100",
-      "Samsung Health, Google, CSV: Datums-, Gewichts- und Körperfettspalte werden am Spaltennamen erkannt; Werte unter 20 kg oder über 400 kg werden verworfen",
-      "Messungen zum selben Zeitpunkt werden nicht doppelt gespeichert",
+      "Samsung Health, Waagen-Apps (z. B. Fitdays), Google, CSV: Datums-, Gewichts-, Körperfett-, Muskelmasse- und Wasserspalte werden am Spaltennamen erkannt; Gewichte unter 20 kg oder über 400 kg werden verworfen",
+      "Muskelmasse zählt nur in kg und nur unter dem Körpergewicht (Skelettmuskel und Prozentwerte werden nicht verwendet); Wasser als Anteil von 20 bis 85 %, bei Angabe in kg als Anteil am Gewicht",
+      "Datumsformate: ISO, „TT.MM.JJJJ“ und „TT/MM/JJJJ“ (Tag zuerst; „MM/TT/JJJJ“ nur, wenn der Tag größer als 12 ist), mit oder ohne Uhrzeit",
+      "Messungen zum selben Zeitpunkt werden nicht doppelt gespeichert; eine schon vorhandene Messung wird dabei nicht um neue Werte ergänzt",
     ],
     inputs: "Die Export-Datei, die du auswählst. Sie wird im Browser gelesen, gesendet wird erst nach deiner Bestätigung.",
     basis: "annahme",
     sources: ["Umrechnungen und Plausibilitätsgrenzen der App. Das Pfund-Kilogramm-Verhältnis ist die internationale Definition."],
     code: "frontend/src/lib/healthImport.ts",
+  },
+
+  {
+    id: "activity-report",
+    group: "training",
+    title: "Aktivitätsbericht: Wochen, Schritte, Fahrrad",
+    shows:
+      "Fortschritt: Karte „Schritte & Rad“. Einstellungen: „Aktivitätsbericht“ (PDF und JSON) und „Health Connect“.",
+    formula: [
+      "Woche = Montag bis Sonntag in deiner Zeitzone; die laufende Woche zählt nur die bisherigen Tage",
+      "Schritte: Summe der Tage mit Wert; Ø pro Tag = Summe ÷ Tage mit Daten (ein Tag ohne Übertragung zählt nicht als 0)",
+      "Fahrrad draußen: Minuten und Kilometer der Health-Connect-Fahrten; Kilometer nur, wenn die Strecke mitgeliefert wurde; Ø pro Tag = Summe ÷ Tage der Woche (7, in der laufenden Woche die bisherigen), weil ein Tag ohne Fahrt 0 Minuten hat",
+      "Fahrrad Studio: Minuten der Einheiten „Rad“ im Cardio-Log, getrennt von draußen und ohne Strecke",
+      "Krafttraining: Trainingstage (Tage mit mindestens einem Satz), Sätze, Wiederholungen, Volumen = Summe aus Wiederholungen × Gewicht, Ø RIR über die Sätze mit RIR",
+      "Export: „Records“ im Stil eines Health-Exports (Typ, Einheit, Start, Ende, Wert) plus Wochenblöcke mit Summen und Durchschnitten",
+    ],
+    inputs:
+      "Krafttraining und Cardio-Log aus der App; Schritte und Radfahrten aus Health Connect, übertragen von einer Android-App an den Webhook dieser App.",
+    basis: "annahme",
+    sources: [
+      "Eigene Definitionen der App (Wochen, Durchschnitte, Volumen). Die Rohdaten stammen aus Health Connect: Tagessummen der Schritte und Health-Connect-Fahrten vom Typ „Radfahren“ (Hometrainer-Einheiten werden nicht übernommen, damit nichts doppelt zählt).",
+    ],
+    note: "Die Tagessumme von heute ist ein laufender Wert und steigt mit jeder Übertragung. Fehlt die Strecke einer Fahrt in der Übertragung, zählen ihre Minuten, aber keine Kilometer.",
+    code: "backend/src/modules/activity/activityReport.ts",
   },
 
   // --- Begriffe -----------------------------------------------------------------------------

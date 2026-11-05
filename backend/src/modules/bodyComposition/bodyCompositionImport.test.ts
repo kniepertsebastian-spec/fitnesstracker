@@ -15,7 +15,13 @@ function fakePrisma(existingTimes: string[]) {
 
 describe("importEntries", () => {
   const entries = [
-    { measuredAt: "2024-01-05T07:15:30.000Z", weightKg: 76.554, bodyFatPercent: 21.34 },
+    {
+      measuredAt: "2024-01-05T07:15:30.000Z",
+      weightKg: 76.554,
+      bodyFatPercent: 21.34,
+      muscleMassKg: 60.456,
+      bodyWaterPercent: 58.36,
+    },
     { measuredAt: "2024-01-06T07:15:30.000Z", weightKg: 76 },
     { measuredAt: "2024-01-06T07:15:30.000Z", weightKg: 75 }, // repeated within the payload
   ];
@@ -26,7 +32,14 @@ describe("importEntries", () => {
     expect(result).toEqual({ imported: 1, skipped: 2 });
     expect(createMany).toHaveBeenCalledWith({
       data: [
-        { userId: "user-1", measuredAt: new Date("2024-01-05T07:15:30.000Z"), weightKg: 76.55, bodyFatPercent: 21.3 },
+        {
+          userId: "user-1",
+          measuredAt: new Date("2024-01-05T07:15:30.000Z"),
+          weightKg: 76.55,
+          bodyFatPercent: 21.3,
+          muscleMassKg: 60.46,
+          bodyWaterPercent: 58.4,
+        },
       ],
     });
   });
@@ -35,6 +48,15 @@ describe("importEntries", () => {
     const { prisma, createMany } = fakePrisma(entries.map((e) => e.measuredAt));
     expect(await importEntries(prisma, "user-1", { entries })).toEqual({ imported: 0, skipped: 3 });
     expect(createMany).not.toHaveBeenCalled();
+  });
+
+  it("accepts muscle mass and body water, and rejects implausible ones", () => {
+    const base = { measuredAt: "2024-01-05T07:15:30.000Z", weightKg: 80 };
+    expect(
+      importBodyCompositionSchema.safeParse({ entries: [{ ...base, muscleMassKg: 60, bodyWaterPercent: 58 }] }).success,
+    ).toBe(true);
+    expect(importBodyCompositionSchema.safeParse({ entries: [{ ...base, muscleMassKg: 0 }] }).success).toBe(false);
+    expect(importBodyCompositionSchema.safeParse({ entries: [{ ...base, bodyWaterPercent: 120 }] }).success).toBe(false);
   });
 
   it("validates the payload: 1 to 1000 entries with plausible values", () => {

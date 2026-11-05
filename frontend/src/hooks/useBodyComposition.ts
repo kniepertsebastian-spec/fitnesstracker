@@ -1,10 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateBodyCompositionEntryInput, ImportBodyCompositionResult } from "@fitnesstracker/shared";
+import type {
+  CreateBodyCompositionEntryInput,
+  ImportBodyCompositionInput,
+  ImportBodyCompositionResult,
+  SaveScaleReportInput,
+} from "@fitnesstracker/shared";
 import {
   createBodyCompositionEntryRequest,
   deleteBodyCompositionEntryRequest,
   importBodyCompositionRequest,
   listBodyCompositionEntriesRequest,
+  parseScaleReportRequest,
+  saveScaleReportRequest,
 } from "../api/bodyComposition.api";
 
 const BODY_COMPOSITION_KEY = ["body-composition"];
@@ -38,7 +45,7 @@ const IMPORT_CHUNK = 500;
 export function useImportBodyComposition() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (entries: { measuredAt: string; weightKg: number; bodyFatPercent?: number }[]) => {
+    mutationFn: async (entries: ImportBodyCompositionInput["entries"]) => {
       const total: ImportBodyCompositionResult = { imported: 0, skipped: 0 };
       for (let i = 0; i < entries.length; i += IMPORT_CHUNK) {
         const result = await importBodyCompositionRequest({ entries: entries.slice(i, i + IMPORT_CHUNK) });
@@ -48,5 +55,19 @@ export function useImportBodyComposition() {
       return total;
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: BODY_COMPOSITION_KEY }),
+  });
+}
+
+export function useParseScaleReport() {
+  return useMutation({
+    mutationFn: ({ file, timeZone }: { file: File; timeZone: string }) => parseScaleReportRequest(file, timeZone),
+  });
+}
+
+export function useSaveScaleReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveScaleReportInput) => saveScaleReportRequest(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: BODY_COMPOSITION_KEY }),
   });
 }

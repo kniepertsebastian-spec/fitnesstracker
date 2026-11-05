@@ -37,6 +37,7 @@ import stretchingRoutes from "./modules/stretching/stretching.routes.js";
 import formAnalysisRoutes from "./modules/formAnalysis/formAnalysis.routes.js";
 import cardioPlanRoutes from "./modules/cardioPlan/cardioPlan.routes.js";
 import activityRoutes from "./modules/activity/activity.routes.js";
+import healthSyncRoutes, { healthSyncWebhookRoutes } from "./modules/healthSync/healthSync.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -91,6 +92,8 @@ export function buildApp() {
   app.register(stretchingRoutes, { prefix: "/api" });
   app.register(cardioPlanRoutes, { prefix: "/api" });
   app.register(activityRoutes, { prefix: "/api" });
+  app.register(healthSyncRoutes, { prefix: "/api" });
+  app.register(healthSyncWebhookRoutes, { prefix: "/api" });
 
   app.setErrorHandler((error: FastifyError | ZodError, _request, reply) => {
     if (error instanceof ZodError) {

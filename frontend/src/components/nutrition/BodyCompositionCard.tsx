@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CalcInfoButton } from "../info/CalcInfoButton";
 
 import { ApiError } from "../../api/client";
@@ -9,15 +9,23 @@ import {
   useDeleteBodyCompositionEntry,
 } from "../../hooks/useBodyComposition";
 import { useProfile } from "../../hooks/useProfile";
+import { latestSessionAverage } from "@fitnesstracker/shared";
+import { entriesToReadings } from "../../lib/scaleReadings";
+import { BodyFatEstimateCard } from "./BodyFatEstimateCard";
 import { ArrowDown, ArrowRight, ArrowUp, Scale, Trash2 } from "lucide-react";
 import { Button, Callout, Card, EmptyState, Field, IconButton, Input, ListRow, Skeleton, StatTile } from "../ui";
+
+const num = (value: number) => value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const clock = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 // Neutral up/down/flat icon — deliberately no "up is bad, down is good" coloring: a weight
-// increase is exactly the goal for some users.
+// increase is exactly the goal for some users. Only the weight gets one: the scale's fat, muscle
+// and water values jump by several kg between two weigh-ins minutes apart (see the scale analysis
+// card), so an arrow on them would show noise as if it were a change.
 function Trend({ current, previous }: { current: number; previous: number | null | undefined }) {
   if (previous === null || previous === undefined) return null;
   const Icon = current > previous ? ArrowUp : current < previous ? ArrowDown : ArrowRight;
@@ -27,7 +35,7 @@ function Trend({ current, previous }: { current: number; previous: number | null
 
 export function BodyCompositionCard() {
   const { data: entries, isLoading } = useBodyCompositionEntries();
-  const { data: profile } = useProfile();
+  const { data: profile, isLoading: profileLoading } = useProfile();
   const createEntry = useCreateBodyCompositionEntry();
   const deleteEntry = useDeleteBodyCompositionEntry();
 
@@ -39,6 +47,10 @@ export function BodyCompositionCard() {
 
   const latest = entries?.[0];
   const previous = entries?.[1];
+  // Mean of the newest weigh-ins in a row (within an hour): the scale's fat, muscle and water
+  // values scatter by several kg between them, the mean scatters less.
+  const sessionAverage = useMemo(() => (entries ? latestSessionAverage(entriesToReadings(entries)) : null), [entries]);
+  const hasAverage = !!sessionAverage && sessionAverage.readings >= 2;
 
   const handleAdd = async () => {
     const weight = Number(weightKg);
@@ -104,7 +116,7 @@ export function BodyCompositionCard() {
                 <StatTile
                   className="p-3"
                   label={BODY_METRIC_INFO.bodyFatPercent.label}
-                  value={<>{latest.bodyFatPercent} <Trend current={latest.bodyFatPercent} previous={previous?.bodyFatPercent} /></>}
+                  value={latest.bodyFatPercent}
                   unit="%"
                   sub={categorizeBodyFat(latest.bodyFatPercent, profile?.gender) ?? undefined}
                   info={<CalcInfoButton id="body-fat-category" />}
@@ -114,7 +126,7 @@ export function BodyCompositionCard() {
                 <StatTile
                   className="p-3"
                   label={BODY_METRIC_INFO.muscleMassKg.label}
-                  value={<>{latest.muscleMassKg} <Trend current={latest.muscleMassKg} previous={previous?.muscleMassKg} /></>}
+                  value={latest.muscleMassKg}
                   unit="kg"
                 />
               )}
@@ -122,11 +134,20 @@ export function BodyCompositionCard() {
                 <StatTile
                   className="p-3"
                   label={BODY_METRIC_INFO.bodyWaterPercent.label}
-                  value={<>{latest.bodyWaterPercent} <Trend current={latest.bodyWaterPercent} previous={previous?.bodyWaterPercent} /></>}
+                  value={latest.bodyWaterPercent}
                   unit="%"
                 />
               )}
             </div>
+            {hasAverage && sessionAverage && (
+              <p className="mt-3 text-small text-text-2">
+                Mittel aus {sessionAverage.readings} Messungen ({clock(sessionAverage.from)}–{clock(sessionAverage.to)}):
+                {sessionAverage.bodyFatPercent !== null && ` Körperfett ${num(sessionAverage.bodyFatPercent)} %`}
+                {sessionAverage.bodyFatRange !== null && ` (Spanne ${num(sessionAverage.bodyFatRange)})`}
+                {sessionAverage.muscleMassKg !== null && ` · Muskelmasse ${num(sessionAverage.muscleMassKg)} kg`}
+                {sessionAverage.bodyWaterPercent !== null && ` · Wasser ${num(sessionAverage.bodyWaterPercent)} %`}
+              </p>
+            )}
           </Card>
         ) : (
           <Card>
@@ -134,6 +155,14 @@ export function BodyCompositionCard() {
           </Card>
         )}
       </div>
+
+      {latest && !profileLoading && (
+        <BodyFatEstimateCard
+          latest={latest}
+          profile={profile}
+          average={hasAverage && sessionAverage?.bodyFatPercent != null ? { bodyFatPercent: sessionAverage.bodyFatPercent, readings: sessionAverage.readings } : undefined}
+        />
+      )}
 
       <Card title="Was bedeuten die Werte?">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">

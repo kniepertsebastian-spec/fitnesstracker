@@ -19,3 +19,6 @@ export * from "./schemas/stretching.schema.js";
 export * from "./schemas/cardioPlan.schema.js";
 export * from "./schemas/muscleVolume.schema.js";
 export * from "./schemas/activity.schema.js";
+export * from "./schemas/scaleDetails.schema.js";
+export * from "./scaleAnalysis.js";
+export * from "./bodyFat.js";
