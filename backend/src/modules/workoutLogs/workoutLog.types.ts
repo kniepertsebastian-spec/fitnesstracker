@@ -14,6 +14,7 @@ export function toWorkoutLogDto(log: WorkoutLogWithExercise): WorkoutLogDto {
     // Prisma.Decimal doesn't serialize to a plain JSON number on its own — convert explicitly.
     weightKg: Number(log.weightKg),
     rir: log.rir,
+    note: log.note,
     supersetGroupId: log.supersetGroupId,
     performedAt: log.performedAt.toISOString(),
     createdAt: log.createdAt.toISOString(),

@@ -1,17 +1,9 @@
 import type { PrismaClient, TrainingPhase } from "@prisma/client";
+import type { ColdStartInput, EquipmentTag, SplitPreference } from "@fitnesstracker/shared";
+import { isExcluded, type ExerciseExclusions } from "./injuryFilter.js";
+import { equipmentTagOf, selectBalancedCatalog, type PhaseDefaults, type SplitDay } from "./planAssembly.js";
 
-export interface ColdStartInput {
-  frequencyPerWeek: number;
-  equipment: "homegym" | "dumbbells" | "fullgym";
-  experience: "beginner" | "intermediate" | "advanced";
-  goal: "muscle_gain" | "strength" | "endurance" | "fat_loss" | "general_fitness";
-  sessionDurationMinutes: number;
-  equipmentDetails?: string;
-  priorityMuscles?: string;
-  preferredExercises?: string;
-  avoidedExercises?: string;
-  limitations?: string;
-}
+export type { ColdStartInput };
 
 export interface CatalogEntry {
   id: string;
@@ -30,42 +22,31 @@ const PHASE_GUIDANCE: Record<TrainingPhase, string> = {
   NEGATIV:
     "Exzentrische Überlastung & Maximalkraft: 4-5 Sätze, 4-6 Wiederholungen, 3-4 Sekunden " +
     "langsame Negativbewegung pro Wiederholung.",
+  DAILY: "Daily training routine: focus on sustainable daily volume, mobility/core or light full-body work without excessive CNS fatigue.",
+  CUSTOM_1: "Custom training phase: balanced hypertrophy and progressive overload (8-12 reps).",
+  CUSTOM_2: "Custom training phase: balanced hypertrophy and progressive overload (8-12 reps).",
+  CUSTOM_3: "Custom training phase: balanced hypertrophy and progressive overload (8-12 reps).",
+  CUSTOM_4: "Custom training phase: balanced hypertrophy and progressive overload (8-12 reps).",
+  CUSTOM_5: "Custom training phase: balanced hypertrophy and progressive overload (8-12 reps).",
+};
+
+// Fallback values when the model omits a field or an exercise is filled in server-side —
+// the same ranges PHASE_GUIDANCE asks for.
+export const PHASE_DEFAULTS: Record<TrainingPhase, PhaseDefaults> = {
+  AUFBAU: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
+  MUSKELAUSDAUER: { sets: 3, repMin: 15, repMax: 20, rir: 2, restSeconds: 60 },
+  NEGATIV: { sets: 4, repMin: 4, repMax: 6, rir: 2, restSeconds: 180 },
+  DAILY: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
+  CUSTOM_1: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
+  CUSTOM_2: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
+  CUSTOM_3: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
+  CUSTOM_4: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
+  CUSTOM_5: { sets: 3, repMin: 8, repMax: 12, rir: 2, restSeconds: 120 },
 };
 
 // Per split day, not a total — a 3-day Push/Pull/Legs plan gets 18 exercises (6 per day), not 6
 // for the whole week. Matches how a real training split actually reads.
 const EXERCISES_PER_DAY = 6;
-const MAX_CATALOG_ENTRIES = 150;
-
-// Same day-naming as `frontend/src/data/recommendedSplits.ts`'s RECOMMENDED_SPLITS, so a
-// generated plan reads consistently with the app's own curated split templates. Repeated day
-// types within a week (e.g. two Push days) get an A/B suffix so they're distinct `dayLabel`s —
-// PlanExercise's unique index is (userId, phase, exerciseId, dayLabel), so two same-named days
-// would otherwise collide if the same exercise got picked for both.
-const SPLIT_TEMPLATES: Record<number, string[]> = {
-  1: ["Ganzkörper"],
-  2: ["Oberkörper", "Unterkörper"],
-  3: ["Push (Brust, Schultern, Trizeps)", "Pull (Rücken, Bizeps)", "Legs (Beine)"],
-  4: ["Oberkörper A", "Unterkörper A", "Oberkörper B", "Unterkörper B"],
-  5: ["Brust", "Rücken", "Beine", "Schultern", "Arme"],
-  6: [
-    "Push A (Brust, Schultern, Trizeps)",
-    "Pull A (Rücken, Bizeps)",
-    "Beine A",
-    "Push B (Brust, Schultern, Trizeps)",
-    "Pull B (Rücken, Bizeps)",
-    "Beine B",
-  ],
-};
-
-// Resolves a weekly training frequency to a concrete split — the actual fix for "3x/week
-// generated one full-body day of 6 exercises instead of a 3-day Push/Pull/Legs split": the
-// frequency answer from the cold-start modal was collected but never used to shape the plan
-// structure, only mentioned as a line of prompt context the model was free to ignore.
-export function resolveSplitDays(frequencyPerWeek: number): string[] {
-  const clamped = Math.min(6, Math.max(1, Math.round(frequencyPerWeek)));
-  return SPLIT_TEMPLATES[clamped];
-}
 
 const RECENT_FREQUENCY_WINDOW_MS = 28 * 24 * 60 * 60 * 1000; // 4 weeks
 const DEFAULT_WARM_START_FREQUENCY = 3;
@@ -88,14 +69,7 @@ export async function estimateWeeklyFrequency(prisma: PrismaClient, userId: stri
 }
 // Roadmap's exercise categories the generator is allowed to draw from — same "real, trainable
 // movements" set the daily-challenge/plan-exercise features already scope themselves to.
-const GENERATOR_CATEGORIES = ["strength", "plyometrics", "olympic weightlifting", "strongman"];
-
-const EQUIPMENT_TAGS_BY_CHOICE: Record<ColdStartInput["equipment"], string[]> = {
-  homegym: ["body only", "dumbbell", "bands", "kettlebells"],
-  dumbbells: ["dumbbell", "body only"],
-  // Empty = no equipment filter at all; a full gym has everything.
-  fullgym: [],
-};
+const GENERATOR_CATEGORIES = ["strength", "powerlifting", "plyometrics", "olympic weightlifting", "strongman"];
 
 function toCatalogEntry(ex: {
   id: string;
@@ -107,66 +81,45 @@ function toCatalogEntry(ex: {
   return { id: ex.id, name: ex.nameDe ?? ex.name, equipment: ex.equipment, primaryMuscles: ex.primaryMuscles };
 }
 
-const CATALOG_SELECT = {
-  id: true,
-  name: true,
-  nameDe: true,
-  equipment: true,
-  primaryMuscles: true,
-} as const;
+export interface CatalogSelection {
+  // What the prompt shows (German name where known).
+  entries: CatalogEntry[];
+  // Raw rows (English name for the staple ranking), for assembleDays.
+  rows: { id: string; name: string; nameDe: string | null; equipment: string | null; primaryMuscles: string[] }[];
+  loggedCounts: Map<string, number>;
+}
 
-// Caps and biases the exercise list injected into the prompt (never the full 870+ catalog —
-// that would be an unreasonable token cost for every generation). Cold start filters by the
-// equipment the user actually said they have; warm start biases toward exercises the user has
-// actually trained before (relevant, less likely to be unfamiliar), backfilled with general
-// strength/plyometric movements up to the cap so there's still enough variety for a full plan.
-export async function selectCatalogSubset(
+// The exercise list injected into the prompt (never the full 870+ catalog — that would be an
+// unreasonable token cost for every generation): only allowed equipment, nothing an injury rules
+// out, and an even share per muscle the split trains — see selectBalancedCatalog.
+export async function selectCatalog(
   prisma: PrismaClient,
   userId: string,
-  coldStart: ColdStartInput | null,
-): Promise<CatalogEntry[]> {
-  if (coldStart) {
-    const equipmentTags = EQUIPMENT_TAGS_BY_CHOICE[coldStart.equipment];
-    const exercises = await prisma.exercise.findMany({
-      where: {
-        category: { in: GENERATOR_CATEGORIES },
-        ...(equipmentTags.length > 0 ? { equipment: { in: equipmentTags } } : {}),
-      },
-      select: CATALOG_SELECT,
-      take: MAX_CATALOG_ENTRIES,
-    });
-    return exercises.map(toCatalogEntry);
-  }
-
-  const logged = await prisma.workoutLog.groupBy({
-    by: ["exerciseId"],
-    where: { userId, deletedAt: null },
-    _count: { _all: true },
-  });
-  const loggedIds = logged
-    .sort((a, b) => b._count._all - a._count._all)
-    .map((l) => l.exerciseId);
-
-  const loggedExercises = await prisma.exercise.findMany({
-    where: { id: { in: loggedIds } },
-    select: CATALOG_SELECT,
-  });
-  // Preserve the frequency-descending order from `loggedIds` — `findMany({ where: { in } })`
-  // doesn't guarantee result order matches the id list.
-  const loggedById = new Map(loggedExercises.map((e) => [e.id, e]));
-  const orderedLogged = loggedIds.map((id) => loggedById.get(id)).filter((e) => e !== undefined);
-
-  const remaining = MAX_CATALOG_ENTRIES - orderedLogged.length;
-  const fillerExercises =
-    remaining > 0
-      ? await prisma.exercise.findMany({
-          where: { id: { notIn: loggedIds }, category: { in: GENERATOR_CATEGORIES } },
-          select: CATALOG_SELECT,
-          take: remaining,
-        })
-      : [];
-
-  return [...orderedLogged, ...fillerExercises].map(toCatalogEntry);
+  equipment: EquipmentTag[],
+  days: SplitDay[],
+  exclusions: ExerciseExclusions = { muscles: [], nameKeywords: [] },
+  // Plateaued exercises: kept out of the catalog so the model has to pick variants instead.
+  excludedIds: ReadonlySet<string> = new Set(),
+): Promise<CatalogSelection> {
+  const allowedTags = new Set(equipment);
+  const [rows, logged] = await Promise.all([
+    prisma.exercise.findMany({
+      where: { category: { in: GENERATOR_CATEGORIES }, isActive: true },
+      select: { id: true, name: true, nameDe: true, equipment: true, primaryMuscles: true, category: true },
+    }),
+    prisma.workoutLog.groupBy({
+      by: ["exerciseId"],
+      where: { userId, deletedAt: null },
+      _count: { _all: true },
+    }),
+  ]);
+  const loggedCounts = new Map(logged.map((l) => [l.exerciseId, l._count._all]));
+  const usable = rows.filter(
+    (row) => allowedTags.has(equipmentTagOf(row.equipment)) && !isExcluded(row, exclusions) && !excludedIds.has(row.id),
+  );
+  const muscles = [...new Set(days.flatMap((d) => d.muscles))];
+  const picked = selectBalancedCatalog(usable, muscles, loggedCounts, userId);
+  return { entries: picked.map(toCatalogEntry), rows: picked, loggedCounts };
 }
 
 const EIGHT_WEEKS_MS = 8 * 7 * 24 * 60 * 60 * 1000;
@@ -220,10 +173,39 @@ export async function buildPlanRemarksContext(prisma: PrismaClient, userId: stri
     : "";
 }
 
-const EQUIPMENT_LABELS: Record<ColdStartInput["equipment"], string> = {
-  homegym: "Homegym (Kurzhanteln, Bänder, eigenes Körpergewicht)",
-  dumbbells: "Nur Kurzhanteln",
-  fullgym: "Vollausgestattetes Fitnessstudio",
+// Free text that can name an injury: the standing remarks on the plan (also the only place a
+// warm-start user — who skips the cold-start questionnaire — can state one).
+export async function loadLimitationTexts(
+  prisma: PrismaClient,
+  userId: string,
+  coldStart: ColdStartInput | null,
+): Promise<string[]> {
+  const plan = await prisma.trainingPlan.findUnique({ where: { userId }, select: { remarks: true } });
+  return [plan?.remarks, coldStart?.limitations, coldStart?.avoidedExercises].filter(
+    (t): t is string => !!t,
+  );
+}
+
+const EQUIPMENT_LABELS: Record<EquipmentTag, string> = {
+  machine: "Geräte/Maschinen",
+  dumbbell: "Kurzhanteln",
+  barbell: "Langhantel/SZ-Stange",
+  cable: "Kabelturm",
+  "body only": "ohne Geräte (Körpergewicht)",
+  kettlebells: "Kettlebells",
+  bands: "Bänder",
+  "medicine ball": "Medizinball",
+  "exercise ball": "Gymnastikball",
+  "foam roll": "Faszienrolle",
+  other: "Sonstiges",
+};
+const SPLIT_LABELS: Record<SplitPreference, string> = {
+  auto: "keine Vorgabe",
+  full_body: "Ganzkörper",
+  upper_lower: "Oberkörper/Unterkörper",
+  push_pull_legs: "Push/Pull/Beine",
+  bro_split: "Bro-Split (ein Muskel pro Tag)",
+  custom: "individuell definierter Split",
 };
 const EXPERIENCE_LABELS: Record<ColdStartInput["experience"], string> = {
   beginner: "Anfänger",
@@ -238,15 +220,16 @@ const GOAL_LABELS: Record<ColdStartInput["goal"], string> = {
   general_fitness: "allgemeine Fitness",
 };
 
-// Cold-start context from the 4-step frontend modal, for a user without enough history for
-// buildWarmStartContext to say anything useful.
+// Questionnaire answers as prompt context.
 export function buildColdStartContext(input: ColdStartInput): string {
   return (
     `Aktuelle Angaben des Nutzers. ` +
     `Hauptziel: ${GOAL_LABELS[input.goal]}. ` +
     `Trainingsfrequenz: ${input.frequencyPerWeek}x/Woche. ` +
+    `Gewünschter Split: ${SPLIT_LABELS[input.split]}. ` +
+    (input.split === "custom" ? `Vom Nutzer definierte Trainingstage:\\n${input.customSplit ?? "keine Angaben"}. ` : "") +
     `Verfügbare Zeit pro Einheit: ${input.sessionDurationMinutes} Minuten. ` +
-    `Verfügbares Equipment: ${EQUIPMENT_LABELS[input.equipment]}. ` +
+    `Erlaubtes Equipment: ${input.equipment.map((t) => EQUIPMENT_LABELS[t]).join(", ")} (alles andere ist ausgeschlossen). ` +
     `Konkretes Equipment: ${input.equipmentDetails?.trim() || "keine weiteren Angaben"}. ` +
     `Erfahrungsgrad: ${EXPERIENCE_LABELS[input.experience]}. ` +
     `Priorisierte Muskelgruppen: ${input.priorityMuscles?.trim() || "keine"}. ` +
@@ -268,43 +251,49 @@ export function exercisesPerDayForDuration(minutes?: number): number {
 export function buildSystemPrompt(
   phase: TrainingPhase,
   catalog: CatalogEntry[],
-  splitDays: string[],
+  days: SplitDay[],
   exercisesPerDay = EXERCISES_PER_DAY,
 ): string {
   const catalogLines = catalog
     .map((c) => `${c.id} | ${c.name} | ${c.equipment ?? "-"} | ${c.primaryMuscles.join(",") || "-"}`)
     .join("\n");
-  const dayList = splitDays.map((d) => `"${d}"`).join(", ");
-  const totalExercises = splitDays.length * exercisesPerDay;
-
-  const splitInstruction =
-    splitDays.length === 1
-      ? `Es wird an einem Tag pro Trainingszyklus trainiert ("${splitDays[0]}") — wähle Übungen für den ganzen Körper.`
-      : `Es wird an ${splitDays.length} verschiedenen Tagen pro Trainingszyklus trainiert. Jeder Tag hat einen eigenen Fokus, erkennbar am Namen: ${dayList}. Wähle für jeden Tag Übungen, die zu genau diesem Fokus passen (z. B. bei einem "Push"-Tag nur drückende Bewegungen für Brust/Schultern/Trizeps, bei "Beine" nur Bein-Übungen) — kein Tag darf Übungen eines anderen Tages enthalten.`;
+  const dayLines = days.map((d) => `- "${d.label}": Muskeln ${d.muscles.join(", ")}`).join("\n");
+  const totalExercises = days.length * exercisesPerDay;
+  const defaults = PHASE_DEFAULTS[phase];
 
   return `Du bist ein erfahrener Fitness-Trainer-Assistent, der einen Trainingsplan für die Phase "${phase}" erstellt.
 
 Phasen-Vorgabe: ${PHASE_GUIDANCE[phase]}
 
-Passe Übungsanzahl, Satzanzahl und Übungskomplexität an das Hauptziel und die verfügbare Zeit pro
-Einheit an. Bevorzugte Übungen sind Wünsche, zu vermeidende Übungen und gesundheitliche
-Einschränkungen sind Ausschlusskriterien. Priorisierte Muskelgruppen dürfen mehr sinnvolles Volumen
-erhalten, ohne dadurch automatisch erkannte Gegenspieler-Asymmetrien weiter zu verstärken.
+Passe Übungsauswahl, Satzanzahl und Komplexität an Hauptziel, Erfahrung und verfügbare Zeit an.
+Bevorzugte Übungen sind Wünsche, zu vermeidende Übungen und gesundheitliche Einschränkungen sind
+Ausschlusskriterien. Priorisierte Muskelgruppen dürfen mehr sinnvolles Volumen erhalten, ohne
+automatisch erkannte Gegenspieler-Asymmetrien weiter zu verstärken. Beginne jeden Tag mit den
+schweren Mehrgelenksübungen, danach Isolationsübungen.
 
-Trainingsplan-Struktur: ${splitInstruction}
+Trainingstage (jeder Tag trainiert NUR die genannten Muskeln, gemessen an der ersten Muskelgruppe
+einer Übung im Katalog):
+${dayLines}
 
-GESUNDHEIT UND EINSCHRÄNKUNGEN: Die vom Nutzer genannten körperlichen Einschränkungen sind
-harte Ausschlusskriterien. Wähle keine Übung, die das betroffene Gelenk oder die betroffene
-Körperregion direkt oder indirekt stark belastet. Berücksichtige auch Sekundärbelastungen (z. B.
-schulterintensive Brust-/Drückübungen bei Schulterproblemen). Wähle im Zweifel eine gelenkschonende
-Alternative aus dem Katalog; Sicherheit hat Vorrang vor Split-Vollständigkeit und Übungsvielfalt.
+GESUNDHEIT UND EINSCHRÄNKUNGEN: Die vom Nutzer genannten körperlichen Einschränkungen sind harte
+Ausschlusskriterien. Wähle keine Übung, die die betroffene Körperregion direkt oder indirekt stark
+belastet (auch Sekundärbelastungen). Sicherheit hat Vorrang vor Vollständigkeit und Vielfalt.
 
-WICHTIG — Übungsauswahl: Wähle AUSSCHLIESSLICH Übungen aus der folgenden Liste (Format: ID | Name | Equipment | Muskelgruppen). Verwende niemals eine ID, die nicht in dieser Liste steht, und erfinde keine neuen Übungen — nur die exakten IDs aus der Liste sind gültig.
+WICHTIG — Übungsauswahl: Wähle AUSSCHLIESSLICH Übungen aus der folgenden Liste (Format: ID | Name |
+Equipment | Muskelgruppen). Verwende niemals eine ID, die nicht in dieser Liste steht. Pro Tag keine
+Übung doppelt.
 
 ${catalogLines}
 
 Antworte AUSSCHLIESSLICH mit validem JSON in exakt diesem Format, ohne Freitext davor oder danach:
-{"items": [{"day": "<einer der Tage: ${dayList}>", "exerciseId": "<ID aus der Liste oben>", "targetSets": <Zahl>, "targetReps": <Zahl>, "order": <Zahl ab 0, neu beginnend pro Tag>}]}
+{"rationale": "<2-4 Sätze auf Deutsch: warum dieser Aufbau zu Ziel und Angaben passt>",
+ "items": [{"day": "<exakter Tagesname>", "exerciseId": "<ID aus der Liste>", "targetSets": <Zahl>,
+ "repRangeMin": <Zahl>, "repRangeMax": <Zahl>, "targetRir": <0-5>, "restSeconds": <Satzpause in Sekunden>,
+ "cue": "<ein kurzer Technik-Hinweis auf Deutsch, max. 120 Zeichen>",
+ "alternativeExerciseId": "<ID einer gleichwertigen Ersatzübung aus der Liste, gleiche Muskelgruppe, oder null>",
+ "order": <Zahl ab 0, neu beginnend pro Tag>}]}
 
-Wähle für JEDEN der ${splitDays.length} Tage genau ${exercisesPerDay} passende Übungen für dessen Fokus (insgesamt genau ${totalExercises} Einträge), mit targetSets/targetReps passend zur Phasen-Vorgabe oben. Das Feld "day" muss exakt einem der oben genannten Tagesnamen entsprechen.`;
+Wähle für JEDEN der ${days.length} Tage genau ${exercisesPerDay} Übungen (insgesamt ${totalExercises} Einträge).
+Richtwerte dieser Phase: ${defaults.sets} Sätze, ${defaults.repMin}-${defaults.repMax} Wiederholungen,
+RIR ${defaults.rir}, ${defaults.restSeconds} s Pause — Grundübungen eher längere, Isolationsübungen kürzere Pausen.`;
 }

@@ -15,6 +15,9 @@ env:
   JWT_ACCESS_SECRET: ci-access-secret-not-a-real-secret
   JWT_REFRESH_SECRET: ci-refresh-secret-not-a-real-secret
   SETUP_TOKEN: ci-setup-token-not-real
+  # Each E2E scenario registers and logs in its own account from the same IP; production keeps
+  # the default of 5 per minute (backend/src/config/env.ts).
+  AUTH_RATE_LIMIT_PER_MINUTE: "100"
 
 jobs:
   # Runs on every push (any branch) and every PR — Lint, Typecheck, Unit Tests, Build.
@@ -33,6 +36,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Warning only (like Lighthouse in the other repos): an advisory without a fix available
+      # (e.g. one that needs a major upgrade) must not block every push, but it shows up here.
+      - name: Dependency audit (warning)
+        continue-on-error: true
+        run: pnpm audit --prod --audit-level=high
+
       # backend and frontend both import from @fitnesstracker/shared's build output, not its
       # source — same as every local dev script (see dev:backend/dev:frontend in package.json).
       - run: pnpm run build:shared
@@ -47,6 +56,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: UI tokens (no raw colors / legacy palettes outside components/ui)
+        run: pnpm run check:ui
+
       - name: Typecheck
         run: pnpm typecheck
 
@@ -55,6 +67,11 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      # The production Caddyfile carries the cache and security headers (CSP, immutable assets).
+      # A typo there would only show up at deploy time — validate it with the image prod runs.
+      - name: Validate Caddyfile
+        run: docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 
   # Only on PRs — brings up a real Postgres + backend and runs the offline-sync Playwright suite
   # (frontend/e2e/) against a production build, covering integration, E2E and offline-sync

@@ -53,6 +53,14 @@ export async function login(page: Page, user: E2eUser): Promise<string> {
     page.click('button[type="submit"]'),
   ]);
   await page.waitForURL("/");
+  // The training table lives in the Fitnesstagebuch, not on the dashboard — client-side nav
+  // (not goto) so the in-memory access token survives.
+  await openNav(page, "Fitnesstagebuch");
+  await page.waitForURL("/diary");
+  // The diary is a lazy chunk that loads its data on mount, and `waitForURL` returns as soon as
+  // the URL changes. Let that settle: tests that go offline right after login would otherwise
+  // abort the page's own first requests (e.g. the exercise list the create dialog needs).
+  await page.waitForLoadState("networkidle");
   const body = await response.json();
   return body.accessToken as string;
 }
@@ -92,17 +100,34 @@ export async function goOnline(page: Page, context: BrowserContext) {
 }
 
 // Compact status pill in the header — see SyncStatusIndicator.tsx. Always shows exactly one of
+// Clicks a main-menu entry — via the mobile menu sheet below 1024 px, directly in the sidebar above.
+export async function openNav(page: Page, name: string) {
+  const menuButton = page.getByRole("button", { name: "Menü öffnen" });
+  const nav = page.getByRole("navigation", { name: "Hauptmenü" });
+  // Pages are lazy chunks and bring their own shell: right after a navigation neither the menu
+  // button (narrow) nor the sidebar (wide) exists yet. Wait for one of them before deciding how
+  // to reach the menu — `isVisible()` alone doesn't wait and skipped the click on narrow screens.
+  await expect(menuButton.or(nav).filter({ visible: true }).first()).toBeVisible();
+  if (await menuButton.isVisible()) await menuButton.click();
+  await nav.getByRole("link", { name }).filter({ visible: true }).first().click();
+}
+
+// Fitnesstagebuch and Historie share one menu entry; the history is the "Verlauf" tab.
+export async function openHistory(page: Page) {
+  await openNav(page, "Fitnesstagebuch");
+  await page.getByRole("navigation", { name: "Tagebuch" }).getByRole("link", { name: "Verlauf" }).click();
+}
+
 // Offline / Synchronisiert(…) / N ausstehend / N fehlgeschlagen, so matching on that text set is
 // an unambiguous way to find it regardless of which state it's currently in.
 export function syncPill(page: Page) {
   return page.locator("header button").filter({ hasText: /Synchronisiert|Offline|ausstehend|fehlgeschlagen/ }).first();
 }
 
-// The "+ Satz" dialog (create and edit alike) is the only element on the page using this exact
-// fixed-fullscreen-overlay class combination — a stable anchor without needing test ids sprinkled
-// through production markup.
+// The "Satz hinzufügen"/"Satz bearbeiten" dialog (create and edit alike) — the only dialog on the
+// diary page unless something else is open.
 export function workoutLogDialog(page: Page) {
-  return page.locator("div.fixed.inset-0.z-10");
+  return page.getByRole("dialog");
 }
 
 export async function serverWorkoutLogs(

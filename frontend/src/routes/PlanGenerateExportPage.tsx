@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import type { TrainingPhase } from "@fitnesstracker/shared";
 import { AppShell } from "../components/layout/AppShell";
 import { AiPlanGeneratorCard } from "../components/trainingPlan/AiPlanGeneratorCard";
 import { PlanExportImportCard } from "../components/trainingPlan/PlanExportImportCard";
 import { PhaseTabs } from "../components/trainingPlan/PhaseTabs";
 import { FormAnalysisCard } from "../components/trainingPlan/FormAnalysisCard";
+import { ButtonLink, Skeleton } from "../components/ui";
 import { useTrainingPlan } from "../hooks/useTrainingPlan";
 
 // Split out of TrainingPlanPage (/plan) — that page had grown overloaded with the manual
@@ -24,19 +24,19 @@ export function PlanGenerateExportPage() {
 
   return (
     <AppShell>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Plan generieren &amp; exportieren</h1>
-        <Link to="/plan" className="text-xs text-violet-400 hover:underline">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h1 className="text-h1 text-text lg:text-h1-lg">Plan generieren &amp; exportieren</h1>
+        <ButtonLink to="/plan" variant="ghost">
           Zum Plan
-        </Link>
+        </ButtonLink>
       </div>
 
       {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
+        <Skeleton className="h-48 w-full" />
       ) : !plan ? (
-        <p className="text-ink-500">Kein Plan gefunden.</p>
+        <p className="text-text-subtle">Kein Plan gefunden.</p>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 lg:max-w-2xl">
           {selectedPhase && <PhaseTabs selected={selectedPhase} onSelect={setSelectedPhase} />}
           {selectedPhase && <AiPlanGeneratorCard phase={selectedPhase} />}
 

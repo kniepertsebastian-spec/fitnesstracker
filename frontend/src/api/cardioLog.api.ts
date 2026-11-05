@@ -5,6 +5,10 @@ export function listTodayCardioLogsRequest() {
   return apiFetch<{ items: CardioLogDto[] }>("/cardio-logs");
 }
 
+export function listWeekCardioLogsRequest() {
+  return apiFetch<{ items: CardioLogDto[] }>("/cardio-logs/week");
+}
+
 export function createCardioLogRequest(input: CreateCardioLogInput) {
   return apiFetch<CardioLogDto>("/cardio-logs", { method: "POST", body: input });
 }

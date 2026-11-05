@@ -1,8 +1,18 @@
-export type ProgressRange = "4w" | "3m" | "1y" | "all";
+export type ProgressRange = "4w" | "3m" | "6m" | "1y" | "all";
+
+// Short labels for the segmented control.
+export const PROGRESS_RANGE_SHORT: Record<ProgressRange, string> = {
+  "4w": "4W",
+  "3m": "3M",
+  "6m": "6M",
+  "1y": "1J",
+  all: "Alles",
+};
 
 export const PROGRESS_RANGE_LABELS: Record<ProgressRange, string> = {
   "4w": "4 Wochen",
   "3m": "3 Monate",
+  "6m": "6 Monate",
   "1y": "1 Jahr",
   all: "Gesamt",
 };
@@ -10,6 +20,7 @@ export const PROGRESS_RANGE_LABELS: Record<ProgressRange, string> = {
 const RANGE_DAYS: Record<Exclude<ProgressRange, "all">, number> = {
   "4w": 28,
   "3m": 90,
+  "6m": 182,
   "1y": 365,
 };
 

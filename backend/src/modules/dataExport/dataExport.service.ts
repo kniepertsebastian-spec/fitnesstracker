@@ -5,7 +5,7 @@ import { listGoals, computeCurrentValue } from "../goals/goal.service.js";
 import { toGoalDto } from "../goals/goal.types.js";
 import { getCurrentTrainingPlan } from "../trainingPlan/trainingPlan.service.js";
 import { toTrainingPlanDto } from "../trainingPlan/trainingPlan.types.js";
-import { toPlanExerciseDto } from "../trainingPlan/planExercise.types.js";
+import { planExerciseInclude, toPlanExerciseDto } from "../trainingPlan/planExercise.types.js";
 import { listEntries } from "../bodyComposition/bodyComposition.service.js";
 import { toBodyCompositionEntryDto } from "../bodyComposition/bodyComposition.types.js";
 import { toCardioLogDto } from "../cardioLogs/cardioLog.types.js";
@@ -45,13 +45,14 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     supplements,
     profile,
     progressPhotos,
+    cardioPlanDays,
   ] = await Promise.all([
     listWorkoutLogs(prisma, userId, {}),
     listGoals(prisma, userId),
     getCurrentTrainingPlan(prisma, userId),
     prisma.planExercise.findMany({
       where: { userId },
-      include: { exercise: true },
+      include: planExerciseInclude,
       orderBy: [{ phase: "asc" }, { order: "asc" }],
     }),
     listEntries(prisma, userId),
@@ -59,6 +60,7 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     listSupplements(prisma, userId),
     getProfile(prisma, userId),
     listPhotos(prisma, userId),
+    prisma.cardioPlanDay.findMany({ where: { userId }, orderBy: [{ phase: "asc" }, { dayLabel: "asc" }] }),
   ]);
 
   const goalsWithCurrentValue = await Promise.all(
@@ -80,6 +82,8 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     goals: goalsWithCurrentValue,
     bodyCompositionEntries: bodyCompositionEntries.map(toBodyCompositionEntryDto),
     cardioLogs: cardioLogs.map(toCardioLogDto),
+    // Own cardio plan versions (F9); days without a row use the rule-based suggestion.
+    cardioPlanDays: cardioPlanDays.map((d) => ({ phase: d.phase, dayLabel: d.dayLabel, items: d.items })),
     supplements: supplements.map(toSupplementDto),
     // Metadata only, no image bytes — see the module comment above.
     progressPhotos: progressPhotos.map(toProgressPhotoDto),
@@ -91,7 +95,7 @@ function csvEscape(value: string | number): string {
   return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 
-const WORKOUT_CSV_HEADERS = ["Datum", "Übung", "Satz", "Wiederholungen", "Gewicht (kg)", "RIR", "Superset-Gruppe"];
+const WORKOUT_CSV_HEADERS = ["Datum", "Übung", "Satz", "Wiederholungen", "Gewicht (kg)", "RIR", "Superset-Gruppe", "Notiz"];
 
 // A flat, spreadsheet-friendly view of the same workout log data the JSON backup carries — the
 // roadmap explicitly calls out CSV as its own minimum requirement alongside the JSON backup,
@@ -108,6 +112,7 @@ export async function buildWorkoutLogsCsv(prisma: PrismaClient, userId: string):
       Number(log.weightKg),
       log.rir ?? "",
       log.supersetGroupId ?? "",
+      log.note ?? "",
     ]
       .map(csvEscape)
       .join(","),

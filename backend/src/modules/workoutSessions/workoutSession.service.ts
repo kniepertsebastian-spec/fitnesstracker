@@ -78,3 +78,16 @@ export async function updateWorkoutSessionStatus(
     },
   });
 }
+
+// "Weiter" on the forgotten-session prompt: the user is still training, so the 2h clock restarts
+// from now. A settled session is left alone, same as a stale status change.
+export async function keepWorkoutSessionAlive(prisma: PrismaClient, userId: string, idOrClientId: string) {
+  const existing = await findOwnedWorkoutSession(prisma, userId, idOrClientId);
+  if (TERMINAL_STATUSES.includes(existing.status)) {
+    return existing;
+  }
+  return prisma.workoutSession.update({
+    where: { id: existing.id },
+    data: { keepAliveAt: new Date(), stopPromptSentAt: null },
+  });
+}

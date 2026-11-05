@@ -4,7 +4,7 @@ import type { WorkoutLogDto, WorkoutSessionDto } from "@fitnesstracker/shared";
 // `id` is null until the row's create mutation has synced and the server assigned a real id —
 // a set logged offline is fully usable (editable, deletable) before that happens, so the app
 // can never require a server id to exist. `clientId` is the one stable identity throughout.
-export type LocalWorkoutLog = Omit<WorkoutLogDto, "id"> & { id: string | null };
+export type LocalWorkoutLog = Omit<WorkoutLogDto, "id"> & { id: string | null; accountId: string };
 
 // Same id-can-be-null-until-synced shape as LocalWorkoutLog — a session started offline is
 // immediately usable (Pause/Abbrechen/Abschließen all work locally) before it has a server id.
@@ -14,6 +14,7 @@ export type MutationOp = "create" | "update" | "delete";
 
 export interface PendingMutation {
   id?: number;
+  accountId?: string;
   clientId: string;
   op: MutationOp;
   payload: Record<string, unknown>;
@@ -26,7 +27,8 @@ export interface PendingMutation {
 // nothing a user entered offline disappears without a trace, even if it couldn't be saved.
 export interface FailedMutation {
   id?: number;
-  kind: "workoutLog" | "workoutSession";
+  accountId?: string;
+  kind: "workoutLog" | "workoutSession" | "cardioLog";
   clientId: string;
   op: MutationOp;
   // The original mutation's payload, kept so a manual retry (offline/retry.ts) can re-queue the
@@ -40,12 +42,33 @@ export interface FailedMutation {
   failedAt: string;
 }
 
+// F9: a cardio session logged (possibly offline) and not yet confirmed by the server. Create-only:
+// the training view never edits or deletes a cardio entry, so no op/collapsing is needed.
+export interface PendingCardioLog {
+  id?: number;
+  clientId: string;
+  payload: Record<string, unknown>;
+  label: string;
+  queuedAt: string;
+}
+
+// The rest timer's own end-of-rest sound, kept as a Blob (a data URL in localStorage is ~33% larger
+// and counts against its small quota). One row, key "timer".
+export interface CustomSoundRow {
+  key: string;
+  blob: Blob;
+  name: string;
+}
+
 class OfflineDb extends Dexie {
   workoutLogs!: Table<LocalWorkoutLog, string>;
   pendingMutations!: Table<PendingMutation, number>;
   workoutSessions!: Table<LocalWorkoutSession, string>;
   pendingSessionMutations!: Table<PendingMutation, number>;
   failedMutations!: Table<FailedMutation, number>;
+  pendingCardioLogs!: Table<PendingCardioLog, number>;
+  queryCache!: Table<{ key: string; value: string }, string>;
+  customSounds!: Table<CustomSoundRow, string>;
 
   constructor() {
     super("fitnesstracker-offline");
@@ -59,6 +82,23 @@ class OfflineDb extends Dexie {
     });
     this.version(3).stores({
       failedMutations: "++id, clientId, failedAt",
+    });
+    this.version(4).stores({
+      pendingCardioLogs: "++id, clientId, queuedAt",
+    });
+    // Account-scope history and its write queue. Legacy rows have no accountId and are
+    // intentionally invisible/unflushable until recreated under an authenticated account.
+    this.version(5).stores({
+      workoutLogs: "clientId, performedAt, accountId",
+      pendingMutations: "++id, clientId, queuedAt, accountId",
+      failedMutations: "++id, clientId, failedAt, accountId",
+    });
+    // Persisted React Query cache (queryClient.ts), so the app cold-starts offline with its plan.
+    this.version(6).stores({
+      queryCache: "key",
+    });
+    this.version(7).stores({
+      customSounds: "key",
     });
   }
 }

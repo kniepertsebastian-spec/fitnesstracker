@@ -1,7 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { createBodyCompositionEntrySchema, updateBodyCompositionEntrySchema } from "@fitnesstracker/shared";
-import { createEntry, deleteEntry, listEntries, updateEntry } from "./bodyComposition.service.js";
+import {
+  createBodyCompositionEntrySchema,
+  importBodyCompositionSchema,
+  updateBodyCompositionEntrySchema,
+} from "@fitnesstracker/shared";
+import { createEntry, deleteEntry, importEntries, listEntries, updateEntry } from "./bodyComposition.service.js";
 import { toBodyCompositionEntryDto } from "./bodyComposition.types.js";
 import { HttpError } from "../../errors/httpErrors.js";
 
@@ -19,6 +23,11 @@ export default async function bodyCompositionRoutes(fastify: FastifyInstance) {
     const input = createBodyCompositionEntrySchema.parse(request.body);
     const entry = await createEntry(fastify.prisma, request.user.sub, input);
     return reply.code(201).send(toBodyCompositionEntryDto(entry));
+  });
+
+  fastify.post("/body-composition/import", async (request, reply) => {
+    const input = importBodyCompositionSchema.parse(request.body);
+    return reply.send(await importEntries(fastify.prisma, request.user.sub, input));
   });
 
   fastify.patch("/body-composition/:id", async (request, reply) => {

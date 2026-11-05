@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { CreatePlanExerciseInput, ExerciseDto, PlanExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
 import { useExercises } from "../../hooks/useWorkoutLogs";
 import { useCreatePlanExercise, useUpdatePlanExercise } from "../../hooks/usePlanExercises";
+import { Button, Dialog, Field, Input, Select } from "../ui";
 
 const formSchema = z.object({
   exerciseId: z.string().uuid("Bitte eine Übung wählen"),
@@ -50,17 +51,11 @@ export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replaci
     return exercises?.filter((exercise) => exercise.name.toLocaleLowerCase("de").includes(query));
   }, [exercises, search]);
 
-  if (!open) return null;
-
   const onSubmit = async (data: FormValues) => {
     if (replacingEntry) {
       await updatePlanExercise.mutateAsync({
         id: replacingEntry.id,
-        input: {
-          exerciseId: data.exerciseId,
-          targetSets: data.targetSets,
-          targetReps: data.targetReps,
-        },
+        input: { exerciseId: data.exerciseId, targetSets: data.targetSets, targetReps: data.targetReps },
       });
     } else {
       const input: CreatePlanExerciseInput = {
@@ -77,28 +72,27 @@ export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replaci
   };
 
   return (
-    <div className="fixed inset-0 z-10 flex items-end justify-center bg-black/60 sm:items-center">
-      <div className="w-full max-w-sm rounded-t-2xl bg-ink-900 p-4 sm:rounded-2xl">
-        <h2 className="mb-1 text-lg font-semibold">
-          {replacingEntry ? "Übung ersetzen" : "Übung hinzufügen"}
-        </h2>
-        {dayLabel && <p className="mb-4 text-sm text-ink-400">Trainingstag: {dayLabel}</p>}
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-          <div>
-            <label className="mb-1 block text-sm text-ink-400">Übung</label>
-            <input
+    <Dialog
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title={replacingEntry ? "Übung ersetzen" : "Übung hinzufügen"}
+      description={dayLabel ? `Trainingstag: ${dayLabel}` : undefined}
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+        <Field label="Übung suchen">
+          {(p) => (
+            <Input
+              {...p}
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Übung suchen…"
-              aria-label="Übung suchen"
-              className="mb-2 w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
             />
-            <select
-              className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
-              {...register("exerciseId")}
-              defaultValue=""
-            >
+          )}
+        </Field>
+        <Field label="Übung" error={errors.exerciseId?.message}>
+          {(p) => (
+            <Select {...p} {...register("exerciseId")} defaultValue="">
               <option value="" disabled>
                 Übung wählen…
               </option>
@@ -107,49 +101,26 @@ export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replaci
                   {exercise.name}
                 </option>
               ))}
-            </select>
-            {errors.exerciseId && <p className="mt-1 text-sm text-red-400">{errors.exerciseId.message}</p>}
-          </div>
-
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="mb-1 block text-sm text-ink-400">Sätze (optional)</label>
-              <input
-                type="number"
-                min={1}
-                className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
-                {...register("targetSets")}
-              />
-            </div>
-            <div className="flex-1">
-              <label className="mb-1 block text-sm text-ink-400">Wdh. (optional)</label>
-              <input
-                type="number"
-                min={1}
-                className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2"
-                {...register("targetReps")}
-              />
-            </div>
-          </div>
-
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-lg border border-ink-700 py-2 text-ink-300 hover:bg-ink-800"
-            >
-              Abbrechen
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 rounded-lg bg-violet-500 py-2 font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
-            >
-              {replacingEntry ? "Ersetzen" : "Hinzufügen"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            </Select>
+          )}
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Sätze (optional)">
+            {(p) => <Input {...p} type="number" min={1} inputMode="numeric" {...register("targetSets")} />}
+          </Field>
+          <Field label="Wdh. (optional)">
+            {(p) => <Input {...p} type="number" min={1} inputMode="numeric" {...register("targetReps")} />}
+          </Field>
+        </div>
+        <div className="mt-1 flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Abbrechen
+          </Button>
+          <Button type="submit" variant="primary" disabled={isSubmitting}>
+            {replacingEntry ? "Ersetzen" : "Hinzufügen"}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

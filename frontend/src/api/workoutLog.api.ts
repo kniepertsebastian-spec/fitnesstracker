@@ -1,8 +1,15 @@
-import type { CreateWorkoutLogInput, UpdateWorkoutLogInput, WorkoutLogDto } from "@fitnesstracker/shared";
+import type {
+  CreateWorkoutLogInput,
+  UpdateWorkoutLogInput,
+  WorkoutLogDto,
+  WorkoutLogListDto,
+} from "@fitnesstracker/shared";
 import { apiFetch } from "./client";
 
-export function listWorkoutLogsRequest() {
-  return apiFetch<{ items: WorkoutLogDto[] }>("/workout-logs");
+// Without `updatedSince`: the whole history; with it: only what changed since (delta sync).
+export function listWorkoutLogsRequest(updatedSince?: string) {
+  const query = updatedSince ? `?updatedSince=${encodeURIComponent(updatedSince)}` : "";
+  return apiFetch<WorkoutLogListDto>(`/workout-logs${query}`);
 }
 
 export function createWorkoutLogRequest(input: CreateWorkoutLogInput) {

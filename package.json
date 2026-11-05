@@ -17,7 +17,8 @@
     "prisma:seed": "pnpm --filter backend prisma:seed",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "check:ui": "node scripts/check-ui-tokens.mjs --strict"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

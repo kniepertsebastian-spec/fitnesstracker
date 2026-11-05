@@ -1,220 +1,190 @@
 import { useState } from "react";
-import type { AiProvider, ColdStartInput, TrainingPhase } from "@fitnesstracker/shared";
+import { Link } from "react-router-dom";
+import { Sparkles } from "lucide-react";
+import type { ColdStartInput, TrainingPhase } from "@fitnesstracker/shared";
 import { ApiError } from "../../api/client";
-import { useAiSettings, useDeleteAiSettings, useSaveAiSettings } from "../../hooks/useAiSettings";
-import { useGeneratePlan } from "../../hooks/useAiPlanGenerator";
+import { useAiSettings } from "../../hooks/useAiSettings";
+import {
+  useAcceptPlanDraft,
+  useDiscardPlanDraft,
+  useGeneratePlan,
+  usePlanDraftState,
+  usePlanPreferences,
+  useRestorePlanBackup,
+} from "../../hooks/useAiPlanGenerator";
+import { PROVIDER_OPTIONS } from "../settings/AiKeyCard";
+import { Badge, Button, Callout, Card, Skeleton, Toggle } from "../ui";
 import { ColdStartModal } from "./ColdStartModal";
+import { PlanDraftPreview } from "./PlanDraftPreview";
 
-const PROVIDER_OPTIONS: { value: AiProvider; label: string }[] = [
-  { value: "ANTHROPIC", label: "Anthropic (Claude)" },
-  { value: "GEMINI", label: "Google Gemini" },
-  { value: "OPENAI", label: "OpenAI (ChatGPT)" },
-  { value: "GROQ", label: "Groq" },
-  { value: "OPENROUTER", label: "OpenRouter" },
-];
+const errorText = (err: unknown, fallback: string) => (err instanceof ApiError ? err.message : fallback);
 
-// Curated shortlist per provider so users aren't left guessing exact model IDs. OpenRouter alone
-// hosts hundreds of models under provider-prefixed IDs, so no static list can be complete for
-// it (or stay accurate as providers ship new models) — every list ends with a "custom" option
-// that reveals a free-text field instead, matching the server's own defaultModelFor fallback
-// (aiClient.ts) when the field is left empty.
-const CUSTOM_MODEL_VALUE = "__custom__";
-const PROVIDER_MODELS: Record<AiProvider, { value: string; label: string }[]> = {
-  ANTHROPIC: [
-    { value: "claude-haiku-4-5", label: "Claude Haiku 4.5 (Standard, günstig & schnell)" },
-    { value: "claude-sonnet-5", label: "Claude Sonnet 5" },
-    { value: "claude-opus-5", label: "Claude Opus 5 (stärkste Qualität)" },
-  ],
-  OPENAI: [
-    { value: "gpt-4o-mini", label: "GPT-4o mini (Standard, günstig)" },
-    { value: "gpt-4o", label: "GPT-4o" },
-    { value: "gpt-4.1", label: "GPT-4.1" },
-    { value: "gpt-4.1-mini", label: "GPT-4.1 mini" },
-    { value: "o3-mini", label: "o3-mini (Reasoning)" },
-  ],
-  GROQ: [
-    { value: "llama-3.3-70b-versatile", label: "Llama 3.3 70B Versatile (Standard)" },
-    { value: "llama-3.1-8b-instant", label: "Llama 3.1 8B Instant" },
-    { value: "gemma2-9b-it", label: "Gemma 2 9B" },
-  ],
-  OPENROUTER: [
-    { value: "openai/gpt-4o-mini", label: "OpenAI: GPT-4o mini (Standard)" },
-    { value: "anthropic/claude-3.5-sonnet", label: "Anthropic: Claude 3.5 Sonnet" },
-    { value: "meta-llama/llama-3.3-70b-instruct", label: "Meta: Llama 3.3 70B Instruct" },
-    { value: "google/gemini-2.0-flash-001", label: "Google: Gemini 2.0 Flash" },
-  ],
-  GEMINI: [
-    { value: "gemini-2.0-flash", label: "Gemini 2.0 Flash (Standard)" },
-    { value: "gemini-2.0-flash-lite", label: "Gemini 2.0 Flash-Lite" },
-    { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
-    { value: "gemini-1.5-flash", label: "Gemini 1.5 Flash" },
-  ],
-};
-
-// BYOK settings (provider + API key + optional model override) plus the "Plan generieren"
-// action for whichever phase is currently selected on /plan. The questionnaire opens for every
-// generation so current goals/preferences can be combined with any existing workout history.
+// Generating never replaces the plan directly: it produces a draft shown for review, which is
+// then accepted (the replaced plan stays restorable once) or discarded.
 export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
   const { data: settings, isLoading } = useAiSettings();
-  const saveSettings = useSaveAiSettings();
-  const deleteSettings = useDeleteAiSettings();
+  const { data: prefsData } = usePlanPreferences();
+  const { data: draftState } = usePlanDraftState(phase);
   const generatePlan = useGeneratePlan();
+  const acceptDraft = useAcceptPlanDraft(phase);
+  const discardDraft = useDiscardPlanDraft(phase);
+  const restoreBackup = useRestorePlanBackup(phase);
 
-  const [provider, setProvider] = useState<AiProvider>("OPENAI");
-  const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("");
-  const [isCustomModel, setIsCustomModel] = useState(false);
   const [coldStartOpen, setColdStartOpen] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [generatedCount, setGeneratedCount] = useState<number | null>(null);
+  const [busyDay, setBusyDay] = useState<string | null>(null);
+  const [allPhases, setAllPhases] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (isLoading || !settings) {
     return (
-      <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-        <p className="text-sm text-ink-500">KI-Trainingsplan lädt…</p>
-      </div>
+      <Card title="KI-Trainingsplan">
+        <Skeleton className="h-20 w-full" />
+      </Card>
     );
   }
 
   if (!settings.configured) {
     return (
-      <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-        <p className="text-sm font-medium text-ink-300">KI-Trainingsplan-Generator</p>
-        <p className="mt-1 text-sm text-ink-600">
-          Server hat noch keinen AI_SETTINGS_ENCRYPTION_KEY konfiguriert.
-        </p>
-      </div>
+      <Card title="KI-Trainingsplan">
+        <p className="text-small text-text-subtle">Server hat noch keinen AI_SETTINGS_ENCRYPTION_KEY konfiguriert.</p>
+      </Card>
     );
   }
 
-  const handleSave = async () => {
-    if (!apiKey.trim()) return;
-    await saveSettings.mutateAsync({ provider, apiKey: apiKey.trim(), model: model.trim() || undefined });
-    setApiKey("");
-  };
+  const preferences = prefsData?.preferences ?? null;
+  const draft = draftState?.draft ?? null;
+  const companions = [preferences?.includeCardio && "Cardio", preferences?.includeStretching && "Dehnen"].filter(Boolean);
+  const acceptedNotice =
+    companions.length > 0 ? `Plan übernommen — ${companions.join(" und ")} passend zu den neuen Tagen vorgeschlagen.` : "Plan übernommen.";
+  const busy = generatePlan.isPending || acceptDraft.isPending || discardDraft.isPending || restoreBackup.isPending;
 
-  const runGenerate = async (coldStart?: ColdStartInput) => {
-    setGenerateError(null);
-    setGeneratedCount(null);
+  const runGenerate = async (coldStart?: ColdStartInput, day?: string) => {
+    setError(null);
+    setNotice(null);
+    setBusyDay(day ?? null);
     try {
-      const result = await generatePlan.mutateAsync({ phase, coldStart });
-      if (result.status === "needs_cold_start") {
-        setColdStartOpen(true);
-      } else {
-        setColdStartOpen(false);
-        setGeneratedCount(result.items.length);
+      const result = await generatePlan.mutateAsync({ phase, coldStart, day, allPhases: allPhases || undefined });
+      setColdStartOpen(result.status === "needs_cold_start");
+      if (result.status === "draft") {
+        const parts = [
+          result.otherDrafts?.length
+            ? "Entwürfe für alle drei Phasen erstellt — wechsle zwischen den Phasen, um sie zu prüfen und zu übernehmen."
+            : null,
+          result.replacedPlateaus?.length
+            ? `Wegen Stagnation durch Varianten ersetzt: ${result.replacedPlateaus.join(", ")}.`
+            : null,
+        ].filter((part): part is string => part !== null);
+        if (parts.length > 0) setNotice(parts.join(" "));
       }
     } catch (err) {
       setColdStartOpen(false);
-      setGenerateError(err instanceof ApiError ? err.message : "Plan konnte nicht generiert werden.");
+      setError(errorText(err, "Plan konnte nicht generiert werden."));
+    } finally {
+      setBusyDay(null);
+    }
+  };
+
+  const run = async (action: () => Promise<unknown>, success: string, fallback: string) => {
+    setError(null);
+    setNotice(null);
+    try {
+      await action();
+      setNotice(success);
+    } catch (err) {
+      setError(errorText(err, fallback));
     }
   };
 
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-      <p className="text-sm font-medium text-ink-300">KI-Trainingsplan-Generator</p>
-      <p className="mt-1 text-xs text-ink-500">
-        Eigener API-Key (BYOK) — der Key verlässt den Server nie außer für Aufrufe an den
-        gewählten Anbieter.
+    <Card
+      title={
+        <span className="flex items-center gap-2">
+          <Sparkles size={16} aria-hidden className="text-magenta" /> KI-Trainingsplan
+        </span>
+      }
+      action={settings.hasApiKey ? <Badge tone="magenta">Eigener Schlüssel</Badge> : undefined}
+    >
+      <p className="text-small text-text-subtle">
+        {settings.hasApiKey
+          ? `Anbieter: ${PROVIDER_OPTIONS.find((o) => o.value === settings.provider)?.label ?? settings.provider}.`
+          : "Für die KI-Planung brauchst du einen eigenen API-Key."}{" "}
+        <Link to="/settings" className="text-accent hover:text-accent-hover">
+          Schlüssel in den Einstellungen
+        </Link>
       </p>
 
-      <div className="mt-3 flex flex-col gap-2">
-        <select
-          value={provider}
-          onChange={(e) => {
-            setProvider(e.target.value as AiProvider);
-            setModel("");
-            setIsCustomModel(false);
-          }}
-          className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
-        >
-          {PROVIDER_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <input
-          type="password"
-          placeholder={settings.hasApiKey ? "Neuen API-Key eingeben zum Ändern" : "API-Key"}
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
-        />
-        <select
-          value={isCustomModel ? CUSTOM_MODEL_VALUE : model || PROVIDER_MODELS[provider][0].value}
-          onChange={(e) => {
-            if (e.target.value === CUSTOM_MODEL_VALUE) {
-              setIsCustomModel(true);
-              setModel("");
-            } else {
-              setIsCustomModel(false);
-              setModel(e.target.value);
-            }
-          }}
-          className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
-        >
-          {PROVIDER_MODELS[provider].map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-          <option value={CUSTOM_MODEL_VALUE}>Benutzerdefiniert…</option>
-        </select>
-        {isCustomModel && (
-          <input
-            type="text"
-            placeholder="Modell-ID (z. B. mistralai/mistral-large)"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-1.5 text-sm"
+      {!draft && (
+        <div className="mt-3 flex flex-col gap-2">
+          <Toggle
+            label="Alle drei Phasen in einem Durchgang (gleiche Übungen, nur Sätze/Wdh./Tempo wechseln)"
+            checked={allPhases}
+            onChange={setAllPhases}
           />
-        )}
-        <div className="flex gap-2">
-          <button
-            onClick={handleSave}
-            disabled={!apiKey.trim() || saveSettings.isPending}
-            className="flex-1 rounded-lg bg-ink-800 py-1.5 text-sm font-medium text-ink-200 hover:bg-ink-700 disabled:opacity-50"
+          <Button
+            variant="primary"
+            fullWidth
+            disabled={!settings.hasApiKey || busy}
+            onClick={() => setColdStartOpen(true)}
           >
-            {saveSettings.isPending ? "Speichert…" : "Key speichern"}
-          </button>
-          {settings.hasApiKey && (
-            <button
-              onClick={() => deleteSettings.mutate()}
-              className="rounded-lg border border-ink-700 px-3 text-sm text-ink-500 hover:text-red-400"
+            {generatePlan.isPending ? "Generiert…" : preferences ? "Antworten prüfen & generieren" : "Plan konfigurieren & generieren"}
+          </Button>
+          {preferences && (
+            <Button
+              variant="secondary"
+              fullWidth
+              disabled={!settings.hasApiKey || busy}
+              onClick={() => runGenerate()}
             >
-              Entfernen
-            </button>
+              Mit gespeicherten Antworten generieren
+            </Button>
+          )}
+          {draftState?.hasBackup && (
+            <Button
+              variant="ghost"
+              fullWidth
+              disabled={busy}
+              onClick={() => run(() => restoreBackup.mutateAsync(), "Vorheriger Plan wiederhergestellt.", "Wiederherstellen fehlgeschlagen.")}
+            >
+              Vorherigen Plan wiederherstellen
+            </Button>
           )}
         </div>
-      </div>
+      )}
 
-      <p className="mt-2 text-xs text-ink-500">
-        {settings.hasApiKey
-          ? `Konfiguriert: ${PROVIDER_OPTIONS.find((o) => o.value === settings.provider)?.label ?? settings.provider}`
-          : "Noch kein Anbieter konfiguriert."}
-      </p>
+      {error && (
+        <Callout tone="danger" className="mt-3">
+          {error}
+        </Callout>
+      )}
+      {notice && (
+        <Callout tone="info" className="mt-3">
+          {notice}{" "}
+          <Link to="/plan" className="text-accent hover:text-accent-hover">
+            Zum Plan
+          </Link>
+        </Callout>
+      )}
 
-      <button
-        onClick={() => setColdStartOpen(true)}
-        disabled={!settings.hasApiKey || generatePlan.isPending}
-        className="mt-3 w-full rounded-lg bg-violet-500 py-2 text-sm font-medium text-ink-950 hover:bg-violet-400 disabled:opacity-50"
-      >
-        {generatePlan.isPending ? "Generiert…" : "Plan konfigurieren & generieren"}
-      </button>
-
-      {generateError && <p className="mt-2 text-sm text-red-400">{generateError}</p>}
-      {generatedCount !== null && (
-        <p className="mt-2 text-sm text-emerald-400">{generatedCount} Übungen generiert.</p>
+      {draft && (
+        <PlanDraftPreview
+          draft={draft}
+          busyDay={busyDay}
+          disabled={busy}
+          onRegenerateDay={(day) => runGenerate(undefined, day)}
+          onAccept={() => run(() => acceptDraft.mutateAsync(), acceptedNotice, "Übernehmen fehlgeschlagen.")}
+          onDiscard={() => run(() => discardDraft.mutateAsync(), "Entwurf verworfen.", "Verwerfen fehlgeschlagen.")}
+        />
       )}
 
       {coldStartOpen && (
         <ColdStartModal
+          initial={preferences}
           isSubmitting={generatePlan.isPending}
           onCancel={() => setColdStartOpen(false)}
           onSubmit={(coldStart) => runGenerate(coldStart)}
         />
       )}
-    </div>
+    </Card>
   );
 }

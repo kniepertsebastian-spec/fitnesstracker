@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateSupplementInput, UpdateSupplementInput } from "@fitnesstracker/shared";
+import type {
+  AnalyzeSupplementInput,
+  CreateSupplementInput,
+  UpdateSupplementInput,
+} from "@fitnesstracker/shared";
 import {
+  analyzeSupplementRequest,
   createSupplementRequest,
   deleteSupplementRequest,
   listSupplementsRequest,
@@ -38,5 +43,11 @@ export function useDeleteSupplement() {
   return useMutation({
     mutationFn: (id: string) => deleteSupplementRequest(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: SUPPLEMENTS_KEY }),
+  });
+}
+
+export function useAnalyzeSupplement() {
+  return useMutation({
+    mutationFn: (input: AnalyzeSupplementInput) => analyzeSupplementRequest(input),
   });
 }

@@ -1,19 +1,29 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { FileDown, MessageSquareText, MoreHorizontal, Sparkles } from "lucide-react";
 import type { TrainingPhase } from "@fitnesstracker/shared";
 import { AppShell } from "../components/layout/AppShell";
-import { PushReminderCard } from "../components/trainingPlan/PushReminderCard";
-import { PlanExerciseList } from "../components/trainingPlan/PlanExerciseList";
-import { PhaseTabs } from "../components/trainingPlan/PhaseTabs";
+import { FreeCardioCard } from "../components/plan/FreeCardioCard";
+import { PhaseHero } from "../components/plan/PhaseHero";
+import { PhaseRotation } from "../components/plan/PhaseRotation";
+import { PlanDays } from "../components/plan/PlanDays";
 import { RecommendedSplitsSection } from "../components/trainingPlan/RecommendedSplitsSection";
 import { TrainingPlanRemarksCard } from "../components/trainingPlan/TrainingPlanRemarksCard";
 import {
-  TRAINING_PHASE_LABELS,
-  usePauseTrainingPlan,
-  useRestartPhase,
-  useResumeTrainingPlan,
-  useTrainingPlan,
-} from "../hooks/useTrainingPlan";
+  Badge,
+  Card,
+  Dialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  EmptyState,
+  IconButton,
+  ListRow,
+  Skeleton,
+} from "../components/ui";
+import { useTrainingPlan } from "../hooks/useTrainingPlan";
+import { getPhaseDisplayName } from "../lib/phaseInfo";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -21,105 +31,101 @@ function formatDate(iso: string) {
 
 export function TrainingPlanPage() {
   const { data: plan, isLoading } = useTrainingPlan();
-  const pausePlan = usePauseTrainingPlan();
-  const resumePlan = useResumeTrainingPlan();
-  const restartPhase = useRestartPhase();
   const [selectedPhase, setSelectedPhase] = useState<TrainingPhase | null>(null);
+  const [remarksOpen, setRemarksOpen] = useState(false);
 
-  // Default the phase tabs to whatever phase is currently active, once the plan has loaded —
-  // but only the first time, so switching tabs to plan ahead isn't reset by a background refetch.
+  // Default the phase picker to the active phase once the plan has loaded — or fall back to
+  // currentPhase if the currently selected phase was deleted.
   useEffect(() => {
-    if (plan && selectedPhase === null) {
+    if (!plan) return;
+    const exists = plan.phases?.some((p) => p.phase === selectedPhase);
+    if (selectedPhase === null || !exists) {
       setSelectedPhase(plan.currentPhase);
     }
   }, [plan, selectedPhase]);
 
   return (
     <AppShell>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Trainingsplan</h1>
-        <Link to="/plan/generate" className="text-xs text-violet-400 hover:underline">
-          Generieren &amp; Exportieren
-        </Link>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <h1 className="text-h1 text-text lg:text-h1-lg">Trainingsplan</h1>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton aria-label="Weitere Aktionen">
+              <MoreHorizontal size={20} aria-hidden />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem asChild>
+              <Link to="/plan/generate" className="flex w-full items-center gap-2">
+                <FileDown size={16} aria-hidden className="text-text-subtle" />
+                Export &amp; Import
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem icon={<MessageSquareText size={16} aria-hidden />} onSelect={() => setRemarksOpen(true)}>
+              Bemerkungen
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {isLoading ? (
-        <p className="text-ink-500">Lädt…</p>
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
       ) : !plan ? (
-        <p className="text-ink-500">Kein Plan gefunden.</p>
+        <Card>
+          <EmptyState icon={<MoreHorizontal size={18} aria-hidden />} text="Kein Plan gefunden." />
+        </Card>
       ) : (
         <div className="flex flex-col gap-4">
-          <div className="rounded-lg border border-ink-800 bg-ink-900 p-4">
-            <p className="text-sm text-ink-500">Aktuelle Phase</p>
-            <p className="text-2xl font-semibold text-violet-400">
-              {TRAINING_PHASE_LABELS[plan.currentPhase]}
-            </p>
-            <p className="mt-2 text-sm text-ink-400">
-              Seit {formatDate(plan.phaseStartedOn)} ·{" "}
-              {plan.pausedAt
-                ? `pausiert seit ${formatDate(plan.pausedAt)}`
-                : plan.nextRotationOn
-                  ? `nächster Wechsel ${formatDate(plan.nextRotationOn)}`
-                  : null}
-            </p>
-            <div className="mt-3 flex gap-2">
-              {plan.pausedAt ? (
-                <button
-                  onClick={() => resumePlan.mutate()}
-                  disabled={resumePlan.isPending}
-                  className="rounded-lg bg-violet-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-violet-400"
-                >
-                  Fortsetzen
-                </button>
-              ) : (
-                <button
-                  onClick={() => pausePlan.mutate()}
-                  disabled={pausePlan.isPending}
-                  className="rounded-lg bg-ink-800 px-3 py-1.5 text-sm font-medium text-ink-200 hover:bg-ink-700"
-                >
-                  Pausieren
-                </button>
-              )}
-              <button
-                onClick={() => restartPhase.mutate()}
-                disabled={restartPhase.isPending}
-                className="rounded-lg bg-transparent px-3 py-1.5 text-sm font-medium text-ink-400 hover:text-ink-200"
+          <PhaseHero plan={plan} />
+
+          {selectedPhase && (
+            <PhaseRotation
+              current={plan.currentPhase}
+              selected={selectedPhase}
+              phases={plan.phases}
+              onSelect={setSelectedPhase}
+            />
+          )}
+
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] lg:items-start">
+            {selectedPhase && <PlanDays phase={selectedPhase} />}
+
+            <div className="flex flex-col gap-4">
+              {selectedPhase && <FreeCardioCard phase={selectedPhase} />}
+
+              <Link
+                to="/plan/generate"
+                className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors duration-150 hover:bg-surface-2"
               >
-                Phase neu starten
-              </button>
+                <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-magenta-soft text-magenta">
+                  <Sparkles size={18} />
+                </span>
+                <span className="min-w-0 flex-1 text-body font-medium text-text">Nächste Phase mit KI planen</span>
+                <Badge tone="magenta">Eigener Schlüssel</Badge>
+              </Link>
+
+              <Card title="Verlauf">
+                {plan.history.length === 0 ? (
+                  <p className="text-small text-text-faint">Noch kein Phasenwechsel.</p>
+                ) : (
+                  plan.history.map((entry) => (
+                    <ListRow key={entry.id} value={`${formatDate(entry.startedOn)} – ${entry.endedOn ? formatDate(entry.endedOn) : "…"}`}>
+                      {getPhaseDisplayName(entry.phase, plan.phases)}
+                    </ListRow>
+                  ))
+                )}
+              </Card>
             </div>
-          </div>
-
-          <PushReminderCard />
-          <TrainingPlanRemarksCard plan={plan} />
-
-          <div>
-            {selectedPhase && <PhaseTabs selected={selectedPhase} onSelect={setSelectedPhase} />}
-            {selectedPhase && <PlanExerciseList phase={selectedPhase} />}
           </div>
 
           <RecommendedSplitsSection />
 
-          <div>
-            <h2 className="mb-2 text-sm font-medium text-ink-400">Verlauf</h2>
-            {plan.history.length === 0 ? (
-              <p className="text-sm text-ink-600">Noch kein Phasenwechsel.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {plan.history.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="flex items-center justify-between rounded-lg border border-ink-800 bg-ink-900 px-3 py-2 text-sm"
-                  >
-                    <span className="text-ink-300">{TRAINING_PHASE_LABELS[entry.phase]}</span>
-                    <span className="text-ink-500">
-                      {formatDate(entry.startedOn)} – {entry.endedOn ? formatDate(entry.endedOn) : "…"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <Dialog open={remarksOpen} onOpenChange={setRemarksOpen} title="Bemerkungen">
+            <TrainingPlanRemarksCard plan={plan} onSaved={() => setRemarksOpen(false)} />
+          </Dialog>
         </div>
       )}
     </AppShell>

@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  // Busts the persisted query cache (src/queryClient.ts) on every new build.
+  define: { __BUILD_ID__: JSON.stringify(new Date().toISOString()) },
   plugins: [
     react(),
     VitePWA({
@@ -16,27 +18,34 @@ export default defineConfig({
       // no update hook — disabled here so `useRegisterSW` (the `virtual:pwa-register/react`
       // hook used by UpdatePrompt) is the only thing registering the service worker.
       injectRegister: false,
-      includeAssets: ["icons/icon-192.png", "icons/icon-512.png", "sounds/timer-end.mp3"],
+      includeAssets: [
+        "icons/icon-192.png",
+        "icons/icon-512.png",
+        "icons/apple-touch-icon.png",
+        "sounds/timer-end.mp3",
+      ],
       manifest: {
+        // The app's identity for the OS. Spelled out as "/" — the same value Chrome derives from
+        // start_url when `id` is missing — so apps already installed keep their identity.
+        id: "/",
         name: "Fitnesstracker",
         short_name: "Fitness",
         description: "Persönlicher Fitnesstracker ohne Werbung.",
-        // Stable identity independent of start_url, so the OS/TWA still recognizes the app as
-        // "already installed" even if start_url ever changes (e.g. a future redirect/query param).
-        id: "/",
+        // The plugin would otherwise emit "en" for a German-language app.
+        lang: "de",
+        dir: "ltr",
+        categories: ["health", "fitness", "sports"],
         start_url: "/",
+        scope: "/",
         display: "standalone",
         // Single-user Android app used mid-workout, one hand, phone always upright — locking
         // orientation avoids an accidental landscape flip if the phone's rotation lock is off.
         orientation: "portrait",
-        lang: "de",
-        dir: "ltr",
-        categories: ["health", "fitness", "lifestyle"],
         // Re-launching the installed app (home-screen icon, or a TWA intent) focuses the
         // existing window/task instead of spawning a second instance of the same app.
         launch_handler: { client_mode: "focus-existing" },
-        background_color: "#1a1622",
-        theme_color: "#1a1622",
+        background_color: "#070B14",
+        theme_color: "#070B14",
         icons: [
           { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
@@ -47,8 +56,71 @@ export default defineConfig({
             purpose: "maskable",
           },
         ],
+        // Long-press on the home-screen icon. "Training starten" opens the focus mode and starts
+        // a session right away (TrainingPage consumes `start=1`).
+        shortcuts: [
+          {
+            name: "Training starten",
+            short_name: "Training",
+            url: "/training?start=1",
+            icons: [{ src: "icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+          },
+          {
+            name: "Daily",
+            url: "/daily",
+            icons: [{ src: "icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+          },
+          {
+            name: "Fortschritt",
+            url: "/progress",
+            icons: [{ src: "icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+          },
+        ],
+        // Chrome shows these in the richer install dialog (narrow = phones, wide = desktop).
+        // Regenerate when the UI changes noticeably — see public/screenshots.
+        screenshots: [
+          {
+            src: "screenshots/dashboard-narrow.png",
+            sizes: "780x1688",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "Heute: der nächste Trainingstag auf einen Blick",
+          },
+          {
+            src: "screenshots/training-narrow.png",
+            sizes: "780x1688",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "Fokusmodus: Satz für Satz, auch offline",
+          },
+          {
+            src: "screenshots/progress-narrow.png",
+            sizes: "780x1688",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "Fortschritt: Rekorde, Volumen und Serien",
+          },
+          {
+            src: "screenshots/dashboard-wide.png",
+            sizes: "1280x720",
+            type: "image/png",
+            form_factor: "wide",
+            label: "Dashboard am Desktop",
+          },
+          {
+            src: "screenshots/plan-wide.png",
+            sizes: "1280x720",
+            type: "image/png",
+            form_factor: "wide",
+            label: "Trainingsplan mit Phasen und Trainingstagen",
+          },
+        ],
       },
       workbox: {
+        // Fonts and timer MP3 are part of the shell: the offline reload must render with Geist and audio.
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,mp3}"],
+        // Store screenshots are only fetched by the browser's install dialog — not app content.
+        globIgnores: ["**/screenshots/**"],
         // Never let the service worker serve cached API responses — a stale workout log
         // after a deploy is a much worse bug than a network round-trip.
         navigateFallbackDenylist: [/^\/api/],
@@ -56,6 +128,20 @@ export default defineConfig({
           {
             urlPattern: /\/api\/.*/,
             handler: "NetworkOnly",
+          },
+          {
+            urlPattern: /^https:\/\/raw\.githubusercontent\.com\/yuhonas\/free-exercise-db\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "exercise-images-cache",
+              expiration: {
+                maxEntries: 250,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
           },
         ],
         // Adds push/notificationclick handling to the generated service worker — see
@@ -65,6 +151,29 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // Merge the many tiny shared chunks the lazy routes would otherwise produce (single icons,
+        // small hooks): each is a request on the service worker's first precache.
+        experimentalMinChunkSize: 12_000,
+        // Vendor code in a few stable chunks. App code changes with every deploy, library code
+        // rarely: the service worker re-downloads only chunks whose hash changed, so an update
+        // costs the app chunks, not the framework again.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (/[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom|@remix-run[\\/]router)[\\/]/.test(id)) {
+            return "vendor-react";
+          }
+          if (/[\\/]node_modules[\\/]@tanstack[\\/]/.test(id)) return "vendor-query";
+          if (/[\\/]node_modules[\\/](@radix-ui|@floating-ui|react-remove-scroll[\w-]*|aria-hidden|use-sidecar|use-callback-ref)[\\/]/.test(id)) {
+            return "vendor-radix";
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       "/api": {

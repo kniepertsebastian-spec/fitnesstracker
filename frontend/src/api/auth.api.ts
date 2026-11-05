@@ -1,4 +1,4 @@
-import type { LoginInput, RegisterInput, UserDto } from "@fitnesstracker/shared";
+import type { LoginInput, RegisterInput, UpdateNameInput, UserDto } from "@fitnesstracker/shared";
 import { apiFetch } from "./client";
 
 export function registerRequest(input: RegisterInput) {
@@ -18,4 +18,8 @@ export function logoutRequest() {
 
 export function meRequest() {
   return apiFetch<UserDto>("/auth/me");
+}
+
+export function updateNameRequest(input: UpdateNameInput) {
+  return apiFetch<UserDto>("/auth/me/name", { method: "PUT", body: input });
 }

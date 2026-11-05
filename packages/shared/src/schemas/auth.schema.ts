@@ -23,5 +23,15 @@ export const userDtoSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
   displayName: z.string().nullable(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
 });
 export type UserDto = z.infer<typeof userDtoSchema>;
+
+// Real name for the activity report. Empty string clears it.
+const nameField = z.preprocess(
+  (val) => (typeof val === "string" && val.trim() === "" ? null : val),
+  z.string().trim().min(1).max(80).nullable(),
+);
+export const updateNameSchema = z.object({ firstName: nameField, lastName: nameField });
+export type UpdateNameInput = z.infer<typeof updateNameSchema>;

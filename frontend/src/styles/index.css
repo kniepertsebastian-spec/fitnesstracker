@@ -1,6 +1,51 @@
+@import "./fonts.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Design tokens — "Purple Performance", source of truth is docs/ROADMAP-UI.md ("Designsprache").
+   Dark mode only. Violet is the brand and interaction color; green (--success) only confirms. */
+:root {
+  --bg: #070b14;
+  --bg-sidebar: #0b1020;
+  --surface: #111a2e;
+  --surface-2: #1b2542;
+  --surface-inset: #0a1122;
+  --control: #18213a;
+  --track: #222c4a;
+  --border: #1f2a45;
+  --border-strong: #2c3858;
+  --border-subtle: #172038;
+  --text: #f3f0ff;
+  --text-2: #d9d6ec;
+  --text-muted: #b4b9ce;
+  --text-subtle: #9ba3bd;
+  --text-faint: #8c93ad;
+  --accent: #8b5cf6;
+  --accent-hover: #a855f7;
+  /* #8B5CF6 is too dark for small text on navy (≈4.3:1) — violet text uses this tint instead. */
+  --accent-text: #c084fc;
+  --accent-text-hover: #d8b4fe;
+  --on-accent: #ffffff;
+  --accent-soft: rgba(139, 92, 246, 0.16);
+  --accent-border: #44316f;
+  --hero-border: #44316f;
+  --success: #34d399;
+  --success-soft: rgba(52, 211, 153, 0.13);
+  --info: #60a5fa;
+  --info-text: #93c5fd;
+  --info-soft: rgba(96, 165, 250, 0.13);
+  --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.14);
+  --danger: #f87171;
+  --danger-text: #fca5a5;
+  --danger-soft: rgba(248, 113, 113, 0.13);
+  /* Category "Technik" and AI features — magenta, so it never reads as the violet brand color. */
+  --magenta: #f472b6;
+  --magenta-soft: rgba(244, 114, 182, 0.13);
+  color-scheme: dark;
+}
 
 html,
 body,
@@ -10,10 +55,56 @@ body,
 
 body {
   font-family: theme("fontFamily.sans");
+  background-color: var(--bg);
 }
 
+/* Archivo, narrowed: the scoreboard voice of headings and every number that matters. */
 h1,
 h2,
 h3 {
   font-family: theme("fontFamily.heading");
+  font-stretch: 88%;
+}
+
+/* Narrowed only where numbers are big; small figures keep Archivo's normal width for legibility. */
+.font-numeric:is(.text-stat, .text-timer, .text-set-value, .text-h2, .text-h1, .text-h1-focus) {
+  font-stretch: 82%;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The one light edge: hero cards and primary buttons catch light along their top border. */
+.light-edge {
+  box-shadow: inset 0 1px 0 rgba(192, 132, 252, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Printing the activity report: a white page with a normal margin, whatever the app theme is. */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  :root {
+    color-scheme: light;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
 }

@@ -1,8 +1,32 @@
-import type { TrainingPlanDto, UpdateTrainingPlanRemarksInput } from "@fitnesstracker/shared";
+import type {
+  AddTrainingPhaseInput,
+  ChangeTrainingPhaseInput,
+  RenameTrainingPhaseInput,
+  TrainingPhase,
+  TrainingPlanDto,
+  UpdateTrainingGoalInput,
+  UpdateTrainingPlanRemarksInput,
+} from "@fitnesstracker/shared";
 import { apiFetch } from "./client";
 
 export function getTrainingPlanRequest() {
   return apiFetch<TrainingPlanDto>("/training-plan");
+}
+
+export function changeTrainingPhaseRequest(input: ChangeTrainingPhaseInput) {
+  return apiFetch<TrainingPlanDto>("/training-plan/phase", { method: "PATCH", body: input });
+}
+
+export function addTrainingPhaseRequest(input: AddTrainingPhaseInput) {
+  return apiFetch<TrainingPlanDto>("/training-plan/phases", { method: "POST", body: input });
+}
+
+export function renameTrainingPhaseRequest(phase: TrainingPhase, input: RenameTrainingPhaseInput) {
+  return apiFetch<TrainingPlanDto>(`/training-plan/phases/${phase}`, { method: "PATCH", body: input });
+}
+
+export function deleteTrainingPhaseRequest(phase: TrainingPhase) {
+  return apiFetch<TrainingPlanDto>(`/training-plan/phases/${phase}`, { method: "DELETE" });
 }
 
 export function pauseTrainingPlanRequest() {
@@ -17,6 +41,14 @@ export function restartPhaseRequest() {
   return apiFetch<TrainingPlanDto>("/training-plan/restart-phase", { method: "POST" });
 }
 
+export function extendPhaseRequest() {
+  return apiFetch<TrainingPlanDto>("/training-plan/extend-phase", { method: "POST" });
+}
+
 export function updateTrainingPlanRemarksRequest(input: UpdateTrainingPlanRemarksInput) {
   return apiFetch<TrainingPlanDto>("/training-plan/remarks", { method: "PATCH", body: input });
+}
+
+export function updateTrainingGoalRequest(input: UpdateTrainingGoalInput) {
+  return apiFetch<TrainingPlanDto>("/training-plan/goal", { method: "PATCH", body: input });
 }

@@ -19,7 +19,7 @@ import {
 // otherwise fully independent (separate registered users, no shared state).
 
 async function openCreateDialog(page: import("@playwright/test").Page) {
-  await page.locator('button', { hasText: '+ Satz' }).click();
+  await page.getByRole("button", { name: "Satz", exact: true }).click();
 }
 
 async function fillAndSubmit(
@@ -41,7 +41,7 @@ async function fillAndSubmit(
 // closeDialog after an edit would race that self-close and click a button already detaching from
 // the DOM, so edits below never call this.
 async function closeDialog(page: import("@playwright/test").Page) {
-  await workoutLogDialog(page).locator('button', { hasText: /Fertig|Abbrechen/ }).click();
+  await workoutLogDialog(page).getByRole("button", { name: /^(Fertig|Abbrechen)$/ }).click();
 }
 
 async function editWeight(
@@ -50,7 +50,7 @@ async function editWeight(
   previousWeightKg: number,
   weightKg: number,
 ) {
-  await rowFor(page, exerciseName).locator('button', { hasText: "Bearbeiten" }).click();
+  await rowFor(page, exerciseName).getByRole("button", { name: /bearbeiten/ }).click();
   const dialog = workoutLogDialog(page);
   const weightInput = dialog.locator('input[name="weightKg"]');
   // WorkoutLogFormDialog populates the form from `editingLog` in a useEffect (reset({...}))
@@ -66,7 +66,7 @@ async function editWeight(
 }
 
 function rowFor(page: import("@playwright/test").Page, exerciseName: string) {
-  return page.locator("table tr", { hasText: exerciseName }).first();
+  return page.getByTestId("today-set").filter({ hasText: exerciseName }).first();
 }
 
 test.describe("Kritischer Offline-Flow", () => {
@@ -101,7 +101,7 @@ test.describe("Kritischer Offline-Flow", () => {
       await closeDialog(page);
 
       const row = rowFor(page, exercise.name);
-      await expect(row).toContainText("⏳");
+      await expect(row.getByLabel("Noch nicht synchronisiert")).toBeVisible();
       await expect(syncPill(page)).toHaveText("Offline · 1 ausstehend");
     });
 
@@ -117,12 +117,20 @@ test.describe("Kritischer Offline-Flow", () => {
     await test.step("App neu laden (offline)", async () => {
       await page.reload();
       await expect(syncPill(page)).toHaveText("Offline · 1 ausstehend");
+      // Self-hosted Geist must come from the service-worker precache, not a CDN or fallback.
+      const loadedFonts = await page.evaluate(async () => {
+        await document.fonts.load("14px 'Geist Variable'");
+        await document.fonts.load("14px 'Geist Mono Variable'");
+        return [...document.fonts].filter((f) => f.status === "loaded").map((f) => f.family);
+      });
+      expect(loadedFonts.some((f) => f.includes("Geist Variable"))).toBe(true);
+      expect(loadedFonts.some((f) => f.includes("Geist Mono Variable"))).toBe(true);
     });
 
     await test.step("Lokale Daten prüfen", async () => {
       const row = rowFor(page, exercise.name);
       await expect(row).toContainText("45");
-      await expect(row).toContainText("⏳");
+      await expect(row.getByLabel("Noch nicht synchronisiert")).toBeVisible();
     });
 
     await test.step("Online gehen", async () => {
@@ -205,7 +213,7 @@ test.describe("Create + Delete offline", () => {
     await closeDialog(page);
     await expect(syncPill(page)).toHaveText("Offline · 1 ausstehend");
 
-    await rowFor(page, exercise.name).locator('button', { hasText: "Löschen" }).click();
+    await rowFor(page, exercise.name).getByRole("button", { name: /löschen/ }).click();
     await expect(rowFor(page, exercise.name)).toHaveCount(0);
     // A delete of a mutation that was never synced just cancels the pending create outright —
     // there's nothing for the server to delete, so the queue empties immediately.
@@ -257,7 +265,7 @@ test.describe("Sync-Fehler", () => {
     // Each failed item's card in SyncStatusIndicator.tsx — its label/retry row and its reason
     // text are siblings, so scope to the whole card rather than a bare hasText div filter (which
     // would just as happily match the inner row alone and miss the reason).
-    const failedItemCard = page.locator("div.rounded-lg.bg-ink-800.p-2").last();
+    const failedItemCard = page.getByTestId("failed-mutation").last();
     await expect(failedItemCard).toContainText("Simulierter Server-Fehler (E2E)");
 
     block = false;

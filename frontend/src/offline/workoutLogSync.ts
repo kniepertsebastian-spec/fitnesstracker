@@ -8,17 +8,18 @@ import {
 import { ApiError } from "../api/client";
 import { beginSync, endSync, useSyncStore } from "../stores/syncStore";
 import { queryClient } from "../queryClient";
+import { useAuthStore } from "../stores/authStore";
 import { offlineDb, type LocalWorkoutLog, type MutationOp } from "./db";
 import { refreshSyncCounts } from "./syncCounts";
 
-export const WORKOUT_LOGS_QUERY_KEY = ["workout-logs"];
+export const WORKOUT_LOGS_QUERY_KEY = ["workout-logs"] as const;
 
 // Keeps at most one queued mutation per row: a create followed by edits before it ever syncs
 // stays a single "create" carrying the latest values, rather than replaying every intermediate
 // step once back online.
-async function enqueueMutation(clientId: string, op: MutationOp, payload: Record<string, unknown>) {
+async function enqueueMutation(accountId: string, clientId: string, op: MutationOp, payload: Record<string, unknown>) {
   await offlineDb.transaction("rw", offlineDb.pendingMutations, async () => {
-    const existing = await offlineDb.pendingMutations.where("clientId").equals(clientId).first();
+    const existing = await offlineDb.pendingMutations.where("accountId").equals(accountId).filter((m) => m.clientId === clientId).first();
     const queuedAt = new Date().toISOString();
 
     if (op === "delete") {
@@ -29,7 +30,7 @@ async function enqueueMutation(clientId: string, op: MutationOp, payload: Record
           return;
         }
       }
-      await offlineDb.pendingMutations.add({ clientId, op: "delete", payload: {}, queuedAt });
+      await offlineDb.pendingMutations.add({ accountId, clientId, op: "delete", payload: {}, queuedAt });
       return;
     }
 
@@ -41,7 +42,7 @@ async function enqueueMutation(clientId: string, op: MutationOp, payload: Record
       return;
     }
 
-    await offlineDb.pendingMutations.add({ clientId, op, payload, queuedAt });
+    await offlineDb.pendingMutations.add({ accountId, clientId, op, payload, queuedAt });
   });
 
   await refreshSyncCounts();
@@ -50,49 +51,125 @@ async function enqueueMutation(clientId: string, op: MutationOp, payload: Record
 // Local-only read, deliberately never touches the network — used to refresh the UI right after
 // a mutation so the dialog closes and the table updates instantly even while offline, instead
 // of waiting on a doomed-while-offline refetch (see fetchAndCacheWorkoutLogs for that one).
-async function readCachedWorkoutLogs(): Promise<LocalWorkoutLog[]> {
-  const logs = await offlineDb.workoutLogs.toArray();
+async function readCachedWorkoutLogs(accountId: string): Promise<LocalWorkoutLog[]> {
+  const logs = await offlineDb.workoutLogs.where("accountId").equals(accountId).toArray();
   return logs.sort((a, b) => (a.performedAt < b.performedAt ? 1 : -1));
 }
 
 // Pushes the current local cache straight into the query cache — no network involved, so this
 // is safe to call after every local write and after every background sync step alike, and it
 // works even when nothing in the React tree triggered it (the online-event flush in particular).
-async function syncQueryCache() {
-  queryClient.setQueryData(WORKOUT_LOGS_QUERY_KEY, await readCachedWorkoutLogs());
+async function syncQueryCache(accountId: string) {
+  queryClient.setQueryData([...WORKOUT_LOGS_QUERY_KEY, accountId], await readCachedWorkoutLogs(accountId));
   // A logged/edited/deleted set can change which split day counts as "trained this week" (see
   // planWeekStatus.service.ts) — invalidate across all three phases rather than trying to know
   // which one is "current" from here; the query is cheap and rarely open in more than one tab.
   queryClient.invalidateQueries({ queryKey: ["plan-exercises", "week-status"] });
 }
 
+// Delta sync (roadmap3 P2.1): after the first full download only what changed since the last
+// sync is fetched — a few rows instead of years of history on every app start. The cursor is the
+// server's own clock (`serverTime` of the previous response), kept per account in localStorage.
+// A full download still happens for a new device/account, an empty local cache and once a day,
+// as a safety net for anything a delta might not express.
+const SYNC_OVERLAP_MS = 5_000; // re-ask slightly back: covers rows committed while the last request ran
+const FULL_RESYNC_AFTER_MS = 24 * 60 * 60 * 1000;
+
+interface SyncState {
+  serverTime: string;
+  fullAt: number;
+}
+
+const syncStateKey = (accountId: string) => `fitnesstracker.workout-logs-sync.${accountId}`;
+
+function readSyncState(accountId: string): SyncState | null {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(syncStateKey(accountId)) ?? "null") as SyncState | null;
+    return parsed && typeof parsed.serverTime === "string" && typeof parsed.fullAt === "number" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSyncState(accountId: string, state: SyncState) {
+  try {
+    localStorage.setItem(syncStateKey(accountId), JSON.stringify(state));
+  } catch {
+    // Without storage every load is simply a full download again.
+  }
+}
+
+async function pendingClientIdsFor(accountId: string): Promise<Set<string>> {
+  return new Set(
+    (await offlineDb.pendingMutations.where("accountId").equals(accountId).toArray()).map((m) => m.clientId),
+  );
+}
+
+async function applyFullDownload(accountId: string) {
+  // Rows already synced before the request: the list (the account's complete history) must
+  // contain them, so one missing from it was deleted on another device (roadmap3 P1.4) —
+  // without this it would linger here forever and skew "Letztes Mal", PRs and volume. Taken
+  // before the request on purpose: a row that syncs while it's in flight isn't in the list yet
+  // and must not be mistaken for a deletion.
+  const syncedBefore = new Set(
+    (await offlineDb.workoutLogs.where("accountId").equals(accountId).toArray())
+      .filter((row) => row.id !== null)
+      .map((row) => row.clientId),
+  );
+  const { items, serverTime } = await listWorkoutLogsRequest();
+  const pendingClientIds = await pendingClientIdsFor(accountId);
+  const serverClientIds = new Set(items.map((dto) => dto.clientId));
+  await offlineDb.transaction("rw", offlineDb.workoutLogs, async () => {
+    const stale = [...syncedBefore].filter((id) => !serverClientIds.has(id) && !pendingClientIds.has(id));
+    await offlineDb.workoutLogs.bulkDelete(stale);
+    await offlineDb.workoutLogs.bulkPut(
+      items.filter((dto) => !pendingClientIds.has(dto.clientId)).map((dto) => ({ ...dto, accountId })),
+    );
+  });
+  if (serverTime) writeSyncState(accountId, { serverTime, fullAt: Date.now() });
+}
+
+async function applyDelta(accountId: string, state: SyncState) {
+  const since = new Date(new Date(state.serverTime).getTime() - SYNC_OVERLAP_MS).toISOString();
+  const { items, deletedClientIds, serverTime } = await listWorkoutLogsRequest(since);
+  const pendingClientIds = await pendingClientIdsFor(accountId);
+  await offlineDb.transaction("rw", offlineDb.workoutLogs, async () => {
+    await offlineDb.workoutLogs.bulkDelete((deletedClientIds ?? []).filter((id) => !pendingClientIds.has(id)));
+    await offlineDb.workoutLogs.bulkPut(
+      items.filter((dto) => !pendingClientIds.has(dto.clientId)).map((dto) => ({ ...dto, accountId })),
+    );
+  });
+  // Keep the old cursor (and `fullAt`) if the server didn't send one — the next load re-asks.
+  if (serverTime) writeSyncState(accountId, { serverTime, fullAt: state.fullAt });
+}
+
 // Cache-then-network read: tries the API first and merges the result into the local cache
 // (skipping rows with a not-yet-synced local mutation, so a background refresh can't clobber
 // an edit the server hasn't seen yet), then always serves from the cache — offline just means
 // the network step is skipped and the previous cache contents are returned as-is.
-export async function fetchAndCacheWorkoutLogs(): Promise<LocalWorkoutLog[]> {
+export async function fetchAndCacheWorkoutLogs(accountId: string): Promise<LocalWorkoutLog[]> {
+  if (!accountId || useAuthStore.getState().user?.id !== accountId) return [];
   try {
-    const { items } = await listWorkoutLogsRequest();
-    const pendingClientIds = new Set(
-      (await offlineDb.pendingMutations.toArray()).map((m) => m.clientId),
-    );
-    await offlineDb.transaction("rw", offlineDb.workoutLogs, async () => {
-      for (const dto of items) {
-        if (!pendingClientIds.has(dto.clientId)) {
-          await offlineDb.workoutLogs.put(dto);
-        }
-      }
-    });
+    const state = readSyncState(accountId);
+    const cachedCount = await offlineDb.workoutLogs.where("accountId").equals(accountId).count();
+    if (state && cachedCount > 0 && Date.now() - state.fullAt < FULL_RESYNC_AFTER_MS) {
+      await applyDelta(accountId, state);
+    } else {
+      await applyFullDownload(accountId);
+    }
   } catch {
     // Offline or the request otherwise failed — fall through and serve what's cached.
   }
-  return readCachedWorkoutLogs();
+  return readCachedWorkoutLogs(accountId);
 }
 
 export async function createWorkoutLogLocal(input: CreateWorkoutLogInput, exerciseName: string) {
+  const accountId = useAuthStore.getState().user?.id;
+  if (!accountId) throw new Error("Zum Speichern muss ein Account angemeldet sein.");
   const now = new Date().toISOString();
   const local: LocalWorkoutLog = {
     id: null,
+    accountId,
     clientId: input.clientId,
     exerciseId: input.exerciseId,
     exerciseName,
@@ -100,15 +177,16 @@ export async function createWorkoutLogLocal(input: CreateWorkoutLogInput, exerci
     reps: input.reps,
     weightKg: input.weightKg,
     rir: input.rir ?? null,
+    note: input.note ?? null,
     supersetGroupId: input.supersetGroupId ?? null,
     performedAt: input.performedAt ?? now,
     createdAt: now,
     updatedAt: now,
   };
   await offlineDb.workoutLogs.put(local);
-  await enqueueMutation(input.clientId, "create", input);
-  await syncQueryCache();
-  void flushPendingMutations();
+  await enqueueMutation(accountId, input.clientId, "create", input);
+  await syncQueryCache(accountId);
+  void flushPendingMutations(accountId);
 }
 
 export async function updateWorkoutLogLocal(
@@ -116,7 +194,10 @@ export async function updateWorkoutLogLocal(
   input: UpdateWorkoutLogInput,
   exerciseName: string | undefined,
 ) {
+  const accountId = useAuthStore.getState().user?.id;
+  if (!accountId) throw new Error("Zum Bearbeiten muss ein Account angemeldet sein.");
   const existing = await offlineDb.workoutLogs.get(clientId);
+  if (!existing || existing.accountId !== accountId) return;
   if (existing) {
     await offlineDb.workoutLogs.put({
       ...existing,
@@ -125,25 +206,29 @@ export async function updateWorkoutLogLocal(
       updatedAt: new Date().toISOString(),
     });
   }
-  await enqueueMutation(clientId, "update", input);
-  await syncQueryCache();
-  void flushPendingMutations();
+  await enqueueMutation(accountId, clientId, "update", input);
+  await syncQueryCache(accountId);
+  void flushPendingMutations(accountId);
 }
 
 export async function deleteWorkoutLogLocal(clientId: string) {
+  const accountId = useAuthStore.getState().user?.id;
+  if (!accountId) throw new Error("Zum Löschen muss ein Account angemeldet sein.");
+  const existing = await offlineDb.workoutLogs.get(clientId);
+  if (!existing || existing.accountId !== accountId) return;
   await offlineDb.workoutLogs.delete(clientId);
-  await enqueueMutation(clientId, "delete", {});
-  await syncQueryCache();
-  void flushPendingMutations();
+  await enqueueMutation(accountId, clientId, "delete", {});
+  await syncQueryCache(accountId);
+  void flushPendingMutations(accountId);
 }
 
-async function applyMutation(mutation: { clientId: string; op: MutationOp; payload: Record<string, unknown> }) {
+async function applyMutation(mutation: { accountId: string; clientId: string; op: MutationOp; payload: Record<string, unknown> }) {
   if (mutation.op === "create") {
     const dto = await createWorkoutLogRequest(mutation.payload as CreateWorkoutLogInput);
-    await offlineDb.workoutLogs.put(dto);
+    await offlineDb.workoutLogs.put({ ...dto, accountId: mutation.accountId });
   } else if (mutation.op === "update") {
     const dto = await updateWorkoutLogRequest(mutation.clientId, mutation.payload as UpdateWorkoutLogInput);
-    await offlineDb.workoutLogs.put(dto);
+    await offlineDb.workoutLogs.put({ ...dto, accountId: mutation.accountId });
   } else {
     await deleteWorkoutLogRequest(mutation.clientId);
   }
@@ -153,17 +238,19 @@ let flushing = false;
 
 // Processes the queue strictly in the order mutations were made, one at a time, so e.g. a
 // create always reaches the server before an edit queued against the same (still unsynced) row.
-export async function flushPendingMutations() {
-  if (flushing || !navigator.onLine) return;
+export async function flushPendingMutations(accountId = useAuthStore.getState().user?.id) {
+  if (flushing || !navigator.onLine || !accountId) return;
   flushing = true;
   beginSync();
   try {
     for (;;) {
-      const next = await offlineDb.pendingMutations.orderBy("queuedAt").first();
+      if (useAuthStore.getState().user?.id !== accountId) break;
+      const queue = await offlineDb.pendingMutations.where("accountId").equals(accountId).sortBy("queuedAt");
+      const next = queue[0];
       if (!next) break;
 
       try {
-        await applyMutation(next);
+        await applyMutation({ ...next, accountId });
         await offlineDb.pendingMutations.delete(next.id as number);
       } catch (error) {
         if (error instanceof ApiError) {
@@ -177,6 +264,7 @@ export async function flushPendingMutations() {
           // immediately, optimistically) — fall back to a generic label in that case.
           const localRow = await offlineDb.workoutLogs.get(next.clientId);
           await offlineDb.failedMutations.add({
+            accountId,
             kind: "workoutLog",
             clientId: next.clientId,
             op: next.op,
@@ -197,7 +285,7 @@ export async function flushPendingMutations() {
     flushing = false;
     endSync();
     await refreshSyncCounts();
-    await syncQueryCache();
+    if (useAuthStore.getState().user?.id === accountId) await syncQueryCache(accountId);
   }
 }
 

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { ExerciseDto } from "@fitnesstracker/shared";
+import { Badge } from "../ui";
 
 export function ExerciseCard({ exercise }: { exercise: ExerciseDto }) {
   const thumbnail = exercise.imageUrls[0];
@@ -7,25 +8,20 @@ export function ExerciseCard({ exercise }: { exercise: ExerciseDto }) {
   return (
     <Link
       to={`/exercises/${exercise.id}`}
-      className="flex items-center gap-3 rounded-lg border border-ink-800 bg-ink-900 p-3 hover:border-ink-700"
+      className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3 transition-colors duration-150 hover:bg-surface-2"
     >
       {thumbnail ? (
-        <img src={thumbnail} alt="" className="h-12 w-12 rounded-md object-cover" />
+        <img src={thumbnail} alt="" loading="lazy" className="h-14 w-14 shrink-0 rounded-lg bg-track object-cover" />
       ) : (
-        <div className="h-12 w-12 shrink-0 rounded-md bg-ink-800" />
+        <div className="h-14 w-14 shrink-0 rounded-lg bg-track" aria-hidden />
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-ink-100">
-          {exercise.name}
-          {!exercise.isActive && (
-            <span className="ml-2 rounded-full bg-ink-800 px-2 py-0.5 text-xs font-normal text-ink-500">
-              Inaktiv
-            </span>
-          )}
+        <p className="flex items-center gap-2 truncate text-body font-medium text-text">
+          <span className="truncate">{exercise.name}</span>
+          {!exercise.isActive && <Badge>Inaktiv</Badge>}
         </p>
-        <p className="truncate text-sm text-ink-500">
-          {[exercise.equipment, exercise.primaryMuscles.join(", ")].filter(Boolean).join(" · ") ||
-            "—"}
+        <p className="truncate text-small text-text-faint">
+          {[exercise.equipment, exercise.primaryMuscles.join(", ")].filter(Boolean).join(" · ") || "—"}
         </p>
       </div>
     </Link>

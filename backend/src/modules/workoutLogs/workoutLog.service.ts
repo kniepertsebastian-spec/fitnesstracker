@@ -25,6 +25,20 @@ export function listWorkoutLogs(
   });
 }
 
+// Everything that changed after `since`: live rows to upsert and the clientIds of rows deleted
+// meanwhile. Deleting is a soft delete that bumps updatedAt, so tombstones show up here too.
+export async function listWorkoutLogChanges(prisma: PrismaClient, userId: string, since: Date) {
+  const rows = await prisma.workoutLog.findMany({
+    where: { userId, updatedAt: { gt: since } },
+    orderBy: { updatedAt: "asc" },
+    ...withExercise,
+  });
+  return {
+    items: rows.filter((row) => row.deletedAt === null),
+    deletedClientIds: rows.filter((row) => row.deletedAt !== null).map((row) => row.clientId),
+  };
+}
+
 // Idempotent by clientId: a retried submit (e.g. from a flaky connection, or later the offline
 // sync queue) returns the existing row instead of throwing a unique-constraint error.
 export function createWorkoutLog(prisma: PrismaClient, userId: string, input: CreateWorkoutLogInput) {
@@ -39,6 +53,7 @@ export function createWorkoutLog(prisma: PrismaClient, userId: string, input: Cr
       reps: input.reps,
       weightKg: input.weightKg,
       rir: input.rir,
+      note: input.note,
       supersetGroupId: input.supersetGroupId,
       performedAt: input.performedAt ? new Date(input.performedAt) : undefined,
     },
@@ -75,6 +90,7 @@ export async function updateWorkoutLog(
       reps: input.reps,
       weightKg: input.weightKg,
       rir: input.rir,
+      note: input.note,
       supersetGroupId: input.supersetGroupId,
       performedAt: input.performedAt ? new Date(input.performedAt) : undefined,
     },

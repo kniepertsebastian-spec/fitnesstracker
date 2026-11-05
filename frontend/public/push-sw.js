@@ -10,13 +10,24 @@ self.addEventListener("push", (event) => {
     data = { title: "Fitnesstracker", body: event.data ? event.data.text() : "" };
   }
 
-  event.waitUntil(
+  const show = () =>
     self.registration.showNotification(data.title || "Fitnesstracker", {
       body: data.body || "",
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
       data: { url: data.url || "/" },
-    }),
+      // A tagged notification replaces the previous one of the same kind (e.g. "Pause vorbei").
+      ...(data.tag ? { tag: data.tag, renotify: true, vibrate: [200, 100, 200] } : {}),
+    });
+
+  // The rest-timer push is only for a locked/backgrounded phone — a visible app already rings.
+  // (Browsers allow skipping the notification while a page of the origin is visible.)
+  event.waitUntil(
+    data.skipIfVisible
+      ? self.clients
+          .matchAll({ type: "window", includeUncontrolled: true })
+          .then((list) => (list.some((c) => c.visibilityState === "visible") ? undefined : show()))
+      : show(),
   );
 });
 

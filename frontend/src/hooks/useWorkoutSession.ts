@@ -3,6 +3,7 @@ import type { WorkoutSessionStatus } from "@fitnesstracker/shared";
 import {
   fetchAndCacheOpenSession,
   startWorkoutSessionLocal,
+  keepWorkoutSessionAliveLocal,
   updateWorkoutSessionStatusLocal,
   WORKOUT_SESSION_QUERY_KEY,
 } from "../offline/workoutSessionSync";
@@ -15,6 +16,9 @@ export function useOpenWorkoutSession() {
     queryKey: WORKOUT_SESSION_QUERY_KEY,
     queryFn: fetchAndCacheOpenSession,
     networkMode: "always",
+    // The server can raise the "Training noch aktiv?" prompt or auto-complete the session while
+    // the app stays open, so look again once a minute.
+    refetchInterval: 60_000,
   });
 }
 
@@ -35,4 +39,8 @@ export function useUpdateWorkoutSessionStatus() {
       updateWorkoutSessionStatusLocal(clientId, status),
     networkMode: "always",
   });
+}
+
+export function useKeepWorkoutSessionAlive() {
+  return useMutation({ mutationFn: (clientId: string) => keepWorkoutSessionAliveLocal(clientId) });
 }

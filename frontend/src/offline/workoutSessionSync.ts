@@ -2,6 +2,7 @@ import type { CreateWorkoutSessionInput, WorkoutSessionStatus } from "@fitnesstr
 import {
   createWorkoutSessionRequest,
   getOpenWorkoutSessionRequest,
+  keepWorkoutSessionAliveRequest,
   updateWorkoutSessionRequest,
 } from "../api/workoutSession.api";
 import { ApiError } from "../api/client";
@@ -62,6 +63,17 @@ export async function fetchAndCacheOpenSession(): Promise<LocalWorkoutSession | 
     if (dto && !pendingClientIds.has(dto.clientId)) {
       await offlineDb.workoutSessions.put(dto);
     }
+    if (!dto) {
+      // The server has no open session: one still "open" in the cache (and fully synced) was
+      // closed server-side — e.g. auto-completed after an unanswered "Training noch aktiv?".
+      const now = new Date().toISOString();
+      const stale = await offlineDb.workoutSessions
+        .filter((s) => OPEN_STATUSES.includes(s.status) && s.id !== null && !pendingClientIds.has(s.clientId))
+        .toArray();
+      for (const s of stale) {
+        await offlineDb.workoutSessions.put({ ...s, status: "COMPLETED", endedAt: s.endedAt ?? now, updatedAt: now });
+      }
+    }
   } catch {
     // Offline or the request otherwise failed — fall through and serve what's cached.
   }
@@ -76,6 +88,7 @@ export async function startWorkoutSessionLocal(clientId: string) {
     status: "ACTIVE",
     startedAt: now,
     endedAt: null,
+    stopPromptSentAt: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -100,6 +113,16 @@ export async function updateWorkoutSessionStatusLocal(clientId: string, status: 
   await enqueueSessionMutation(clientId, "update", { status });
   await syncSessionQueryCache();
   void flushPendingSessionMutations();
+}
+
+// "Weiter" on the forgotten-session prompt. Online only: the server owns the 2h clock, so an
+// offline tap can't be honoured (the request throws and the prompt simply stays).
+export async function keepWorkoutSessionAliveLocal(clientId: string) {
+  const existing = await offlineDb.workoutSessions.get(clientId);
+  if (!existing?.id) throw new Error("Training ist noch nicht synchronisiert");
+  const dto = await keepWorkoutSessionAliveRequest(existing.id);
+  await offlineDb.workoutSessions.put(dto);
+  await syncSessionQueryCache();
 }
 
 async function applySessionMutation(mutation: { clientId: string; op: MutationOp; payload: Record<string, unknown> }) {

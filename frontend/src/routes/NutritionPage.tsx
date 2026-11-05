@@ -4,6 +4,8 @@ import { PageTabs } from "../components/layout/PageTabs";
 import { ProfileForm } from "../components/nutrition/ProfileForm";
 import { SupplementCard } from "../components/nutrition/SupplementCard";
 import { BodyCompositionCard } from "../components/nutrition/BodyCompositionCard";
+import { BodyAnalysisCard } from "../components/nutrition/BodyAnalysisCard";
+import { FatLossGoalCard } from "../components/nutrition/FatLossGoalCard";
 import { ProgressPhotosCard } from "../components/nutrition/ProgressPhotosCard";
 
 const TABS = [
@@ -23,16 +25,18 @@ export function NutritionPage() {
 
   return (
     <AppShell>
-      <h1 className="mb-4 text-xl font-semibold">Ernährung</h1>
+      <h1 className="mb-4 text-h1 text-text lg:text-h1-lg">Ernährung</h1>
 
       <PageTabs tabs={TABS} active={tab} onChange={(key) => setSearchParams({ tab: key })} />
 
       {tab === "rechner" && <ProfileForm />}
       {tab === "koerper" && (
         <div className="flex flex-col gap-6">
+          <BodyAnalysisCard />
+          <FatLossGoalCard />
           <BodyCompositionCard />
           <div>
-            <h2 className="mb-2 text-sm font-medium text-ink-400">Fortschritts-Fotos</h2>
+            <h2 className="mb-2 text-h2 text-text">Fortschrittsfotos</h2>
             <ProgressPhotosCard />
           </div>
         </div>
