@@ -1,5 +1,6 @@
 import { AppShell } from "../components/layout/AppShell";
 import { ActivityExportCard } from "../components/settings/ActivityExportCard";
+import { ActivityReportCard } from "../components/settings/ActivityReportCard";
 import { AiKeyCard } from "../components/settings/AiKeyCard";
 import { CalculationsCard } from "../components/settings/CalculationsCard";
 import { DataExportCard } from "../components/settings/DataExportCard";
@@ -16,6 +17,7 @@ export function SettingsPage() {
         <TimerSettingsCard />
         <PushReminderCard />
         <AiKeyCard />
+        <ActivityReportCard />
         <HealthImportCard />
         <HealthSyncCard />
         <ActivityExportCard />

@@ -6,5 +6,7 @@ export function toUserDto(user: User): UserDto {
     id: user.id,
     email: user.email,
     displayName: user.displayName,
+    firstName: user.firstName,
+    lastName: user.lastName,
   };
 }

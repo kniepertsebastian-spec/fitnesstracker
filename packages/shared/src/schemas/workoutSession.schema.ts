@@ -22,6 +22,8 @@ export const workoutSessionDtoSchema = z.object({
   status: workoutSessionStatusSchema,
   startedAt: z.string().datetime(),
   endedAt: z.string().datetime().nullable(),
+  // Set while the "Training noch aktiv?" prompt is open (see forgottenSession.ts on the backend).
+  stopPromptSentAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

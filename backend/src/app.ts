@@ -3,6 +3,7 @@ import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import { ZodError } from "zod";
 import { env } from "./config/env.js";
+import { toErrorResponse } from "./errors/errorResponse.js";
 import prismaPlugin from "./plugins/prisma.plugin.js";
 import cookiePlugin from "./plugins/cookie.plugin.js";
 import corsPlugin from "./plugins/cors.plugin.js";
@@ -25,6 +26,7 @@ import bodyAnalysisRoutes from "./modules/bodyAnalysis/bodyAnalysis.routes.js";
 import progressPhotoRoutes from "./modules/progressPhotos/progressPhoto.routes.js";
 import progressPhotoScheduler from "./modules/progressPhotos/progressPhoto.scheduler.js";
 import workoutReminderScheduler from "./modules/workoutLogs/workoutReminder.scheduler.js";
+import forgottenSessionScheduler from "./modules/workoutSessions/forgottenSession.scheduler.js";
 import dailyChallengeScheduler from "./modules/dailyChallenge/dailyChallenge.scheduler.js";
 import aiSettingsRoutes from "./modules/aiSettings/aiSettings.routes.js";
 import aiPlanGeneratorRoutes from "./modules/aiPlanGenerator/aiPlanGenerator.routes.js";
@@ -40,6 +42,9 @@ import healthSyncRoutes, { healthSyncWebhookRoutes } from "./modules/healthSync/
 export function buildApp() {
   const app = Fastify({
     logger: env.NODE_ENV === "development" ? { transport: { target: "pino-pretty" } } : true,
+    // Behind Caddy/Cloudflare `request.ip` is only the real visitor when the proxy chain is trusted
+    // (see TRUST_PROXY in config/env.ts). The per-IP rate limits depend on it.
+    trustProxy: env.TRUST_PROXY,
   });
 
   // Order matters: prisma/cookie/cors/jwt decorate the instance before any route plugin
@@ -50,10 +55,10 @@ export function buildApp() {
   app.register(jwtPlugin);
   // 10MB per file — enough for photos and short technique clips without unbounded memory use.
   app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
-  // `global: false` — only routes that opt in via `config: { rateLimit }` (login/register) are
-  // limited; every other route is unaffected. In-memory store is fine for a single backend
-  // instance; if that ever changes, this needs a shared store (e.g. Redis), same as the
-  // scheduler locks in lib/schedulerLock.ts.
+  // `global: false` — only routes that opt in via `config: { rateLimit }` (login/register and the
+  // expensive routes, see lib/rateLimits.ts) are limited; every other route is unaffected.
+  // In-memory store is fine for a single backend instance; if that ever changes, this needs a
+  // shared store (e.g. Redis), same as the scheduler locks in lib/schedulerLock.ts.
   app.register(rateLimit, { global: false });
   app.register(authHooks);
   app.register(trainingPlanScheduler);
@@ -61,6 +66,7 @@ export function buildApp() {
   app.register(progressPhotoScheduler);
   app.register(workoutReminderScheduler);
   app.register(dailyChallengeScheduler);
+  app.register(forgottenSessionScheduler);
 
   app.get("/api/health", async () => ({ status: "ok" }));
 
@@ -94,7 +100,8 @@ export function buildApp() {
       return reply.code(400).send({ message: "Validation error", issues: error.issues });
     }
     app.log.error(error);
-    return reply.code(error.statusCode ?? 500).send({ message: error.message ?? "Internal error" });
+    const { statusCode, message } = toErrorResponse(error);
+    return reply.code(statusCode).send({ message });
   });
 
   return app;

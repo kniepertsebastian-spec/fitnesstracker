@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { HEAVY_RATE_LIMIT } from "../../lib/rateLimits.js";
 import { z } from "zod";
 import {
   analyzeSupplementRequestSchema,
@@ -25,7 +26,7 @@ export default async function supplementRoutes(fastify: FastifyInstance) {
     return reply.send({ items: items.map(toSupplementDto) });
   });
 
-  fastify.post("/supplements/analyze", async (request, reply) => {
+  fastify.post("/supplements/analyze", HEAVY_RATE_LIMIT, async (request, reply) => {
     const input = analyzeSupplementRequestSchema.parse(request.body);
     try {
       const analysis = await analyzeSupplementForUser(fastify.prisma, request.user.sub, input);
