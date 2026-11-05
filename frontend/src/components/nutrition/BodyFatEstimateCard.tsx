@@ -9,7 +9,7 @@ import {
 import { CalcInfoButton } from "../info/CalcInfoButton";
 import { Callout, Card, StatTile } from "../ui";
 
-const percent = (value: number) => value.toLocaleString("de-DE", { maximumFractionDigits: 1 });
+const percent = (value: number) => value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 // Cross-check for the scale's body-fat reading: the CUN-BAE estimate from BMI, age and sex, next to
 // the measured value. Bioimpedance scales can be far off (athlete mode, hydration, hand/foot
@@ -17,9 +17,12 @@ const percent = (value: number) => value.toLocaleString("de-DE", { maximumFracti
 export function BodyFatEstimateCard({
   latest,
   profile,
+  average,
 }: {
   latest: BodyCompositionEntryDto;
   profile: Pick<ProfileDto, "heightCm" | "age" | "gender"> | null | undefined;
+  // Mean body fat of the newest weigh-ins in a row; compared instead of the single reading.
+  average?: { bodyFatPercent: number; readings: number };
 }) {
   if (!profile) {
     return (
@@ -35,7 +38,7 @@ export function BodyFatEstimateCard({
   const estimate = estimateBodyFatCunBae({ weightKg: latest.weightKg, heightCm: profile.heightCm, age: profile.age, gender: profile.gender });
   if (estimate === null) return null;
 
-  const measured = latest.bodyFatPercent;
+  const measured = average ? average.bodyFatPercent : latest.bodyFatPercent;
   const gap = measured === null ? null : estimate - measured;
   const ffmi = measured === null ? null : fatFreeMassIndex(latest.weightKg, measured, profile.heightCm);
   const ffmiImplausible = ffmi !== null && ffmi > FFMI_NATURAL_LIMIT;
@@ -52,14 +55,14 @@ export function BodyFatEstimateCard({
           sub={`Spanne grob ${Math.round(Math.max(estimate - 5, 0))}–${Math.round(estimate + 5)}\u00a0%`}
         />
         {measured !== null && (
-          <StatTile className="p-3" label="Gemessen (Waage)" value={percent(measured)} unit="%" sub={ffmi === null ? undefined : `FFMI ${percent(ffmi)}`} />
+          <StatTile className="p-3" label={average ? `Waage (Mittel aus ${average.readings})` : "Gemessen (Waage)"} value={percent(measured)} unit="%" sub={ffmi === null ? undefined : `FFMI ${percent(ffmi)}`} />
         )}
       </div>
 
       {(lowerThanEstimate || ffmiImplausible) && measured !== null && (
         <Callout tone="warning" className="mt-3">
           <p>
-            Der Waagenwert ({percent(measured)} %) liegt {percent(Math.round(gap ?? 0))} Prozentpunkte unter der Schätzung.
+            Der Waagenwert ({percent(measured)} %) liegt {Math.round(gap ?? 0)} Prozentpunkte unter der Schätzung.
             {ffmiImplausible && ffmi !== null && (
               <>
                 {" "}

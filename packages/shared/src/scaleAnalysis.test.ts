@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeScaleReadings, groupSessions, type ScaleReading } from "./scaleAnalysis.js";
+import { analyzeScaleReadings, groupSessions, latestSessionAverage, type ScaleReading } from "./scaleAnalysis.js";
 
 const r1 = (v: number) => Math.round(v * 10) / 10;
 
@@ -127,5 +127,29 @@ describe("analyzeScaleReadings", () => {
     expect(result.withDetails).toBe(0);
     expect(result.noise.find((n) => n.key === "bodyFatPercent")?.sd).toBeCloseTo(2.19, 2);
     expect(result.noise.find((n) => n.key === "muscleMassKg")?.sd).toBeCloseTo(2.55, 2);
+  });
+});
+
+describe("latestSessionAverage", () => {
+  it("averages the newest session's readings value by value", () => {
+    const average = latestSessionAverage(readings);
+    expect(average).toMatchObject({ readings: 2, from: "2026-11-05T05:17:00Z", to: "2026-11-05T05:26:00Z", weightKg: 99.2, bodyFatRange: 5 });
+    // fat 23.0 and 28.0 kg of 99.2 kg -> 23.2 % and 28.2 %
+    expect(average?.bodyFatPercent).toBe(25.7);
+    expect(average?.muscleMassKg).toBeCloseTo((readings[4].muscleMassKg! + readings[5].muscleMassKg!) / 2, 1);
+  });
+
+  it("is a single reading's own values when there was no repeat, and null without readings", () => {
+    const single = latestSessionAverage(readings.slice(0, 1));
+    expect(single).toMatchObject({ readings: 1, bodyFatRange: null, bodyFatPercent: readings[0].bodyFatPercent });
+    expect(latestSessionAverage([])).toBeNull();
+  });
+
+  it("skips values a reading does not have", () => {
+    const partial: ScaleReading[] = [
+      { measuredAt: "2026-11-05T05:17:00Z", weightKg: 100, bodyFatPercent: 20, muscleMassKg: null, bodyWaterPercent: null, details: null },
+      { measuredAt: "2026-11-05T05:20:00Z", weightKg: 100.4, bodyFatPercent: 22, muscleMassKg: 70, bodyWaterPercent: null, details: null },
+    ];
+    expect(latestSessionAverage(partial)).toMatchObject({ weightKg: 100.2, bodyFatPercent: 21, muscleMassKg: 70, bodyWaterPercent: null });
   });
 });

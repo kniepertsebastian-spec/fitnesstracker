@@ -357,6 +357,41 @@ function drivers(readings: ScaleReading[]): { rows: DriverRow[]; needed: number 
   return { rows: rows.sort((a, b) => Math.abs(b.r) - Math.abs(a.r)).slice(0, 4), needed: 0 };
 }
 
+export interface SessionAverage {
+  readings: number;
+  from: string;
+  to: string;
+  weightKg: number;
+  bodyFatPercent: number | null;
+  muscleMassKg: number | null;
+  bodyWaterPercent: number | null;
+  // Largest minus smallest body fat reading of the session; null with fewer than two readings.
+  bodyFatRange: number | null;
+}
+
+// The mean of the newest session, i.e. of the weigh-ins in a row. Random scatter between readings
+// shrinks with the square root of their number; a bias of the scale does not. Every value is
+// averaged on its own: the sums and fixed shares between the values survive that.
+export function latestSessionAverage(readings: ScaleReading[]): SessionAverage | null {
+  const session = groupSessions(readings).at(-1);
+  if (!session) return null;
+  const meanOf = (get: (r: ScaleReading) => number | null, digits: number): number | null => {
+    const values = session.map(get).filter((v): v is number => v !== null);
+    return values.length === 0 ? null : round(mean(values), digits);
+  };
+  const fats = session.map((r) => r.bodyFatPercent).filter((v): v is number => v !== null);
+  return {
+    readings: session.length,
+    from: session[0].measuredAt,
+    to: session.at(-1)!.measuredAt,
+    weightKg: round(mean(session.map((r) => r.weightKg)), 2),
+    bodyFatPercent: meanOf((r) => r.bodyFatPercent, 1),
+    muscleMassKg: meanOf((r) => r.muscleMassKg, 1),
+    bodyWaterPercent: meanOf((r) => r.bodyWaterPercent, 1),
+    bodyFatRange: fats.length >= 2 ? round(Math.max(...fats) - Math.min(...fats), 1) : null,
+  };
+}
+
 export function analyzeScaleReadings(readings: ScaleReading[]): ScaleAnalysis {
   const sessions = groupSessions(readings);
   const derived = derivedRows(readings);

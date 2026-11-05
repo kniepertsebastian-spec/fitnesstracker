@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CalcInfoButton } from "../info/CalcInfoButton";
 
 import { ApiError } from "../../api/client";
@@ -9,9 +9,14 @@ import {
   useDeleteBodyCompositionEntry,
 } from "../../hooks/useBodyComposition";
 import { useProfile } from "../../hooks/useProfile";
+import { latestSessionAverage } from "@fitnesstracker/shared";
+import { entriesToReadings } from "../../lib/scaleReadings";
 import { BodyFatEstimateCard } from "./BodyFatEstimateCard";
 import { ArrowDown, ArrowRight, ArrowUp, Scale, Trash2 } from "lucide-react";
 import { Button, Callout, Card, EmptyState, Field, IconButton, Input, ListRow, Skeleton, StatTile } from "../ui";
+
+const num = (value: number) => value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const clock = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -42,6 +47,10 @@ export function BodyCompositionCard() {
 
   const latest = entries?.[0];
   const previous = entries?.[1];
+  // Mean of the newest weigh-ins in a row (within an hour): the scale's fat, muscle and water
+  // values scatter by several kg between them, the mean scatters less.
+  const sessionAverage = useMemo(() => (entries ? latestSessionAverage(entriesToReadings(entries)) : null), [entries]);
+  const hasAverage = !!sessionAverage && sessionAverage.readings >= 2;
 
   const handleAdd = async () => {
     const weight = Number(weightKg);
@@ -130,6 +139,15 @@ export function BodyCompositionCard() {
                 />
               )}
             </div>
+            {hasAverage && sessionAverage && (
+              <p className="mt-3 text-small text-text-2">
+                Mittel aus {sessionAverage.readings} Messungen ({clock(sessionAverage.from)}–{clock(sessionAverage.to)}):
+                {sessionAverage.bodyFatPercent !== null && ` Körperfett ${num(sessionAverage.bodyFatPercent)} %`}
+                {sessionAverage.bodyFatRange !== null && ` (Spanne ${num(sessionAverage.bodyFatRange)})`}
+                {sessionAverage.muscleMassKg !== null && ` · Muskelmasse ${num(sessionAverage.muscleMassKg)} kg`}
+                {sessionAverage.bodyWaterPercent !== null && ` · Wasser ${num(sessionAverage.bodyWaterPercent)} %`}
+              </p>
+            )}
           </Card>
         ) : (
           <Card>
@@ -138,7 +156,13 @@ export function BodyCompositionCard() {
         )}
       </div>
 
-      {latest && !profileLoading && <BodyFatEstimateCard latest={latest} profile={profile} />}
+      {latest && !profileLoading && (
+        <BodyFatEstimateCard
+          latest={latest}
+          profile={profile}
+          average={hasAverage && sessionAverage?.bodyFatPercent != null ? { bodyFatPercent: sessionAverage.bodyFatPercent, readings: sessionAverage.readings } : undefined}
+        />
+      )}
 
       <Card title="Was bedeuten die Werte?">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">

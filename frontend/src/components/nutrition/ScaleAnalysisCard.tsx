@@ -1,22 +1,12 @@
 import { useMemo } from "react";
-import { analyzeScaleReadings, type BodyCompositionEntryDto, type DerivedRow, type NoiseRow, type ScaleReading } from "@fitnesstracker/shared";
+import { analyzeScaleReadings, type DerivedRow, type NoiseRow } from "@fitnesstracker/shared";
 import { useBodyCompositionEntries } from "../../hooks/useBodyComposition";
+import { entriesToReadings } from "../../lib/scaleReadings";
 import { CalcInfoButton } from "../info/CalcInfoButton";
 import { Card } from "../ui";
 
 const fmt = (value: number, digits = 2) => value.toLocaleString("de-DE", { maximumFractionDigits: digits });
 const withUnit = (value: number, unit: string, digits = 2) => `${fmt(value, digits)}${unit ? ` ${unit}` : ""}`;
-
-export function entriesToReadings(entries: BodyCompositionEntryDto[]): ScaleReading[] {
-  return entries.map((e) => ({
-    measuredAt: e.measuredAt,
-    weightKg: e.weightKg,
-    bodyFatPercent: e.bodyFatPercent,
-    muscleMassKg: e.muscleMassKg,
-    bodyWaterPercent: e.bodyWaterPercent,
-    details: e.scaleDetails,
-  }));
-}
 
 function derivedText(row: DerivedRow): string {
   const evidence = `n = ${row.n}`;
