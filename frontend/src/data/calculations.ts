@@ -458,6 +458,30 @@ export const CALCULATIONS: CalculationInfo[] = [
     code: "frontend/src/lib/healthImport.ts",
   },
 
+  {
+    id: "activity-report",
+    group: "training",
+    title: "Aktivitätsbericht: Wochen, Schritte, Fahrrad",
+    shows:
+      "Fortschritt: Karte „Schritte & Rad“. Einstellungen: „Aktivitätsbericht“ (PDF und JSON) und „Health Connect“.",
+    formula: [
+      "Woche = Montag bis Sonntag in deiner Zeitzone; die laufende Woche zählt nur die bisherigen Tage",
+      "Schritte: Summe der Tage mit Wert; Ø pro Tag = Summe ÷ Tage mit Daten (ein Tag ohne Übertragung zählt nicht als 0)",
+      "Fahrrad draußen: Minuten und Kilometer der Health-Connect-Fahrten; Kilometer nur, wenn die Strecke mitgeliefert wurde; Ø pro Tag = Summe ÷ Tage der Woche (7, in der laufenden Woche die bisherigen), weil ein Tag ohne Fahrt 0 Minuten hat",
+      "Fahrrad Studio: Minuten der Einheiten „Rad“ im Cardio-Log, getrennt von draußen und ohne Strecke",
+      "Krafttraining: Trainingstage (Tage mit mindestens einem Satz), Sätze, Wiederholungen, Volumen = Summe aus Wiederholungen × Gewicht, Ø RIR über die Sätze mit RIR",
+      "Export: „Records“ im Stil eines Health-Exports (Typ, Einheit, Start, Ende, Wert) plus Wochenblöcke mit Summen und Durchschnitten",
+    ],
+    inputs:
+      "Krafttraining und Cardio-Log aus der App; Schritte und Radfahrten aus Health Connect, übertragen von einer Android-App an den Webhook dieser App.",
+    basis: "annahme",
+    sources: [
+      "Eigene Definitionen der App (Wochen, Durchschnitte, Volumen). Die Rohdaten stammen aus Health Connect: Tagessummen der Schritte und Health-Connect-Fahrten vom Typ „Radfahren“ (Hometrainer-Einheiten werden nicht übernommen, damit nichts doppelt zählt).",
+    ],
+    note: "Die Tagessumme von heute ist ein laufender Wert und steigt mit jeder Übertragung. Fehlt die Strecke einer Fahrt in der Übertragung, zählen ihre Minuten, aber keine Kilometer.",
+    code: "backend/src/modules/activity/activityReport.ts",
+  },
+
   // --- Begriffe -----------------------------------------------------------------------------
   {
     id: "term-rir",

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CalcInfoButton } from "../components/info/CalcInfoButton";
 import { AppShell } from "../components/layout/AppShell";
+import { ActivityWeekCard } from "../components/progress/ActivityWeekCard";
 import { BodyDataCard } from "../components/progress/BodyDataCard";
 import { CardioCard } from "../components/progress/CardioCard";
 import { MuscleVolumeCard } from "../components/progress/MuscleVolumeCard";
@@ -82,6 +83,7 @@ export function ProgressPage() {
         <StrengthCard range={range} />
         <div className="flex flex-col gap-4">
           <WeeklyDaysCard targetDays={targetDays} />
+          <ActivityWeekCard />
           <MuscleVolumeCard />
           <BodyDataCard range={range} />
           <CardioCard />

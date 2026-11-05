@@ -1,8 +1,10 @@
 import { AppShell } from "../components/layout/AppShell";
+import { ActivityExportCard } from "../components/settings/ActivityExportCard";
 import { AiKeyCard } from "../components/settings/AiKeyCard";
 import { CalculationsCard } from "../components/settings/CalculationsCard";
 import { DataExportCard } from "../components/settings/DataExportCard";
 import { HealthImportCard } from "../components/settings/HealthImportCard";
+import { HealthSyncCard } from "../components/settings/HealthSyncCard";
 import { TimerSettingsCard } from "../components/settings/TimerSettingsCard";
 import { PushReminderCard } from "../components/trainingPlan/PushReminderCard";
 
@@ -15,6 +17,8 @@ export function SettingsPage() {
         <PushReminderCard />
         <AiKeyCard />
         <HealthImportCard />
+        <HealthSyncCard />
+        <ActivityExportCard />
         <DataExportCard />
         <CalculationsCard />
       </div>

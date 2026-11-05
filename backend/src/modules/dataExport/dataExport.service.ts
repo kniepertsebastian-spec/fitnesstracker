@@ -46,6 +46,8 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     profile,
     progressPhotos,
     cardioPlanDays,
+    dailyActivities,
+    cyclingSessions,
   ] = await Promise.all([
     listWorkoutLogs(prisma, userId, {}),
     listGoals(prisma, userId),
@@ -61,6 +63,8 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     getProfile(prisma, userId),
     listPhotos(prisma, userId),
     prisma.cardioPlanDay.findMany({ where: { userId }, orderBy: [{ phase: "asc" }, { dayLabel: "asc" }] }),
+    prisma.dailyActivity.findMany({ where: { userId }, orderBy: { date: "asc" } }),
+    prisma.cyclingSession.findMany({ where: { userId }, orderBy: { startedAt: "asc" } }),
   ]);
 
   const goalsWithCurrentValue = await Promise.all(
@@ -87,6 +91,20 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     supplements: supplements.map(toSupplementDto),
     // Metadata only, no image bytes — see the module comment above.
     progressPhotos: progressPhotos.map(toProgressPhotoDto),
+    // Steps and outdoor rides pushed from Health Connect (the sync token itself is a secret and
+    // stays out, like the other credentials).
+    dailyActivities: dailyActivities.map((d) => ({
+      date: d.date.toISOString().slice(0, 10),
+      steps: d.steps,
+      distanceMeters: d.distanceMeters,
+    })),
+    cyclingSessions: cyclingSessions.map((r) => ({
+      startedAt: r.startedAt.toISOString(),
+      endedAt: r.endedAt.toISOString(),
+      durationSeconds: r.durationSeconds,
+      distanceMeters: r.distanceMeters,
+      title: r.title,
+    })),
   };
 }
 
