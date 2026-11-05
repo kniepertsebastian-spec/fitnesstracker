@@ -147,7 +147,7 @@ export function ActivityReportPage() {
     <div className="min-h-screen bg-bg px-4 py-4 pb-[env(safe-area-inset-bottom)] print:bg-white print:p-0">
       <div className="mx-auto mb-4 flex max-w-3xl flex-col gap-3 print:hidden">
         <div className="flex items-center justify-between gap-2">
-          <Link to="/settings" className="inline-flex items-center gap-1 text-small text-accent">
+          <Link to="/settings" className="inline-flex items-center gap-1 text-small text-accent-text">
             <ArrowLeft size={16} aria-hidden /> Einstellungen
           </Link>
           <Button variant="primary" iconLeft={<Printer size={16} aria-hidden />} onClick={() => window.print()}>

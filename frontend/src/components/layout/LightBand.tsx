@@ -5,7 +5,7 @@ export function LightBand() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       <svg
-        className="absolute -right-[420px] -top-40 h-[620px] w-[980px] max-w-none opacity-40 lg:-right-24 lg:-top-32 lg:opacity-70"
+        className="absolute right-[-420px] -top-40 h-[620px] w-[980px] max-w-none opacity-40 lg:-right-24 lg:-top-32 lg:opacity-70"
         viewBox="0 0 980 620"
         fill="none"
       >

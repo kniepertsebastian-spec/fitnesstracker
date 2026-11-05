@@ -4,7 +4,7 @@ import { cn } from "./cn";
 export type ToastTone = "accent" | "success" | "info" | "danger";
 
 const TONES: Record<ToastTone, { box: string; overline: string; icon: string }> = {
-  accent: { box: "border-accent-border", overline: "text-accent", icon: "bg-accent-soft text-accent" },
+  accent: { box: "border-accent-border", overline: "text-accent-text", icon: "bg-accent-soft text-accent-text" },
   success: { box: "border-success/40", overline: "text-success", icon: "bg-success-soft text-success" },
   info: { box: "border-border-strong", overline: "text-info-text", icon: "bg-info-soft text-info" },
   danger: { box: "border-danger/40", overline: "text-danger-text", icon: "bg-danger-soft text-danger" },

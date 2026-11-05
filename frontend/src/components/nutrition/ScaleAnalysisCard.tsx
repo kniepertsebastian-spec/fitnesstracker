@@ -69,7 +69,7 @@ export function ScaleAnalysisCard() {
       </p>
 
       <details className="mt-3">
-        <summary className="cursor-pointer text-small text-accent hover:text-accent-hover">Rauschen und Herleitung ansehen</summary>
+        <summary className="cursor-pointer text-small text-accent-text hover:text-accent-text-hover">Rauschen und Herleitung ansehen</summary>
 
         <section className="mt-3">
           <h3 className="text-small font-medium text-text">Rauschen bei Wiederholungen</h3>

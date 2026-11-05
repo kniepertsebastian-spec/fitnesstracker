@@ -174,10 +174,10 @@ function ExerciseLogGroup({ exerciseName, logs, onEdit }: ExerciseGroupProps) {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-small text-text-subtle">{formatTime(log.performedAt)}</span>
                 <span className="flex">
-                  <IconButton aria-label={`Satz ${log.setNumber} bearbeiten`} className="h-9 w-9 border-transparent bg-transparent" onClick={() => onEdit(log)}>
+                  <IconButton aria-label={`Satz ${log.setNumber} bearbeiten`} className="h-9! w-9! border-transparent bg-transparent" onClick={() => onEdit(log)}>
                     <Pencil size={16} aria-hidden />
                   </IconButton>
-                  <IconButton aria-label={`Satz ${log.setNumber} löschen`} className="h-9 w-9 border-transparent bg-transparent hover:text-danger-text" onClick={() => setDeleting(log)}>
+                  <IconButton aria-label={`Satz ${log.setNumber} löschen`} className="h-9! w-9! border-transparent bg-transparent hover:text-danger-text" onClick={() => setDeleting(log)}>
                     <Trash2 size={16} aria-hidden />
                   </IconButton>
                 </span>

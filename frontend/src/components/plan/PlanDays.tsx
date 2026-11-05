@@ -70,16 +70,16 @@ function Row({
           <GripVertical size={16} aria-hidden className="shrink-0 cursor-grab text-text-faint" />
           <span className="min-w-0 flex-1 truncate">{entry.exerciseName}</span>
           <span className="flex shrink-0 items-center">
-            <IconButton aria-label={`${entry.exerciseName} ersetzen`} className="h-9 w-9 border-transparent bg-transparent" onClick={onReplace}>
+            <IconButton aria-label={`${entry.exerciseName} ersetzen`} className="h-9! w-9! border-transparent bg-transparent" onClick={onReplace}>
               <Repeat2 size={16} aria-hidden />
             </IconButton>
-            <IconButton aria-label={`${entry.exerciseName} nach oben`} className="h-9 w-9 border-transparent bg-transparent" disabled={index === 0} onClick={() => onMove("up")}>
+            <IconButton aria-label={`${entry.exerciseName} nach oben`} className="h-9! w-9! border-transparent bg-transparent" disabled={index === 0} onClick={() => onMove("up")}>
               <ArrowUp size={16} aria-hidden />
             </IconButton>
-            <IconButton aria-label={`${entry.exerciseName} nach unten`} className="h-9 w-9 border-transparent bg-transparent" disabled={last} onClick={() => onMove("down")}>
+            <IconButton aria-label={`${entry.exerciseName} nach unten`} className="h-9! w-9! border-transparent bg-transparent" disabled={last} onClick={() => onMove("down")}>
               <ArrowDown size={16} aria-hidden />
             </IconButton>
-            <IconButton aria-label={`${entry.exerciseName} löschen`} className="h-9 w-9 border-transparent bg-transparent hover:text-danger-text" onClick={() => remove.mutate(entry.id)}>
+            <IconButton aria-label={`${entry.exerciseName} löschen`} className="h-9! w-9! border-transparent bg-transparent hover:text-danger-text" onClick={() => remove.mutate(entry.id)}>
               <Trash2 size={16} aria-hidden />
             </IconButton>
           </span>

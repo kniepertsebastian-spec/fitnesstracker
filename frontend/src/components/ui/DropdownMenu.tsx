@@ -30,8 +30,8 @@ export function DropdownMenuItem({ icon, tone = "default", className, children, 
   return (
     <Radix.Item
       className={cn(
-        "flex min-h-11 cursor-pointer items-center gap-2 rounded-sm px-3 text-body outline-none",
-        "data-[highlighted]:bg-surface-2",
+        "flex min-h-11 cursor-pointer items-center gap-2 rounded-sm px-3 text-body outline-hidden",
+        "data-highlighted:bg-surface-2",
         tone === "danger" ? "text-danger-text" : "text-text-2",
         className,
       )}

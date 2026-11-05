@@ -52,7 +52,7 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
 
   return (
     <Card variant="hero" className="lg:p-6">
-      <p className="text-overline text-accent">Aktuelle Phase</p>
+      <p className="text-overline text-accent-text">Aktuelle Phase</p>
       <div className="mt-1 flex items-baseline justify-between gap-3">
         <h2 className="text-h2-hero text-text lg:text-[26px]">
           {getPhaseDisplayName(plan.currentPhase, plan.phases)}

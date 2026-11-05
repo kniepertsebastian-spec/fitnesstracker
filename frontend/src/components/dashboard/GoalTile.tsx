@@ -14,7 +14,7 @@ export function GoalTile() {
     <Card
       title="Nächstes Ziel"
       action={
-        <Link to="/goals" className="text-small text-accent hover:text-accent-hover">
+        <Link to="/goals" className="text-small text-accent-text hover:text-accent-text-hover">
           Alle Ziele
         </Link>
       }
@@ -35,7 +35,7 @@ export function GoalTile() {
           icon={<Target size={18} aria-hidden />}
           text="Noch kein offenes Ziel."
           action={
-            <Link to="/goals" className="text-small text-accent hover:text-accent-hover">
+            <Link to="/goals" className="text-small text-accent-text hover:text-accent-text-hover">
               Ziel anlegen
             </Link>
           }

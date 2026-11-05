@@ -77,7 +77,7 @@ export function ExerciseDetailPage() {
           {exercise.imageUrls.length > 0 && (
             <div className="grid grid-cols-2 gap-3 lg:max-w-2xl">
               {exercise.imageUrls.slice(0, 2).map((url) => (
-                <img key={url} src={url} alt={exercise.name} className="aspect-[4/3] w-full rounded-xl bg-track object-contain" />
+                <img key={url} src={url} alt={exercise.name} className="aspect-4/3 w-full rounded-xl bg-track object-contain" />
               ))}
             </div>
           )}
@@ -107,7 +107,7 @@ export function ExerciseDetailPage() {
                   href={exercise.videoUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-body text-accent hover:text-accent-hover"
+                  className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-body text-accent-text hover:text-accent-text-hover"
                 >
                   Video ansehen <ExternalLink size={14} aria-hidden />
                 </a>

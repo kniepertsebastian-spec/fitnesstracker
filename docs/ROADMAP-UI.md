@@ -94,7 +94,7 @@ Diese Werte sind die Quelle der Wahrheit. **Keine Farb-, Radius- oder Schattenwe
 | `--text-subtle` | `#9BA3BD` | Untertitel, Labels |
 | `--text-faint` | `#8C93AD` | Meta-Angaben (nur ≥ 12 px) |
 | `--accent` | `#8B5CF6` | Primär (Violett): Flächen, Linien, aktive Zustände, Fortschritt, Satz erledigt |
-| `--accent-hover` / `--accent-text` / `--accent-text-hover` | `#A855F7` / `#C084FC` / `#D8B4FE` | Hover · violetter Text (`text-accent` zeigt auf `--accent-text`, weil `#8B5CF6` für kleinen Text zu dunkel ist) · Link-Hover |
+| `--accent-hover` / `--accent-text` / `--accent-text-hover` | `#A855F7` / `#C084FC` / `#D8B4FE` | Hover · violetter Text (`text-accent-text` zeigt auf `--accent-text`, nicht `text-accent` – das wäre der Füllton; `#8B5CF6` ist für kleinen Text zu dunkel) · Link-Hover |
 | `--on-accent` | `#FFFFFF` | Text auf Violett |
 | `--accent-soft` | `rgba(139,92,246,0.16)` | Violette Badges, Icon-Hintergründe |
 | `--accent-border` / `--hero-border` | `#44316F` | Rahmen bei violetten Flächen und Hero-Karten |

@@ -84,7 +84,7 @@ export function UiKitPage() {
           <p className="text-body text-text-muted">Inhalt der Karte.</p>
         </Card>
         <Card variant="hero" className="w-72">
-          <p className="text-overline text-accent">Heute dran</p>
+          <p className="text-overline text-accent-text">Heute dran</p>
           <p className="mt-1 text-h2-hero">Tag A – Brust</p>
         </Card>
       </Section>
