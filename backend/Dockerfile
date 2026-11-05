@@ -15,8 +15,11 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 COPY tsconfig.base.json ./
-COPY packages/shared packages/shared
-COPY backend backend
+COPY packages/shared/src packages/shared/src
+COPY packages/shared/tsconfig.json packages/shared/tsconfig.json
+COPY backend/src backend/src
+COPY backend/prisma backend/prisma
+COPY backend/tsconfig.json backend/tsconfig.json
 RUN pnpm --filter @fitnesstracker/shared build
 RUN pnpm --filter backend prisma:generate
 RUN pnpm --filter backend build
