@@ -20,23 +20,23 @@ Fitnesstracker – TODO vor Hardening
 
 🟡 P2 – Abrunden
 
-☐ Wasser-Tracking finalisieren – Tagesziel, Eingabe und Verlauf.
-☐ Supplement-Tracking finalisieren – Einnahmen, Status und Erinnerungen.
-☐ Daily Challenge abrunden – Anzeige, Erledigung und Verlauf.
-☐ Ernährungsrechner abrunden – Eingaben, Berechnung und Zielwerte.
-☐ Export/Backup prüfen – Persönliche Daten sicher exportierbar machen.
-☐ Empty/Error/Loading States – Alle zentralen Ansichten sauber behandeln.
-☐ Mobile UX finalisieren – Touch-Bedienung und schnelle Eingaben optimieren.
+☑ Wasser-Tracking finalisieren – Tagesziel, Eingabe und Verlauf.
+☑ Supplement-Tracking finalisieren – Einnahmen, Status und Erinnerungen.
+☑ Daily Challenge abrunden – Anzeige, Erledigung und Verlauf.
+☑ Ernährungsrechner abrunden – Eingaben, Berechnung und Zielwerte.
+☑ Export/Backup prüfen – Persönliche Daten sicher exportierbar machen.
+☑ Empty/Error/Loading States – Alle zentralen Ansichten sauber behandeln.
+☑ Mobile UX finalisieren – Touch-Bedienung und schnelle Eingaben optimieren.
 
 🟢 P3 – Optional
 
-☐ AI-Übungsvorschläge – Komfortfeature.
+☒ AI-Übungsvorschläge – Komfortfeature. (verworfen, nicht geplant)
 ☐ Wearables/Health-Integrationen – Nach Feature Freeze.
 ☐ Erweiterte Statistiken – Nur bei echtem Mehrwert.
 ☐ Social Features – Nicht vor Hardening nötig.
 
 🏁 Feature Freeze
 
-☐ Keine neuen großen Features – Danach nur Fehlerbehebung/Stabilisierung.
-☐ Kernflows komplett testen – Login → Dashboard → Training → Abschluss → Historie → Fortschritt.
-☐ Offline-Kernflow testen – Offline erfassen → online gehen → Sync kontrollieren.
+☑ Keine neuen großen Features – Danach nur Fehlerbehebung/Stabilisierung.
+☑ Kernflows komplett testen – Login → Dashboard → Training → Abschluss → Historie → Fortschritt.
+☑ Offline-Kernflow testen – Offline erfassen → online gehen → Sync kontrollieren.
