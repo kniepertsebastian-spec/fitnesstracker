@@ -21,6 +21,9 @@ const formSchema = z.object({
   note: z.string().max(500, { message: "Höchstens 500 Zeichen" }).optional(),
 });
 type FormValues = z.infer<typeof formSchema>;
+// zod 4 types coerced/preprocessed fields as `unknown` on the input side, which is what the form
+// holds before validation; handleSubmit hands the validated output (FormValues) to the callback.
+type FormInput = z.input<typeof formSchema>;
 
 interface Props {
   open: boolean;
@@ -119,7 +122,7 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
     watch,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(formSchema) });
+  } = useForm<FormInput, unknown, FormValues>({ resolver: zodResolver(formSchema) });
 
   const watchedWeight = watch("weightKg");
   const watchedReps = watch("reps");

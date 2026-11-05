@@ -73,6 +73,54 @@ jobs:
       - name: Validate Caddyfile
         run: docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 
+  # Backend integration tests (auth incl. refresh grace/password/reset/delete, data separation
+  # between accounts, photo upload) against a real Postgres. TEST_DATABASE_URL is what switches
+  # them on — without it `pnpm test` skips them (see backend/vitest.config.ts).
+  backend-integration:
+    name: Backend integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fitnesstracker
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: fitnesstracker_integration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fitnesstracker"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://fitnesstracker:ci-password@localhost:5432/fitnesstracker_integration
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build:shared
+
+      - name: Generate Prisma client and apply migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+        run: |
+          pnpm prisma:generate
+          pnpm prisma:deploy
+
+      - name: Integration tests
+        working-directory: backend
+        run: pnpm vitest run src/integration
+
   # Only on PRs — brings up a real Postgres + backend and runs the offline-sync Playwright suite
   # (frontend/e2e/) against a production build, covering integration, E2E and offline-sync
   # testing in one (there's no separate integration suite; the E2E tests exercise the real API

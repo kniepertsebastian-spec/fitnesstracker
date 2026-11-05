@@ -12,21 +12,26 @@ export class ApiError extends Error {
   }
 }
 
-let refreshPromise: Promise<boolean> | null = null;
+// "rejected": the server said the session is over (401/403). "unavailable": no answer, or a 5xx —
+// says nothing about the session, so the user stays signed in and the request just fails.
+type RefreshResult = "ok" | "rejected" | "unavailable";
 
-async function refreshAccessToken(): Promise<boolean> {
+let refreshPromise: Promise<RefreshResult> | null = null;
+
+async function refreshAccessToken(): Promise<RefreshResult> {
   if (!refreshPromise) {
     refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
       method: "POST",
       credentials: "include",
     })
       .then(async (res) => {
-        if (!res.ok) return false;
+        if (res.status === 401 || res.status === 403) return "rejected";
+        if (!res.ok) return "unavailable";
         const data = await res.json();
         useAuthStore.getState().setAccessToken(data.accessToken);
-        return true;
+        return "ok";
       })
-      .catch(() => false)
+      .catch((): RefreshResult => "unavailable")
       .finally(() => {
         refreshPromise = null;
       });
@@ -56,10 +61,10 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   if (res.status === 401 && !skipAuthRetry) {
     const refreshed = await refreshAccessToken();
-    if (refreshed) {
+    if (refreshed === "ok") {
       return apiFetch<T>(path, { ...options, skipAuthRetry: true });
     }
-    useAuthStore.getState().clearSession();
+    if (refreshed === "rejected") useAuthStore.getState().clearSession();
   }
 
   if (!res.ok) {
@@ -86,10 +91,10 @@ export async function apiUpload<T>(path: string, formData: FormData, skipAuthRet
 
   if (res.status === 401 && !skipAuthRetry) {
     const refreshed = await refreshAccessToken();
-    if (refreshed) {
+    if (refreshed === "ok") {
       return apiUpload<T>(path, formData, true);
     }
-    useAuthStore.getState().clearSession();
+    if (refreshed === "rejected") useAuthStore.getState().clearSession();
   }
 
   if (!res.ok) {
@@ -110,10 +115,10 @@ export async function apiFetchBlob(path: string, skipAuthRetry = false): Promise
 
   if (res.status === 401 && !skipAuthRetry) {
     const refreshed = await refreshAccessToken();
-    if (refreshed) {
+    if (refreshed === "ok") {
       return apiFetchBlob(path, true);
     }
-    useAuthStore.getState().clearSession();
+    if (refreshed === "rejected") useAuthStore.getState().clearSession();
   }
 
   if (!res.ok) {

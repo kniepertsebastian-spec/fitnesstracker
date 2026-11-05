@@ -37,11 +37,12 @@ import stretchingRoutes from "./modules/stretching/stretching.routes.js";
 import formAnalysisRoutes from "./modules/formAnalysis/formAnalysis.routes.js";
 import cardioPlanRoutes from "./modules/cardioPlan/cardioPlan.routes.js";
 import activityRoutes from "./modules/activity/activity.routes.js";
+import exerciseImageRoutes from "./modules/exerciseImages/exerciseImage.routes.js";
 import healthSyncRoutes, { healthSyncWebhookRoutes } from "./modules/healthSync/healthSync.routes.js";
 
-export function buildApp() {
+export function buildApp(options: { logger?: boolean } = {}) {
   const app = Fastify({
-    logger: env.NODE_ENV === "development" ? { transport: { target: "pino-pretty" } } : true,
+    logger: options.logger ?? (env.NODE_ENV === "development" ? { transport: { target: "pino-pretty" } } : true),
     // Behind Caddy/Cloudflare `request.ip` is only the real visitor when the proxy chain is trusted
     // (see TRUST_PROXY in config/env.ts). The per-IP rate limits depend on it.
     trustProxy: env.TRUST_PROXY,
@@ -71,6 +72,7 @@ export function buildApp() {
   app.get("/api/health", async () => ({ status: "ok" }));
 
   app.register(authRoutes, { prefix: "/api/auth" });
+  app.register(exerciseImageRoutes, { prefix: "/api" });
   app.register(exerciseRoutes, { prefix: "/api" });
   app.register(workoutLogRoutes, { prefix: "/api" });
   app.register(trainingPlanRoutes, { prefix: "/api" });

@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import type { CreateWorkoutSessionInput, WorkoutSessionStatus } from "@fitnesstracker/shared";
-import { NotFoundError } from "../../errors/httpErrors.js";
+import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
 
 const TERMINAL_STATUSES: WorkoutSessionStatus[] = ["COMPLETED", "ABORTED"];
 
@@ -34,6 +34,9 @@ export async function createWorkoutSession(
   return prisma.$transaction(async (tx) => {
     const existing = await tx.workoutSession.findUnique({ where: { clientId: input.clientId } });
     if (existing) {
+      // clientId is unique across all accounts: a session another user started under it is a
+      // conflict, never something to hand back.
+      if (existing.userId !== userId) throw new ConflictError("clientId already in use");
       // A retried create of the same session (idempotency), not a new one — nothing to reconcile.
       return existing;
     }

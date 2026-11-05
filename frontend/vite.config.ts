@@ -2,6 +2,10 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+// Where `/api` goes in dev and in `vite preview`. Defaults to the usual local backend; set it when
+// that port is taken (e.g. to run the E2E suite against a backend on another port).
+const API_PROXY_TARGET = process.env.API_PROXY_TARGET ?? "http://localhost:3000";
+
 export default defineConfig({
   // Busts the persisted query cache (src/queryClient.ts) on every new build.
   define: { __BUILD_ID__: JSON.stringify(new Date().toISOString()) },
@@ -119,11 +123,7 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
           {
-            urlPattern: /\/api\/.*/,
-            handler: "NetworkOnly",
-          },
-          {
-            urlPattern: /^https:\/\/raw\.githubusercontent\.com\/yuhonas\/free-exercise-db\/.*/i,
+            urlPattern: /\/api\/exercise-images\/.*/i,
             handler: "CacheFirst",
             options: {
               cacheName: "exercise-images-cache",
@@ -135,6 +135,10 @@ export default defineConfig({
                 statuses: [0, 200],
               },
             },
+          },
+          {
+            urlPattern: /\/api\/.*/,
+            handler: "NetworkOnly",
           },
         ],
         // Adds push/notificationclick handling to the generated service worker — see
@@ -170,7 +174,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:3000",
+        target: API_PROXY_TARGET,
         changeOrigin: false,
       },
     },
@@ -181,7 +185,7 @@ export default defineConfig({
   preview: {
     proxy: {
       "/api": {
-        target: "http://localhost:3000",
+        target: API_PROXY_TARGET,
         changeOrigin: false,
       },
     },

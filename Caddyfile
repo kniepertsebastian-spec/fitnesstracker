@@ -20,10 +20,13 @@
 	# CSP: the app is a same-origin SPA with a same-origin API. The few exceptions are spelled
 	# out: inline style *attributes* (React `style={}`, Radix positioning) need 'unsafe-inline'
 	# for styles — scripts stay strictly 'self' (the build emits no inline script); exercise
-	# images come from free-exercise-db on raw.githubusercontent.com; photos, camera previews and
+	# images are stored on the server and served from /api/exercise-images; photos, camera previews and
 	# the custom timer sound are blob:/data: URLs.
 	header {
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://raw.githubusercontent.com; media-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		# Only meaningful over HTTPS, which Cloudflare provides in front of this plain-HTTP origin.
+		# No includeSubDomains/preload: the domain also hosts other apps.
+		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		# Only the progress-photo camera is used; everything else the app never asks for.

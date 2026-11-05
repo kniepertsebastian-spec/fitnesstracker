@@ -11,6 +11,7 @@ import { queryClient } from "../queryClient";
 import { useAuthStore } from "../stores/authStore";
 import { offlineDb, type LocalWorkoutLog, type MutationOp } from "./db";
 import { refreshSyncCounts } from "./syncCounts";
+import { isTransientFailure } from "./account";
 
 export const WORKOUT_LOGS_QUERY_KEY = ["workout-logs"] as const;
 
@@ -253,7 +254,7 @@ export async function flushPendingMutations(accountId = useAuthStore.getState().
         await applyMutation({ ...next, accountId });
         await offlineDb.pendingMutations.delete(next.id as number);
       } catch (error) {
-        if (error instanceof ApiError) {
+        if (error instanceof ApiError && !isTransientFailure(error)) {
           // The server rejected it outright (validation, 404 after manual deletion elsewhere,
           // ...) — retrying the exact same request won't change that, so drop it rather than
           // blocking everything queued after it. Recorded in failedMutations (payload included)

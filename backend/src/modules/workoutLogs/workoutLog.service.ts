@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import type { CreateWorkoutLogInput, UpdateWorkoutLogInput } from "@fitnesstracker/shared";
-import { NotFoundError } from "../../errors/httpErrors.js";
+import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
 import { sendNotificationToUser } from "../push/push.service.js";
 
 const withExercise = { include: { exercise: true } } as const;
@@ -41,8 +41,10 @@ export async function listWorkoutLogChanges(prisma: PrismaClient, userId: string
 
 // Idempotent by clientId: a retried submit (e.g. from a flaky connection, or later the offline
 // sync queue) returns the existing row instead of throwing a unique-constraint error.
-export function createWorkoutLog(prisma: PrismaClient, userId: string, input: CreateWorkoutLogInput) {
-  return prisma.workoutLog.upsert({
+// clientId is unique across all accounts, so a row that already exists under it may belong to
+// someone else: that is a conflict, never something to hand back.
+export async function createWorkoutLog(prisma: PrismaClient, userId: string, input: CreateWorkoutLogInput) {
+  const log = await prisma.workoutLog.upsert({
     where: { clientId: input.clientId },
     update: {},
     create: {
@@ -59,6 +61,10 @@ export function createWorkoutLog(prisma: PrismaClient, userId: string, input: Cr
     },
     ...withExercise,
   });
+  if (log.userId !== userId) {
+    throw new ConflictError("clientId already in use");
+  }
+  return log;
 }
 
 // `idOrClientId` accepts either identifier: the offline sync queue only ever knows a row's

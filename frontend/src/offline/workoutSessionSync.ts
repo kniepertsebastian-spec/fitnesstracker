@@ -10,6 +10,7 @@ import { beginSync, endSync } from "../stores/syncStore";
 import { queryClient } from "../queryClient";
 import { offlineDb, type LocalWorkoutSession, type MutationOp } from "./db";
 import { refreshSyncCounts } from "./syncCounts";
+import { currentAccountId, isTransientFailure } from "./account";
 
 export const WORKOUT_SESSION_QUERY_KEY = ["workout-session", "open"];
 
@@ -18,9 +19,13 @@ const OPEN_STATUSES: WorkoutSessionStatus[] = ["ACTIVE", "PAUSED"];
 // Same collapsing behaviour as workoutLogSync's enqueueMutation, on its own queue table — a
 // Start followed by a Pause before either ever synced collapses into one "create" carrying the
 // latest status, no delete op needed since a session is never removed, only ended.
-async function enqueueSessionMutation(clientId: string, op: MutationOp, payload: Record<string, unknown>) {
+async function enqueueSessionMutation(accountId: string, clientId: string, op: MutationOp, payload: Record<string, unknown>) {
   await offlineDb.transaction("rw", offlineDb.pendingSessionMutations, async () => {
-    const existing = await offlineDb.pendingSessionMutations.where("clientId").equals(clientId).first();
+    const existing = await offlineDb.pendingSessionMutations
+      .where("accountId")
+      .equals(accountId)
+      .filter((m) => m.clientId === clientId)
+      .first();
     const queuedAt = new Date().toISOString();
 
     if (existing) {
@@ -31,7 +36,7 @@ async function enqueueSessionMutation(clientId: string, op: MutationOp, payload:
       return;
     }
 
-    await offlineDb.pendingSessionMutations.add({ clientId, op, payload, queuedAt });
+    await offlineDb.pendingSessionMutations.add({ accountId, clientId, op, payload, queuedAt });
   });
 
   await refreshSyncCounts();
@@ -40,7 +45,11 @@ async function enqueueSessionMutation(clientId: string, op: MutationOp, payload:
 // Local-only read of whichever session is currently open (ACTIVE/PAUSED) — at most one in normal
 // use; picks the most recently updated if that's ever violated, same safety net as the backend.
 async function readCachedOpenSession(): Promise<LocalWorkoutSession | null> {
+  const accountId = currentAccountId();
+  if (!accountId) return null;
   const sessions = await offlineDb.workoutSessions
+    .where("accountId")
+    .equals(accountId)
     .filter((s) => OPEN_STATUSES.includes(s.status))
     .toArray();
   if (sessions.length === 0) return null;
@@ -55,19 +64,24 @@ async function syncSessionQueryCache() {
 // merge into the local cache (skipping a session with an unsynced local mutation so a background
 // refresh can't clobber it), then always serve from the cache.
 export async function fetchAndCacheOpenSession(): Promise<LocalWorkoutSession | null> {
+  const accountId = currentAccountId();
+  if (!accountId) return null;
   try {
     const dto = await getOpenWorkoutSessionRequest();
+    if (currentAccountId() !== accountId) return readCachedOpenSession();
     const pendingClientIds = new Set(
-      (await offlineDb.pendingSessionMutations.toArray()).map((m) => m.clientId),
+      (await offlineDb.pendingSessionMutations.where("accountId").equals(accountId).toArray()).map((m) => m.clientId),
     );
     if (dto && !pendingClientIds.has(dto.clientId)) {
-      await offlineDb.workoutSessions.put(dto);
+      await offlineDb.workoutSessions.put({ ...dto, accountId });
     }
     if (!dto) {
       // The server has no open session: one still "open" in the cache (and fully synced) was
       // closed server-side — e.g. auto-completed after an unanswered "Training noch aktiv?".
       const now = new Date().toISOString();
       const stale = await offlineDb.workoutSessions
+        .where("accountId")
+        .equals(accountId)
         .filter((s) => OPEN_STATUSES.includes(s.status) && s.id !== null && !pendingClientIds.has(s.clientId))
         .toArray();
       for (const s of stale) {
@@ -81,9 +95,12 @@ export async function fetchAndCacheOpenSession(): Promise<LocalWorkoutSession | 
 }
 
 export async function startWorkoutSessionLocal(clientId: string) {
+  const accountId = currentAccountId();
+  if (!accountId) throw new Error("Zum Starten muss ein Account angemeldet sein.");
   const now = new Date().toISOString();
   const local: LocalWorkoutSession = {
     id: null,
+    accountId,
     clientId,
     status: "ACTIVE",
     startedAt: now,
@@ -94,13 +111,16 @@ export async function startWorkoutSessionLocal(clientId: string) {
   };
   await offlineDb.workoutSessions.put(local);
   const input: CreateWorkoutSessionInput = { clientId };
-  await enqueueSessionMutation(clientId, "create", input);
+  await enqueueSessionMutation(accountId, clientId, "create", input);
   await syncSessionQueryCache();
   void flushPendingSessionMutations();
 }
 
 export async function updateWorkoutSessionStatusLocal(clientId: string, status: WorkoutSessionStatus) {
-  const existing = await offlineDb.workoutSessions.get(clientId);
+  const accountId = currentAccountId();
+  if (!accountId) throw new Error("Zum Ändern muss ein Account angemeldet sein.");
+  const found = await offlineDb.workoutSessions.get(clientId);
+  const existing = found?.accountId === accountId ? found : undefined;
   const now = new Date().toISOString();
   if (existing) {
     await offlineDb.workoutSessions.put({
@@ -110,7 +130,7 @@ export async function updateWorkoutSessionStatusLocal(clientId: string, status: 
       updatedAt: now,
     });
   }
-  await enqueueSessionMutation(clientId, "update", { status });
+  await enqueueSessionMutation(accountId, clientId, "update", { status });
   await syncSessionQueryCache();
   void flushPendingSessionMutations();
 }
@@ -118,22 +138,25 @@ export async function updateWorkoutSessionStatusLocal(clientId: string, status: 
 // "Weiter" on the forgotten-session prompt. Online only: the server owns the 2h clock, so an
 // offline tap can't be honoured (the request throws and the prompt simply stays).
 export async function keepWorkoutSessionAliveLocal(clientId: string) {
+  const accountId = currentAccountId();
   const existing = await offlineDb.workoutSessions.get(clientId);
-  if (!existing?.id) throw new Error("Training ist noch nicht synchronisiert");
+  if (!accountId || existing?.accountId !== accountId || !existing.id) {
+    throw new Error("Training ist noch nicht synchronisiert");
+  }
   const dto = await keepWorkoutSessionAliveRequest(existing.id);
-  await offlineDb.workoutSessions.put(dto);
+  await offlineDb.workoutSessions.put({ ...dto, accountId });
   await syncSessionQueryCache();
 }
 
-async function applySessionMutation(mutation: { clientId: string; op: MutationOp; payload: Record<string, unknown> }) {
+async function applySessionMutation(mutation: { accountId: string; clientId: string; op: MutationOp; payload: Record<string, unknown> }) {
   if (mutation.op === "create") {
     const dto = await createWorkoutSessionRequest(mutation.payload as CreateWorkoutSessionInput);
-    await offlineDb.workoutSessions.put(dto);
+    await offlineDb.workoutSessions.put({ ...dto, accountId: mutation.accountId });
   } else {
     const dto = await updateWorkoutSessionRequest(mutation.clientId, {
       status: mutation.payload.status as WorkoutSessionStatus,
     });
-    await offlineDb.workoutSessions.put(dto);
+    await offlineDb.workoutSessions.put({ ...dto, accountId: mutation.accountId });
   }
 }
 
@@ -143,21 +166,24 @@ let flushing = false;
 // a Start always reaches the server before a Pause queued against the same not-yet-synced
 // session.
 export async function flushPendingSessionMutations() {
-  if (flushing || !navigator.onLine) return;
+  const accountId = currentAccountId();
+  if (flushing || !navigator.onLine || !accountId) return;
   flushing = true;
   beginSync();
   try {
     for (;;) {
-      const next = await offlineDb.pendingSessionMutations.orderBy("queuedAt").first();
+      if (currentAccountId() !== accountId) break;
+      const [next] = await offlineDb.pendingSessionMutations.where("accountId").equals(accountId).sortBy("queuedAt");
       if (!next) break;
 
       try {
-        await applySessionMutation(next);
+        await applySessionMutation({ ...next, accountId });
         await offlineDb.pendingSessionMutations.delete(next.id as number);
       } catch (error) {
-        if (error instanceof ApiError) {
+        if (error instanceof ApiError && !isTransientFailure(error)) {
           console.error("Dropping unsyncable workout session mutation", next, error);
           await offlineDb.failedMutations.add({
+            accountId,
             kind: "workoutSession",
             clientId: next.clientId,
             op: next.op,

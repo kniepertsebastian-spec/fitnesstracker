@@ -23,6 +23,9 @@ const formSchema = z.object({
   goal: nutritionGoalSchema,
 });
 type FormValues = z.infer<typeof formSchema>;
+// zod 4 types coerced/preprocessed fields as `unknown` on the input side, which is what the form
+// holds before validation; handleSubmit hands the validated output (FormValues) to the callback.
+type FormInput = z.input<typeof formSchema>;
 
 export function ProfileForm() {
   const { data: profile, isLoading } = useProfile();
@@ -33,7 +36,7 @@ export function ProfileForm() {
     handleSubmit,
     reset,
     formState: { isSubmitting },
-  } = useForm<FormValues>({
+  } = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { gender: "MALE", activityLevel: "MODERATE", goal: "MAINTAIN" },
   });
