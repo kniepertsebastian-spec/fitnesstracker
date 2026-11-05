@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { HEAVY_RATE_LIMIT } from "../../lib/rateLimits.js";
 import { buildFullBackup, buildWorkoutLogsCsv } from "./dataExport.service.js";
 
 function todayFileStamp(): string {
@@ -8,14 +9,14 @@ function todayFileStamp(): string {
 export default async function dataExportRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
 
-  fastify.get("/export/backup.json", async (request, reply) => {
+  fastify.get("/export/backup.json", HEAVY_RATE_LIMIT, async (request, reply) => {
     const backup = await buildFullBackup(fastify.prisma, request.user.sub);
     return reply
       .header("Content-Disposition", `attachment; filename="fitnesstracker-backup-${todayFileStamp()}.json"`)
       .send(backup);
   });
 
-  fastify.get("/export/workouts.csv", async (request, reply) => {
+  fastify.get("/export/workouts.csv", HEAVY_RATE_LIMIT, async (request, reply) => {
     const csv = await buildWorkoutLogsCsv(fastify.prisma, request.user.sub);
     return reply
       .header("Content-Type", "text/csv; charset=utf-8")

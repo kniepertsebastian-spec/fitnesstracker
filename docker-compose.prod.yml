@@ -33,6 +33,9 @@ services:
       # Cookies must be Secure once served over HTTPS (Caddy terminates TLS in front of this).
       COOKIE_SECURE: "true"
       FRONTEND_ORIGIN: https://${DOMAIN:?}
+      # Cloudflare -> cloudflared -> Caddy -> backend: all hops are on private addresses (see the
+      # trusted_proxies block in Caddyfile). Without this every visitor shares one rate-limit bucket.
+      TRUST_PROXY: "loopback,linklocal,uniquelocal"
       # `sharp` (progress-photo processing) bundles a precompiled libvips binary whose SIMD-
       # vectorized codepaths can assume CPU instructions (AVX2) that lower-power hardware —
       # exactly the kind of CPU a mini-PC like this one tends to have — doesn't support. Without
