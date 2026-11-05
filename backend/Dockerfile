@@ -22,15 +22,27 @@ RUN pnpm --filter backend prisma:generate
 RUN pnpm --filter backend build
 
 FROM base AS runtime
-ENV NODE_ENV=production
-COPY --from=build /app/pnpm-workspace.yaml /app/pnpm-lock.yaml /app/package.json ./
-COPY --from=build /app/packages/shared packages/shared
-COPY --from=build /app/backend/package.json backend/package.json
-COPY --from=build /app/backend/dist backend/dist
-COPY --from=build /app/backend/prisma backend/prisma
+# The server runs as the unprivileged `node` user. HOME points at its home so corepack/pnpm find
+# the cache that the install below fills; su-exec (see docker-entrypoint.sh) drops root without
+# changing the environment.
+ENV NODE_ENV=production HOME=/home/node
+RUN apk add --no-cache su-exec && chown node:node /app
+USER node
+COPY --chown=node:node --from=build /app/pnpm-workspace.yaml /app/pnpm-lock.yaml /app/package.json ./
+COPY --chown=node:node --from=build /app/packages/shared packages/shared
+COPY --chown=node:node --from=build /app/backend/package.json backend/package.json
+COPY --chown=node:node --from=build /app/backend/dist backend/dist
+COPY --chown=node:node --from=build /app/backend/prisma backend/prisma
 RUN pnpm install --frozen-lockfile --prod
 WORKDIR /app/backend
+# Uploads (progress photos, cached exercise images) live in this folder, a volume in production.
+RUN mkdir -p uploads
+USER root
+COPY backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 EXPOSE 3000
+# Root only for the first moments: the entrypoint fixes the ownership of the uploads volume and
+# then runs the command below as `node`.
+ENTRYPOINT ["docker-entrypoint.sh"]
 # The --prod install above is a fresh one (doesn't reuse the build stage's node_modules), and
 # @prisma/client's own postinstall can't auto-locate the schema in this monorepo layout, so the
 # generated client binding never lands here — regenerate it explicitly before every start,

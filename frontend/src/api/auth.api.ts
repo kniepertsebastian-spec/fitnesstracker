@@ -1,4 +1,4 @@
-import type { LoginInput, RegisterInput, UpdateNameInput, UserDto } from "@fitnesstracker/shared";
+import type { ChangePasswordInput, DeleteAccountInput, LoginInput, ResetPasswordInput, RegisterInput, UpdateNameInput, UserDto } from "@fitnesstracker/shared";
 import { apiFetch } from "./client";
 
 export function registerRequest(input: RegisterInput) {
@@ -22,4 +22,16 @@ export function meRequest() {
 
 export function updateNameRequest(input: UpdateNameInput) {
   return apiFetch<UserDto>("/auth/me/name", { method: "PUT", body: input });
+}
+
+export function changePasswordRequest(input: ChangePasswordInput) {
+  return apiFetch<void>("/auth/me/password", { method: "PUT", body: input });
+}
+
+export function resetPasswordRequest(input: ResetPasswordInput) {
+  return apiFetch<void>("/auth/reset-password", { method: "POST", body: input });
+}
+
+export function deleteAccountRequest(input: DeleteAccountInput) {
+  return apiFetch<void>("/auth/me", { method: "DELETE", body: input });
 }

@@ -7,6 +7,7 @@ import {
 import { ApiError } from "../api/client";
 import { queryClient } from "../queryClient";
 import { loadPlanEdits, savePlanEdits } from "../lib/planEdits";
+import { currentAccountId, isTransientFailure, lastKnownAccountId } from "./account";
 
 // Permanent plan changes made in focus mode ("dauerhaft im Plan"): applied to the workout at
 // once (lib/planEdits.ts) and sent to the server from this queue, now or as soon as the device
@@ -20,6 +21,9 @@ export type PlanOp =
   | { type: "swapOrder"; a: { id: string; order: number }; b: { id: string; order: number } };
 
 interface QueuedOp {
+  // Whose plan the change is for. Entries from before this field existed are claimed by the
+  // account last signed in on this device the first time the queue is read.
+  accountId?: string;
   editId: string;
   sessionClientId: string;
   op: PlanOp;
@@ -28,24 +32,41 @@ interface QueuedOp {
 const QUEUE_KEY = "fitnesstracker.plan-edit-queue";
 export const PLAN_EDITS_EVENT = "fitnesstracker:plan-edits";
 
-function readQueue(): QueuedOp[] {
+function readAllQueued(): QueuedOp[] {
   try {
-    return JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]") as QueuedOp[];
+    const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) ?? "[]") as QueuedOp[];
+    const claimant = lastKnownAccountId();
+    if (claimant && queue.some((q) => !q.accountId)) {
+      const claimed = queue.map((q) => (q.accountId ? q : { ...q, accountId: claimant }));
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(claimed));
+      return claimed;
+    }
+    return queue;
   } catch {
     return [];
   }
 }
 
+// The queue holds every account's pending changes; each account only ever sees and sends its own.
+function readQueue(): QueuedOp[] {
+  const accountId = currentAccountId();
+  return readAllQueued().filter((q) => q.accountId === accountId);
+}
+
 function writeQueue(queue: QueuedOp[]) {
   try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
+    const accountId = currentAccountId();
+    const others = readAllQueued().filter((q) => q.accountId !== accountId);
+    localStorage.setItem(QUEUE_KEY, JSON.stringify([...others, ...queue]));
   } catch {
     // Without storage the op still runs now if online; it just can't wait for a reconnect.
   }
 }
 
-export function enqueuePlanOp(entry: QueuedOp) {
-  writeQueue([...readQueue(), entry]);
+export function enqueuePlanOp(entry: Omit<QueuedOp, "accountId">) {
+  const accountId = currentAccountId();
+  if (!accountId) return;
+  writeQueue([...readQueue(), { ...entry, accountId }]);
   void flushPlanOps();
 }
 
@@ -71,20 +92,24 @@ async function send(op: PlanOp) {
 let flushing = false;
 
 export async function flushPlanOps() {
-  if (flushing || !navigator.onLine) return;
+  const accountId = currentAccountId();
+  if (flushing || !navigator.onLine || !accountId) return;
   flushing = true;
   // editId → whether the server took it (false: rejected, keep it as a today-only change).
   const results = new Map<string, boolean>();
   const sessions = new Set<string>();
   try {
     for (;;) {
+      if (currentAccountId() !== accountId) break;
       const [next] = readQueue();
       if (!next) break;
       try {
         await send(next.op);
         results.set(next.editId, results.get(next.editId) ?? true);
       } catch (error) {
-        if (!(error instanceof ApiError)) break; // still offline — retry later
+        // Offline, a server error (5xx), rate limit or an expired session: keep the change
+        // queued and send it again later. Only an answer that rejects the request itself drops it.
+        if (!(error instanceof ApiError) || isTransientFailure(error)) break;
         console.error("Plan change rejected by the server", next, error);
         results.set(next.editId, false);
       }
@@ -123,4 +148,8 @@ export function initPlanEditSync() {
   initialized = true;
   window.addEventListener("online", () => void flushPlanOps());
   if (navigator.onLine) void flushPlanOps();
+  // A server error leaves changes queued; try again every minute like the set/session queues do.
+  setInterval(() => {
+    if (navigator.onLine) void flushPlanOps();
+  }, 60_000);
 }

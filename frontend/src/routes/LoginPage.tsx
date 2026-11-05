@@ -51,6 +51,9 @@ export function LoginPage() {
         <Button type="submit" variant="primary" size="lg" fullWidth disabled={isSubmitting}>
           Anmelden
         </Button>
+        <Link to="/reset-password" className="text-center text-small text-accent hover:text-accent-hover">
+          Passwort vergessen?
+        </Link>
       </form>
     </AuthLayout>
   );

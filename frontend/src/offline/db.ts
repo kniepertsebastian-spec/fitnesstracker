@@ -8,7 +8,7 @@ export type LocalWorkoutLog = Omit<WorkoutLogDto, "id"> & { id: string | null; a
 
 // Same id-can-be-null-until-synced shape as LocalWorkoutLog — a session started offline is
 // immediately usable (Pause/Abbrechen/Abschließen all work locally) before it has a server id.
-export type LocalWorkoutSession = Omit<WorkoutSessionDto, "id"> & { id: string | null };
+export type LocalWorkoutSession = Omit<WorkoutSessionDto, "id"> & { id: string | null; accountId?: string };
 
 export type MutationOp = "create" | "update" | "delete";
 
@@ -46,6 +46,7 @@ export interface FailedMutation {
 // the training view never edits or deletes a cardio entry, so no op/collapsing is needed.
 export interface PendingCardioLog {
   id?: number;
+  accountId?: string;
   clientId: string;
   payload: Record<string, unknown>;
   label: string;
@@ -100,6 +101,37 @@ class OfflineDb extends Dexie {
     this.version(7).stores({
       customSounds: "key",
     });
+    // Sessions and cardio entries get the same account scope as sets. Rows written before this
+    // version are claimed by the account that was last signed in on this device (nothing is
+    // deleted); without a known account they stay stored but unseen until one signs in again.
+    this.version(8)
+      .stores({
+        workoutSessions: "clientId, status, accountId",
+        pendingSessionMutations: "++id, clientId, queuedAt, accountId",
+        pendingCardioLogs: "++id, clientId, queuedAt, accountId",
+      })
+      .upgrade(async (tx) => {
+        let accountId: string | null = null;
+        try {
+          accountId = (JSON.parse(localStorage.getItem("fitnesstracker.cached-user") ?? "null") as { id?: string } | null)?.id ?? null;
+        } catch {
+          accountId = null;
+        }
+        if (!accountId) return;
+        const claim = (row: { accountId?: string }) => {
+          if (!row.accountId) row.accountId = accountId as string;
+        };
+        for (const name of [
+          "workoutLogs",
+          "pendingMutations",
+          "failedMutations",
+          "workoutSessions",
+          "pendingSessionMutations",
+          "pendingCardioLogs",
+        ]) {
+          await tx.table(name).toCollection().modify(claim);
+        }
+      });
   }
 }
 

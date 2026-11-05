@@ -5,10 +5,11 @@ import { RouteErrorBoundary } from "./components/layout/RouteErrorBoundary";
 import { ForgottenSessionPrompt } from "./components/workoutLog/ForgottenSessionPrompt";
 import { UpdatePrompt } from "./components/layout/UpdatePrompt";
 import { useAuthBootstrap } from "./hooks/useAuth";
-import { initWorkoutLogSync } from "./offline/workoutLogSync";
-import { initWorkoutSessionSync } from "./offline/workoutSessionSync";
-import { initCardioLogSync } from "./offline/cardioLogSync";
-import { initPlanEditSync } from "./offline/planEditSync";
+import { flushPendingMutations, initWorkoutLogSync } from "./offline/workoutLogSync";
+import { flushPendingSessionMutations, initWorkoutSessionSync } from "./offline/workoutSessionSync";
+import { refreshSyncCounts } from "./offline/syncCounts";
+import { flushPendingCardioLogs, initCardioLogSync } from "./offline/cardioLogSync";
+import { flushPlanOps, initPlanEditSync } from "./offline/planEditSync";
 import { initRestTimerPush } from "./lib/restTimerPush";
 import { requestPersistentStorage } from "./lib/persistentStorage";
 import { useAuthStore } from "./stores/authStore";
@@ -25,6 +26,7 @@ function lazyPage<T extends Record<string, ComponentType>>(load: () => Promise<T
 
 const LoginPage = lazyPage(() => import("./routes/LoginPage"), "LoginPage");
 const RegisterPage = lazyPage(() => import("./routes/RegisterPage"), "RegisterPage");
+const ResetPasswordPage = lazyPage(() => import("./routes/ResetPasswordPage"), "ResetPasswordPage");
 const DashboardPage = lazyPage(() => import("./routes/DashboardPage"), "DashboardPage");
 const DailyPage = lazyPage(() => import("./routes/DailyPage"), "DailyPage");
 const DiaryPage = lazyPage(() => import("./routes/DiaryPage"), "DiaryPage");
@@ -88,6 +90,21 @@ export function App() {
   useEffect(() => initCardioLogSync(), []);
   useEffect(() => initPlanEditSync(), []);
   useEffect(() => initRestTimerPush(), []);
+  // Queued entries belong to an account: whenever one signs in (or the user switches), show that
+  // account's counts and send whatever it left unsynced earlier, without waiting for the timers.
+  useEffect(
+    () =>
+      useAuthStore.subscribe((state, previous) => {
+        if (state.user?.id === previous.user?.id) return;
+        void refreshSyncCounts();
+        if (!state.user) return;
+        void flushPendingMutations();
+        void flushPendingSessionMutations();
+        void flushPendingCardioLogs();
+        void flushPlanOps();
+      }),
+    [],
+  );
 
   return (
     // v7_startTransition: a navigation to a page whose chunk isn't loaded yet keeps the current
@@ -100,6 +117,7 @@ export function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route
             path="/"
             element={

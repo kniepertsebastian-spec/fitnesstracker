@@ -1,5 +1,6 @@
 import type { Exercise } from "@prisma/client";
 import type { ExerciseDto } from "@fitnesstracker/shared";
+import { toLocalImageUrls } from "../exerciseImages/exerciseImage.js";
 
 export function toExerciseDto(exercise: Exercise): ExerciseDto {
   return {
@@ -7,7 +8,7 @@ export function toExerciseDto(exercise: Exercise): ExerciseDto {
     name: exercise.nameDe ?? exercise.name,
     description: exercise.description,
     videoUrl: exercise.videoUrl,
-    imageUrls: exercise.imageUrls,
+    imageUrls: toLocalImageUrls(exercise.imageUrls),
     equipment: exercise.equipment,
     category: exercise.category,
     primaryMuscles: exercise.primaryMuscles,

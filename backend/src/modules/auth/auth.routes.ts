@@ -1,8 +1,20 @@
 import type { FastifyInstance } from "fastify";
-import { loginSchema, registerSchema, updateNameSchema } from "@fitnesstracker/shared";
+import { unlink } from "node:fs/promises";
+import path from "node:path";
 import {
+  changePasswordSchema,
+  deleteAccountSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+  updateNameSchema,
+} from "@fitnesstracker/shared";
+import {
+  changePassword,
+  deleteAccount,
   issueRefreshToken,
   registerUser,
+  resetPassword,
   revokeRefreshToken,
   rotateRefreshToken,
   verifyCredentials,
@@ -100,5 +112,41 @@ export default async function authRoutes(fastify: FastifyInstance) {
       data: { firstName: input.firstName, lastName: input.lastName },
     });
     return reply.send(toUserDto(user));
+  });
+
+  fastify.put("/me/password", { preHandler: fastify.authenticate, ...AUTH_RATE_LIMIT }, async (request, reply) => {
+    const input = changePasswordSchema.parse(request.body);
+    try {
+      await changePassword(fastify.prisma, request.user.sub, input, request.cookies[REFRESH_COOKIE_NAME]);
+      return reply.code(204).send();
+    } catch (error) {
+      if (error instanceof HttpError) return reply.code(error.statusCode).send({ message: error.message });
+      throw error;
+    }
+  });
+
+  // No mail delivery exists, so this is gated by the operator's setup token instead of a mailed link.
+  fastify.post("/reset-password", AUTH_RATE_LIMIT, async (request, reply) => {
+    const input = resetPasswordSchema.parse(request.body);
+    try {
+      await resetPassword(fastify.prisma, input);
+      return reply.code(204).send();
+    } catch (error) {
+      if (error instanceof HttpError) return reply.code(error.statusCode).send({ message: error.message });
+      throw error;
+    }
+  });
+
+  fastify.delete("/me", { preHandler: fastify.authenticate, ...AUTH_RATE_LIMIT }, async (request, reply) => {
+    const input = deleteAccountSchema.parse(request.body);
+    try {
+      const filenames = await deleteAccount(fastify.prisma, request.user.sub, input.password);
+      await Promise.all(filenames.map((name) => unlink(path.join(path.resolve(env.UPLOADS_DIR), name)).catch(() => undefined)));
+      reply.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+      return reply.code(204).send();
+    } catch (error) {
+      if (error instanceof HttpError) return reply.code(error.statusCode).send({ message: error.message });
+      throw error;
+    }
   });
 }

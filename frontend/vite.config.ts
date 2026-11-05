@@ -119,11 +119,7 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
           {
-            urlPattern: /\/api\/.*/,
-            handler: "NetworkOnly",
-          },
-          {
-            urlPattern: /^https:\/\/raw\.githubusercontent\.com\/yuhonas\/free-exercise-db\/.*/i,
+            urlPattern: /\/api\/exercise-images\/.*/i,
             handler: "CacheFirst",
             options: {
               cacheName: "exercise-images-cache",
@@ -135,6 +131,10 @@ export default defineConfig({
                 statuses: [0, 200],
               },
             },
+          },
+          {
+            urlPattern: /\/api\/.*/,
+            handler: "NetworkOnly",
           },
         ],
         // Adds push/notificationclick handling to the generated service worker — see

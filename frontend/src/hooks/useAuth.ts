@@ -30,7 +30,8 @@ export function useAuthBootstrap() {
         // app (backed by the locally cached IndexedDB data) instead of bouncing to /login; a
         // stale/actually-revoked session still gets caught the moment any real request 401s and
         // the retry-refresh in api/client.ts fails for real.
-        if (error instanceof ApiError) {
+        // A 5xx (server restarting, proxy error) is as inconclusive as being offline.
+        if (error instanceof ApiError && error.status < 500) {
           useAuthStore.getState().clearSession();
           return;
         }

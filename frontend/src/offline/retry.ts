@@ -13,6 +13,7 @@ export async function retryFailedMutation(failed: FailedMutation) {
   }
   if (failed.kind === "cardioLog") {
     await offlineDb.pendingCardioLogs.add({
+      ...(failed.accountId ? { accountId: failed.accountId } : {}),
       clientId: failed.clientId,
       payload: failed.payload,
       label: failed.label,

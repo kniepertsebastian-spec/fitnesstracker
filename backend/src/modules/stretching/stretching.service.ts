@@ -1,3 +1,4 @@
+import { toLocalImageUrls } from "../exerciseImages/exerciseImage.js";
 import type { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import type {
@@ -53,7 +54,7 @@ function toItemDto(
     exerciseId: c.id,
     name: c.nameDe ?? c.name,
     description: c.description,
-    imageUrls: c.imageUrls,
+    imageUrls: toLocalImageUrls(c.imageUrls),
     primaryMuscles: c.primaryMuscles,
     holdSeconds,
     sets,
