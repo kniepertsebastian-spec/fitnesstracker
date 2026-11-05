@@ -38,6 +38,17 @@ describe.skipIf(!hasTestDb)("auth (integration)", () => {
       expect((await register(app, email)).statusCode).toBe(201);
     });
 
+    it("answers 400 with the validation issues for a malformed body (zod error handling)", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/auth/register",
+        payload: { email: "not-an-email", password: "short", setupToken: env.SETUP_TOKEN },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toBe("Validation error");
+      expect(res.json().issues.length).toBeGreaterThanOrEqual(2);
+    });
+
     it("allows several accounts, but not the same email twice", async () => {
       const email = uniqueEmail("dup");
       expect((await register(app, email)).statusCode).toBe(201);

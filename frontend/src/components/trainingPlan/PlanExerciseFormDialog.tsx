@@ -13,6 +13,9 @@ const formSchema = z.object({
   targetReps: z.coerce.number().int().positive().optional(),
 });
 type FormValues = z.infer<typeof formSchema>;
+// zod 4 types coerced/preprocessed fields as `unknown` on the input side, which is what the form
+// holds before validation; handleSubmit hands the validated output (FormValues) to the callback.
+type FormInput = z.input<typeof formSchema>;
 
 interface Props {
   phase: TrainingPhase;
@@ -33,7 +36,7 @@ export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replaci
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(formSchema) });
+  } = useForm<FormInput, unknown, FormValues>({ resolver: zodResolver(formSchema) });
 
   useEffect(() => {
     if (!open) return;

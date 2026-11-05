@@ -2,11 +2,15 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
+import type { z } from "zod";
 import { registerSchema, type RegisterInput } from "@fitnesstracker/shared";
 import { useAuth } from "../hooks/useAuth";
 import { ApiError } from "../api/client";
 import { AuthLayout } from "../components/layout/AuthLayout";
 import { Button, Callout, Field, Input } from "../components/ui";
+
+// The preprocessed displayName is `unknown` on the input side in zod 4.
+type RegisterFormInput = z.input<typeof registerSchema>;
 
 export function RegisterPage() {
   const { register: registerUser } = useAuth();
@@ -16,7 +20,7 @@ export function RegisterPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) });
+  } = useForm<RegisterFormInput, unknown, RegisterInput>({ resolver: zodResolver(registerSchema) });
 
   const onSubmit = async (data: RegisterInput) => {
     setError(null);
