@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { scaleDetailsSchema } from "./scaleDetails.schema.js";
 
 export const createBodyCompositionEntrySchema = z.object({
   weightKg: z.number().positive().max(500),
@@ -43,5 +44,7 @@ export const bodyCompositionEntryDtoSchema = z.object({
   bodyFatPercent: z.number().nullable(),
   muscleMassKg: z.number().nullable(),
   bodyWaterPercent: z.number().nullable(),
+  // Full scale report (all values and impedances) when the measurement came from one.
+  scaleDetails: scaleDetailsSchema.nullable(),
 });
 export type BodyCompositionEntryDto = z.infer<typeof bodyCompositionEntryDtoSchema>;

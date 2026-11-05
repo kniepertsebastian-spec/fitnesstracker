@@ -18,7 +18,9 @@ function formatDate(iso: string) {
 }
 
 // Neutral up/down/flat icon — deliberately no "up is bad, down is good" coloring: a weight
-// increase is exactly the goal for some users.
+// increase is exactly the goal for some users. Only the weight gets one: the scale's fat, muscle
+// and water values jump by several kg between two weigh-ins minutes apart (see the scale analysis
+// card), so an arrow on them would show noise as if it were a change.
 function Trend({ current, previous }: { current: number; previous: number | null | undefined }) {
   if (previous === null || previous === undefined) return null;
   const Icon = current > previous ? ArrowUp : current < previous ? ArrowDown : ArrowRight;
@@ -105,7 +107,7 @@ export function BodyCompositionCard() {
                 <StatTile
                   className="p-3"
                   label={BODY_METRIC_INFO.bodyFatPercent.label}
-                  value={<>{latest.bodyFatPercent} <Trend current={latest.bodyFatPercent} previous={previous?.bodyFatPercent} /></>}
+                  value={latest.bodyFatPercent}
                   unit="%"
                   sub={categorizeBodyFat(latest.bodyFatPercent, profile?.gender) ?? undefined}
                   info={<CalcInfoButton id="body-fat-category" />}
@@ -115,7 +117,7 @@ export function BodyCompositionCard() {
                 <StatTile
                   className="p-3"
                   label={BODY_METRIC_INFO.muscleMassKg.label}
-                  value={<>{latest.muscleMassKg} <Trend current={latest.muscleMassKg} previous={previous?.muscleMassKg} /></>}
+                  value={latest.muscleMassKg}
                   unit="kg"
                 />
               )}
@@ -123,7 +125,7 @@ export function BodyCompositionCard() {
                 <StatTile
                   className="p-3"
                   label={BODY_METRIC_INFO.bodyWaterPercent.label}
-                  value={<>{latest.bodyWaterPercent} <Trend current={latest.bodyWaterPercent} previous={previous?.bodyWaterPercent} /></>}
+                  value={latest.bodyWaterPercent}
                   unit="%"
                 />
               )}

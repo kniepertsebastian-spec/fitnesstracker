@@ -3,12 +3,15 @@ import type {
   CreateBodyCompositionEntryInput,
   ImportBodyCompositionInput,
   ImportBodyCompositionResult,
+  SaveScaleReportInput,
 } from "@fitnesstracker/shared";
 import {
   createBodyCompositionEntryRequest,
   deleteBodyCompositionEntryRequest,
   importBodyCompositionRequest,
   listBodyCompositionEntriesRequest,
+  parseScaleReportRequest,
+  saveScaleReportRequest,
 } from "../api/bodyComposition.api";
 
 const BODY_COMPOSITION_KEY = ["body-composition"];
@@ -52,5 +55,19 @@ export function useImportBodyComposition() {
       return total;
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: BODY_COMPOSITION_KEY }),
+  });
+}
+
+export function useParseScaleReport() {
+  return useMutation({
+    mutationFn: ({ file, timeZone }: { file: File; timeZone: string }) => parseScaleReportRequest(file, timeZone),
+  });
+}
+
+export function useSaveScaleReport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveScaleReportInput) => saveScaleReportRequest(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: BODY_COMPOSITION_KEY }),
   });
 }

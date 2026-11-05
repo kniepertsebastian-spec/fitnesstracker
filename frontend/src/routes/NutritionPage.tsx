@@ -4,6 +4,8 @@ import { PageTabs } from "../components/layout/PageTabs";
 import { ProfileForm } from "../components/nutrition/ProfileForm";
 import { SupplementCard } from "../components/nutrition/SupplementCard";
 import { BodyCompositionCard } from "../components/nutrition/BodyCompositionCard";
+import { ScaleAnalysisCard } from "../components/nutrition/ScaleAnalysisCard";
+import { ScaleReportImportCard } from "../components/nutrition/ScaleReportImportCard";
 import { BodyAnalysisCard } from "../components/nutrition/BodyAnalysisCard";
 import { FatLossGoalCard } from "../components/nutrition/FatLossGoalCard";
 import { ProgressPhotosCard } from "../components/nutrition/ProgressPhotosCard";
@@ -34,7 +36,9 @@ export function NutritionPage() {
         <div className="flex flex-col gap-6">
           <BodyAnalysisCard />
           <FatLossGoalCard />
+          <ScaleReportImportCard />
           <BodyCompositionCard />
+          <ScaleAnalysisCard />
           <div>
             <h2 className="mb-2 text-h2 text-text">Fortschrittsfotos</h2>
             <ProgressPhotosCard />

@@ -436,6 +436,9 @@ model BodyCompositionEntry {
   bodyFatPercent   Decimal? @db.Decimal(4, 1)
   muscleMassKg     Decimal? @db.Decimal(5, 2)
   bodyWaterPercent Decimal? @db.Decimal(4, 1)
+  // Everything else a scale report states plus the raw impedances (see ScaleDetails in the shared
+  // package); null for manually entered measurements.
+  scaleDetails     Json?
   createdAt        DateTime @default(now())
 
   @@index([userId, measuredAt])

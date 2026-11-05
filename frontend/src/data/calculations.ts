@@ -171,6 +171,28 @@ export const CALCULATIONS: CalculationInfo[] = [
     code: "packages/shared/src/bodyFat.ts",
   },
   {
+    id: "scale-analysis",
+    group: "ernaehrung",
+    title: "Waagen-Analyse: Rauschen und Herleitung",
+    shows: "Ernährung → Körperdaten: Karten „Waagenbericht einlesen“ und „Waagen-Analyse“.",
+    formula: [
+      "Sitzung = Messungen, die jeweils höchstens 60 Minuten nach der vorigen liegen; ein größerer Abstand beginnt eine neue Sitzung",
+      "Rauschen = gepoolte Standardabweichung innerhalb der Sitzungen: Wurzel aus (Summe der quadrierten Abweichungen vom Sitzungsmittel ÷ Summe von (Messungen − 1)); dazu die größte Spanne (Maximum − Minimum) innerhalb einer Sitzung",
+      "Summe oder Differenz: Ein Wert gilt als berechnet, wenn die Rechnung bei allen Messungen innerhalb der Rundung aufgeht (z. B. fettfreie Masse = Gewicht − Fettmasse, Muskelmasse = fettfreie Masse − Knochenmasse)",
+      "Fester Anteil: Wert ÷ Basis schwankt kaum (höchstens etwa 0,8 bis 1,5 % und deutlich weniger als der Wert selbst), ab drei Messungen",
+      "Gerade mit Achsenabschnitt: ab fünf Messungen, wenn R² mindestens 0,995 ist und die Gerade klar besser passt als ein fester Anteil",
+      "Antrieb: Korrelation (Pearson) des Körperfetts mit jeder Impedanz, ab sechs Berichten",
+    ],
+    inputs:
+      "Alle gespeicherten Messungen. Details und Impedanzen gibt es nur bei Messungen aus „Waagenbericht einlesen“. Die Trendpfeile in den Körperdaten zeigen nur das Gewicht.",
+    basis: "annahme",
+    sources: [
+      "Eigene statistische Auswertung, keine Literaturformel. Der Bericht wird per Texterkennung (Tesseract) gelesen; die Prüfungen beim Einlesen folgen den Regeln des Berichts selbst, etwa Wasser + Eiweiß + Knochen = fettfreie Masse.",
+    ],
+    note: "Mit wenigen Wiederholungen ist das Rauschen nur grob geschätzt (bei einem Paar: Differenz ÷ √2). Ein gefundener fester Anteil ist ein Hinweis aus den Daten und sagt nichts sicher über die Rechenwege des Herstellers.",
+    code: "packages/shared/src/scaleAnalysis.ts, backend/src/modules/bodyComposition/scaleReport.parser.ts",
+  },
+  {
     id: "weight-mean",
     group: "ernaehrung",
     title: "Gleitendes 7-Tage-Mittel des Körpergewichts",
