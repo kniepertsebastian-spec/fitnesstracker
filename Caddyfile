@@ -2,6 +2,18 @@
 # cloudflared tunnel to this container stays inside the host's Docker network. No public
 # port is bound to this container, so there's nothing here for Caddy's automatic HTTPS
 # (Let's Encrypt) to do — an internet-facing hostname would just fail ACME validation.
+
+# The cloudflared tunnel (and every other hop in front of this container) sits on a private Docker
+# address. Trusting those hops lets Caddy keep and extend the X-Forwarded-For header Cloudflare set,
+# instead of replacing it with the tunnel's own address. The backend (TRUST_PROXY in
+# docker-compose.prod.yml) then reads the real visitor from it, which the per-IP rate limits need.
+# A client can only add entries on the left; the address Cloudflare appended stays authoritative.
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
 :80 {
 	# Sent with every response, API included.
 	#

@@ -4,7 +4,7 @@ import type { PushSettingsDto, PushSubscribeInput, UpdatePushSettingsInput } fro
 import { env } from "../../config/env.js";
 
 // Push stays entirely inert without a configured keypair — no boot-time failure, since it's an
-// optional roadmap feature (same pattern as CLAUDE_API_KEY): subscribe/send both become no-ops.
+// optional feature: subscribe/send both become no-ops while the VAPID keys are unset.
 export const isPushConfigured =
   !!env.VAPID_PUBLIC_KEY && !!env.VAPID_PRIVATE_KEY && !!env.VAPID_SUBJECT;
 

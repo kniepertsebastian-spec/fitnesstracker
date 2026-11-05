@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { HEAVY_RATE_LIMIT } from "../../lib/rateLimits.js";
 import { HttpError } from "../../errors/httpErrors.js";
 import { analyzeExerciseForm } from "./formAnalysis.service.js";
 
@@ -7,7 +8,7 @@ const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime
 export default async function formAnalysisRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
 
-  fastify.post("/form-analysis", async (request, reply) => {
+  fastify.post("/form-analysis", HEAVY_RATE_LIMIT, async (request, reply) => {
     const upload = await request.file();
     if (!upload) return reply.code(400).send({ message: "Kein Video hochgeladen" });
     if (!ALLOWED_VIDEO_TYPES.has(upload.mimetype)) {
