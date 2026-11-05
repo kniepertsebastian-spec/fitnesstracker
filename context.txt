@@ -1,0 +1,1716 @@
+==> packages/shared/src/enums.ts <==
+export const TRAINING_PHASES = ["AUFBAU", "MUSKELAUSDAUER", "NEGATIV"] as const;
+export type TrainingPhase = (typeof TRAINING_PHASES)[number];
+
+// Order the plan rotates through, every 8 weeks, always starting on a Monday.
+export const TRAINING_PHASE_ROTATION: TrainingPhase[] = [
+  "AUFBAU",
+  "MUSKELAUSDAUER",
+  "NEGATIV",
+];
+
+// Shared between the frontend UI and the backend's push notification text, so both sides of a
+// phase change always say the same thing.
+export const TRAINING_PHASE_LABELS: Record<TrainingPhase, string> = {
+  AUFBAU: "Aufbau",
+  MUSKELAUSDAUER: "Muskelausdauer",
+  NEGATIV: "Negativ",
+};
+
+export const GOAL_TYPES = ["WEIGHT", "REPS", "BODYWEIGHT", "CUSTOM"] as const;
+export type GoalType = (typeof GOAL_TYPES)[number];
+
+==> packages/shared/src/schemas/trainingPlan.schema.ts <==
+import { z } from "zod";
+import { TRAINING_PHASES } from "../enums.js";
+
+export const trainingPhaseSchema = z.enum(TRAINING_PHASES);
+
+export const changeTrainingPhaseSchema = z.object({
+  phase: trainingPhaseSchema,
+});
+export type ChangeTrainingPhaseInput = z.infer<typeof changeTrainingPhaseSchema>;
+
+export const trainingPlanPhaseHistoryDtoSchema = z.object({
+  id: z.string().uuid(),
+  phase: trainingPhaseSchema,
+  startedOn: z.string(),
+  endedOn: z.string().nullable(),
+});
+export type TrainingPlanPhaseHistoryDto = z.infer<typeof trainingPlanPhaseHistoryDtoSchema>;
+
+export const trainingPlanDtoSchema = z.object({
+  currentPhase: trainingPhaseSchema,
+  phaseStartedOn: z.string(),
+  // Null while the rotation is paused — there's no meaningful "next rotation date" to show
+  // while the clock isn't advancing.
+  nextRotationOn: z.string().nullable(),
+  pausedAt: z.string().nullable(),
+  // Weeks added to the current phase via "+1 Woche" (phase length = 8 + this).
+  extensionWeeks: z.number().int().min(0),
+  // F9: null until the user picks one. Kept as a plain enum here (not imported from
+  // cardioPlan.schema) to avoid a circular import between the two schema files.
+  trainingGoal: z.enum(["MUSCLE_GAIN", "STRENGTH", "ENDURANCE", "FAT_LOSS", "GENERAL_FITNESS"]).nullable(),
+  remarks: z.string().nullable(),
+  detectedAsymmetries: z.array(z.string()),
+  asymmetryAnalyzedAt: z.string().nullable(),
+  history: z.array(trainingPlanPhaseHistoryDtoSchema),
+});
+export type TrainingPlanDto = z.infer<typeof trainingPlanDtoSchema>;
+
+export const updateTrainingPlanRemarksSchema = z.object({
+  remarks: z.string().trim().max(2000).nullable(),
+});
+export type UpdateTrainingPlanRemarksInput = z.infer<typeof updateTrainingPlanRemarksSchema>;
+
+==> packages/shared/src/schemas/planExercise.schema.ts <==
+import { z } from "zod";
+import { trainingPhaseSchema } from "./trainingPlan.schema.js";
+
+export const planExerciseDtoSchema = z.object({
+  id: z.string().uuid(),
+  phase: trainingPhaseSchema,
+  exerciseId: z.string().uuid(),
+  exerciseName: z.string(),
+  targetSets: z.number().int().nullable(),
+  targetReps: z.number().int().nullable(),
+  order: z.number().int(),
+  // Which split day (e.g. "Push (Brust, Schultern, Trizeps)") this entry belongs to — set by the
+  // AI plan generator for a multi-day split, null for manually added entries.
+  dayLabel: z.string().nullable(),
+  // Coaching details from the AI generator; null for manual entries.
+  repRangeMin: z.number().int().nullable(),
+  repRangeMax: z.number().int().nullable(),
+  targetRir: z.number().int().nullable(),
+  restSeconds: z.number().int().nullable(),
+  notes: z.string().nullable(),
+  startWeightKg: z.number().nullable(),
+  alternativeExerciseId: z.string().uuid().nullable(),
+  alternativeExerciseName: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type PlanExerciseDto = z.infer<typeof planExerciseDtoSchema>;
+
+export const createPlanExerciseSchema = z.object({
+  phase: trainingPhaseSchema,
+  exerciseId: z.string().uuid(),
+  targetSets: z.number().int().positive().optional(),
+  targetReps: z.number().int().positive().optional(),
+  // Manual additions can be assigned to an existing split day. `null` keeps single-day and
+  // ungrouped plans backwards compatible.
+  dayLabel: z.string().trim().min(1).nullable().optional(),
+});
+export type CreatePlanExerciseInput = z.infer<typeof createPlanExerciseSchema>;
+
+export const updatePlanExerciseSchema = z.object({
+  // Swapping the exercise drops its exercise-specific cue and start weight; the replaced exercise
+  // becomes the new alternative.
+  exerciseId: z.string().uuid().optional(),
+  targetSets: z.number().int().positive().nullable().optional(),
+  targetReps: z.number().int().positive().nullable().optional(),
+  order: z.number().int().optional(),
+});
+export type UpdatePlanExerciseInput = z.infer<typeof updatePlanExerciseSchema>;
+
+// Portable plan formats for export/import — CSV/JSON/XML are the three most common
+// spreadsheet/interchange formats, hand-rolled without a parser dependency since the row shape
+// is small and fixed (see backend planExport.format.ts).
+export const planExportFormatSchema = z.enum(["csv", "json", "xml"]);
+export type PlanExportFormat = z.infer<typeof planExportFormatSchema>;
+
+export const planImportResultSchema = z.object({
+  created: z.number().int(),
+  updated: z.number().int(),
+  errors: z.array(z.string()),
+});
+export type PlanImportResult = z.infer<typeof planImportResultSchema>;
+
+// Progression suggestion for one exercise, derived from its most recently logged sets — see
+// planWeekStatus.service.ts's computeProgression for the rules. "weight" mode (Aufbau/Negativ)
+// suggests the next weight to lift at the same rep target; "reps" mode (Muskelausdauer) suggests
+// the next rep count at the same weight. Absent when nothing has ever been logged for this
+// exercise yet — there's nothing to progress from.
+export const progressionSuggestionSchema = z.object({
+  mode: z.enum(["weight", "reps"]),
+  lastWeightKg: z.number(),
+  lastReps: z.number().int(),
+  targetReps: z.number().int(),
+  hitTarget: z.boolean(),
+  deloadSuggested: z.boolean(),
+  suggestedWeightKg: z.number(),
+  suggestedReps: z.number().int(),
+});
+export type ProgressionSuggestion = z.infer<typeof progressionSuggestionSchema>;
+
+// A plan exercise plus whether it already has a WorkoutLog entry this week — lets the plan
+// diary (CurrentPlanCard) show a row as already-locked after a reload without the frontend
+// having to re-derive "this week" itself; that boundary is computed once, server-side.
+// A ready-made exercise choice for swapping or adding in the workout — shipped with the weekly
+// status so it works offline.
+export const exerciseOptionSchema = z.object({
+  exerciseId: z.string().uuid(),
+  exerciseName: z.string(),
+  equipment: z.string().nullable(),
+  primaryMuscle: z.string().nullable(),
+});
+export type ExerciseOptionDto = z.infer<typeof exerciseOptionSchema>;
+
+export const planDiaryExerciseDtoSchema = planExerciseDtoSchema.extend({
+  loggedThisWeek: z.boolean(),
+  progression: progressionSuggestionSchema.nullable(),
+  // Same main muscle, allowed equipment, not already on this day; the plan's alternative first.
+  swapOptions: z.array(exerciseOptionSchema),
+});
+export type PlanDiaryExerciseDto = z.infer<typeof planDiaryExerciseDtoSchema>;
+
+// One split day's exercises plus whether it's been trained this week (Mon-Sun) — see
+// planWeekStatus.service.ts for how "trained" is decided.
+export const planDayStatusDtoSchema = z.object({
+  dayLabel: z.string().nullable(),
+  exercises: z.array(planDiaryExerciseDtoSchema),
+  completed: z.boolean(),
+  // Exercises for the day's muscles that could be added, not already on the day.
+  addOptions: z.array(exerciseOptionSchema),
+});
+export type PlanDayStatusDto = z.infer<typeof planDayStatusDtoSchema>;
+
+export const weeklyPlanStatusDtoSchema = z.object({
+  // In split sequence (day 1, day 2, ...), not DB insertion order.
+  days: z.array(planDayStatusDtoSchema),
+  // Index into `days` of the day to show as "today's workout" — the first not-yet-completed
+  // day this week. Null once every day in the split has been trained this week.
+  activeDayIndex: z.number().int().nullable(),
+});
+export type WeeklyPlanStatusDto = z.infer<typeof weeklyPlanStatusDtoSchema>;
+
+==> backend/prisma/schema.prisma <==
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum TrainingPhase {
+  AUFBAU
+  MUSKELAUSDAUER
+  NEGATIV
+}
+
+enum GoalType {
+  WEIGHT
+  REPS
+  BODYWEIGHT
+  CUSTOM
+}
+
+enum DailyChallengeCategory {
+  TECHNIQUE
+  PROGRESSION
+  VOLUME
+  CONSISTENCY
+  RECOVERY
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum NutritionGoal {
+  CUT
+  MAINTAIN
+  BULK
+}
+
+// Roadmap Phase 19: BYOK AI training plan generator. All four are called through the same
+// OpenAI-compatible chat-completions shape — see aiPlanGenerator/aiClient.ts.
+enum AiProvider {
+  GEMINI
+  OPENAI
+  GROQ
+  OPENROUTER
+}
+
+enum CardioMachine {
+  TREADMILL
+  BIKE
+  STEPPER
+  STAIRMASTER
+}
+
+enum TrainingGoal {
+  MUSCLE_GAIN
+  STRENGTH
+  ENDURANCE
+  FAT_LOSS
+  GENERAL_FITNESS
+}
+
+enum WorkoutSessionStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ABORTED
+}
+
+model User {
+  id                               String    @id @default(uuid())
+  email                            String    @unique
+  passwordHash                     String
+  displayName                      String?
+  // Per-reminder-type opt-out — a browser push subscription is a single endpoint shared by every
+  // reminder kind this app sends, so without these a user can't turn off just one kind (e.g.
+  // photo nudges) while keeping the others. Default true preserves existing subscribers' current
+  // behavior (get everything) until they explicitly opt out of something (see Phase 30).
+  remindPhaseChange                Boolean   @default(true)
+  remindSupplements                Boolean   @default(true)
+  remindProgressPhoto              Boolean   @default(true)
+  // Added for the additionals-roadmap P1.7 full notification-category set — Training/Progress/
+  // Challenges/System, "der Nutzer entscheidet selbst, welche Kategorien aktiviert sind".
+  // remindSyncErrors/remindAppUpdates are opt-out flags with no current sender: a sync failure is
+  // already known locally while the app is open (nothing for a push to add), and app-update
+  // pushes need a deploy-triggered broadcast mechanism that doesn't exist yet (see roadmap P0.6).
+  // Both stay here, ready, rather than added later as a second migration.
+  remindWorkout                    Boolean   @default(true)
+  remindPersonalRecords            Boolean   @default(true)
+  remindGoalAchievements           Boolean   @default(true)
+  remindDailyChallenge             Boolean   @default(true)
+  remindSyncErrors                 Boolean   @default(true)
+  remindAppUpdates                 Boolean   @default(true)
+  // Same "at most once per local day" marker pattern as Supplement.lastRemindedOn, just scoped
+  // to the user instead of a per-supplement row.
+  lastWorkoutReminderSentOn        DateTime? @db.Date
+  lastDailyChallengeReminderSentOn DateTime? @db.Date
+  createdAt                        DateTime  @default(now())
+  updatedAt                        DateTime  @updatedAt
+
+  refreshTokens          RefreshToken[]
+  workoutLogs            WorkoutLog[]
+  trainingPlan           TrainingPlan?
+  goals                  Goal[]
+  pushSubscriptions      PushSubscription[]
+  profile                Profile?
+  dailyChallengeItems    DailyChallengeItem[]
+  supplements            Supplement[]
+  bodyCompositionEntries BodyCompositionEntry[]
+  bodyAnalyses           BodyAnalysis[]
+  progressPhotos         ProgressPhoto[]
+  planExercises          PlanExercise[]
+  planSnapshots          PlanSnapshot[]
+  // Last answers of the AI plan questionnaire (ColdStartInput), prefilled on the next run.
+  aiPlanPreferences      Json?
+  aiProviderSetting      AiProviderSetting?
+  cardioLogs             CardioLog[]
+  workoutSessions        WorkoutSession[]
+  stretchPlanItems       StretchPlanItem[]
+  cardioPlanDays         CardioPlanDay[]
+}
+
+// One active BYOK provider config per user — "flexible Auswahl und Hinterlegung eines API-Keys"
+// means switching providers by re-saving this row, not managing several keys at once.
+model AiProviderSetting {
+  id              String     @id @default(uuid())
+  userId          String     @unique
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        AiProvider
+  // AES-256-GCM ciphertext ("iv:authTag:ciphertext", all hex) — see lib/crypto.ts. Never
+  // decrypted for a response body, only used server-side to call the provider.
+  encryptedApiKey String
+  // Optional override of the provider's default model (see aiClient.ts's PROVIDER_CONFIG).
+  model           String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Exercise {
+  id               String   @id @default(uuid())
+  name             String
+  // German display name, shown in the UI instead of `name` when present. Kept separate from
+  // `name` (not overwritten in place) because re-importing a source overwrites `name` from the
+  // upstream English dataset on every run — see exercise.service.ts's importExercisesFromSource.
+  nameDe           String?
+  // Execution technique description. For imported exercises this is the source's
+  // instructions joined into one text; edit freely afterwards.
+  description      String?
+  // No free/open source used so far ships actual video — left for manual curation or a
+  // future source adapter that provides one.
+  videoUrl         String?
+  imageUrls        String[] @default([])
+  equipment        String?
+  category         String?
+  primaryMuscles   String[] @default([])
+  secondaryMuscles String[] @default([])
+  // Provenance for idempotent re-imports, e.g. source="free-exercise-db", sourceId="3_4_Sit-Up".
+  // Manually created exercises leave both null; Postgres allows unlimited NULL/NULL pairs
+  // under a unique index, so this doesn't collide with imported rows.
+  source           String?
+  sourceId         String?
+  // Soft-deactivate instead of hard delete: an exercise in active use (referenced by a
+  // WorkoutLog/PlanExercise/Goal) can never be hard-deleted (FK RESTRICT), so retiring one from
+  // future use needs a flag rather than a row removal. Deactivated exercises are excluded from
+  // pickers by default (see exercise.service.ts's listExercises) but stay fully intact for any
+  // historical WorkoutLog/PlanExercise/Goal that already references them.
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workoutLogs         WorkoutLog[]
+  goals               Goal[]
+  dailyChallengeItems DailyChallengeItem[]
+  planExercises       PlanExercise[]
+  alternativeFor      PlanExercise[]       @relation("PlanExerciseAlternative")
+  stretchPlanItems    StretchPlanItem[]
+
+  @@unique([source, sourceId])
+  @@index([name])
+}
+
+model WorkoutLog {
+  id              String    @id @default(uuid())
+  // Client-generated UUID, used as an idempotency key for the future offline-sync queue.
+  clientId        String    @unique
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId      String
+  exercise        Exercise  @relation(fields: [exerciseId], references: [id])
+  setNumber       Int
+  reps            Int
+  weightKg        Decimal   @db.Decimal(6, 2)
+  // Reps In Reserve at the end of the set (0 = to failure). Optional — most historical rows and
+  // casual logging won't set it; only used to compute a more informed 1RM estimate client-side.
+  rir             Int?
+  // Free-text note on the set (seat setting, a twinge, ...), shown with the set and again as the
+  // reminder the next time the exercise is trained.
+  note            String?   @db.VarChar(500)
+  performedAt     DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  // Soft delete so offline clients can sync tombstones instead of losing deletes.
+  deletedAt       DateTime?
+  // Client-generated UUID shared by sets logged as one superset/drop-set round — same
+  // client-owns-the-id pattern as `clientId`, since grouping is decided at log time on the
+  // client, not inferred after the fact from timestamps.
+  supersetGroupId String?
+
+  @@index([userId, performedAt])
+  @@index([userId, supersetGroupId])
+  // Delta sync: "what changed since" (workoutLog.service.ts listWorkoutLogChanges).
+  @@index([userId, updatedAt])
+}
+
+// Roadmap: 8-week auto-rotating training focus (Aufbau -> Muskelausdauer -> Negativ -> Aufbau).
+model TrainingPlan {
+  id                  String        @id @default(uuid())
+  userId              String        @unique
+  user                User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentPhase        TrainingPhase @default(AUFBAU)
+  // Always a Monday; the scheduler advances the phase 8 weeks after this date.
+  phaseStartedOn      DateTime
+  // Set while the rotation clock is paused (injury, vacation, ...) — the scheduler and the lazy
+  // per-request rotation both skip a plan entirely while this is set. Resuming shifts
+  // `phaseStartedOn` forward by the paused duration so the remaining time-to-rotation is
+  // preserved instead of the pause silently eating into the 8-week cycle.
+  pausedAt            DateTime?
+  // Extra weeks added to the *current* phase via "+1 Woche" (phase length = 8 + extensionWeeks);
+  // reset to 0 whenever the phase rotates or is restarted.
+  extensionWeeks      Int           @default(0)
+  // F9: drives the rule-based cardio suggestion (cardioSuggestion.ts). Null until chosen.
+  trainingGoal        TrainingGoal?
+  remarks             String?
+  detectedAsymmetries String[]      @default([])
+  asymmetryAnalyzedAt DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  phaseHistory TrainingPlanPhaseHistory[]
+}
+
+model TrainingPlanPhaseHistory {
+  id             String        @id @default(uuid())
+  trainingPlanId String
+  trainingPlan   TrainingPlan  @relation(fields: [trainingPlanId], references: [id], onDelete: Cascade)
+  phase          TrainingPhase
+  startedOn      DateTime
+  endedOn        DateTime?
+
+  // Guards against duplicate rows if a scheduler tick and a request both rotate the same
+  // overdue period concurrently (see trainingPlan.service.ts) — each period is closed once.
+  @@unique([trainingPlanId, startedOn])
+  @@index([trainingPlanId])
+}
+
+// An exercise assigned to a training phase (Aufbau/Muskelausdauer/Negativ) — keyed by phase, not
+// by a specific TrainingPlan rotation instance, since the same phase recurs every 8-week cycle
+// and the assigned exercises should still be there next time it comes around.
+model PlanExercise {
+  id                    String        @id @default(uuid())
+  userId                String
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phase                 TrainingPhase
+  exerciseId            String
+  exercise              Exercise      @relation(fields: [exerciseId], references: [id])
+  targetSets            Int?
+  targetReps            Int?
+  // Manual position within the phase's list; new entries append after the current max. For
+  // AI-generated entries this is the position within `dayLabel`, not a global index across the
+  // whole phase.
+  order                 Int           @default(0)
+  // Which split day (e.g. "Push (Brust, Schultern, Trizeps)") this entry belongs to — set only
+  // by the AI plan generator for a multi-day split. Null for manually added entries and for a
+  // single-day ("Ganzkörper") plan, which has nothing to group by.
+  dayLabel              String?
+  // Coaching details the AI generator returns per exercise (all optional, manual entries leave
+  // them empty). targetReps stays the progression target and equals repRangeMax for AI entries.
+  repRangeMin           Int?
+  repRangeMax           Int?
+  targetRir             Int?
+  restSeconds           Int?
+  notes                 String?
+  startWeightKg         Decimal?      @db.Decimal(6, 2)
+  alternativeExerciseId String?
+  alternativeExercise   Exercise?     @relation("PlanExerciseAlternative", fields: [alternativeExerciseId], references: [id], onDelete: SetNull)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@unique([userId, phase, exerciseId, dayLabel])
+  @@index([userId, phase, order])
+}
+
+// Roadmap: goal setting.
+model Goal {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId  String?
+  exercise    Exercise? @relation(fields: [exerciseId], references: [id])
+  type        GoalType
+  targetValue Decimal   @db.Decimal(6, 2)
+  targetDate  DateTime?
+  achievedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Roadmap: Web Push subscriptions for the 8-week plan-change reminder.
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
+
+// Inputs for the calorie/protein calculator (Mifflin-St Jeor). One profile per user, always
+// fully replaced on edit rather than partially patched — the fields are meaningless in
+// isolation from each other, so there's no "just update the goal" use case worth supporting.
+model Profile {
+  id            String        @id @default(uuid())
+  userId        String        @unique
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightKg      Decimal       @db.Decimal(5, 2)
+  heightCm      Int
+  age           Int
+  gender        Gender
+  activityLevel ActivityLevel @default(MODERATE)
+  goal          NutritionGoal @default(MAINTAIN)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+// A day's "do it anywhere, no equipment" mini-workout: a handful of exercises picked at random
+// from the imported catalog (equipment = "body only") the first time the user opens it that
+// day, each with a random rep target. Re-opening the same day returns the same set — the
+// randomness happens once per day, not on every read.
+model DailyChallengeItem {
+  id            String                 @id @default(uuid())
+  userId        String
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime               @db.Date
+  exerciseId    String
+  exercise      Exercise               @relation(fields: [exerciseId], references: [id])
+  category      DailyChallengeCategory @default(CONSISTENCY)
+  targetReps    Int
+  completedReps Int                    @default(0)
+  // How many times this item's exercise has been swapped out today — capped at
+  // MAX_ROTATIONS (2) in dailyChallenge.service.ts.
+  rotationsUsed Int                    @default(0)
+
+  @@unique([userId, date, exerciseId])
+}
+
+// A daily push reminder for one supplement. `reminderTime` ("HH:MM") is local wall-clock time
+// in `timeZone` (an IANA name captured from the browser at creation), not UTC — a reminder
+// firing at the wrong hour would defeat the entire point of the feature, unlike the day-boundary
+// fuzziness elsewhere in this app (water reset, plan rotation) where nobody notices a few hours
+// of slop. `lastRemindedOn` ("YYYY-MM-DD" in that same local time) stops the scheduler from
+// sending twice on the same local day.
+model Supplement {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  reminderTime   String
+  timeZone       String
+  enabled        Boolean  @default(true)
+  lastRemindedOn String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// One row per manual scale reading, not an upsert-by-day running total — a body-comp reading is a
+// point-in-time log entry a user might take more than once a day or skip for weeks. Only
+// weightKg is required; smart scales vary widely in which of the rest they
+// report at all.
+model BodyCompositionEntry {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  measuredAt       DateTime @default(now())
+  weightKg         Decimal  @db.Decimal(5, 2)
+  bodyFatPercent   Decimal? @db.Decimal(4, 1)
+  muscleMassKg     Decimal? @db.Decimal(5, 2)
+  bodyWaterPercent Decimal? @db.Decimal(4, 1)
+  createdAt        DateTime @default(now())
+
+  @@index([userId, measuredAt])
+}
+
+// Imported body-composition report. Only extracted text and the reviewed interpretation are stored;
+// the uploaded source image is processed in memory and discarded.
+model BodyAnalysis {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  measuredAt DateTime @default(now())
+  sourceName String?
+  ocrText    String
+  summary    String
+  metrics    Json
+  createdAt  DateTime @default(now())
+
+  @@index([userId, measuredAt])
+}
+
+// A private "mirror photo" for visual before/after comparison. The file itself lives on disk
+// under UPLOADS_DIR (own VPS filesystem, no cloud storage per ARCHITECTURE.md) — this row is
+// just the metadata plus the generated filename used to locate it. Never exposed directly —
+// always served through the authenticated /progress-photos/:id/file route since these are
+// private body photos, not public assets.
+model ProgressPhoto {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename  String
+  mimeType  String
+  takenAt   DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([userId, takenAt])
+}
+
+// Optional cardio tracking, separate from PlanExercise/WorkoutLog since a cardio session has a
+// completely different shape (machine + level/intensity/duration, not sets/reps/weight against
+// a catalog Exercise) — a free-form addition alongside the strength plan, not slotted into it.
+model CardioLog {
+  id              String        @id @default(uuid())
+  // F9: set by the offline queue; a retried create with the same clientId returns the existing
+  // row instead of logging the session twice. Null for entries made before F9.
+  clientId        String?       @unique
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  machine         CardioMachine
+  // Resistance/incline level on the machine — free-form small int, no fixed scale across
+  // machines/brands.
+  level           Int?
+  // Deliberately a string, not a number: what "intensity" means varies by machine (km/h, watts,
+  // an incline %, or just "mittel") — no single numeric unit fits all four.
+  intensity       String
+  durationMinutes Int
+  performedAt     DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  @@index([userId, performedAt])
+}
+
+// A lightweight lifecycle wrapper around a gym visit — Start/Pause/Fortsetzen/Abbrechen/
+// Abschließen as buttons on the dashboard. Deliberately not linked to WorkoutLog rows (no
+// sessionId there): logging a set stays independent of whether a session is open, so this is a
+// parallel, optional tracker rather than a gate in front of the existing logging flow. Offline
+// support mirrors WorkoutLog (clientId as the idempotency key, same offline-sync queue pattern
+// in the frontend) since a session is started/paused/finished at the gym exactly like a set is
+// logged there — same connectivity story.
+model WorkoutSession {
+  id        String               @id @default(uuid())
+  clientId  String               @unique
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    WorkoutSessionStatus @default(ACTIVE)
+  startedAt DateTime             @default(now())
+  endedAt   DateTime?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([userId, status])
+}
+
+// AI-generated stretch routine for one training day of a phase. Same keying as PlanExercise
+// (phase + dayLabel, not a rotation instance). `dayLabel` is "" for a single-day plan instead of
+// NULL so the unique index below can actually prevent duplicates (Postgres treats NULLs as
+// distinct). Days without saved rows fall back to the deterministic muscle mapping at read time.
+model StretchPlanItem {
+  id          String        @id @default(uuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phase       TrainingPhase
+  dayLabel    String        @default("")
+  exerciseId  String
+  exercise    Exercise      @relation(fields: [exerciseId], references: [id])
+  holdSeconds Int           @default(30)
+  sets        Int           @default(1)
+  order       Int           @default(0)
+  createdAt   DateTime      @default(now())
+
+  @@unique([userId, phase, dayLabel, exerciseId])
+  @@index([userId, phase, order])
+}
+
+// F9: the user's own version of a day's cardio (overrides the rule-based suggestion). One row per
+// (phase, day); `items` is a JSON array validated with cardioPlanItemSchema on read and write, so
+// an explicitly empty list ("no cardio on this day") is representable. dayLabel "" = unlabelled
+// single day, "__free__" = the sessions on days without strength training.
+model CardioPlanDay {
+  id        String        @id @default(uuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phase     TrainingPhase
+  dayLabel  String        @default("")
+  items     Json
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([userId, phase, dayLabel])
+}
+
+enum PlanSnapshotKind {
+  DRAFT
+  BACKUP
+}
+
+// An AI-generated plan waiting for review (DRAFT) or the plan it replaced (BACKUP, restorable
+// once). Items are stored as JSON (PlanDraftItemDto[]) — they are never queried individually.
+model PlanSnapshot {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phase     TrainingPhase
+  kind      PlanSnapshotKind
+  days      String[]         @default([])
+  items     Json
+  rationale String?
+  createdAt DateTime         @default(now())
+
+  @@unique([userId, phase, kind])
+}
+
+==> backend/src/modules/trainingPlan/trainingPlan.service.ts <==
+import type { PrismaClient, TrainingPlan, TrainingPlanPhaseHistory } from "@prisma/client";
+import { TRAINING_PHASE_LABELS, TRAINING_PHASE_ROTATION } from "@fitnesstracker/shared";
+import { sendNotificationToUser } from "../push/push.service.js";
+import { refreshDetectedAsymmetries } from "./trainingAsymmetry.service.js";
+
+const ROTATION_WEEKS = 8;
+// Upper bound for "+1 Woche" so a phase can't be stretched indefinitely by accident.
+export const MAX_EXTENSION_WEEKS = 8;
+
+function nextPhase(phase: TrainingPlan["currentPhase"]) {
+  const index = TRAINING_PHASE_ROTATION.indexOf(phase);
+  return TRAINING_PHASE_ROTATION[(index + 1) % TRAINING_PHASE_ROTATION.length];
+}
+
+function addWeeks(date: Date, weeks: number) {
+  const result = new Date(date);
+  result.setUTCDate(result.getUTCDate() + weeks * 7);
+  return result;
+}
+
+// Normalizes to UTC midnight of the Monday of `date`'s week — `phaseStartedOn` is always a
+// Monday so that "8 weeks later" also always lands on a Monday.
+function mostRecentMonday(date: Date) {
+  const daysSinceMonday = (date.getUTCDay() + 6) % 7;
+  const result = new Date(date);
+  result.setUTCDate(result.getUTCDate() - daysSinceMonday);
+  result.setUTCHours(0, 0, 0, 0);
+  return result;
+}
+
+export async function getOrCreateTrainingPlan(
+  prisma: PrismaClient,
+  userId: string,
+): Promise<TrainingPlan> {
+  const existing = await prisma.trainingPlan.findUnique({ where: { userId } });
+  if (existing) return existing;
+
+  return prisma.trainingPlan.create({
+    data: { userId, currentPhase: "AUFBAU", phaseStartedOn: mostRecentMonday(new Date()) },
+  });
+}
+
+export interface RotationComputation {
+  currentPhase: TrainingPlan["currentPhase"];
+  phaseStartedOn: Date;
+  nextRotationOn: Date;
+  closedHistory: Array<Pick<TrainingPlanPhaseHistory, "phase" | "startedOn" | "endedOn">>;
+}
+
+// Pure phase math. The current phase lasts 8 weeks plus any "+1 Woche" extension; every phase
+// after it is a plain 8 weeks (the extension belongs to the phase it was added to).
+export function computeRotation(
+  plan: Pick<TrainingPlan, "currentPhase" | "phaseStartedOn" | "extensionWeeks">,
+  now: Date,
+): RotationComputation {
+  let currentPhase = plan.currentPhase;
+  let phaseStartedOn = plan.phaseStartedOn;
+  let nextRotationOn = addWeeks(phaseStartedOn, ROTATION_WEEKS + plan.extensionWeeks);
+  const closedHistory: RotationComputation["closedHistory"] = [];
+
+  while (nextRotationOn <= now) {
+    closedHistory.push({ phase: currentPhase, startedOn: phaseStartedOn, endedOn: nextRotationOn });
+    currentPhase = nextPhase(currentPhase);
+    phaseStartedOn = nextRotationOn;
+    nextRotationOn = addWeeks(phaseStartedOn, ROTATION_WEEKS);
+  }
+
+  return { currentPhase, phaseStartedOn, nextRotationOn, closedHistory };
+}
+
+export interface RotationResult {
+  plan: TrainingPlan;
+  // Null while the plan is paused — there's nothing due to compute since the clock isn't
+  // advancing.
+  nextRotationOn: Date | null;
+  rotated: boolean;
+}
+
+// Advances `plan` through as many overdue 8-week cycles as needed (covers the case where the
+// scheduler tick was missed, e.g. the server was down) and persists the result. Each cycle
+// crossed leaves a closed TrainingPlanPhaseHistory row behind as an audit trail.
+export async function rotatePhaseIfDue(
+  prisma: PrismaClient,
+  plan: TrainingPlan,
+): Promise<RotationResult> {
+  if (plan.pausedAt) {
+    return { plan, nextRotationOn: null, rotated: false };
+  }
+
+  const { currentPhase, phaseStartedOn, nextRotationOn, closedHistory } = computeRotation(plan, new Date());
+
+  if (closedHistory.length === 0) {
+    return { plan, nextRotationOn, rotated: false };
+  }
+
+  const [, updatedPlan] = await prisma.$transaction([
+    prisma.trainingPlanPhaseHistory.createMany({
+      data: closedHistory.map((entry) => ({ ...entry, trainingPlanId: plan.id })),
+      skipDuplicates: true,
+    }),
+    prisma.trainingPlan.update({
+      where: { id: plan.id },
+      data: { currentPhase, phaseStartedOn, extensionWeeks: 0 },
+    }),
+  ]);
+
+  return { plan: updatedPlan, nextRotationOn, rotated: true };
+}
+
+// Used by the GET route: ensures the plan exists and reflects the current phase even if the
+// background scheduler hasn't ticked since the last due rotation.
+export async function getCurrentTrainingPlan(prisma: PrismaClient, userId: string) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  const { plan: rotatedPlan, nextRotationOn } = await rotatePhaseIfDue(prisma, plan);
+  const current = (await refreshDetectedAsymmetries(prisma, userId)) ?? rotatedPlan;
+  const history = await prisma.trainingPlanPhaseHistory.findMany({
+    where: { trainingPlanId: current.id },
+    orderBy: { startedOn: "desc" },
+  });
+  return { plan: current, nextRotationOn, history };
+}
+
+// Manually switches the active phase and starts a fresh 8-week cycle. The outgoing phase is
+// closed in history; workout logs and the rest of the plan are left untouched.
+export async function changeTrainingPhase(
+  prisma: PrismaClient,
+  userId: string,
+  phase: TrainingPlan["currentPhase"],
+) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  if (plan.currentPhase === phase) return plan;
+
+  const phaseStartedOn = mostRecentMonday(new Date());
+  const [, updatedPlan] = await prisma.$transaction([
+    prisma.trainingPlanPhaseHistory.create({
+      data: {
+        trainingPlanId: plan.id,
+        phase: plan.currentPhase,
+        startedOn: plan.phaseStartedOn,
+        endedOn: phaseStartedOn,
+      },
+    }),
+    prisma.trainingPlan.update({
+      where: { id: plan.id },
+      data: {
+        currentPhase: phase,
+        phaseStartedOn,
+        extensionWeeks: 0,
+        pausedAt: null,
+      },
+    }),
+  ]);
+  return updatedPlan;
+}
+
+export async function updateTrainingPlanRemarks(
+  prisma: PrismaClient,
+  userId: string,
+  remarks: string | null,
+) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  return prisma.trainingPlan.update({
+    where: { id: plan.id },
+    data: { remarks: remarks?.trim() || null },
+  });
+}
+
+// Scheduler tick: rotates every plan with an overdue phase. Cheap to call often — plans that
+// aren't due are filtered out in SQL before any rotation logic runs.
+//
+// The push reminder fires only from here, not from the lazy per-request rotation in
+// getCurrentTrainingPlan — a push telling you the plan changed is pointless if you're the one
+// who just triggered the rotation by opening the training-plan page yourself.
+export async function rotateAllDuePlans(prisma: PrismaClient): Promise<{ rotatedPlans: number }> {
+  const cutoff = addWeeks(new Date(), -ROTATION_WEEKS);
+  const duePlans = await prisma.trainingPlan.findMany({
+    where: { phaseStartedOn: { lte: cutoff }, pausedAt: null },
+    include: { user: { select: { remindPhaseChange: true } } },
+  });
+
+  let rotatedPlans = 0;
+  for (const plan of duePlans) {
+    const { plan: updated, rotated } = await rotatePhaseIfDue(prisma, plan);
+    if (rotated) {
+      rotatedPlans += 1;
+      // Phase 30: per-reminder-type opt-out — the rotation itself always happens, only the push
+      // notification is gated.
+      if (plan.user.remindPhaseChange) {
+        await sendNotificationToUser(prisma, plan.userId, {
+          title: "Trainingsplan-Wechsel",
+          body: `Neue Phase: ${TRAINING_PHASE_LABELS[updated.currentPhase]}`,
+          url: "/plan",
+        });
+      }
+    }
+  }
+  return { rotatedPlans };
+}
+
+// Idempotent no-op if already paused — pressing "Pausieren" twice shouldn't reset pausedAt to a
+// later time and silently extend the pause.
+export async function pauseTrainingPlan(prisma: PrismaClient, userId: string) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  if (plan.pausedAt) return plan;
+  return prisma.trainingPlan.update({ where: { id: plan.id }, data: { pausedAt: new Date() } });
+}
+
+// Shifts `phaseStartedOn` forward by exactly how long the plan was paused, so the remaining
+// time-to-rotation is preserved rather than the pause silently eating into the 8-week cycle —
+// e.g. paused after 2 weeks, resumed a month later, the next rotation is still 6 weeks out from
+// today, not "already overdue".
+export async function resumeTrainingPlan(prisma: PrismaClient, userId: string) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  if (!plan.pausedAt) return plan;
+  const pausedForMs = Date.now() - plan.pausedAt.getTime();
+  return prisma.trainingPlan.update({
+    where: { id: plan.id },
+    data: {
+      pausedAt: null,
+      phaseStartedOn: new Date(plan.phaseStartedOn.getTime() + pausedForMs),
+    },
+  });
+}
+
+// Explicit "start this phase over" — resets the 8-week clock to today without changing
+// `currentPhase` or touching phase history (no phase was actually completed). Also clears any
+// pause, since restarting implies picking training back up.
+export async function restartCurrentPhase(prisma: PrismaClient, userId: string) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  return prisma.trainingPlan.update({
+    where: { id: plan.id },
+    data: { phaseStartedOn: mostRecentMonday(new Date()), pausedAt: null, extensionWeeks: 0 },
+  });
+}
+
+// "+1 Woche": pushes the next phase change out by one week (capped at MAX_EXTENSION_WEEKS).
+// Because the scheduler and the lazy per-request rotation both go through computeRotation, the
+// "Trainingsplan-Wechsel" push moves with it. Like pausing, this is an online-only action.
+export async function extendCurrentPhase(prisma: PrismaClient, userId: string) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  if (plan.extensionWeeks >= MAX_EXTENSION_WEEKS) return plan;
+  return prisma.trainingPlan.update({
+    where: { id: plan.id },
+    data: { extensionWeeks: { increment: 1 } },
+  });
+}
+
+// F9: the goal the cardio suggestion is based on. Null clears it ("noch nicht gewählt").
+export async function setTrainingGoal(
+  prisma: PrismaClient,
+  userId: string,
+  goal: TrainingPlan["trainingGoal"],
+) {
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  return prisma.trainingPlan.update({ where: { id: plan.id }, data: { trainingGoal: goal } });
+}
+
+==> backend/src/modules/trainingPlan/trainingPlan.routes.ts <==
+import type { FastifyInstance } from "fastify";
+import {
+  getCurrentTrainingPlan,
+  changeTrainingPhase,
+  extendCurrentPhase,
+  pauseTrainingPlan,
+  resumeTrainingPlan,
+  restartCurrentPhase,
+  setTrainingGoal,
+  updateTrainingPlanRemarks,
+} from "./trainingPlan.service.js";
+import {
+  changeTrainingPhaseSchema,
+  updateTrainingGoalSchema,
+  updateTrainingPlanRemarksSchema,
+} from "@fitnesstracker/shared";
+import { toTrainingPlanDto } from "./trainingPlan.types.js";
+
+export default async function trainingPlanRoutes(fastify: FastifyInstance) {
+  fastify.addHook("preHandler", fastify.authenticate);
+
+  fastify.get("/training-plan", async (request, reply) => {
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
+      fastify.prisma,
+      request.user.sub,
+    );
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  fastify.patch("/training-plan/phase", async (request, reply) => {
+    const { phase } = changeTrainingPhaseSchema.parse(request.body);
+    await changeTrainingPhase(fastify.prisma, request.user.sub, phase);
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
+      fastify.prisma,
+      request.user.sub,
+    );
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  fastify.post("/training-plan/pause", async (request, reply) => {
+    await pauseTrainingPlan(fastify.prisma, request.user.sub);
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
+      fastify.prisma,
+      request.user.sub,
+    );
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  fastify.post("/training-plan/resume", async (request, reply) => {
+    await resumeTrainingPlan(fastify.prisma, request.user.sub);
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
+      fastify.prisma,
+      request.user.sub,
+    );
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  fastify.post("/training-plan/restart-phase", async (request, reply) => {
+    await restartCurrentPhase(fastify.prisma, request.user.sub);
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(
+      fastify.prisma,
+      request.user.sub,
+    );
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  fastify.post("/training-plan/extend-phase", async (request, reply) => {
+    await extendCurrentPhase(fastify.prisma, request.user.sub);
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(fastify.prisma, request.user.sub);
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  fastify.patch("/training-plan/remarks", async (request, reply) => {
+    const { remarks } = updateTrainingPlanRemarksSchema.parse(request.body);
+    await updateTrainingPlanRemarks(fastify.prisma, request.user.sub, remarks);
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(fastify.prisma, request.user.sub);
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  fastify.patch("/training-plan/goal", async (request, reply) => {
+    const { goal } = updateTrainingGoalSchema.parse(request.body);
+    await setTrainingGoal(fastify.prisma, request.user.sub, goal);
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(fastify.prisma, request.user.sub);
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+}
+
+==> backend/src/modules/trainingPlan/planExercise.service.ts <==
+import type { PrismaClient, TrainingPhase } from "@prisma/client";
+import type { CreatePlanExerciseInput, UpdatePlanExerciseInput } from "@fitnesstracker/shared";
+import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
+import { planExerciseInclude } from "./planExercise.types.js";
+
+const withExercise = { include: planExerciseInclude } as const;
+
+export function listPlanExercises(prisma: PrismaClient, userId: string, phase: TrainingPhase) {
+  return prisma.planExercise.findMany({
+    where: { userId, phase },
+    orderBy: { order: "asc" },
+    ...withExercise,
+  });
+}
+
+export async function createPlanExercise(
+  prisma: PrismaClient,
+  userId: string,
+  input: CreatePlanExerciseInput,
+) {
+  const exercise = await prisma.exercise.findUnique({ where: { id: input.exerciseId } });
+  if (!exercise) {
+    throw new NotFoundError("Exercise not found");
+  }
+
+  // Manual entries belong to the selected split day (or stay ungrouped for a single-day plan).
+  // `findFirst` rather than
+  // `findUnique`: Prisma's compound-unique-input type doesn't accept `null` for a nullable
+  // field even though the underlying index does, and at most one row can match this combination
+  // anyway (the same unique index guarantees it).
+  const existing = await prisma.planExercise.findFirst({
+    where: {
+      userId,
+      phase: input.phase,
+      exerciseId: input.exerciseId,
+      dayLabel: input.dayLabel ?? null,
+    },
+  });
+  if (existing) {
+    throw new ConflictError("Exercise already assigned to this phase");
+  }
+
+  // Appended after the highest `order` of the whole phase, not of the day: the order of the split
+  // days is the order in which their first entry appears (planWeekStatus.groupByDayLabel), so
+  // every day restarting at 0 left that sequence — and with it "today's workout" — to chance.
+  const last = await prisma.planExercise.findFirst({
+    where: { userId, phase: input.phase },
+    orderBy: { order: "desc" },
+  });
+
+  return prisma.planExercise.create({
+    data: {
+      userId,
+      phase: input.phase,
+      exerciseId: input.exerciseId,
+      targetSets: input.targetSets,
+      targetReps: input.targetReps,
+      order: last ? last.order + 1 : 0,
+      dayLabel: input.dayLabel ?? null,
+    },
+    ...withExercise,
+  });
+}
+
+export async function updatePlanExercise(
+  prisma: PrismaClient,
+  userId: string,
+  id: string,
+  input: UpdatePlanExerciseInput,
+) {
+  const existing = await prisma.planExercise.findFirst({ where: { id, userId } });
+  if (!existing) {
+    throw new NotFoundError("Plan exercise not found");
+  }
+
+  if (input.exerciseId && input.exerciseId !== existing.exerciseId) {
+    const exercise = await prisma.exercise.findUnique({ where: { id: input.exerciseId } });
+    if (!exercise) throw new NotFoundError("Exercise not found");
+    const duplicate = await prisma.planExercise.findFirst({
+      where: {
+        userId,
+        phase: existing.phase,
+        exerciseId: input.exerciseId,
+        dayLabel: existing.dayLabel,
+        id: { not: id },
+      },
+    });
+    if (duplicate) throw new ConflictError("Exercise already assigned to this training day");
+  }
+
+  const swapped = input.exerciseId !== undefined && input.exerciseId !== existing.exerciseId;
+  return prisma.planExercise.update({
+    where: { id },
+    data: {
+      exerciseId: input.exerciseId,
+      targetSets: input.targetSets,
+      targetReps: input.targetReps,
+      order: input.order,
+      // The cue and start weight belong to the old exercise; it becomes the way back.
+      ...(swapped ? { notes: null, startWeightKg: null, alternativeExerciseId: existing.exerciseId } : {}),
+    },
+    ...withExercise,
+  });
+}
+
+export async function deletePlanExercise(prisma: PrismaClient, userId: string, id: string) {
+  const existing = await prisma.planExercise.findFirst({ where: { id, userId } });
+  if (!existing) {
+    throw new NotFoundError("Plan exercise not found");
+  }
+  await prisma.planExercise.delete({ where: { id } });
+}
+
+==> frontend/src/lib/phase.ts <==
+import type { TrainingPlanDto } from "@fitnesstracker/shared";
+
+export const PHASE_WEEKS = 8;
+
+// Total length of the current phase: 8 weeks plus any "+1 Woche" extensions.
+export function phaseLength(plan: Pick<TrainingPlanDto, "extensionWeeks">): number {
+  // `?? 0`: a cached older client/server pair may not send the field yet.
+  return PHASE_WEEKS + (plan.extensionWeeks ?? 0);
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Week x of the current phase (1-based, capped at the phase length). `phaseStartedOn` is always a
+// Monday (see the TrainingPlan model), so whole weeks since then is the week index.
+export function phaseWeek(
+  plan: Pick<TrainingPlanDto, "phaseStartedOn" | "pausedAt" | "extensionWeeks">,
+  now = new Date(),
+): number {
+  const start = new Date(plan.phaseStartedOn).getTime();
+  const until = plan.pausedAt ? new Date(plan.pausedAt).getTime() : now.getTime();
+  const week = Math.floor((until - start) / (7 * DAY_MS)) + 1;
+  return Math.max(1, Math.min(phaseLength(plan), week));
+}
+
+==> frontend/src/lib/phaseInfo.ts <==
+import type { TrainingPhase } from "@fitnesstracker/shared";
+
+// Short rule per phase, matching the progression rules in the backend's planWeekStatus.service.ts
+// (default targets 10 / 20 / 5 reps).
+export const PHASE_RULES: Record<TrainingPhase, string> = {
+  AUFBAU: "Gewicht steigern bei 10 Wdh.",
+  MUSKELAUSDAUER: "Wdh. steigern bis 20",
+  NEGATIV: "Schwer, langsam ablassen · 5 Wdh.",
+};
+
+export type PhaseTone = "accent" | "info" | "warning";
+
+// Fixed meaning colors: Aufbau mint, Muskelausdauer blue, Negativ amber.
+export const PHASE_TONES: Record<TrainingPhase, PhaseTone> = {
+  AUFBAU: "accent",
+  MUSKELAUSDAUER: "info",
+  NEGATIV: "warning",
+};
+
+export const PHASE_DOT: Record<TrainingPhase, string> = {
+  AUFBAU: "bg-accent",
+  MUSKELAUSDAUER: "bg-info",
+  NEGATIV: "bg-warning",
+};
+
+==> frontend/src/hooks/useTrainingPlan.ts <==
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  changeTrainingPhaseRequest,
+  extendPhaseRequest,
+  getTrainingPlanRequest,
+  pauseTrainingPlanRequest,
+  restartPhaseRequest,
+  resumeTrainingPlanRequest,
+  updateTrainingGoalRequest,
+  updateTrainingPlanRemarksRequest,
+} from "../api/trainingPlan.api";
+import type { TrainingGoalValue, TrainingPhase, UpdateTrainingPlanRemarksInput } from "@fitnesstracker/shared";
+
+export { TRAINING_PHASE_LABELS } from "@fitnesstracker/shared";
+
+const TRAINING_PLAN_KEY = ["training-plan"];
+
+export function useTrainingPlan() {
+  return useQuery({
+    queryKey: TRAINING_PLAN_KEY,
+    queryFn: getTrainingPlanRequest,
+  });
+}
+
+function useTrainingPlanAction(action: () => Promise<unknown>) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: action,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: TRAINING_PLAN_KEY }),
+  });
+}
+
+export function useChangeTrainingPhase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (phase: TrainingPhase) => changeTrainingPhaseRequest({ phase }),
+    onSuccess: (plan) => {
+      queryClient.setQueryData(TRAINING_PLAN_KEY, plan);
+      void queryClient.invalidateQueries({ queryKey: ["cardio", "plan"] });
+    },
+  });
+}
+
+export function usePauseTrainingPlan() {
+  return useTrainingPlanAction(pauseTrainingPlanRequest);
+}
+
+export function useResumeTrainingPlan() {
+  return useTrainingPlanAction(resumeTrainingPlanRequest);
+}
+
+// "+1 Woche": pushes the next phase change out by a week (online-only, like pausing).
+export function useExtendPhase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: extendPhaseRequest,
+    onSuccess: (plan) => queryClient.setQueryData(TRAINING_PLAN_KEY, plan),
+  });
+}
+
+export function useRestartPhase() {
+  return useTrainingPlanAction(restartPhaseRequest);
+}
+
+export function useUpdateTrainingPlanRemarks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateTrainingPlanRemarksInput) => updateTrainingPlanRemarksRequest(input),
+    onSuccess: (plan) => queryClient.setQueryData(TRAINING_PLAN_KEY, plan),
+  });
+}
+
+// F9: the goal changes the cardio suggestion, so the cardio plans of every phase are refetched.
+export function useSetTrainingGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (goal: TrainingGoalValue | null) => updateTrainingGoalRequest({ goal }),
+    onSuccess: (plan) => {
+      queryClient.setQueryData(TRAINING_PLAN_KEY, plan);
+      void queryClient.invalidateQueries({ queryKey: ["cardio", "plan"] });
+    },
+  });
+}
+
+==> frontend/src/api/trainingPlan.api.ts <==
+import type {
+  ChangeTrainingPhaseInput,
+  TrainingPlanDto,
+  UpdateTrainingGoalInput,
+  UpdateTrainingPlanRemarksInput,
+} from "@fitnesstracker/shared";
+import { apiFetch } from "./client";
+
+export function getTrainingPlanRequest() {
+  return apiFetch<TrainingPlanDto>("/training-plan");
+}
+
+export function changeTrainingPhaseRequest(input: ChangeTrainingPhaseInput) {
+  return apiFetch<TrainingPlanDto>("/training-plan/phase", { method: "PATCH", body: input });
+}
+
+export function pauseTrainingPlanRequest() {
+  return apiFetch<TrainingPlanDto>("/training-plan/pause", { method: "POST" });
+}
+
+export function resumeTrainingPlanRequest() {
+  return apiFetch<TrainingPlanDto>("/training-plan/resume", { method: "POST" });
+}
+
+export function restartPhaseRequest() {
+  return apiFetch<TrainingPlanDto>("/training-plan/restart-phase", { method: "POST" });
+}
+
+export function extendPhaseRequest() {
+  return apiFetch<TrainingPlanDto>("/training-plan/extend-phase", { method: "POST" });
+}
+
+export function updateTrainingPlanRemarksRequest(input: UpdateTrainingPlanRemarksInput) {
+  return apiFetch<TrainingPlanDto>("/training-plan/remarks", { method: "PATCH", body: input });
+}
+
+export function updateTrainingGoalRequest(input: UpdateTrainingGoalInput) {
+  return apiFetch<TrainingPlanDto>("/training-plan/goal", { method: "PATCH", body: input });
+}
+
+==> frontend/src/components/trainingPlan/PhaseTabs.tsx <==
+import type { TrainingPhase } from "@fitnesstracker/shared";
+import { TRAINING_PHASES } from "@fitnesstracker/shared";
+import { TRAINING_PHASE_LABELS } from "../../hooks/useTrainingPlan";
+import { SegmentedControl } from "../ui";
+
+interface PhaseTabsProps {
+  selected: TrainingPhase;
+  onSelect: (phase: TrainingPhase) => void;
+}
+
+// Shared by /plan/generate — drives a phase-scoped view (the AI generator) off a three-way
+// segmented control.
+export function PhaseTabs({ selected, onSelect }: PhaseTabsProps) {
+  return (
+    <SegmentedControl
+      label="Phase"
+      value={selected}
+      onChange={onSelect}
+      options={TRAINING_PHASES.map((phase) => ({ value: phase, label: TRAINING_PHASE_LABELS[phase] }))}
+    />
+  );
+}
+
+==> frontend/src/components/plan/PhaseHero.tsx <==
+import { useEffect, useState } from "react";
+import { ArrowLeftRight, CalendarPlus, Pause, Play, RotateCcw } from "lucide-react";
+import {
+  TRAINING_GOAL_LABELS,
+  TRAINING_GOALS,
+  TRAINING_PHASE_ROTATION,
+  type TrainingGoalValue,
+  type TrainingPhase,
+  type TrainingPlanDto,
+} from "@fitnesstracker/shared";
+import {
+  TRAINING_PHASE_LABELS,
+  useChangeTrainingPhase,
+  useExtendPhase,
+  usePauseTrainingPlan,
+  useRestartPhase,
+  useResumeTrainingPlan,
+  useSetTrainingGoal,
+} from "../../hooks/useTrainingPlan";
+import { PHASE_RULES } from "../../lib/phaseInfo";
+import { phaseLength, phaseWeek } from "../../lib/phase";
+import { Button, Callout, Card, Dialog, Field, SegmentedProgress, Select } from "../ui";
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("de-DE", { day: "numeric", month: "long" });
+}
+
+export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
+  const pause = usePauseTrainingPlan();
+  const resume = useResumeTrainingPlan();
+  const restart = useRestartPhase();
+  const extend = useExtendPhase();
+  const setGoal = useSetTrainingGoal();
+  const changePhase = useChangeTrainingPhase();
+  const [phaseChangeOpen, setPhaseChangeOpen] = useState(false);
+  const [phaseToSwitch, setPhaseToSwitch] = useState(plan.currentPhase);
+
+  useEffect(() => {
+    setPhaseToSwitch(plan.currentPhase);
+  }, [plan.currentPhase]);
+
+  const total = phaseLength(plan);
+  const week = phaseWeek(plan);
+  const next = TRAINING_PHASE_ROTATION[(TRAINING_PHASE_ROTATION.indexOf(plan.currentPhase) + 1) % TRAINING_PHASE_ROTATION.length];
+  const busy =
+    pause.isPending || resume.isPending || restart.isPending || extend.isPending || changePhase.isPending;
+
+  return (
+    <Card variant="hero" className="lg:p-6">
+      <p className="text-overline uppercase text-accent">Aktuelle Phase</p>
+      <div className="mt-1 flex items-baseline justify-between gap-3">
+        <h2 className="text-h2-hero text-text lg:text-[26px]">{TRAINING_PHASE_LABELS[plan.currentPhase]}</h2>
+        <span className="tabular font-mono text-small text-text-subtle">
+          Woche {week} von {total}
+        </span>
+      </div>
+      <SegmentedProgress
+        className="mt-3"
+        segments={total}
+        done={week - 1}
+        size={8}
+        label={`Phasenfortschritt: Woche ${week} von ${total}`}
+      />
+      <p className="mt-3 text-small text-text-2">
+        {PHASE_RULES[plan.currentPhase].replace(/\.$/, "")}.{" "}
+        {plan.pausedAt
+          ? `Pausiert seit ${formatDate(plan.pausedAt)}.`
+          : plan.nextRotationOn
+            ? `Danach folgt ${TRAINING_PHASE_LABELS[next]} ab ${formatDate(plan.nextRotationOn)}.`
+            : null}
+      </p>
+
+      <Field
+        label="Trainingsziel"
+        hint="Bestimmt den Cardio-Vorschlag für jeden Trainingstag. Ohne Ziel gibt es keinen Vorschlag."
+        className="mt-4 rounded-lg border border-border-hero bg-surface-inset p-3"
+      >
+        {(p) => (
+          <Select
+            {...p}
+            value={plan.trainingGoal ?? ""}
+            disabled={setGoal.isPending}
+            onChange={(e) => setGoal.mutate(e.target.value === "" ? null : (e.target.value as TrainingGoalValue))}
+          >
+            <option value="">Noch nicht gewählt</option>
+            {TRAINING_GOALS.map((g) => (
+              <option key={g} value={g}>
+                {TRAINING_GOAL_LABELS[g]}
+              </option>
+            ))}
+          </Select>
+        )}
+      </Field>
+      {setGoal.isError && (
+        <Callout tone="danger" className="mt-3">
+          Ziel konnte nicht gespeichert werden. Plan-Änderungen brauchen eine Verbindung.
+        </Callout>
+      )}
+
+      {plan.pausedAt && (
+        <Callout tone="warning" className="mt-3">
+          Die Phase ist pausiert und läuft erst nach dem Fortsetzen weiter.
+        </Callout>
+      )}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {plan.pausedAt ? (
+          <Button variant="primary" iconLeft={<Play size={16} aria-hidden />} disabled={busy} onClick={() => resume.mutate()}>
+            Fortsetzen
+          </Button>
+        ) : (
+          <Button variant="secondary" iconLeft={<Pause size={16} aria-hidden />} disabled={busy} onClick={() => pause.mutate()}>
+            Pausieren
+          </Button>
+        )}
+        <Button
+          variant="secondary"
+          iconLeft={<CalendarPlus size={16} aria-hidden />}
+          disabled={busy || (plan.extensionWeeks ?? 0) >= 8}
+          onClick={() => extend.mutate()}
+        >
+          +1 Woche
+        </Button>
+        <Button variant="ghost" iconLeft={<RotateCcw size={16} aria-hidden />} disabled={busy} onClick={() => restart.mutate()}>
+          Neu starten
+        </Button>
+        <Button
+          variant="secondary"
+          iconLeft={<ArrowLeftRight size={16} aria-hidden />}
+          disabled={busy}
+          onClick={() => setPhaseChangeOpen(true)}
+        >
+          Phase wechseln
+        </Button>
+      </div>
+
+      {changePhase.isError && (
+        <Callout tone="danger" className="mt-3">
+          Die Trainingsphase konnte nicht gewechselt werden. Bitte versuche es erneut.
+        </Callout>
+      )}
+
+      <Dialog
+        open={phaseChangeOpen}
+        onOpenChange={setPhaseChangeOpen}
+        title="Trainingsphase wechseln"
+        description="Die neue Phase beginnt mit einem frischen 8-Wochen-Zeitraum. Deine Trainingslogs bleiben erhalten."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPhaseChangeOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button
+              variant="primary"
+              disabled={busy || phaseToSwitch === plan.currentPhase}
+              onClick={() =>
+                changePhase.mutate(phaseToSwitch, {
+                  onSuccess: () => setPhaseChangeOpen(false),
+                })
+              }
+            >
+              Phase wechseln
+            </Button>
+          </>
+        }
+      >
+        <Field label="Neue Phase" hint="Die bisherige Phase wird im Verlauf mit ihrem Enddatum abgeschlossen.">
+          {(p) => (
+            <Select
+              {...p}
+              value={phaseToSwitch}
+              disabled={busy}
+              onChange={(event) => setPhaseToSwitch(event.target.value as TrainingPhase)}
+            >
+              {TRAINING_PHASE_ROTATION.map((phase) => (
+                <option key={phase} value={phase} disabled={phase === plan.currentPhase}>
+                  {TRAINING_PHASE_LABELS[phase]}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+      </Dialog>
+    </Card>
+  );
+}
+
+==> frontend/src/routes/TrainingPlanPage.tsx <==
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { FileDown, MessageSquareText, MoreHorizontal, Sparkles } from "lucide-react";
+import type { TrainingPhase } from "@fitnesstracker/shared";
+import { AppShell } from "../components/layout/AppShell";
+import { FreeCardioCard } from "../components/plan/FreeCardioCard";
+import { PhaseHero } from "../components/plan/PhaseHero";
+import { PhaseRotation } from "../components/plan/PhaseRotation";
+import { PlanDays } from "../components/plan/PlanDays";
+import { RecommendedSplitsSection } from "../components/trainingPlan/RecommendedSplitsSection";
+import { TrainingPlanRemarksCard } from "../components/trainingPlan/TrainingPlanRemarksCard";
+import {
+  Badge,
+  Card,
+  Dialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  EmptyState,
+  IconButton,
+  ListRow,
+  Skeleton,
+} from "../components/ui";
+import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../hooks/useTrainingPlan";
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+export function TrainingPlanPage() {
+  const { data: plan, isLoading } = useTrainingPlan();
+  const [selectedPhase, setSelectedPhase] = useState<TrainingPhase | null>(null);
+  const [remarksOpen, setRemarksOpen] = useState(false);
+
+  // Default the phase picker to the active phase once the plan has loaded — but only the first
+  // time, so switching to plan ahead isn't reset by a background refetch.
+  useEffect(() => {
+    if (plan && selectedPhase === null) setSelectedPhase(plan.currentPhase);
+  }, [plan, selectedPhase]);
+
+  return (
+    <AppShell>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <h1 className="text-h1 text-text lg:text-h1-lg">Trainingsplan</h1>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton aria-label="Weitere Aktionen">
+              <MoreHorizontal size={20} aria-hidden />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem asChild>
+              <Link to="/plan/generate" className="flex w-full items-center gap-2">
+                <FileDown size={16} aria-hidden className="text-text-subtle" />
+                Export &amp; Import
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem icon={<MessageSquareText size={16} aria-hidden />} onSelect={() => setRemarksOpen(true)}>
+              Bemerkungen
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {isLoading ? (
+        <div className="flex flex-col gap-4">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      ) : !plan ? (
+        <Card>
+          <EmptyState icon={<MoreHorizontal size={18} aria-hidden />} text="Kein Plan gefunden." />
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <PhaseHero plan={plan} />
+
+          {selectedPhase && (
+            <PhaseRotation current={plan.currentPhase} selected={selectedPhase} onSelect={setSelectedPhase} />
+          )}
+
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] lg:items-start">
+            {selectedPhase && <PlanDays phase={selectedPhase} />}
+
+            <div className="flex flex-col gap-4">
+              {selectedPhase && <FreeCardioCard phase={selectedPhase} />}
+
+              <Link
+                to="/plan/generate"
+                className="flex min-h-[64px] items-center gap-3 rounded-2xl border border-border bg-surface p-4 transition-colors duration-150 hover:bg-surface-2"
+              >
+                <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-soft text-violet">
+                  <Sparkles size={18} />
+                </span>
+                <span className="min-w-0 flex-1 text-body font-medium text-text">Nächste Phase mit KI planen</span>
+                <Badge tone="violet">Eigener Schlüssel</Badge>
+              </Link>
+
+              <Card title="Verlauf">
+                {plan.history.length === 0 ? (
+                  <p className="text-small text-text-faint">Noch kein Phasenwechsel.</p>
+                ) : (
+                  plan.history.map((entry) => (
+                    <ListRow key={entry.id} value={`${formatDate(entry.startedOn)} – ${entry.endedOn ? formatDate(entry.endedOn) : "…"}`}>
+                      {TRAINING_PHASE_LABELS[entry.phase]}
+                    </ListRow>
+                  ))
+                )}
+              </Card>
+            </div>
+          </div>
+
+          <RecommendedSplitsSection />
+
+          <Dialog open={remarksOpen} onOpenChange={setRemarksOpen} title="Bemerkungen">
+            <TrainingPlanRemarksCard plan={plan} onSaved={() => setRemarksOpen(false)} />
+          </Dialog>
+        </div>
+      )}
+    </AppShell>
+  );
+}
+
