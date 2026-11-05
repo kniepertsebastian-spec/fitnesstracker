@@ -3,6 +3,7 @@ import { createWorkoutSessionSchema, updateWorkoutSessionSchema } from "@fitness
 import {
   createWorkoutSession,
   getOpenWorkoutSession,
+  keepWorkoutSessionAlive,
   updateWorkoutSessionStatus,
 } from "./workoutSession.service.js";
 import { toWorkoutSessionDto } from "./workoutSession.types.js";
@@ -31,6 +32,19 @@ export default async function workoutSessionRoutes(fastify: FastifyInstance) {
     const { status } = updateWorkoutSessionSchema.parse(request.body);
     try {
       const session = await updateWorkoutSessionStatus(fastify.prisma, request.user.sub, id, status);
+      return reply.send(toWorkoutSessionDto(session));
+    } catch (error) {
+      if (error instanceof HttpError) {
+        return reply.code(error.statusCode).send({ message: error.message });
+      }
+      throw error;
+    }
+  });
+
+  fastify.post("/workout-sessions/:id/keep-alive", async (request, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+    try {
+      const session = await keepWorkoutSessionAlive(fastify.prisma, request.user.sub, id);
       return reply.send(toWorkoutSessionDto(session));
     } catch (error) {
       if (error instanceof HttpError) {

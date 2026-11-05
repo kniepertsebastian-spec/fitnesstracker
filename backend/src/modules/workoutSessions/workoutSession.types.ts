@@ -8,6 +8,7 @@ export function toWorkoutSessionDto(session: WorkoutSession): WorkoutSessionDto 
     status: session.status,
     startedAt: session.startedAt.toISOString(),
     endedAt: session.endedAt ? session.endedAt.toISOString() : null,
+    stopPromptSentAt: session.stopPromptSentAt ? session.stopPromptSentAt.toISOString() : null,
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString(),
   };

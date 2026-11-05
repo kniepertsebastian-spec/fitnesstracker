@@ -1,11 +1,12 @@
 import type { FastifyInstance } from "fastify";
+import { HEAVY_RATE_LIMIT } from "../../lib/rateLimits.js";
 import { HttpError } from "../../errors/httpErrors.js";
 import { analyzeBodyImage, listBodyAnalyses, saveBodyAnalysis, toBodyAnalysisDto } from "./bodyAnalysis.service.js";
 
 export default async function bodyAnalysisRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
 
-  fastify.post("/body-analyses/analyze", async (request, reply) => {
+  fastify.post("/body-analyses/analyze", HEAVY_RATE_LIMIT, async (request, reply) => {
     const upload = await request.file();
     if (!upload) return reply.code(400).send({ message: "Bitte ein Analysebild auswählen." });
     if (!["image/jpeg", "image/png", "image/webp"].includes(upload.mimetype)) {

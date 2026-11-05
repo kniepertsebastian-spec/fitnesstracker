@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ImportActivityDaysInput } from "@fitnesstracker/shared";
 import {
+  activityReportRequest,
   createHealthSyncTokenRequest,
   exportActivityRequest,
-  getActivityReportRequest,
+  getWeeklyActivityReportRequest,
   getHealthSyncStatusRequest,
+  importActivityDaysRequest,
   revokeHealthSyncTokenRequest,
 } from "../api/activity.api";
 
@@ -19,6 +22,7 @@ export function browserTimeZone(): string {
   }
 }
 
+// Health Connect sync
 export function useHealthSyncStatus() {
   return useQuery({ queryKey: SYNC_STATUS_KEY, queryFn: getHealthSyncStatusRequest });
 }
@@ -39,12 +43,29 @@ export function useRevokeHealthSyncToken() {
   });
 }
 
+// Insurance report (date range based)
+export function useActivityReport(range: { from?: string; to?: string }) {
+  return useQuery({
+    queryKey: ["activity", "report", range.from ?? null, range.to ?? null],
+    queryFn: () => activityReportRequest(range),
+  });
+}
+
+export function useImportActivityDays() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ImportActivityDaysInput) => importActivityDaysRequest(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["activity"] }),
+  });
+}
+
+// Weekly comprehensive report
 // The phone pushes new Health Connect data in the background, so the card re-reads every few
 // minutes and whenever the app comes back to the foreground (react-query's default).
-export function useActivityReport(weeks: number) {
+export function useWeeklyActivityReport(weeks: number) {
   return useQuery({
-    queryKey: [...ACTIVITY_KEY, weeks],
-    queryFn: () => getActivityReportRequest(weeks, browserTimeZone()),
+    queryKey: [...ACTIVITY_KEY, "weekly", weeks],
+    queryFn: () => getWeeklyActivityReportRequest(weeks, browserTimeZone()),
     refetchInterval: 5 * 60 * 1000,
   });
 }

@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { HEAVY_RATE_LIMIT } from "../../lib/rateLimits.js";
 import { generatePlanRequestSchema, planPhaseRequestSchema } from "@fitnesstracker/shared";
 import {
   acceptPlanDraft,
@@ -12,7 +13,7 @@ import {
 export default async function aiPlanGeneratorRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
 
-  fastify.post("/ai/generate-plan", async (request, reply) => {
+  fastify.post("/ai/generate-plan", HEAVY_RATE_LIMIT, async (request, reply) => {
     const input = generatePlanRequestSchema.parse(request.body);
     return reply.send(await generatePlan(fastify.prisma, request.user.sub, input));
   });

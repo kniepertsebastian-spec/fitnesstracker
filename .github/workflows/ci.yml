@@ -36,6 +36,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Warning only (like Lighthouse in the other repos): an advisory without a fix available
+      # (e.g. one that needs a major upgrade) must not block every push, but it shows up here.
+      - name: Dependency audit (warning)
+        continue-on-error: true
+        run: pnpm audit --prod --audit-level=high
+
       # backend and frontend both import from @fitnesstracker/shared's build output, not its
       # source — same as every local dev script (see dev:backend/dev:frontend in package.json).
       - run: pnpm run build:shared

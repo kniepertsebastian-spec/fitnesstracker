@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, type ComponentType, type ReactNode } from "r
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { RouteErrorBoundary } from "./components/layout/RouteErrorBoundary";
+import { ForgottenSessionPrompt } from "./components/workoutLog/ForgottenSessionPrompt";
 import { UpdatePrompt } from "./components/layout/UpdatePrompt";
 import { useAuthBootstrap } from "./hooks/useAuth";
 import { initWorkoutLogSync } from "./offline/workoutLogSync";
@@ -36,6 +37,7 @@ const StretchingPage = lazyPage(() => import("./routes/StretchingPage"), "Stretc
 const GoalsPage = lazyPage(() => import("./routes/GoalsPage"), "GoalsPage");
 const NutritionPage = lazyPage(() => import("./routes/NutritionPage"), "NutritionPage");
 const ProgressPage = lazyPage(() => import("./routes/ProgressPage"), "ProgressPage");
+const ActivityReportPage = lazyPage(() => import("./routes/ActivityReportPage"), "ActivityReportPage");
 const SettingsPage = lazyPage(() => import("./routes/SettingsPage"), "SettingsPage");
 const TrainingPage = lazyPage(() => import("./routes/TrainingPage"), "TrainingPage");
 // Dev-only: the ternary is folded away in production builds, so the chunk isn't emitted.
@@ -93,6 +95,7 @@ export function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <GlobalUpdatePrompt />
       <AppBadge />
+      <ForgottenSessionPrompt />
       <RoutedScreens>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -206,6 +209,14 @@ export function App() {
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/report"
+            element={
+              <ProtectedRoute>
+                <ActivityReportPage />
               </ProtectedRoute>
             }
           />

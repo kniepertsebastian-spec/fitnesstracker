@@ -1,5 +1,6 @@
 import { createReadStream } from "node:fs";
 import type { FastifyInstance } from "fastify";
+import { HEAVY_RATE_LIMIT } from "../../lib/rateLimits.js";
 import { z } from "zod";
 import { HttpError } from "../../errors/httpErrors.js";
 import {
@@ -21,7 +22,7 @@ export default async function progressPhotoRoutes(fastify: FastifyInstance) {
     return reply.send({ items: photos.map(toProgressPhotoDto) });
   });
 
-  fastify.post("/progress-photos", async (request, reply) => {
+  fastify.post("/progress-photos", HEAVY_RATE_LIMIT, async (request, reply) => {
     const file = await request.file();
     if (!file) {
       return reply.code(400).send({ message: "No file uploaded" });
