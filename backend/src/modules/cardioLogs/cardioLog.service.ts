@@ -49,6 +49,7 @@ export async function createCardioLog(prisma: PrismaClient, userId: string, inpu
       level: input.level ?? null,
       intensity: input.intensity,
       durationMinutes: input.durationMinutes,
+      distanceKm: input.distanceKm ?? null,
       ...(input.performedAt ? { performedAt: new Date(input.performedAt) } : {}),
     },
   });
