@@ -107,9 +107,10 @@ export function App() {
   );
 
   return (
-    // v7_startTransition: a navigation to a page whose chunk isn't loaded yet keeps the current
-    // page on screen until it arrives, instead of blanking it with the Suspense fallback.
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    // React Router 7 wraps navigations in startTransition by default: a navigation to a page whose
+    // chunk isn't loaded yet keeps the current page on screen until it arrives, instead of
+    // blanking it with the Suspense fallback.
+    <BrowserRouter>
       <GlobalUpdatePrompt />
       <AppBadge />
       <ForgottenSessionPrompt />
