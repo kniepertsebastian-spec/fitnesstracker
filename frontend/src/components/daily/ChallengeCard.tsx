@@ -55,7 +55,7 @@ export function ChallengeCard() {
                   <Badge tone={cat.tone}>{cat.label}</Badge>
                   <Link
                     to={`/exercises/${item.exerciseId}`}
-                    className="mt-1.5 block truncate text-body font-medium text-text hover:text-accent"
+                    className="mt-1.5 block truncate text-body font-medium text-text hover:text-accent-text"
                   >
                     {item.exerciseName}
                   </Link>

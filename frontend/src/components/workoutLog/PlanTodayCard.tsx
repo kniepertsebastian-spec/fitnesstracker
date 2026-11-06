@@ -28,7 +28,7 @@ export function PlanTodayCard() {
     <Card
       title={`Plan · ${TRAINING_PHASE_LABELS[plan.currentPhase]}`}
       action={
-        <Link to="/plan" className="text-small text-accent hover:text-accent-hover">
+        <Link to="/plan" className="text-small text-accent-text hover:text-accent-text-hover">
           Zum Plan
         </Link>
       }
@@ -58,7 +58,7 @@ export function PlanTodayCard() {
           return (
             <ListRow key={e.id} prefix={i + 1} value={formatSetsReps(e, planned)}>
               <div className="flex items-center justify-between gap-2">
-                <Link to={`/exercises/${e.exerciseId}`} className="min-w-0 truncate hover:text-accent">
+                <Link to={`/exercises/${e.exerciseId}`} className="min-w-0 truncate hover:text-accent-text">
                   {e.exerciseName}
                 </Link>
                 <span className="tabular shrink-0 text-small text-text-faint">

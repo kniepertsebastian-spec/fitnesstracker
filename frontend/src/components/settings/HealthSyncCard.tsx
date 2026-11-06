@@ -144,7 +144,7 @@ export function HealthSyncCard() {
         <ol className="mt-2 list-decimal space-y-1 pl-5">
           <li>
             „Life Dashboard Companion“ installieren (
-            <a className="text-accent hover:text-accent-hover" href={COMPANION_URL} target="_blank" rel="noreferrer">
+            <a className="text-accent-text hover:text-accent-text-hover" href={COMPANION_URL} target="_blank" rel="noreferrer">
               GitHub
             </a>
             : kostenlos per APK, F-Droid oder Obtainium; im Play Store kostet sie einmalig etwa 5 €).
