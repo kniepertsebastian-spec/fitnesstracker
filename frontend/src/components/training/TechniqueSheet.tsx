@@ -71,7 +71,7 @@ export function TechniqueSheet({
           </div>
           <p className="text-xs text-text-faint">
             Formanalyse per Video findest du im{" "}
-            <Link to="/plan" className="text-accent hover:text-accent-hover">
+            <Link to="/plan" className="text-accent-text hover:text-accent-text-hover">
               Plan
             </Link>
             .

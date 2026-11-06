@@ -120,7 +120,7 @@ function AnalysisHistoryItem({ entry, previous, expanded, onToggle }: { entry: B
       {expanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}
     </button>
     {expanded && <div className="mt-3 rounded-xl bg-surface-2 p-3">
-      <div className="mb-4 whitespace-pre-wrap break-words text-small leading-relaxed text-text-2">{entry.summary}</div>
+      <div className="mb-4 whitespace-pre-wrap wrap-break-word text-small leading-relaxed text-text-2">{entry.summary}</div>
       <h3 className="mb-2 text-body font-semibold text-text">Einzelwerte und Verlauf</h3>
       <div className="flex flex-col gap-3">{entry.metrics.map((metric) => {
         const old = previous?.metrics.find((m) => m.key === metric.key);
@@ -131,7 +131,7 @@ function AnalysisHistoryItem({ entry, previous, expanded, onToggle }: { entry: B
           <p className="mt-1 text-small text-text-2">{metric.assessment}</p>
         </div>;
       })}</div>
-      {entry.ocrText && <details className="mt-3"><summary className="cursor-pointer text-xs text-text-subtle">Erkannter Originaltext</summary><pre className="mt-2 whitespace-pre-wrap break-words text-xs text-text-subtle">{entry.ocrText}</pre></details>}
+      {entry.ocrText && <details className="mt-3"><summary className="cursor-pointer text-xs text-text-subtle">Erkannter Originaltext</summary><pre className="mt-2 whitespace-pre-wrap wrap-break-word text-xs text-text-subtle">{entry.ocrText}</pre></details>}
       {entry.sourceName && <p className="mt-3 text-xs text-text-faint">Datei: {entry.sourceName}</p>}
     </div>}
   </section>;

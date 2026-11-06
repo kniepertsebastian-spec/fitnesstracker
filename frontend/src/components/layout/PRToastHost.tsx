@@ -11,7 +11,7 @@ export function PRToastHost() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed left-0 right-0 top-[calc(0.75rem+env(safe-area-inset-top))] z-[60] flex flex-col items-center gap-2 px-4">
+    <div className="pointer-events-none fixed left-0 right-0 top-[calc(0.75rem+env(safe-area-inset-top))] z-60 flex flex-col items-center gap-2 px-4">
       {toasts.map((toast) => (
         <button
           key={toast.id}

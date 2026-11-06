@@ -474,7 +474,7 @@ export function TrainingPage() {
     return (
       <Frame>
         <Card variant="hero">
-          <p className="text-overline text-accent">{summary.aborted ? "Abgebrochen" : "Training abgeschlossen"}</p>
+          <p className="text-overline text-accent-text">{summary.aborted ? "Abgebrochen" : "Training abgeschlossen"}</p>
           <h1 className="mt-1 text-h2-hero text-text">{summary.aborted ? "Training abgebrochen" : "Stark gemacht."}</h1>
           <p className="mt-1 text-small text-text-subtle">Alle Sätze und Cardio-Einheiten sind gespeichert.</p>
           <div className="mt-4 grid grid-cols-2 gap-3">
@@ -797,14 +797,14 @@ export function TrainingPage() {
               }
               className={s === stage ? undefined : "opacity-80"}
             >
-              <button type="button" onClick={() => goToStage(s)} className="block w-full py-3 text-left hover:text-accent">
+              <button type="button" onClick={() => goToStage(s)} className="block w-full py-3 text-left hover:text-accent-text">
                 {STAGE_LABELS[s]}
-                {s === stage && <span className="ml-2 text-xs text-accent">jetzt</span>}
+                {s === stage && <span className="ml-2 text-xs text-accent-text">jetzt</span>}
                 {s !== "kraft" && stageState[s].status === "skipped" && (
                   <span className="ml-2 text-xs text-text-faint">übersprungen</span>
                 )}
                 {((s === "kraft" && allDone) || (s !== "kraft" && stageState[s].status === "done")) && (
-                  <span className="ml-2 text-xs text-accent">erledigt</span>
+                  <span className="ml-2 text-xs text-accent-text">erledigt</span>
                 )}
               </button>
             </ListRow>
@@ -835,7 +835,7 @@ export function TrainingPage() {
                   {exercises.map((e, i) => (
                     <div key={e.id} className="flex items-center gap-1 py-2">
                       <span className="min-w-0 flex-1">
-                        <span className="block break-words text-body text-text">{e.exerciseName}</span>
+                        <span className="block wrap-break-word text-body text-text">{e.exerciseName}</span>
                         <span className="block text-xs text-text-subtle">{formatSetsReps(e, setCountFor(e))}</span>
                       </span>
                       <IconButton aria-label={`${e.exerciseName} tauschen`} className="h-10 w-10 border-transparent bg-transparent" onClick={() => setPicker({ mode: "swap", key: e.id })}>
@@ -872,10 +872,10 @@ export function TrainingPage() {
                     <button
                       type="button"
                       onClick={() => setManualIndex(i)}
-                      className="block w-full py-3 text-left hover:text-accent"
+                      className="block w-full py-3 text-left hover:text-accent-text"
                     >
                       {e.exerciseName}
-                      {isComplete(e) && <span className="ml-2 text-xs text-accent">erledigt</span>}
+                      {isComplete(e) && <span className="ml-2 text-xs text-accent-text">erledigt</span>}
                     </button>
                   </ListRow>
                 ),

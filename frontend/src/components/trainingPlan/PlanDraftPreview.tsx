@@ -42,7 +42,7 @@ export function PlanDraftPreview({ draft, busyDay, disabled, onRegenerateDay, on
       {days.map((day) => (
         <section key={day} className="rounded-xl border border-border p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h3 className="min-w-0 break-words text-body font-semibold text-text">{day}</h3>
+            <h3 className="min-w-0 wrap-break-word text-body font-semibold text-text">{day}</h3>
             <Button
               variant="ghost"
               size="sm"
@@ -78,7 +78,7 @@ function DraftItem({ item }: { item: PlanDraftItemDto }) {
   return (
     <li className="flex flex-col gap-0.5 py-2 first:pt-0 last:pb-0">
       <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-        <span className="min-w-0 break-words text-body font-medium text-text">{item.exerciseName}</span>
+        <span className="min-w-0 wrap-break-word text-body font-medium text-text">{item.exerciseName}</span>
         {item.filledByServer && <Badge tone="neutral">ergänzt</Badge>}
       </div>
       <span className="tabular text-small text-text-muted">

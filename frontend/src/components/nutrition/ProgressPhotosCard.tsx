@@ -87,7 +87,7 @@ export function ProgressPhotosCard() {
             {upload.isPending ? "Lädt hoch…" : "Kamera mit Vorher-Vergleich"}
           </Button>
           <label
-            className={`inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border border-border-strong bg-control px-4 text-body font-medium text-text transition-colors duration-150 hover:bg-track focus-within:outline focus-within:outline-2 focus-within:outline-accent ${upload.isPending ? "pointer-events-none opacity-50" : ""}`}
+            className={`inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border border-border-strong bg-control px-4 text-body font-medium text-text transition-colors duration-150 hover:bg-track focus-within:outline-solid focus-within:outline-2 focus-within:outline-accent ${upload.isPending ? "pointer-events-none opacity-50" : ""}`}
           >
             <ImagePlus size={18} aria-hidden />
             Datei
@@ -122,7 +122,7 @@ export function ProgressPhotosCard() {
                   <p className="mt-1 text-center text-xs text-text-faint">{formatDate(photo.takenAt)}</p>
                   <IconButton
                     onClick={() => deletePhoto.mutate(photo.id)}
-                    className="absolute right-1 top-1 h-9 w-9 rounded-full bg-bg"
+                    className="absolute right-1 top-1 h-9! w-9! rounded-full bg-bg"
                     aria-label={`Foto vom ${formatDate(photo.takenAt)} löschen`}
                   >
                     <X size={14} aria-hidden />

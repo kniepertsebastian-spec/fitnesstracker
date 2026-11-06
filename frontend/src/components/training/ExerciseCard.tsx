@@ -196,7 +196,7 @@ export function ExerciseCard({
         {p && (
           <div className="flex gap-1.5">
             <dt className="text-text-subtle">Vorschlag</dt>
-            <dd className="tabular font-numeric text-accent">
+            <dd className="tabular font-numeric text-accent-text">
               {p.mode === "weight" ? `${formatKg(p.suggestedWeightKg)} kg` : `${p.suggestedReps} Wdh.`}
             </dd>
           </div>
@@ -296,7 +296,7 @@ export function ExerciseCard({
               {log?.note && <p className="mt-1 px-1 text-small text-text-subtle">{log.note}</p>}
 
               {state === "current" && p && (
-                <p className="mt-2 flex items-center gap-1 px-1 text-small text-accent">
+                <p className="mt-2 flex items-center gap-1 px-1 text-small text-accent-text">
                   {progressionHint(p)}
                   <CalcInfoButton id="progression" />
                 </p>
@@ -397,7 +397,7 @@ export function ExerciseCard({
           variant="dashed"
           iconLeft={<Link2 size={16} aria-hidden />}
           aria-pressed={supersetActive}
-          className={cn(supersetActive && "border-accent-border text-accent")}
+          className={cn(supersetActive && "border-accent-border text-accent-text")}
           onClick={onToggleSuperset}
         >
           Supersatz
@@ -411,7 +411,7 @@ export function ExerciseCard({
 
       {done.length > 0 && (
         <p className="mt-3 flex flex-wrap items-center gap-x-3 text-small">
-          {complete && <span className="text-accent">Alle Sätze erledigt.</span>}
+          {complete && <span className="text-accent-text">Alle Sätze erledigt.</span>}
           <KcalEstimate sets={done} />
         </p>
       )}

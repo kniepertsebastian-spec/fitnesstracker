@@ -61,7 +61,7 @@ export function BodyDataCard({ range }: { range: ProgressRange }) {
       )}
       <Link
         to="/nutrition?tab=koerper"
-        className="mt-3 flex min-h-[52px] items-center gap-3 border-t border-border-subtle pt-3 text-body text-text hover:text-accent"
+        className="mt-3 flex min-h-[52px] items-center gap-3 border-t border-border-subtle pt-3 text-body text-text hover:text-accent-text"
       >
         <Camera size={18} aria-hidden className="text-text-subtle" />
         <span className="flex-1">Fortschrittsfotos</span>
