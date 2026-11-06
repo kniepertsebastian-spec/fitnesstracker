@@ -9,9 +9,6 @@ const confidenceLabel = { high: "Gut erkannt", medium: "Bitte prüfen", low: "Un
 function dateLabel(value: string) {
   return new Date(value).toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 }
-function shortDate(value: string) {
-  return new Date(value).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
 function numberInput(value: number) { return String(value).replace(".", ","); }
 function parseNumber(value: string) { return Number(value.replace(",", ".")); }
 
