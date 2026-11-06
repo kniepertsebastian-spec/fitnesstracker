@@ -8,7 +8,7 @@ export function KcalEstimate({ sets, withHint = false }: { sets: { weightKg: num
   const profile = useBurnProfile();
   if (!profile) {
     return withHint ? (
-      <Link to="/nutrition" className="text-small text-accent hover:text-accent-hover">
+      <Link to="/nutrition" className="text-small text-accent-text hover:text-accent-text-hover">
         Profil ausfüllen für die kcal-Schätzung
       </Link>
     ) : null;

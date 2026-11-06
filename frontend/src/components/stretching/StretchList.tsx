@@ -125,13 +125,13 @@ export function StretchList({ items, storageKey, onDoneChange }: Props) {
                         src={url}
                         alt={item.name}
                         loading="lazy"
-                        className="aspect-[4/3] min-w-0 flex-1 rounded-lg bg-track object-contain sm:max-w-[16rem]"
+                        className="aspect-4/3 min-w-0 flex-1 rounded-lg bg-track object-contain sm:max-w-[16rem]"
                       />
                     ))}
                   </div>
                 )}
                 {item.description && <p className="whitespace-pre-line">{item.description}</p>}
-                <Link to={`/exercises/${item.exerciseId}`} className="text-accent hover:text-accent-hover">
+                <Link to={`/exercises/${item.exerciseId}`} className="text-accent-text hover:text-accent-text-hover">
                   Zur Übung
                 </Link>
               </div>

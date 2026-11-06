@@ -124,7 +124,7 @@ export function ScaleReportImportCard() {
             </Callout>
           ) : (
             <p className="mt-2 inline-flex items-center gap-2 text-small text-text-2">
-              <CheckCircle2 size={16} className="text-accent" aria-hidden />
+              <CheckCircle2 size={16} className="text-accent-text" aria-hidden />
               Alle Plausibilitätsprüfungen sind aufgegangen.
             </p>
           )}

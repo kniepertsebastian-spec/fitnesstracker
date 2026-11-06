@@ -45,7 +45,7 @@ export function LastWorkoutTile({ days }: { days: WorkoutDay[] }) {
     <Card
       title="Letztes Training"
       action={
-        <Link to="/history" className="text-small text-accent hover:text-accent-hover">
+        <Link to="/history" className="text-small text-accent-text hover:text-accent-text-hover">
           Historie
         </Link>
       }
@@ -74,7 +74,7 @@ export function RecentWorkoutsTable({ days }: { days: WorkoutDay[] }) {
     <Card
       title="Letzte Trainings"
       action={
-        <Link to="/history" className="text-small text-accent hover:text-accent-hover">
+        <Link to="/history" className="text-small text-accent-text hover:text-accent-text-hover">
           Historie
         </Link>
       }

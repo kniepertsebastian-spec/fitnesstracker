@@ -11,7 +11,7 @@ export function UserRow() {
     <div className="flex items-center gap-3 border-t border-border-subtle pt-3">
       <span
         aria-hidden
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-small font-semibold uppercase text-accent"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-small font-semibold uppercase text-accent-text"
       >
         {name.charAt(0)}
       </span>

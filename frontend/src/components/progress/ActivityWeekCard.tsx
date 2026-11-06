@@ -70,7 +70,7 @@ export function ActivityWeekCard() {
           ) : (
             <>
               Richte die Übertragung aus Health Connect{" "}
-              <Link to="/settings" className="text-accent hover:text-accent-hover">
+              <Link to="/settings" className="text-accent-text hover:text-accent-text-hover">
                 in den Einstellungen
               </Link>{" "}
               ein.

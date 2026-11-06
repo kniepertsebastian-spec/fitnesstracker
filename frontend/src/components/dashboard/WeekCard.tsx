@@ -39,7 +39,7 @@ export function WeekCard({ weekKeys, today, trainedDays, volumeByDay, weekStreak
                 className={cn(
                   "flex aspect-square w-full max-w-10 items-center justify-center rounded-lg text-text",
                   trained
-                    ? "bg-accent-soft text-accent"
+                    ? "bg-accent-soft text-accent-text"
                     : key === today
                       ? "border border-accent bg-surface-2"
                       : "bg-surface-2",

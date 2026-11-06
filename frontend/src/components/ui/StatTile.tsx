@@ -13,7 +13,7 @@ export interface StatTileProps {
 }
 
 const SUB_TONES = {
-  accent: "text-accent",
+  accent: "text-accent-text",
   warning: "text-warning",
   danger: "text-danger-text",
   muted: "text-text-faint",

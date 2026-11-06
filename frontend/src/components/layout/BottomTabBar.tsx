@@ -12,7 +12,7 @@ function linkClass({ isActive }: { isActive: boolean }) {
   return cn(
     ITEM,
     isActive
-      ? "text-accent before:absolute before:inset-x-5 before:top-0 before:h-0.5 before:rounded-full before:bg-accent"
+      ? "text-accent-text before:absolute before:inset-x-5 before:top-0 before:h-0.5 before:rounded-full before:bg-accent"
       : "text-text-muted hover:text-text",
   );
 }

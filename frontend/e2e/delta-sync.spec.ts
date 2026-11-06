@@ -12,6 +12,7 @@ test.describe("Delta-Sync der Satz-Historie", () => {
     const token = (await apiLogin.json()).accessToken as string;
     const auth = { Authorization: `Bearer ${token}` };
     const exercise = await fetchAnyExercise(request, token);
+    const createdClientId = crypto.randomUUID();
 
     // A history worth not re-downloading.
     const HISTORY = 30;
@@ -34,26 +35,32 @@ test.describe("Delta-Sync der Satz-Historie", () => {
     // history is days old, so let the seeded sets age out of that window before the first load.
     await page.waitForTimeout(6_000);
 
-    const listCalls: { url: string; items: number; deleted: number }[] = [];
+    const listCalls: { url: string; clientIds: string[]; deletedClientIds: string[] }[] = [];
     page.on("response", async (response) => {
       const url = new URL(response.url());
       if (url.pathname !== "/api/workout-logs" || response.request().method() !== "GET") return;
       const body = await response.json();
-      listCalls.push({ url: response.url(), items: body.items.length, deleted: body.deletedClientIds.length });
+      listCalls.push({
+        url: response.url(),
+        clientIds: body.items.map((l: { clientId: string }) => l.clientId),
+        deletedClientIds: body.deletedClientIds,
+      });
     });
 
     await login(page, user);
     await expect.poll(() => listCalls.length).toBeGreaterThanOrEqual(1);
     // The first download is the full history.
     expect(listCalls[0].url).not.toContain("updatedSince");
-    expect(listCalls[0].items).toBe(HISTORY);
+    expect(listCalls[0].clientIds).toHaveLength(HISTORY);
 
-    // Changes made elsewhere: one new set, one deleted set. (Earlier delta requests, e.g. from
-    // the diary remounting during login, saw nothing yet — only look at those that follow.)
-    const callsBeforeChanges = listCalls.length;
+    // Changes made elsewhere: one new set, one deleted set. The app also fetches a delta on its
+    // own shortly after login (the diary remounting), so a request can be in flight or land
+    // between the two changes — which call sees what is timing. What must hold regardless is
+    // checked over everything that follows the first load: only deltas, never the history
+    // again, and together they carry exactly the one new and the one deleted set.
     const created = await request.post(`${API_URL}/workout-logs`, {
       headers: auth,
-      data: { clientId: crypto.randomUUID(), exerciseId: exercise.id, setNumber: 1, reps: 9, weightKg: 52 },
+      data: { clientId: createdClientId, exerciseId: exercise.id, setNumber: 1, reps: 9, weightKg: 52 },
     });
     expect(created.ok()).toBeTruthy();
     const listed = await (await request.get(`${API_URL}/workout-logs`, { headers: auth })).json();
@@ -62,12 +69,15 @@ test.describe("Delta-Sync der Satz-Historie", () => {
 
     // Back to a screen that reads the history (client-side, so the in-memory token survives).
     await openHistory(page);
+    const afterFirstLoad = () => listCalls.slice(1);
     await expect
-      .poll(() => listCalls.slice(callsBeforeChanges).some((c) => c.url.includes("updatedSince")))
+      .poll(() => afterFirstLoad().some((c) => c.deletedClientIds.includes(victim.clientId)))
       .toBeTruthy();
-    const delta = listCalls.slice(callsBeforeChanges).find((c) => c.url.includes("updatedSince"))!;
-    // Two changes out of 31 rows — not the history again.
-    expect(delta.items).toBe(1);
-    expect(delta.deleted).toBe(1);
+
+    // Two changes out of 31 rows — not the history again. (A row inside the 5 s overlap window
+    // may arrive in more than one delta, hence the sets.)
+    expect(afterFirstLoad().every((c) => c.url.includes("updatedSince"))).toBeTruthy();
+    expect(new Set(afterFirstLoad().flatMap((c) => c.clientIds))).toEqual(new Set([createdClientId]));
+    expect(new Set(afterFirstLoad().flatMap((c) => c.deletedClientIds))).toEqual(new Set([victim.clientId]));
   });
 });

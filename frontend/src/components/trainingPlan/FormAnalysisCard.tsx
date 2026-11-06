@@ -77,7 +77,7 @@ export function FormAnalysisCard() {
 
           {analysis.data.strengths.length > 0 && (
             <div className="mt-3">
-              <p className="text-xs font-medium text-accent">Das läuft gut</p>
+              <p className="text-xs font-medium text-accent-text">Das läuft gut</p>
               <ul className="mt-1 list-disc space-y-1 pl-4 text-small text-text-muted">
                 {analysis.data.strengths.map((strength) => (
                   <li key={strength}>{strength}</li>

@@ -86,7 +86,7 @@ function Routine({ items, focus }: { items: StretchItemDto[]; focus: StretchFocu
 
       {active && (
         <div className="mb-3 rounded-xl border border-accent-border bg-accent-soft p-3">
-          <p className="text-overline text-accent">Jetzt</p>
+          <p className="text-overline text-accent-text">Jetzt</p>
           <div className="mt-1 flex items-center justify-between gap-3">
             <p className="min-w-0 truncate text-body font-medium text-text">{active.name}</p>
             <p role="timer" aria-label="Restzeit" className="tabular font-numeric text-h2 text-text">
@@ -168,7 +168,7 @@ export function StretchCard() {
     <Card
       title="Dehnroutine"
       action={
-        <Link to="/stretching" className="text-small text-accent hover:text-accent-hover">
+        <Link to="/stretching" className="text-small text-accent-text hover:text-accent-text-hover">
           Dehnpläne
         </Link>
       }
