@@ -19,7 +19,7 @@ export function GoalsProgressCard() {
     <Card
       title="Ziele"
       action={
-        <Link to="/goals" className="text-small text-accent hover:text-accent-hover">
+        <Link to="/goals" className="text-small text-accent-text hover:text-accent-text-hover">
           Zu den Zielen
         </Link>
       }

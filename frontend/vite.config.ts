@@ -149,24 +149,32 @@ export default defineConfig({
     }),
   ],
   build: {
-    rollupOptions: {
+    rolldownOptions: {
+      preserveEntrySignatures: false,
       output: {
-        // Merge the many tiny shared chunks the lazy routes would otherwise produce (single icons,
-        // small hooks): each is a request on the service worker's first precache.
-        experimentalMinChunkSize: 12_000,
-        // Vendor code in a few stable chunks. App code changes with every deploy, library code
-        // rarely: the service worker re-downloads only chunks whose hash changed, so an update
-        // costs the app chunks, not the framework again.
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return undefined;
-          if (/[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom|@remix-run[\\/]router)[\\/]/.test(id)) {
-            return "vendor-react";
-          }
-          if (/[\\/]node_modules[\\/]@tanstack[\\/]/.test(id)) return "vendor-query";
-          if (/[\\/]node_modules[\\/](@radix-ui|@floating-ui|react-remove-scroll[\w-]*|aria-hidden|use-sidecar|use-callback-ref)[\\/]/.test(id)) {
-            return "vendor-radix";
-          }
-          return undefined;
+        codeSplitting: {
+          // Fold the many tiny shared chunks the lazy routes would otherwise produce (single
+          // icons, small hooks) into the chunks that use them: each file is a request on the
+          // service worker's first precache. Duplicates a few kilobytes of code on purpose.
+          experimentalInlineCommonChunks: { maxSize: 12_000 },
+          // Vendor code in a few stable chunks. App code changes with every deploy, library code
+          // rarely: the service worker re-downloads only chunks whose hash changed, so an update
+          // costs the app chunks, not the framework again.
+          groups: [
+            {
+              name: "vendor-react",
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/,
+              priority: 3,
+            },
+            { name: "vendor-query", test: /[\\/]node_modules[\\/]@tanstack[\\/]/, priority: 2 },
+            // One chunk for the icons instead of a copy of each icon in every page that uses it.
+            { name: "vendor-icons", test: /[\\/]node_modules[\\/]lucide-react[\\/]/, priority: 2 },
+            {
+              name: "vendor-radix",
+              test: /[\\/]node_modules[\\/](@radix-ui|@floating-ui|react-remove-scroll[\w-]*|aria-hidden|use-sidecar|use-callback-ref)[\\/]/,
+              priority: 2,
+            },
+          ],
         },
       },
     },

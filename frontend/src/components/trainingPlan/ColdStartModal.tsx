@@ -173,7 +173,7 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
                   onClick={() => toggleEquipment(tag)}
                   className={cn(
                     "flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2 text-left text-body transition-colors duration-150",
-                    on ? "border-accent-border bg-accent-soft text-accent" : "border-border-strong text-text-muted hover:bg-surface-2",
+                    on ? "border-accent-border bg-accent-soft text-accent-text" : "border-border-strong text-text-muted hover:bg-surface-2",
                   )}
                 >
                   <span
@@ -276,7 +276,7 @@ function Choices<T extends string>({
           className={cn(
             "min-h-11 rounded-lg border px-3 py-2 text-left text-body transition-colors duration-150",
             value === opt.value
-              ? "border-accent-border bg-accent-soft text-accent"
+              ? "border-accent-border bg-accent-soft text-accent-text"
               : "border-border-strong text-text-muted hover:bg-surface-2",
           )}
         >

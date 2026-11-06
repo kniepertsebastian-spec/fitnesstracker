@@ -23,7 +23,7 @@ export const SetCheck = forwardRef<HTMLButtonElement, SetCheckProps>(function Se
       className={cn(
         "flex h-12 w-12 shrink-0 items-center justify-center rounded-md border transition-colors duration-150",
         state === "done" && "border-accent bg-accent text-on-accent",
-        state === "current" && "border-accent text-accent hover:bg-accent-soft",
+        state === "current" && "border-accent text-accent-text hover:bg-accent-soft",
         state === "open" && "border-border-strong text-text-faint hover:bg-surface-2",
         className,
       )}

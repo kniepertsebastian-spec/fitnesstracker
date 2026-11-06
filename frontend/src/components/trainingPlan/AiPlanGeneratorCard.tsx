@@ -109,7 +109,7 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
         {settings.hasApiKey
           ? `Anbieter: ${PROVIDER_OPTIONS.find((o) => o.value === settings.provider)?.label ?? settings.provider}.`
           : "Für die KI-Planung brauchst du einen eigenen API-Key."}{" "}
-        <Link to="/settings" className="text-accent hover:text-accent-hover">
+        <Link to="/settings" className="text-accent-text hover:text-accent-text-hover">
           Schlüssel in den Einstellungen
         </Link>
       </p>
@@ -160,7 +160,7 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
       {notice && (
         <Callout tone="info" className="mt-3">
           {notice}{" "}
-          <Link to="/plan" className="text-accent hover:text-accent-hover">
+          <Link to="/plan" className="text-accent-text hover:text-accent-text-hover">
             Zum Plan
           </Link>
         </Callout>

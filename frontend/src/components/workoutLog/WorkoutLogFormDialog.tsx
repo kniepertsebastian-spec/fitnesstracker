@@ -317,7 +317,7 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
             <button
               type="button"
               onClick={() => setShowWarmup((v) => !v)}
-              className="min-h-9 text-small text-accent hover:text-accent-hover"
+              className="min-h-9 text-small text-accent-text hover:text-accent-text-hover"
             >
               {showWarmup ? "Aufwärmpyramide ausblenden" : "Aufwärmpyramide anzeigen"}
             </button>

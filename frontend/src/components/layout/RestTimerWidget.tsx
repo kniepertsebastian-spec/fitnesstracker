@@ -124,7 +124,7 @@ export function RestTimerWidget() {
           <p className="truncate text-overline text-text-subtle">
             {finished ? "Pause vorbei – nächster Satz!" : (label ?? "Satzpause")}
           </p>
-          <p className={cn("tabular font-numeric text-timer", finished ? "text-accent" : "text-text")}>
+          <p className={cn("tabular font-numeric text-timer", finished ? "text-accent-text" : "text-text")}>
             {formatTime(remainingSeconds)}
           </p>
         </div>
