@@ -119,7 +119,7 @@ export function PhaseRotation({ current, selected, phases, onSelect }: Props) {
               iconLeft={<Plus size={14} aria-hidden />}
               onClick={() => handleOpenAdd(false)}
             >
-              + Phase hinzufügen
+              Phase hinzufügen
             </Button>
           )}
         </div>
@@ -156,7 +156,7 @@ export function PhaseRotation({ current, selected, phases, onSelect }: Props) {
               <div className="flex shrink-0 items-center gap-0.5">
                 <IconButton
                   aria-label={`${item.label} umbenennen`}
-                  className="h-8! w-8! border-transparent bg-transparent text-text-subtle hover:text-text"
+                  className="border-transparent bg-transparent text-text-subtle hover:text-text"
                   onClick={() => {
                     setRenameTarget(item);
                     setRenameValue(item.label);
@@ -167,7 +167,7 @@ export function PhaseRotation({ current, selected, phases, onSelect }: Props) {
                 {rotationalItems.length > 1 && (
                   <IconButton
                     aria-label={`${item.label} löschen`}
-                    className="h-8! w-8! border-transparent bg-transparent text-text-subtle hover:text-danger-text"
+                    className="border-transparent bg-transparent text-text-subtle hover:text-danger-text"
                     onClick={() => setDeleteTarget(item)}
                   >
                     <Trash2 size={14} aria-hidden />
@@ -212,7 +212,7 @@ export function PhaseRotation({ current, selected, phases, onSelect }: Props) {
           <div className="flex shrink-0 items-center gap-0.5">
             <IconButton
               aria-label={`${dailyItem.label} umbenennen`}
-              className="h-8! w-8! border-transparent bg-transparent text-text-subtle hover:text-text"
+              className="border-transparent bg-transparent text-text-subtle hover:text-text"
               onClick={() => {
                 setRenameTarget(dailyItem);
                 setRenameValue(dailyItem.label);
@@ -222,7 +222,7 @@ export function PhaseRotation({ current, selected, phases, onSelect }: Props) {
             </IconButton>
             <IconButton
               aria-label={`${dailyItem.label} löschen`}
-              className="h-8! w-8! border-transparent bg-transparent text-text-subtle hover:text-danger-text"
+              className="border-transparent bg-transparent text-text-subtle hover:text-danger-text"
               onClick={() => setDeleteTarget(dailyItem)}
             >
               <Trash2 size={14} aria-hidden />

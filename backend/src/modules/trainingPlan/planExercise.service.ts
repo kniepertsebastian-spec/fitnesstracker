@@ -2,6 +2,7 @@ import type { PrismaClient, TrainingPhase } from "@prisma/client";
 import type { CreatePlanExerciseInput, UpdatePlanExerciseInput } from "@fitnesstracker/shared";
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
 import { planExerciseInclude } from "./planExercise.types.js";
+import { visibleToUser } from "../exercises/exercise.service.js";
 
 const withExercise = { include: planExerciseInclude } as const;
 
@@ -18,7 +19,7 @@ export async function createPlanExercise(
   userId: string,
   input: CreatePlanExerciseInput,
 ) {
-  const exercise = await prisma.exercise.findUnique({ where: { id: input.exerciseId } });
+  const exercise = await prisma.exercise.findFirst({ where: { id: input.exerciseId, ...visibleToUser(userId) } });
   if (!exercise) {
     throw new NotFoundError("Exercise not found");
   }
@@ -74,7 +75,7 @@ export async function updatePlanExercise(
   }
 
   if (input.exerciseId && input.exerciseId !== existing.exerciseId) {
-    const exercise = await prisma.exercise.findUnique({ where: { id: input.exerciseId } });
+    const exercise = await prisma.exercise.findFirst({ where: { id: input.exerciseId, ...visibleToUser(userId) } });
     if (!exercise) throw new NotFoundError("Exercise not found");
     const duplicate = await prisma.planExercise.findFirst({
       where: {

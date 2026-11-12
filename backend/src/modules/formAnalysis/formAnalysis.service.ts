@@ -3,9 +3,13 @@ import { formAnalysisResultSchema, type FormAnalysisResult } from "@fitnesstrack
 import { env } from "../../config/env.js";
 import { ConflictError } from "../../errors/httpErrors.js";
 import { decryptSecret } from "../../lib/crypto.js";
+import { describeFetchError, fetchWithTimeout } from "../../lib/fetchWithTimeout.js";
 import { AiProviderError } from "../aiPlanGenerator/aiClient.js";
 
 const DEFAULT_VIDEO_MODEL = "gemini-2.5-flash";
+
+// Video uploads are inlined as base64 and Gemini needs longer to look at them than a chat reply.
+const VIDEO_TIMEOUT_MS = 120_000;
 
 export async function analyzeExerciseForm(
   prisma: PrismaClient,
@@ -34,7 +38,7 @@ wenn möglich. Priorisiere sichere, direkt umsetzbare Korrekturen. Gib ausschlie
 
   let response: Response;
   try {
-    response = await fetch(
+    response = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
       {
         method: "POST",
@@ -47,9 +51,10 @@ wenn möglich. Priorisiere sichere, direkt umsetzbare Korrekturen. Gib ausschlie
           generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
         }),
       },
+      VIDEO_TIMEOUT_MS,
     );
   } catch (error) {
-    throw new AiProviderError(`Gemini konnte nicht erreicht werden: ${error instanceof Error ? error.message : String(error)}`);
+    throw new AiProviderError(`Gemini konnte nicht erreicht werden: ${describeFetchError(error, VIDEO_TIMEOUT_MS)}`);
   }
   if (!response.ok) {
     const body = await response.text().catch(() => "");

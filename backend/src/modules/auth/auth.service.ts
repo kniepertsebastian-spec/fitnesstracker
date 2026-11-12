@@ -3,17 +3,24 @@ import type { ChangePasswordInput, RegisterInput, ResetPasswordInput } from "@fi
 import { timingSafeEqual } from "node:crypto";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
 import { generateRefreshToken, hashRefreshToken, REFRESH_TOKEN_TTL_MS } from "../../lib/tokens.js";
-import { ConflictError, ForbiddenError, NotFoundError, UnauthorizedError } from "../../errors/httpErrors.js";
+import { ConflictError, ForbiddenError, UnauthorizedError } from "../../errors/httpErrors.js";
 import { env } from "../../config/env.js";
 
-// The setup token is the operator's secret: it gates registration (any number of accounts, each
-// with its own, fully separated data) and the mail-less password reset.
-function assertSetupToken(given: string) {
+function tokensMatch(given: string, expected: string): boolean {
   const a = Buffer.from(given);
-  const b = Buffer.from(env.SETUP_TOKEN);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
-    throw new ForbiddenError("Invalid setup token");
-  }
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+// The setup token gates registration (any number of accounts, each with its own, fully separated
+// data). It is handed to everyone who may register, so it must never grant more than that.
+function assertSetupToken(given: string) {
+  if (!tokensMatch(given, env.SETUP_TOKEN)) throw new ForbiddenError("Invalid setup token");
+}
+
+// The reset token is the operator's own secret for the mail-less password reset. Unset = reset off.
+function assertResetToken(given: string) {
+  if (env.RESET_TOKEN === "" || !tokensMatch(given, env.RESET_TOKEN)) throw new ForbiddenError("Invalid reset token");
 }
 
 export async function registerUser(prisma: PrismaClient, input: RegisterInput): Promise<User> {
@@ -125,10 +132,13 @@ export async function changePassword(
 }
 
 export async function resetPassword(prisma: PrismaClient, input: ResetPasswordInput): Promise<void> {
-  assertSetupToken(input.setupToken);
+  assertResetToken(input.resetToken);
   const user = await prisma.user.findUnique({ where: { email: input.email } });
-  if (!user) throw new NotFoundError("No account with this email");
-  await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(input.newPassword) } });
+  // Same outcome whether the address exists or not (and the same hashing work), so the endpoint
+  // can't be used to find out which e-mail addresses have an account.
+  const passwordHash = await hashPassword(input.newPassword);
+  if (!user) return;
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
   await endOtherSessions(prisma, user.id);
 }
 

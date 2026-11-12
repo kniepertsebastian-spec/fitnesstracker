@@ -1,3 +1,4 @@
+import { equipmentLabel, muscleLabel } from "../../lib/exerciseLabels";
 import { Link } from "react-router-dom";
 import type { ExerciseDto } from "@fitnesstracker/shared";
 import { Badge } from "../ui";
@@ -21,7 +22,7 @@ export function ExerciseCard({ exercise }: { exercise: ExerciseDto }) {
           {!exercise.isActive && <Badge>Inaktiv</Badge>}
         </p>
         <p className="truncate text-small text-text-faint">
-          {[exercise.equipment, exercise.primaryMuscles.join(", ")].filter(Boolean).join(" · ") || "—"}
+          {[exercise.equipment ? equipmentLabel(exercise.equipment) : null, exercise.primaryMuscles.map(muscleLabel).join(", ")].filter(Boolean).join(" · ") || "—"}
         </p>
       </div>
     </Link>

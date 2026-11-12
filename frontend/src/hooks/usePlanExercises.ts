@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreatePlanExerciseInput, TrainingPhase, UpdatePlanExerciseInput } from "@fitnesstracker/shared";
+import type { CreatePlanExerciseInput, PlanExerciseDto, TrainingPhase, UpdatePlanExerciseInput } from "@fitnesstracker/shared";
 import {
   createPlanExerciseRequest,
   deletePlanExerciseRequest,
@@ -57,6 +57,11 @@ export function useDeletePlanExercise(phase: TrainingPhase) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deletePlanExerciseRequest(id),
-    onSuccess: () => invalidatePlan(queryClient, phase),
+    onSuccess: (_data, id) => {
+      // Drop the entry right away so a row hidden during the undo window doesn't flash back
+      // while the list is refetched.
+      queryClient.setQueryData<PlanExerciseDto[]>(planExercisesKey(phase), (old) => old?.filter((e) => e.id !== id));
+      invalidatePlan(queryClient, phase);
+    },
   });
 }

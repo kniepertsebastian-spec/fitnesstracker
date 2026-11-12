@@ -105,6 +105,9 @@ model User {
   // reminder kind this app sends, so without these a user can't turn off just one kind (e.g.
   // photo nudges) while keeping the others. Default true preserves existing subscribers' current
   // behavior (get everything) until they explicitly opt out of something (see Phase 30).
+  // IANA zone of the account (taken from the browser at login). "Today", "this week" and the
+  // evening reminders are computed in it, not in UTC — see lib/userTime.ts.
+  timeZone                         String    @default("Europe/Berlin")
   remindPhaseChange                Boolean   @default(true)
   remindSupplements                Boolean   @default(true)
   remindProgressPhoto              Boolean   @default(true)
@@ -129,6 +132,7 @@ model User {
 
   refreshTokens          RefreshToken[]
   workoutLogs            WorkoutLog[]
+  ownedExercises         Exercise[]
   trainingPlan           TrainingPlan?
   goals                  Goal[]
   pushSubscriptions      PushSubscription[]
@@ -210,6 +214,12 @@ model Exercise {
   // pickers by default (see exercise.service.ts's listExercises) but stay fully intact for any
   // historical WorkoutLog/PlanExercise/Goal that already references them.
   isActive         Boolean  @default(true)
+  // Who created a custom exercise. Null = catalog exercise (imported, or created before owners
+  // existed): visible to everybody, changeable only by the operator account. A custom exercise is
+  // visible and changeable only for its owner. The owner's deletion keeps the exercise (it may
+  // still be referenced by logs), it then simply becomes a catalog exercise.
+  ownerId          String?
+  owner            User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -222,6 +232,7 @@ model Exercise {
 
   @@unique([source, sourceId])
   @@index([name])
+  @@index([ownerId])
 }
 
 model WorkoutLog {

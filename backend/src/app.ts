@@ -69,7 +69,17 @@ export function buildApp(options: { logger?: boolean } = {}) {
   app.register(dailyChallengeScheduler);
   app.register(forgottenSessionScheduler);
 
-  app.get("/api/health", async () => ({ status: "ok" }));
+  // Reports ready only when the database answers too, so the container healthcheck (and the CI
+  // wait loop) notice a backend that is up but cut off from Postgres.
+  app.get("/api/health", async (_request, reply) => {
+    try {
+      await app.prisma.$queryRaw`SELECT 1`;
+      return { status: "ok" };
+    } catch (error) {
+      app.log.error(error, "health check: database unreachable");
+      return reply.code(503).send({ status: "unavailable" });
+    }
+  });
 
   app.register(authRoutes, { prefix: "/api/auth" });
   app.register(exerciseImageRoutes, { prefix: "/api" });

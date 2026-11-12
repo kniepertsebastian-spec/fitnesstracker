@@ -51,4 +51,6 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 # generated client binding never lands here — regenerate it explicitly before every start,
 # alongside the existing migrate-on-boot step (schema is already correct, so this is fast and
 # fully offline: no engine binaries need downloading).
-CMD ["sh", "-c", "pnpm prisma:generate && pnpm prisma:deploy && node dist/server.js"]
+# `exec` makes node PID 1 of the container, so `docker stop` / `restart` deliver SIGTERM straight
+# to it and server.ts can shut down gracefully instead of Docker killing it after 10 s.
+CMD ["sh", "-c", "pnpm prisma:generate && pnpm prisma:deploy && exec node dist/server.js"]

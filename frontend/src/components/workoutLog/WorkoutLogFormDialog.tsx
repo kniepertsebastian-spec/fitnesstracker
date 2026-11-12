@@ -11,6 +11,7 @@ import { usePRToastStore } from "../../stores/prToastStore";
 import { buildWarmupPyramid } from "../../lib/oneRepMax";
 import { detectPRs, prLabels } from "../../lib/prDetection";
 import { Button, Callout, Dialog, Field, IconButton, Input, SegmentedControl, Select } from "../ui";
+import { formatKg } from "../../lib/trainingSets";
 
 const formSchema = z.object({
   exerciseId: z.string().uuid({ message: "Bitte eine Übung wählen" }),
@@ -248,7 +249,7 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
           error={errors.exerciseId?.message}
           hint={
             lastLogForExercise
-              ? `Zuletzt: ${lastLogForExercise.reps} Wdh. × ${lastLogForExercise.weightKg} kg`
+              ? `Zuletzt: ${lastLogForExercise.reps} Wdh. × ${formatKg(lastLogForExercise.weightKg)} kg`
               : undefined
           }
         >
@@ -317,7 +318,7 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
             <button
               type="button"
               onClick={() => setShowWarmup((v) => !v)}
-              className="min-h-9 text-small text-accent-text hover:text-accent-text-hover"
+              className="min-h-11 text-small text-accent-text hover:text-accent-text-hover"
             >
               {showWarmup ? "Aufwärmpyramide ausblenden" : "Aufwärmpyramide anzeigen"}
             </button>
@@ -329,7 +330,7 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
                     className="rounded-lg border border-border bg-surface-2 px-2 py-1.5 text-center"
                   >
                     <p className="text-xs text-text-faint">{step.percent}%</p>
-                    <p className="tabular font-numeric text-small font-medium text-text">{step.weightKg} kg</p>
+                    <p className="tabular font-numeric text-small font-medium text-text">{formatKg(step.weightKg)} kg</p>
                     <p className="tabular font-numeric text-xs text-text-faint">×{step.reps}</p>
                   </div>
                 ))}

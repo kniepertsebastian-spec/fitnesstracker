@@ -1,3 +1,4 @@
+import { equipmentLabel, muscleLabel } from "../lib/exerciseLabels";
 import { useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { AppShell } from "../components/layout/AppShell";
@@ -41,8 +42,8 @@ export function ExerciseLibraryPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <FilterPills label="Muskelgruppe" options={facets?.muscleGroups ?? []} value={muscleGroup} onChange={setMuscleGroup} allLabel="Alle Muskeln" />
-        <FilterPills label="Equipment" options={facets?.equipment ?? []} value={equipment} onChange={setEquipment} allLabel="Alle Geräte" />
+        <FilterPills label="Muskelgruppe" options={facets?.muscleGroups ?? []} value={muscleGroup} onChange={setMuscleGroup} allLabel="Alle Muskeln" formatOption={muscleLabel} />
+        <FilterPills label="Equipment" options={facets?.equipment ?? []} value={equipment} onChange={setEquipment} allLabel="Alle Geräte" formatOption={equipmentLabel} />
         <Toggle label="Auch inaktive Übungen anzeigen" checked={includeInactive} onChange={setIncludeInactive} />
       </div>
 

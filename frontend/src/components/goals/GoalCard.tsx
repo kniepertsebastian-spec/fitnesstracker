@@ -3,6 +3,7 @@ import { Check, Pencil, Trash2 } from "lucide-react";
 import type { GoalDto } from "@fitnesstracker/shared";
 import { GOAL_TYPE_LABELS, GOAL_TYPE_UNITS, useDeleteGoal, useUpdateGoal } from "../../hooks/useGoals";
 import { Button, Card, Dialog, IconButton, ProgressBar } from "../ui";
+import { formatKg } from "../../lib/trainingSets";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -34,11 +35,11 @@ export function GoalCard({ goal, onEdit }: Props) {
           <p className="text-xs text-text-faint">{GOAL_TYPE_LABELS[goal.type]}</p>
           <p className="truncate text-body font-medium text-text">{name}</p>
           <p className="tabular text-small text-text-subtle">
-            Ziel: {goal.targetValue} {unit}
+            Ziel: {formatKg(goal.targetValue)} {unit}
             {goal.currentValue !== null && (
               <span className="text-text-faint">
                 {" "}
-                · bisher {goal.currentValue} {unit}
+                · bisher {formatKg(goal.currentValue)} {unit}
               </span>
             )}
           </p>
@@ -77,7 +78,7 @@ export function GoalCard({ goal, onEdit }: Props) {
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         title="Ziel löschen?"
-        description={`${name} · ${goal.targetValue} ${unit}`}
+        description={`${name} · ${formatKg(goal.targetValue)} ${unit}`}
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirmDelete(false)}>

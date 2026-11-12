@@ -2,6 +2,7 @@ import type { PrismaClient, TrainingPhase } from "@prisma/client";
 import type { ColdStartInput, EquipmentTag, SplitPreference } from "@fitnesstracker/shared";
 import { isExcluded, type ExerciseExclusions } from "./injuryFilter.js";
 import { equipmentTagOf, selectBalancedCatalog, type PhaseDefaults, type SplitDay } from "./planAssembly.js";
+import { visibleToUser } from "../exercises/exercise.service.js";
 
 export type { ColdStartInput };
 
@@ -104,7 +105,7 @@ export async function selectCatalog(
   const allowedTags = new Set(equipment);
   const [rows, logged] = await Promise.all([
     prisma.exercise.findMany({
-      where: { category: { in: GENERATOR_CATEGORIES }, isActive: true },
+      where: { category: { in: GENERATOR_CATEGORIES }, isActive: true, ...visibleToUser(userId) },
       select: { id: true, name: true, nameDe: true, equipment: true, primaryMuscles: true, category: true },
     }),
     prisma.workoutLog.groupBy({

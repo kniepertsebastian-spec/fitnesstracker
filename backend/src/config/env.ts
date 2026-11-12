@@ -29,7 +29,7 @@ export function parseTrustProxy(raw: string): TrustProxy {
 // hätte sonst ein öffentlich bekanntes JWT-Secret. Gilt nur mit NODE_ENV=production, damit lokale
 // Entwicklung und CI (Wegwerf-Werte) weiter starten.
 const PLACEHOLDER_SECRET = /change-?me|changeme|your-secret|example|placeholder/i;
-const SECRETS_TO_CHECK = ["JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "SETUP_TOKEN"] as const;
+const SECRETS_TO_CHECK = ["JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "SETUP_TOKEN", "RESET_TOKEN"] as const;
 
 const envSchema = z
   .object({
@@ -39,6 +39,18 @@ const envSchema = z
     JWT_ACCESS_SECRET: z.string().min(16, "JWT_ACCESS_SECRET must be at least 16 characters"),
     JWT_REFRESH_SECRET: z.string().min(16, "JWT_REFRESH_SECRET must be at least 16 characters"),
     SETUP_TOKEN: z.string().min(8, "SETUP_TOKEN must be at least 8 characters"),
+    // Operator secret for the mail-less password reset, separate from SETUP_TOKEN: the setup token
+    // is handed to anyone who may register, and must not let them take over other accounts. Empty
+    // = password reset is switched off.
+    RESET_TOKEN: z
+      .string()
+      .optional()
+      .default("")
+      .refine((val) => val === "" || val.length >= 16, { message: "RESET_TOKEN must be at least 16 characters when set" }),
+    // The operator account may import the exercise catalog and edit/delete catalog exercises (the
+    // ones nobody owns). Empty = the oldest account is the operator, which is the one created
+    // with the setup token.
+    OPERATOR_EMAIL: z.string().optional().default(""),
     FRONTEND_ORIGIN: z.string().url().default("http://localhost:5173"),
     // Requests per minute and IP on /auth/login and /auth/register. Keep the default in production;
     // only the CI raises it, because every E2E scenario registers and logs in its own account from
@@ -76,8 +88,16 @@ const envSchema = z
       }),
   })
   .superRefine((value, ctx) => {
+    if (value.RESET_TOKEN !== "" && value.RESET_TOKEN === value.SETUP_TOKEN) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["RESET_TOKEN"],
+        message: "RESET_TOKEN must differ from SETUP_TOKEN — otherwise everyone who may register can reset any password",
+      });
+    }
     if (value.NODE_ENV !== "production") return;
     for (const key of SECRETS_TO_CHECK) {
+      if (key === "RESET_TOKEN" && value.RESET_TOKEN === "") continue;
       if (PLACEHOLDER_SECRET.test(value[key])) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

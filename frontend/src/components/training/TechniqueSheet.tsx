@@ -1,3 +1,4 @@
+import { equipmentLabel, muscleLabel } from "../../lib/exerciseLabels";
 import { X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useExercise } from "../../hooks/useExerciseLibrary";
@@ -44,10 +45,10 @@ export function TechniqueSheet({
           <div className="flex flex-wrap gap-2">
             {exercise.primaryMuscles.map((m) => (
               <Badge key={m} tone="info">
-                {m}
+                {muscleLabel(m)}
               </Badge>
             ))}
-            {exercise.equipment && <Badge>{exercise.equipment}</Badge>}
+            {exercise.equipment && <Badge>{equipmentLabel(exercise.equipment)}</Badge>}
           </div>
           {exercise.description ? (
             <p className="whitespace-pre-line text-body text-text-2">{exercise.description}</p>

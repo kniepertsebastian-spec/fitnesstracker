@@ -70,14 +70,14 @@ export function WorkoutLogTable({ logs, onEdit }: Props) {
                 <span className="flex shrink-0">
                   <IconButton
                     aria-label={`${log.exerciseName} Satz ${log.setNumber} bearbeiten`}
-                    className="h-9! w-9! border-transparent bg-transparent"
+                    className="border-transparent bg-transparent"
                     onClick={() => onEdit(log)}
                   >
                     <Pencil size={16} aria-hidden />
                   </IconButton>
                   <IconButton
                     aria-label={`${log.exerciseName} Satz ${log.setNumber} löschen`}
-                    className="h-9! w-9! border-transparent bg-transparent hover:text-danger-text"
+                    className="border-transparent bg-transparent hover:text-danger-text"
                     onClick={() => deleteLog.mutate(log.clientId)}
                   >
                     <Trash2 size={16} aria-hidden />

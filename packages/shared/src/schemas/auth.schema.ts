@@ -25,8 +25,24 @@ export const userDtoSchema = z.object({
   displayName: z.string().nullable(),
   firstName: z.string().nullable(),
   lastName: z.string().nullable(),
+  timeZone: z.string(),
 });
 export type UserDto = z.infer<typeof userDtoSchema>;
+
+function isIanaTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Sent by the browser (Intl.DateTimeFormat().resolvedOptions().timeZone) after login.
+export const updateTimeZoneSchema = z.object({
+  timeZone: z.string().min(1).max(64).refine(isIanaTimeZone, "Unbekannte Zeitzone"),
+});
+export type UpdateTimeZoneInput = z.infer<typeof updateTimeZoneSchema>;
 
 // Real name for the activity report. Empty string clears it.
 const nameField = z.preprocess(
@@ -45,11 +61,11 @@ export const changePasswordSchema = z.object({
 });
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
-// There is no mail delivery, so a forgotten password is reset with the operator's SETUP_TOKEN —
-// the same secret that gates registration. Whoever hosts the app hands it out, nobody else can.
+// There is no mail delivery, so a forgotten password is reset with the operator's RESET_TOKEN —
+// a secret of its own, not the SETUP_TOKEN that is handed to everyone who may register.
 export const resetPasswordSchema = z.object({
   email: z.string().email(),
-  setupToken: z.string().min(1),
+  resetToken: z.string().min(1),
   newPassword: newPasswordField,
 });
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

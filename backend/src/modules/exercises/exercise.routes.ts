@@ -29,7 +29,7 @@ export default async function exerciseRoutes(fastify: FastifyInstance) {
 
   fastify.get("/exercises", async (request, reply) => {
     const filters = listQuerySchema.parse(request.query);
-    const { items, total } = await listExercises(fastify.prisma, filters);
+    const { items, total } = await listExercises(fastify.prisma, request.user.sub, filters);
     return reply.send({ items: items.map(toExerciseDto), total });
   });
 
@@ -37,15 +37,15 @@ export default async function exerciseRoutes(fastify: FastifyInstance) {
     return reply.send({ sources: listSourceNames() });
   });
 
-  fastify.get("/exercises/facets", async (_request, reply) => {
-    const facets = await getExerciseFacets(fastify.prisma);
+  fastify.get("/exercises/facets", async (request, reply) => {
+    const facets = await getExerciseFacets(fastify.prisma, request.user.sub);
     return reply.send(facets);
   });
 
   fastify.get("/exercises/:id", async (request, reply) => {
     const { id } = idParamSchema.parse(request.params);
     try {
-      const exercise = await getExerciseById(fastify.prisma, id);
+      const exercise = await getExerciseById(fastify.prisma, request.user.sub, id);
       return reply.send(toExerciseDto(exercise));
     } catch (error) {
       if (error instanceof HttpError) {
@@ -57,7 +57,7 @@ export default async function exerciseRoutes(fastify: FastifyInstance) {
 
   fastify.post("/exercises", async (request, reply) => {
     const input = createExerciseSchema.parse(request.body);
-    const exercise = await createExercise(fastify.prisma, input);
+    const exercise = await createExercise(fastify.prisma, request.user.sub, input);
     return reply.code(201).send(toExerciseDto(exercise));
   });
 
@@ -65,7 +65,7 @@ export default async function exerciseRoutes(fastify: FastifyInstance) {
     const { id } = idParamSchema.parse(request.params);
     const input = updateExerciseSchema.parse(request.body);
     try {
-      const exercise = await updateExercise(fastify.prisma, id, input);
+      const exercise = await updateExercise(fastify.prisma, request.user.sub, id, input);
       return reply.send(toExerciseDto(exercise));
     } catch (error) {
       if (error instanceof HttpError) {
@@ -78,7 +78,7 @@ export default async function exerciseRoutes(fastify: FastifyInstance) {
   fastify.delete("/exercises/:id", async (request, reply) => {
     const { id } = idParamSchema.parse(request.params);
     try {
-      await deleteExercise(fastify.prisma, id);
+      await deleteExercise(fastify.prisma, request.user.sub, id);
       return reply.code(204).send();
     } catch (error) {
       if (error instanceof HttpError) {
@@ -93,7 +93,7 @@ export default async function exerciseRoutes(fastify: FastifyInstance) {
   fastify.post("/exercises/import", async (request, reply) => {
     const input = importExercisesSchema.parse(request.body);
     try {
-      const summary = await importExercisesFromSource(fastify.prisma, input.source);
+      const summary = await importExercisesFromSource(fastify.prisma, request.user.sub, input.source);
       return reply.send(summary);
     } catch (error) {
       if (error instanceof HttpError) {

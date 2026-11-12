@@ -1,3 +1,4 @@
+import { muscleLabel } from "../../lib/exerciseLabels";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Play, SkipForward, Square } from "lucide-react";
@@ -129,7 +130,7 @@ function Routine({ items, focus }: { items: StretchItemDto[]; focus: StretchFocu
                 <span className={cn("block truncate text-body font-medium", isDone ? "text-text-subtle line-through" : "text-text")}>
                   {item.name}
                 </span>
-                <span className="block truncate text-xs text-text-faint">{item.primaryMuscles[0] ?? ""}</span>
+                <span className="block truncate text-xs text-text-faint">{item.primaryMuscles[0] ? muscleLabel(item.primaryMuscles[0]) : ""}</span>
               </span>
               <span className="tabular shrink-0 font-numeric text-small text-text-2">
                 {item.sets > 1 ? `${item.sets} × ` : ""}

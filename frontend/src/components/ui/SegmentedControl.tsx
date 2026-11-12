@@ -55,7 +55,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
-              "min-h-9 shrink-0 whitespace-nowrap rounded-md px-3.5 text-small font-medium transition-colors duration-150",
+              "min-h-11 min-w-11 shrink-0 whitespace-nowrap rounded-md px-3.5 text-small font-medium transition-colors duration-150",
               selected ? "bg-track text-text" : "text-text-subtle hover:text-text",
             )}
           >

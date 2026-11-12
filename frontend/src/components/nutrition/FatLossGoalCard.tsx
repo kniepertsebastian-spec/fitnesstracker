@@ -18,6 +18,13 @@ function delta(value: number) {
   return `${rounded > 0 ? "+" : ""}${rounded.toLocaleString("de-DE", { maximumFractionDigits: 1 })}`;
 }
 
+// 20 % is a common aim, but not when the current value is already near or below it: then a goal
+// two points under today's value, never under the 3 % the field accepts.
+function defaultTarget(current: number | null): string {
+  if (current === null) return "20";
+  return String(Math.max(3, Math.min(20, current - 2)));
+}
+
 /**
  * Estimates a fat-loss target while assuming fat-free mass is maintained.
  * This is an orientation only; consumer body-composition scales can be noisy.
@@ -25,9 +32,11 @@ function delta(value: number) {
 export function FatLossGoalCard() {
   const { data: entries, isLoading } = useBodyCompositionEntries();
   const { data: profile } = useProfile();
-  const [targetBodyFat, setTargetBodyFat] = useState("20");
+  // null = the user hasn't typed anything yet, so the suggestion follows the latest measurement.
+  const [typedTarget, setTypedTarget] = useState<string | null>(null);
 
   const latest = entries?.[0];
+  const targetBodyFat = typedTarget ?? defaultTarget(latest?.bodyFatPercent ?? null);
   const previous = entries?.[1];
   const baseline = entries?.length ? entries[entries.length - 1] : undefined;
   const target = Number(targetBodyFat);
@@ -68,7 +77,7 @@ export function FatLossGoalCard() {
           </div>
           <div className="max-w-sm">
             <Field label="Gewünschter Ziel-Körperfettanteil (%)">
-              {(props) => <Input {...props} type="number" min="3" max="60" step="0.5" inputMode="decimal" value={targetBodyFat} onChange={(event) => setTargetBodyFat(event.target.value)} />}
+              {(props) => <Input {...props} type="number" min="3" max="60" step="0.5" inputMode="decimal" value={targetBodyFat} onChange={(event) => setTypedTarget(event.target.value)} />}
             </Field>
           </div>
           {estimate ? (

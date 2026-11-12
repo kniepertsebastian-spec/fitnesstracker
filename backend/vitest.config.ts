@@ -25,6 +25,8 @@ export default defineConfig({
       JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET ?? "test-access-secret-not-real",
       JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ?? "test-refresh-secret-not-real",
       SETUP_TOKEN: process.env.SETUP_TOKEN ?? "test-setup-token",
+      OPERATOR_EMAIL: "operator@fitnesstracker.test",
+      RESET_TOKEN: process.env.RESET_TOKEN ?? "test-reset-token-not-real",
       ...(integrationDb
         ? {
             AUTH_RATE_LIMIT_PER_MINUTE: "1000",

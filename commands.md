@@ -64,11 +64,47 @@ docker compose -f docker-compose.prod.yml logs -f caddy
 docker compose -f docker-compose.prod.yml ps
 ```
 
+### Gesundheit und sauberes Neustarten
+
+```bash
+docker compose -f docker-compose.prod.yml ps      # backend: "healthy" (Healthcheck fragt /api/health inkl. DB ab)
+time docker compose -f docker-compose.prod.yml restart backend    # fährt per SIGTERM sauber herunter, < 3 s
+```
+
 ### Migrationen manuell prüfen/anwenden (normalerweise nicht nötig, siehe oben)
 
 ```bash
 docker compose -f docker-compose.prod.yml exec backend pnpm prisma:deploy
 docker compose -f docker-compose.prod.yml exec backend npx prisma migrate status
+```
+
+### Backup und Restore (Details: `README.md`, "Backup und Restore")
+
+```bash
+# Datenbank-Dump + Foto-Archiv in ~/fitnesstracker-backups/<Zeitstempel>/ (14 Tage Aufbewahrung)
+BACKUP_REMOTE=user@anderer-rechner:/backups/fitness/ scripts/backup.sh
+
+# Restore proben: in eine neue Datenbank, Livedaten bleiben unberührt
+scripts/restore.sh ~/fitnesstracker-backups/<Zeitstempel> restore_probe
+docker compose -f docker-compose.prod.yml exec postgres sh -c 'dropdb -U "$POSTGRES_USER" restore_probe'
+
+# Echter Restore: überschreibt Datenbank + Fotos, fragt nach dem Datenbanknamen
+scripts/restore.sh ~/fitnesstracker-backups/<Zeitstempel>
+```
+
+### Datenbank-Shell und Volumes
+
+```bash
+docker compose -f docker-compose.prod.yml exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+docker volume ls                 # pgdata, uploads, caddy_data, caddy_config (mit Projekt-Präfix)
+```
+
+### Produktions-Images prüfen (wie die CI)
+
+```bash
+docker build --target export -f frontend/Dockerfile --output frontend/dist .
+node scripts/check-frontend-css.mjs frontend/dist    # schlägt fehl, wenn die App ungestylt wäre
+docker build -f backend/Dockerfile -t fitnesstracker-backend:check .
 ```
 
 ## Lokale Entwicklung (Postgres + Backend via Docker)
@@ -87,6 +123,7 @@ docker compose logs -f backend                   # Logs
 ## Voraussetzungen für Prod
 
 - `.env` mit echten Secrets + `DOMAIN` (volle Subdomain, z. B. `fitness.example.com`) —
-  Vorlage in `.env.example`
+  Vorlage in `.env.example`. `RESET_TOKEN` (mindestens 16 Zeichen, anders als `SETUP_TOKEN`)
+  setzen, sonst ist „Passwort vergessen“ abgeschaltet
 - Separat laufender `cloudflared`-Container (nicht Teil dieses Repos) mit Public-Hostname-Route
   von `DOMAIN` auf `http://fitnesstracker-caddy:80`

@@ -102,7 +102,7 @@ export function RestCard() {
           type="button"
           onClick={toggleAlerts}
           aria-pressed={alertsOn}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 hover:text-text"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 hover:text-text"
         >
           {alertsOn ? <Volume2 size={14} aria-hidden /> : <VolumeX size={14} aria-hidden />}
           Ton und Vibration {alertsOn ? "an" : "aus"}

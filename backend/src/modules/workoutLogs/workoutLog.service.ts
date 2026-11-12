@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import type { CreateWorkoutLogInput, UpdateWorkoutLogInput } from "@fitnesstracker/shared";
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
 import { sendNotificationToUser } from "../push/push.service.js";
+import { localDateAsUtc, localDayStart, localHour } from "../../lib/userTime.js";
 
 const withExercise = { include: { exercise: true } } as const;
 
@@ -149,38 +150,35 @@ export async function checkAndNotifyPersonalRecord(
   });
 }
 
-// Local UTC hour, not per-user local time — User has no stored timezone (only Supplement does,
-// per-reminder), and inventing a whole account-level timezone preference just for this one
-// reminder would be disproportionate. A fixed UTC evening hour is an accepted simplification.
-const REMINDER_HOUR_UTC = 20;
-
-function todayUtcDateOnly(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
+// From 20:00 on the user's own clock (User.timeZone).
+const REMINDER_HOUR_LOCAL = 20;
 
 // Once-daily nudge if nothing was logged today and the current plan still has work left this
 // week — never fires for a paused plan (pausing is an explicit "not training right now" signal)
 // or a plan with no exercises configured yet (nothing to be reminded about).
 export async function sendDueWorkoutReminders(prisma: PrismaClient): Promise<{ sent: number }> {
-  if (new Date().getUTCHours() < REMINDER_HOUR_UTC) return { sent: 0 };
-  const today = todayUtcDateOnly();
+  const now = new Date();
 
   const candidates = await prisma.user.findMany({
-    where: {
-      remindWorkout: true,
-      OR: [{ lastWorkoutReminderSentOn: null }, { lastWorkoutReminderSentOn: { lt: today } }],
-      trainingPlan: { pausedAt: null },
+    where: { remindWorkout: true, trainingPlan: { pausedAt: null } },
+    select: {
+      id: true,
+      timeZone: true,
+      lastWorkoutReminderSentOn: true,
+      trainingPlan: { select: { currentPhase: true } },
     },
-    select: { id: true, trainingPlan: { select: { currentPhase: true } } },
   });
 
   let sent = 0;
   for (const user of candidates) {
     if (!user.trainingPlan) continue;
+    if (localHour(now, user.timeZone) < REMINDER_HOUR_LOCAL) continue;
+    const today = localDateAsUtc(now, user.timeZone);
+    if (user.lastWorkoutReminderSentOn && user.lastWorkoutReminderSentOn >= today) continue;
+    const dayStart = localDayStart(now, user.timeZone);
 
     const [loggedToday, planExerciseCount] = await Promise.all([
-      prisma.workoutLog.count({ where: { userId: user.id, deletedAt: null, performedAt: { gte: today } } }),
+      prisma.workoutLog.count({ where: { userId: user.id, deletedAt: null, performedAt: { gte: dayStart } } }),
       prisma.planExercise.count({ where: { userId: user.id, phase: user.trainingPlan.currentPhase } }),
     ]);
     if (loggedToday > 0 || planExerciseCount === 0) continue;

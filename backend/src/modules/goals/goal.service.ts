@@ -3,6 +3,7 @@ import type { CreateGoalInput, UpdateGoalInput } from "@fitnesstracker/shared";
 import { NotFoundError } from "../../errors/httpErrors.js";
 import { getLatestWeightKg } from "../bodyComposition/bodyComposition.service.js";
 import { sendNotificationToUser } from "../push/push.service.js";
+import { visibleToUser } from "../exercises/exercise.service.js";
 
 const withExercise = { include: { exercise: true } } as const;
 
@@ -14,7 +15,7 @@ export function listGoals(prisma: PrismaClient, userId: string) {
 
 export async function createGoal(prisma: PrismaClient, userId: string, input: CreateGoalInput) {
   if (input.exerciseId) {
-    const exercise = await prisma.exercise.findUnique({ where: { id: input.exerciseId } });
+    const exercise = await prisma.exercise.findFirst({ where: { id: input.exerciseId, ...visibleToUser(userId) } });
     if (!exercise) {
       throw new NotFoundError("Exercise not found");
     }

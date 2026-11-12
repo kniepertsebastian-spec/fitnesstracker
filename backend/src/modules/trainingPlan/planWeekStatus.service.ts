@@ -2,6 +2,7 @@ import type { Exercise, PlanExercise, PrismaClient, TrainingPhase } from "@prism
 import type { ProgressionSuggestion, WeeklyPlanStatusDto } from "@fitnesstracker/shared";
 import { planExerciseInclude, toPlanExerciseDto } from "./planExercise.types.js";
 import { addOptionsFor, loadOptionPool, swapOptionsFor } from "./exerciseOptions.js";
+import { getUserTimeZone, localDayStart, localWeekStart } from "../../lib/userTime.js";
 
 const DEFAULT_TARGET_REPS: Record<TrainingPhase, number> = {
   AUFBAU: 10,
@@ -86,20 +87,6 @@ async function fetchRecentSetsByExercise(
   return byExercise;
 }
 
-function currentWeekMondayUtc(): Date {
-  const now = new Date();
-  const day = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const weekday = day.getUTCDay();
-  const daysSinceMonday = weekday === 0 ? 6 : weekday - 1;
-  day.setUTCDate(day.getUTCDate() - daysSinceMonday);
-  return day;
-}
-
-function todayStartUtc(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
 type EntryWithExercise = PlanExercise & { exercise: Exercise };
 
 function groupByDayLabel(entries: EntryWithExercise[]): { dayLabel: string | null; entries: EntryWithExercise[] }[] {
@@ -135,7 +122,10 @@ export async function getWeeklyPlanStatus(
   const groups = groupByDayLabel(entries);
 
   // For the DAILY phase, completion is checked per calendar day instead of per week.
-  const periodStart = phase === "DAILY" ? todayStartUtc() : currentWeekMondayUtc();
+  // Day/week borders are the user's local midnight / Monday 00:00, not UTC's.
+  const now = new Date();
+  const timeZone = await getUserTimeZone(prisma, userId);
+  const periodStart = phase === "DAILY" ? localDayStart(now, timeZone) : localWeekStart(now, timeZone);
   const trainedInPeriod = await prisma.workoutLog.findMany({
     where: { userId, deletedAt: null, performedAt: { gte: periodStart } },
     select: { exerciseId: true },

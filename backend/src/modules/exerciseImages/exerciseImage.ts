@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { env } from "../../config/env.js";
+import { fetchWithTimeout } from "../../lib/fetchWithTimeout.js";
 
 // Exercise images come from the public free-exercise-db repository. The app never hands that
 // address to the browser: images are fetched once, kept on the server's disk (the uploads volume)
@@ -50,7 +51,7 @@ export async function getExerciseImage(relative: string): Promise<Buffer | null>
   const running = inFlight.get(relative);
   if (running) return running;
   const job = (async () => {
-    const res = await fetch(`${UPSTREAM_BASE}${relative}`);
+    const res = await fetchWithTimeout(`${UPSTREAM_BASE}${relative}`);
     if (!res.ok) return null;
     const bytes = Buffer.from(await res.arrayBuffer());
     await mkdir(path.dirname(file), { recursive: true });

@@ -15,6 +15,7 @@ env:
   JWT_ACCESS_SECRET: ci-access-secret-not-a-real-secret
   JWT_REFRESH_SECRET: ci-refresh-secret-not-a-real-secret
   SETUP_TOKEN: ci-setup-token-not-real
+  RESET_TOKEN: ci-reset-token-not-real-either
   # Each E2E scenario registers and logs in its own account from the same IP; production keeps
   # the default of 5 per minute (backend/src/config/env.ts).
   AUTH_RATE_LIMIT_PER_MINUTE: "100"
@@ -72,6 +73,24 @@ jobs:
       # A typo there would only show up at deploy time — validate it with the image prod runs.
       - name: Validate Caddyfile
         run: docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+
+  # Builds the two images production actually runs, the way deploy does. `checks` builds with the
+  # workspace's own files, so a file the Dockerfile forgets to COPY (postcss.config.js once) only
+  # failed at deploy: the app shipped without CSS. Nothing is pushed anywhere.
+  docker-images:
+    name: Production images (build + CSS check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build frontend export (same command as deploy)
+        run: docker build --target export -f frontend/Dockerfile --output frontend/dist .
+
+      - name: Check the built CSS (Tailwind must have run)
+        run: node scripts/check-frontend-css.mjs frontend/dist
+
+      - name: Build backend image
+        run: docker build -f backend/Dockerfile -t fitnesstracker-backend:ci .
 
   # Backend integration tests (auth incl. refresh grace/password/reset/delete, data separation
   # between accounts, photo upload) against a real Postgres. TEST_DATABASE_URL is what switches

@@ -1,8 +1,9 @@
+import { muscleLabel } from "../../lib/exerciseLabels";
 import { useEffect, useState } from "react";
 import { BookOpen, ChevronDown, Link2, Plus, Repeat2 } from "lucide-react";
 import type { ExerciseDto, PlanDiaryExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../../offline/db";
-import { formatKg } from "../../lib/trainingSets";
+import { formatKg, formatLastTime } from "../../lib/trainingSets";
 import { DEFAULT_BAR_KG, platesPerSide } from "../../lib/plates";
 import { warmupSets } from "../../lib/warmup";
 import { KcalEstimate } from "../workoutLog/KcalEstimate";
@@ -142,7 +143,6 @@ export function ExerciseCard({
   const currentIndex = done.length;
   const complete = done.length >= setCount;
   const p = entry.progression;
-  const lastTime = previous[0];
   // The most recent note from the last time this exercise was trained, e.g. the seat setting.
   const lastNote = previous.find((log) => log.note)?.note ?? null;
   const isBarbell = exercise?.equipment?.toLowerCase() === "barbell";
@@ -156,7 +156,7 @@ export function ExerciseCard({
       <div className="flex flex-wrap items-center gap-2">
         {exercise?.primaryMuscles.slice(0, 2).map((m) => (
           <Badge key={m} tone="info">
-            {m}
+            {muscleLabel(m)}
           </Badge>
         ))}
         <Badge tone="accent">{PROGRESSION_LABEL[phase]}</Badge>
@@ -184,7 +184,7 @@ export function ExerciseCard({
         <div className="flex gap-1.5">
           <dt className="text-text-subtle">Letztes Mal</dt>
           <dd className="tabular font-numeric text-text-2">
-            {lastTime ? `${previous.length} × ${lastTime.reps} · ${formatKg(lastTime.weightKg)} kg` : "–"}
+            {formatLastTime(previous)}
           </dd>
         </div>
         {lastNote && (

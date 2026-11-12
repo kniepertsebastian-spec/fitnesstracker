@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { GoogleGenAI } from "@google/genai";
+import { OUTGOING_TIMEOUT_MS } from "../../lib/fetchWithTimeout.js";
 import { decryptSecret } from "../../lib/crypto.js";
 import { env } from "../../config/env.js";
 import { ConflictError } from "../../errors/httpErrors.js";
@@ -73,7 +74,7 @@ ${ocrText.slice(0, 12000)}`;
   let raw: string;
   if (setting.provider === "GEMINI") {
     // Use the same saved Gemini key and native SDK path as the training-plan generator.
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: OUTGOING_TIMEOUT_MS } });
     try {
       const response = await ai.models.generateContent({
         model: setting.model || "gemini-2.5-flash",

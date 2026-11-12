@@ -17,6 +17,7 @@ import { decryptSecret } from "../../lib/crypto.js";
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
 import { planExerciseInclude, toPlanExerciseDto } from "../trainingPlan/planExercise.types.js";
 import { GoogleGenAI, Type } from "@google/genai";
+import { OUTGOING_TIMEOUT_MS } from "../../lib/fetchWithTimeout.js";
 import { AiProviderError, callChatCompletion } from "./aiClient.js";
 import {
   buildColdStartContext,
@@ -125,7 +126,7 @@ async function callModel(
 
   if (setting.provider === "GEMINI" && !options?.baseUrlOverride) {
     try {
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: OUTGOING_TIMEOUT_MS } });
       const response = await ai.models.generateContent({
         model: setting.model || "gemini-2.5-flash",
         contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\nKontext:\n${context}` }] }],

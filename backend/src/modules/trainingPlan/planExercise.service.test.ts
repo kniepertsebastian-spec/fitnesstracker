@@ -17,7 +17,7 @@ function fakePrisma() {
   const matches = (row: Row, where: Partial<Row>) =>
     (Object.keys(where) as (keyof Row)[]).every((key) => row[key] === where[key]);
   const prisma = {
-    exercise: { findUnique: async ({ where }: { where: { id: string } }) => ({ id: where.id }) },
+    exercise: { findFirst: async ({ where }: { where: { id: string } }) => ({ id: where.id }) },
     planExercise: {
       findFirst: async ({ where, orderBy }: { where: Partial<Row>; orderBy?: { order: "desc" } }) => {
         const found = rows.filter((r) => matches(r, where));

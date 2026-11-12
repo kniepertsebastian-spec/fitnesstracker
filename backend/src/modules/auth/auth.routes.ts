@@ -8,6 +8,7 @@ import {
   registerSchema,
   resetPasswordSchema,
   updateNameSchema,
+  updateTimeZoneSchema,
 } from "@fitnesstracker/shared";
 import {
   changePassword,
@@ -114,6 +115,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
     return reply.send(toUserDto(user));
   });
 
+  fastify.put("/me/time-zone", { preHandler: fastify.authenticate }, async (request, reply) => {
+    const input = updateTimeZoneSchema.parse(request.body);
+    const user = await fastify.prisma.user.update({
+      where: { id: request.user.sub },
+      data: { timeZone: input.timeZone },
+    });
+    return reply.send(toUserDto(user));
+  });
+
   fastify.put("/me/password", { preHandler: fastify.authenticate, ...AUTH_RATE_LIMIT }, async (request, reply) => {
     const input = changePasswordSchema.parse(request.body);
     try {
@@ -125,7 +135,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // No mail delivery exists, so this is gated by the operator's setup token instead of a mailed link.
+  // No mail delivery exists, so this is gated by the operator's RESET_TOKEN instead of a mailed link.
   fastify.post("/reset-password", AUTH_RATE_LIMIT, async (request, reply) => {
     const input = resetPasswordSchema.parse(request.body);
     try {

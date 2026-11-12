@@ -1,6 +1,8 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type { CreateExerciseInput, UpdateExerciseInput } from "@fitnesstracker/shared";
-import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
+import { env } from "../../config/env.js";
+import { ConflictError, ForbiddenError, NotFoundError } from "../../errors/httpErrors.js";
+import { germanExerciseName } from "./nameTranslations.js";
 import { getSourceAdapter } from "./sources/index.js";
 
 export interface ListExercisesFilters {
@@ -12,14 +14,30 @@ export interface ListExercisesFilters {
   includeInactive?: boolean;
 }
 
+// Catalog exercises (ownerId null) are shared; a custom exercise belongs to the account that made it.
+export function visibleToUser(userId: string): Prisma.ExerciseWhereInput {
+  return { OR: [{ ownerId: null }, { ownerId: userId }] };
+}
+
+// The operator keeps the shared catalog: imports it and may change or delete catalog exercises.
+export async function isOperator(prisma: PrismaClient, userId: string): Promise<boolean> {
+  const configured = env.OPERATOR_EMAIL.trim().toLowerCase();
+  if (configured) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    return user?.email.toLowerCase() === configured;
+  }
+  const oldest = await prisma.user.findFirst({ orderBy: { createdAt: "asc" }, select: { id: true } });
+  return oldest?.id === userId;
+}
+
 const DEFAULT_PAGE_SIZE = 200;
 const MAX_PAGE_SIZE = 200;
 
-export async function listExercises(prisma: PrismaClient, filters: ListExercisesFilters) {
+export async function listExercises(prisma: PrismaClient, userId: string, filters: ListExercisesFilters) {
   // Built as an `AND` list of clauses, not a spread object — `search` and `muscleGroup` each
   // need their own `OR` (English name vs. German name; primary vs. secondary muscle), and a
   // plain object spread would let the second `OR` key silently clobber the first.
-  const clauses: Prisma.ExerciseWhereInput[] = [];
+  const clauses: Prisma.ExerciseWhereInput[] = [visibleToUser(userId)];
   // Deactivated exercises are excluded everywhere by default — the workout-log/plan/goal
   // exercise pickers all call this with no filters at all, so this is what actually keeps a
   // retired exercise out of "correct use" elsewhere without those callers needing to know about
@@ -69,8 +87,9 @@ export async function listExercises(prisma: PrismaClient, filters: ListExercises
 
 // Distinct values across the array columns aren't expressible as a Prisma `distinct` (that
 // only dedupes whole rows), so pull the raw values and dedupe in JS — cheap at this catalog size.
-export async function getExerciseFacets(prisma: PrismaClient) {
+export async function getExerciseFacets(prisma: PrismaClient, userId: string) {
   const rows = await prisma.exercise.findMany({
+    where: visibleToUser(userId),
     select: { primaryMuscles: true, secondaryMuscles: true, equipment: true },
   });
 
@@ -88,27 +107,35 @@ export async function getExerciseFacets(prisma: PrismaClient) {
   };
 }
 
-export async function getExerciseById(prisma: PrismaClient, id: string) {
-  const exercise = await prisma.exercise.findUnique({ where: { id } });
+export async function getExerciseById(prisma: PrismaClient, userId: string, id: string) {
+  const exercise = await prisma.exercise.findFirst({ where: { id, ...visibleToUser(userId) } });
   if (!exercise) {
     throw new NotFoundError("Exercise not found");
   }
   return exercise;
 }
 
-export function createExercise(prisma: PrismaClient, input: CreateExerciseInput) {
+export function createExercise(prisma: PrismaClient, userId: string, input: CreateExerciseInput) {
   return prisma.exercise.create({
-    data: { ...input, source: "manual", sourceId: crypto.randomUUID() },
+    data: { ...input, source: "manual", sourceId: crypto.randomUUID(), ownerId: userId },
   });
 }
 
-export async function updateExercise(prisma: PrismaClient, id: string, input: UpdateExerciseInput) {
-  await getExerciseById(prisma, id);
+// Own custom exercises are changeable by their owner; catalog exercises only by the operator.
+async function assertCanModify(prisma: PrismaClient, userId: string, id: string) {
+  const exercise = await getExerciseById(prisma, userId, id);
+  if (exercise.ownerId === userId) return exercise;
+  if (exercise.ownerId === null && (await isOperator(prisma, userId))) return exercise;
+  throw new ForbiddenError("Diese Übung gehört zum Katalog und kann nur vom Betreiberkonto geändert werden.");
+}
+
+export async function updateExercise(prisma: PrismaClient, userId: string, id: string, input: UpdateExerciseInput) {
+  await assertCanModify(prisma, userId, id);
   return prisma.exercise.update({ where: { id }, data: input });
 }
 
-export async function deleteExercise(prisma: PrismaClient, id: string) {
-  await getExerciseById(prisma, id);
+export async function deleteExercise(prisma: PrismaClient, userId: string, id: string) {
+  await assertCanModify(prisma, userId, id);
   try {
     await prisma.exercise.delete({ where: { id } });
   } catch (error) {
@@ -131,8 +158,12 @@ export interface ImportSummary {
 
 export async function importExercisesFromSource(
   prisma: PrismaClient,
+  userId: string,
   sourceName: string,
 ): Promise<ImportSummary> {
+  if (!(await isOperator(prisma, userId))) {
+    throw new ForbiddenError("Der Übungskatalog kann nur vom Betreiberkonto importiert werden.");
+  }
   const adapter = getSourceAdapter(sourceName);
   if (!adapter) {
     throw new NotFoundError(`Unknown exercise source: ${sourceName}`);
@@ -144,8 +175,11 @@ export async function importExercisesFromSource(
 
   for (const entry of imported) {
     const where = { source_sourceId: { source: adapter.name, sourceId: entry.sourceId } };
+    const nameDe = adapter.name === "free-exercise-db" ? germanExerciseName(entry.name) : undefined;
     const data = {
       name: entry.name,
+      // Only set when a translation exists; undefined leaves a manually edited nameDe untouched.
+      nameDe,
       description: entry.description,
       videoUrl: entry.videoUrl,
       imageUrls: entry.imageUrls,

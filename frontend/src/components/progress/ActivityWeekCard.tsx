@@ -27,7 +27,7 @@ function WeekSummary({ week, title }: { week: ActivityWeek; title: string }) {
         <dd className="text-right text-text-2">{cyclingStudio.rides > 0 ? `${number(cyclingStudio.totalMinutes)} Min.` : "–"}</dd>
         <dt>Krafttraining</dt>
         <dd className="text-right text-text-2">
-          {strength.sets > 0 ? `${strength.trainingDays} Tage · ${number(strength.volumeKg)} kg` : "–"}
+          {strength.sets > 0 ? `${strength.trainingDays} ${strength.trainingDays === 1 ? "Tag" : "Tage"} · ${number(strength.volumeKg)} kg` : "–"}
         </dd>
       </dl>
     </div>

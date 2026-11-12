@@ -8,5 +8,6 @@ export function toUserDto(user: User): UserDto {
     displayName: user.displayName,
     firstName: user.firstName,
     lastName: user.lastName,
+    timeZone: user.timeZone,
   };
 }

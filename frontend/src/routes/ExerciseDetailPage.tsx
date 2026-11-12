@@ -1,3 +1,4 @@
+import { categoryLabel, equipmentLabel, muscleLabel } from "../lib/exerciseLabels";
 import { useState } from "react";
 import { ArrowLeft, ExternalLink, Pencil } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -83,15 +84,15 @@ export function ExerciseDetailPage() {
           )}
 
           <div className="flex flex-wrap gap-2">
-            {exercise.equipment && <Badge>{exercise.equipment}</Badge>}
-            {exercise.category && <Badge>{exercise.category}</Badge>}
+            {exercise.equipment && <Badge>{equipmentLabel(exercise.equipment)}</Badge>}
+            {exercise.category && <Badge>{categoryLabel(exercise.category)}</Badge>}
             {exercise.primaryMuscles.map((m) => (
               <Badge key={m} tone="info">
-                {m}
+                {muscleLabel(m)}
               </Badge>
             ))}
             {exercise.secondaryMuscles.map((m) => (
-              <Badge key={m}>{m}</Badge>
+              <Badge key={m}>{muscleLabel(m)}</Badge>
             ))}
           </div>
 

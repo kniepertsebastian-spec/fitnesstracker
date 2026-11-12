@@ -152,20 +152,27 @@ describe.skipIf(!hasTestDb)("auth (integration)", () => {
   });
 
   describe("password reset (gated by the setup token, there is no mail)", () => {
-    it("rejects a wrong setup token and an unknown account", async () => {
+    it("rejects a wrong token, and the setup token is not accepted", async () => {
       const session = await signUp(app, "reset-bad");
-      const badToken = await app.inject({
-        method: "POST",
-        url: "/api/auth/reset-password",
-        payload: { email: session.email, setupToken: "nope", newPassword: "another-new-password" },
-      });
-      expect(badToken.statusCode).toBe(403);
+      for (const resetToken of ["nope", env.SETUP_TOKEN]) {
+        const res = await app.inject({
+          method: "POST",
+          url: "/api/auth/reset-password",
+          payload: { email: session.email, resetToken, newPassword: "another-new-password" },
+        });
+        expect(res.statusCode).toBe(403);
+      }
+      expect((await login(app, session.email)).statusCode).toBe(200);
+    });
+
+    it("answers an unknown account like a known one", async () => {
+      const session = await signUp(app, "reset-ghost");
       const unknown = await app.inject({
         method: "POST",
         url: "/api/auth/reset-password",
-        payload: { email: uniqueEmail("ghost"), setupToken: env.SETUP_TOKEN, newPassword: "another-new-password" },
+        payload: { email: uniqueEmail("ghost"), resetToken: env.RESET_TOKEN, newPassword: "another-new-password" },
       });
-      expect(unknown.statusCode).toBe(404);
+      expect(unknown.statusCode).toBe(204);
       expect((await login(app, session.email)).statusCode).toBe(200);
     });
 
@@ -174,7 +181,7 @@ describe.skipIf(!hasTestDb)("auth (integration)", () => {
       const res = await app.inject({
         method: "POST",
         url: "/api/auth/reset-password",
-        payload: { email: session.email, setupToken: env.SETUP_TOKEN, newPassword: "another-new-password" },
+        payload: { email: session.email, resetToken: env.RESET_TOKEN, newPassword: "another-new-password" },
       });
       expect(res.statusCode).toBe(204);
       expect((await login(app, session.email)).statusCode).toBe(401);

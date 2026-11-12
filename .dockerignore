@@ -1,0 +1,17 @@
+# Keep the Docker build context small and free of host-built or secret files. Without this,
+# `COPY frontend frontend` would drag a host node_modules (wrong platform) into the image.
+**/node_modules
+**/dist
+**/test-results
+**/playwright-report
+**/coverage
+.git
+.env
+.env.*
+!.env.example
+.github
+caddy_data
+caddy_config
+pgdata
+backend/uploads
+.backups

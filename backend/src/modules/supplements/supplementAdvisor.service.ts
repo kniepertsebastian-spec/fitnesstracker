@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { GoogleGenAI, Type } from "@google/genai";
+import { OUTGOING_TIMEOUT_MS } from "../../lib/fetchWithTimeout.js";
 import {
   supplementAnalysisSchema,
   TRAINING_GOAL_LABELS,
@@ -188,7 +189,7 @@ export async function analyzeSupplementForUser(
 
   if (setting.provider === "GEMINI") {
     try {
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: OUTGOING_TIMEOUT_MS } });
       const response = await ai.models.generateContent({
         model: setting.model || "gemini-2.5-flash",
         contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],

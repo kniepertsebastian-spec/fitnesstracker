@@ -44,6 +44,17 @@ describe("parseEnv", () => {
     },
   );
 
+  it("keeps the password reset off without a RESET_TOKEN and tolerates that in production", () => {
+    expect(parseEnv(base).RESET_TOKEN).toBe("");
+    expect(() => parseEnv({ ...base, NODE_ENV: "production" })).not.toThrow();
+  });
+
+  it("rejects a RESET_TOKEN that is short, equal to the SETUP_TOKEN, or a placeholder in production", () => {
+    expect(() => parseEnv({ ...base, RESET_TOKEN: "short" })).toThrow(/16 characters/);
+    expect(() => parseEnv({ ...base, SETUP_TOKEN: "same-secret-for-both-1234", RESET_TOKEN: "same-secret-for-both-1234" })).toThrow(/differ/);
+    expect(() => parseEnv({ ...base, NODE_ENV: "production", RESET_TOKEN: "change-me-reset-token-xx" })).toThrow(/placeholder/);
+  });
+
   it("still lets development and CI start with throwaway values", () => {
     expect(() => parseEnv({ ...base, NODE_ENV: "development", JWT_ACCESS_SECRET: "change-me-access-secret" })).not.toThrow();
     expect(() => parseEnv({ ...base, JWT_ACCESS_SECRET: "ci-access-secret-not-a-real-secret" })).not.toThrow();

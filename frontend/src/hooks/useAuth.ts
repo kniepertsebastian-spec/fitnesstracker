@@ -2,6 +2,8 @@ import { useCallback, useEffect } from "react";
 import type { LoginInput, RegisterInput } from "@fitnesstracker/shared";
 import { loginRequest, logoutRequest, meRequest, registerRequest } from "../api/auth.api";
 import { ApiError, apiFetch } from "../api/client";
+import { clearPendingLogout, flushPendingLogout, hasPendingLogout, markPendingLogout } from "../lib/pendingLogout";
+import { unsubscribePushOnLogout } from "../lib/pushLogout";
 import { readCachedUser, useAuthStore } from "../stores/authStore";
 
 // On app boot there's no access token in memory yet (it's never persisted), so we try a
@@ -14,6 +16,13 @@ export function useAuthBootstrap() {
   useEffect(() => {
     if (status !== "idle") return;
     setStatus("loading");
+
+    // A logout that never reached the server (offline) is carried out first: the refresh cookie
+    // would otherwise sign the user straight back in. Whatever the outcome, the user is logged out.
+    if (hasPendingLogout()) {
+      void flushPendingLogout().then(() => useAuthStore.getState().clearSession());
+      return;
+    }
 
     apiFetch<{ accessToken: string }>("/auth/refresh", { method: "POST", skipAuthRetry: true })
       .then(async (data) => {
@@ -53,6 +62,9 @@ export function useAuth() {
 
   const login = useCallback(
     async (input: LoginInput) => {
+      // End a still-pending earlier logout first so its old refresh token is revoked, then forget it.
+      await flushPendingLogout();
+      clearPendingLogout();
       const data = await loginRequest(input);
       setSession(data.user, data.accessToken);
     },
@@ -62,7 +74,9 @@ export function useAuth() {
   const register = useCallback((input: RegisterInput) => registerRequest(input), []);
 
   const logout = useCallback(async () => {
-    await logoutRequest().catch(() => undefined);
+    await unsubscribePushOnLogout();
+    // Offline or a server error: remember it and finish the logout as soon as possible.
+    await logoutRequest().catch(() => markPendingLogout());
     clearSession();
   }, [clearSession]);
 

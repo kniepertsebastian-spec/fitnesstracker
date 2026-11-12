@@ -27,6 +27,26 @@ export function formatKg(value: number): string {
   return value.toLocaleString("de-DE", { maximumFractionDigits: 2 });
 }
 
+// "Letztes Mal" for an exercise: what was really done, set by set. The same reps in every set
+// read as "3 × 10", differing reps as "10/9/8" — taking the first set's reps for all of them
+// contradicted the deload suggestion right next to it. Weights collapse to one value, or a range.
+export function formatLastTime(sets: Pick<LocalWorkoutLog, "reps" | "weightKg">[]): string {
+  if (sets.length === 0) return "–";
+  const MAX_SHOWN = 8;
+  const reps = sets.map((s) => s.reps);
+  const repsText =
+    reps.every((r) => r === reps[0])
+      ? `${sets.length} × ${reps[0]}`
+      : reps.length > MAX_SHOWN
+        ? `${reps.slice(0, MAX_SHOWN).join("/")}/…`
+        : reps.join("/");
+  const weights = sets.map((s) => s.weightKg);
+  const min = Math.min(...weights);
+  const max = Math.max(...weights);
+  const weightText = min === max ? `${formatKg(min)} kg` : `${formatKg(min)}–${formatKg(max)} kg`;
+  return `${repsText} · ${weightText}`;
+}
+
 export function formatDuration(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(s / 3600);

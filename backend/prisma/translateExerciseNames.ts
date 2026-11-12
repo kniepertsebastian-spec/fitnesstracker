@@ -1,18 +1,11 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
 import { PrismaClient } from "@prisma/client";
+import { loadNameTranslations } from "../src/modules/exercises/nameTranslations.js";
 
 const prisma = new PrismaClient();
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// English name -> German display name, for the free-exercise-db import. Generated once by
-// working through the full dataset — see context.md for how. Only touches rows with
-// source="free-exercise-db"; manually seeded/created exercises already have a German `name`
-// and are left alone.
-const translations: Record<string, string> = JSON.parse(
-  readFileSync(path.join(__dirname, "data/exerciseNameTranslationsDe.json"), "utf-8"),
-);
+// English name -> German display name, for rows already imported before the import itself
+// translated names. Only touches rows with source="free-exercise-db".
+const translations = loadNameTranslations();
 
 async function main() {
   let updated = 0;
