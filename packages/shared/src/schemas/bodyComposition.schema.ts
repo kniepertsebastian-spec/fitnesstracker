@@ -1,11 +1,19 @@
 import { z } from "zod";
 import { scaleDetailsSchema } from "./scaleDetails.schema.js";
 
+// Tape measurements in cm. The ranges only rule out typos (a waist of 8 or 800), not unusual bodies.
+export const waistCmSchema = z.number().min(30).max(250);
+export const neckCmSchema = z.number().min(20).max(80);
+export const hipCmSchema = z.number().min(40).max(250);
+
 export const createBodyCompositionEntrySchema = z.object({
   weightKg: z.number().positive().max(500),
   bodyFatPercent: z.number().min(0).max(100).optional(),
   muscleMassKg: z.number().positive().max(500).optional(),
   bodyWaterPercent: z.number().min(0).max(100).optional(),
+  waistCm: waistCmSchema.optional(),
+  neckCm: neckCmSchema.optional(),
+  hipCm: hipCmSchema.optional(),
   measuredAt: z.string().datetime().optional(),
 });
 export type CreateBodyCompositionEntryInput = z.infer<typeof createBodyCompositionEntrySchema>;
@@ -44,6 +52,9 @@ export const bodyCompositionEntryDtoSchema = z.object({
   bodyFatPercent: z.number().nullable(),
   muscleMassKg: z.number().nullable(),
   bodyWaterPercent: z.number().nullable(),
+  waistCm: z.number().nullable(),
+  neckCm: z.number().nullable(),
+  hipCm: z.number().nullable(),
   // Full scale report (all values and impedances) when the measurement came from one.
   scaleDetails: scaleDetailsSchema.nullable(),
 });
