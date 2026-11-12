@@ -44,6 +44,16 @@ export function fatFreeMassIndex(weightKg: number, bodyFatPercent: number, heigh
 
 // Above this FFMI a reading is flagged as implausible for a natural physique.
 export const FFMI_NATURAL_LIMIT = 25;
+// The FFMI check only makes sense for lean readings: with a lot of body fat the fat-free mass
+// rises with it (130 kg at 180 cm and 37 % gives FFMI 25.3 and is plausible), so above this body
+// fat the check is not applied.
+export const FFMI_CHECK_MAX_BODY_FAT = 25;
+
+/** True when a scale reading implies a fat-free mass no natural physique reaches. Lean readings only. */
+export function ffmiLooksImplausible(ffmi: number | null, bodyFatPercent: number | null): boolean {
+  if (ffmi === null || bodyFatPercent === null) return false;
+  return bodyFatPercent < FFMI_CHECK_MAX_BODY_FAT && ffmi > FFMI_NATURAL_LIMIT;
+}
 // A scale value this many percentage points below the CUN-BAE estimate is worth a second look
 // (the equation's own error is around 4–5 points, so a gap this size is not just noise).
 export const BODY_FAT_GAP_THRESHOLD = 8;

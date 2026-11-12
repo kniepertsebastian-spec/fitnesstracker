@@ -6,6 +6,7 @@ import {
   estimateBodyFatNavy,
   estimateBodyFatRfm,
   fatFreeMassIndex,
+  ffmiLooksImplausible,
   waistToHeightRatio,
 } from "./bodyFat.js";
 
@@ -108,5 +109,21 @@ describe("applyCalibrationOffset", () => {
   it("moves both ends by the offset and clamps to 0-100", () => {
     expect(applyCalibrationOffset({ low: 17.3, high: 22.6 }, -2)).toEqual({ low: 15.3, high: 20.6 });
     expect(applyCalibrationOffset({ low: 1, high: 5 }, -3)).toEqual({ low: 0, high: 2 });
+  });
+});
+
+describe("ffmiLooksImplausible", () => {
+  it("flags a lean reading with an FFMI above 25", () => {
+    const ffmi = fatFreeMassIndex(105, 12, 180); // 28.5
+    expect(ffmiLooksImplausible(ffmi, 12)).toBe(true);
+  });
+  it("does not flag a heavy person with high body fat: 130 kg / 180 cm / 37 %", () => {
+    const ffmi = fatFreeMassIndex(130, 37, 180);
+    expect(ffmi).toBeGreaterThan(25);
+    expect(ffmiLooksImplausible(ffmi, 37)).toBe(false);
+  });
+  it("does not flag missing values", () => {
+    expect(ffmiLooksImplausible(null, 15)).toBe(false);
+    expect(ffmiLooksImplausible(26, null)).toBe(false);
   });
 });

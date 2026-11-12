@@ -4,6 +4,7 @@ import { useBodyCompositionEntries } from "../../hooks/useBodyComposition";
 import { useProgressPhotos } from "../../hooks/useProgressPhotos";
 import { rangeCutoff, type ProgressRange } from "../../lib/progressRange";
 import { formatDelta } from "../../lib/stats";
+import { weightTrendAt } from "../../lib/weightTrend";
 import { ButtonLink, Card, StatTile } from "../ui";
 
 // Body data for the selected range: latest value and the change since the first measurement in
@@ -18,23 +19,28 @@ export function BodyDataCard({ range }: { range: ProgressRange }) {
     .filter((e) => !cutoff || new Date(e.measuredAt) >= cutoff)
     .slice()
     .reverse();
-  const first = inRange[0];
-  const last = inRange.at(-1);
+  const all = entries ?? [];
 
+  // Latest value and the change since the first value in range. Values missing on a measurement
+  // (a weigh-in without tape, a tape without scale fat) are skipped instead of showing "–".
   const metric = (
     label: string,
     unit: string,
-    pick: (e: NonNullable<typeof first>) => number | null,
+    pick: (e: (typeof inRange)[number]) => number | null,
+    digits = 1,
   ) => {
+    const withValue = inRange.filter((e) => pick(e) !== null);
+    const first = withValue[0];
+    const last = withValue.at(-1);
     const value = last ? pick(last) : null;
     const base = first && first !== last ? pick(first) : null;
     return (
       <StatTile
         label={label}
-        value={value !== null ? value.toLocaleString("de-DE", { maximumFractionDigits: 1 }) : "–"}
+        value={value !== null ? value.toLocaleString("de-DE", { maximumFractionDigits: digits }) : "–"}
         unit={value !== null ? unit : undefined}
         // A change in a percentage is in percentage points, not "%".
-        sub={value !== null && base !== null ? `${formatDelta(value - base, 1)} ${unit === "%" ? "Prozentpunkte" : unit}` : undefined}
+        sub={value !== null && base !== null ? `${formatDelta(value - base, digits)} ${unit === "%" ? "Prozentpunkte" : unit}` : undefined}
         className="p-3"
       />
     );
@@ -54,9 +60,11 @@ export function BodyDataCard({ range }: { range: ProgressRange }) {
       {inRange.length === 0 ? (
         <p className="text-small text-text-subtle">Keine Messungen in diesem Zeitraum.</p>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
-          {metric("Gewicht", "kg", (e) => e.weightKg)}
-          {metric("Körperfett", "%", (e) => e.bodyFatPercent)}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Weight as the 7-day mean: single weigh-ins jump with water and food. */}
+          {metric("Gewicht (Ø 7 Tage)", "kg", (e) => weightTrendAt(all, e.measuredAt))}
+          {metric("Taille", "cm", (e) => e.waistCm)}
+          {metric("Körperfett (Waage)", "%", (e) => e.bodyFatPercent)}
           {metric("Muskelmasse", "kg", (e) => e.muscleMassKg)}
         </div>
       )}

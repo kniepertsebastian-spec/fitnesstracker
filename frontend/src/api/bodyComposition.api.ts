@@ -1,5 +1,7 @@
 import type {
   BodyCompositionEntryDto,
+  BodyFatCalibrationDto,
+  CreateBodyFatCalibrationInput,
   CreateBodyCompositionEntryInput,
   ImportBodyCompositionInput,
   ImportBodyCompositionResult,
@@ -33,4 +35,16 @@ export function parseScaleReportRequest(file: File, timeZone: string) {
 
 export function saveScaleReportRequest(input: SaveScaleReportInput) {
   return apiFetch<BodyCompositionEntryDto>("/body-composition/report", { method: "POST", body: input });
+}
+
+export function listBodyFatCalibrationsRequest() {
+  return apiFetch<{ items: BodyFatCalibrationDto[] }>("/body-fat-calibrations");
+}
+
+export function createBodyFatCalibrationRequest(input: CreateBodyFatCalibrationInput) {
+  return apiFetch<BodyFatCalibrationDto>("/body-fat-calibrations", { method: "POST", body: input });
+}
+
+export function deleteBodyFatCalibrationRequest(id: string) {
+  return apiFetch<void>(`/body-fat-calibrations/${id}`, { method: "DELETE" });
 }

@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CreateBodyCompositionEntryInput,
+  CreateBodyFatCalibrationInput,
   ImportBodyCompositionInput,
   ImportBodyCompositionResult,
   SaveScaleReportInput,
 } from "@fitnesstracker/shared";
 import {
   createBodyCompositionEntryRequest,
+  createBodyFatCalibrationRequest,
+  deleteBodyFatCalibrationRequest,
+  listBodyFatCalibrationsRequest,
   deleteBodyCompositionEntryRequest,
   importBodyCompositionRequest,
   listBodyCompositionEntriesRequest,
@@ -69,5 +73,30 @@ export function useSaveScaleReport() {
   return useMutation({
     mutationFn: (input: SaveScaleReportInput) => saveScaleReportRequest(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: BODY_COMPOSITION_KEY }),
+  });
+}
+
+const CALIBRATION_KEY = ["body-fat-calibrations"];
+
+export function useBodyFatCalibrations() {
+  return useQuery({
+    queryKey: CALIBRATION_KEY,
+    queryFn: () => listBodyFatCalibrationsRequest().then((r) => r.items),
+  });
+}
+
+export function useCreateBodyFatCalibration() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateBodyFatCalibrationInput) => createBodyFatCalibrationRequest(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CALIBRATION_KEY }),
+  });
+}
+
+export function useDeleteBodyFatCalibration() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteBodyFatCalibrationRequest(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: CALIBRATION_KEY }),
   });
 }
