@@ -12,8 +12,13 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 COPY tsconfig.base.json ./
-COPY packages/shared packages/shared
-COPY frontend frontend
+COPY packages/shared/src packages/shared/src
+COPY packages/shared/tsconfig.json packages/shared/tsconfig.json
+COPY frontend/src frontend/src
+COPY frontend/public frontend/public
+COPY frontend/index.html frontend/index.html
+COPY frontend/vite.config.ts frontend/vite.config.ts
+COPY frontend/tsconfig.json frontend/tsconfig.json
 RUN pnpm --filter @fitnesstracker/shared build
 RUN pnpm --filter frontend build
 

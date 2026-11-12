@@ -1,0 +1,16 @@
+import { scaleDetailsSchema } from "@fitnesstracker/shared";
+export function toBodyCompositionEntryDto(entry) {
+    // Stored JSON is validated again on the way out: a row written by an older version, or edited by
+    // hand, must not break the list.
+    const details = scaleDetailsSchema.safeParse(entry.scaleDetails);
+    return {
+        id: entry.id,
+        measuredAt: entry.measuredAt.toISOString(),
+        weightKg: Number(entry.weightKg),
+        bodyFatPercent: entry.bodyFatPercent === null ? null : Number(entry.bodyFatPercent),
+        muscleMassKg: entry.muscleMassKg === null ? null : Number(entry.muscleMassKg),
+        bodyWaterPercent: entry.bodyWaterPercent === null ? null : Number(entry.bodyWaterPercent),
+        scaleDetails: details.success ? details.data : null,
+    };
+}
+//# sourceMappingURL=bodyComposition.types.js.map

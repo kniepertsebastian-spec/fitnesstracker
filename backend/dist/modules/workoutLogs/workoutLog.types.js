@@ -1,0 +1,19 @@
+export function toWorkoutLogDto(log) {
+    return {
+        id: log.id,
+        clientId: log.clientId,
+        exerciseId: log.exerciseId,
+        exerciseName: log.exercise.nameDe ?? log.exercise.name,
+        setNumber: log.setNumber,
+        reps: log.reps,
+        // Prisma.Decimal doesn't serialize to a plain JSON number on its own — convert explicitly.
+        weightKg: Number(log.weightKg),
+        rir: log.rir,
+        note: log.note,
+        supersetGroupId: log.supersetGroupId,
+        performedAt: log.performedAt.toISOString(),
+        createdAt: log.createdAt.toISOString(),
+        updatedAt: log.updatedAt.toISOString(),
+    };
+}
+//# sourceMappingURL=workoutLog.types.js.map

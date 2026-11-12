@@ -34,7 +34,7 @@ export default defineConfig({
         id: "/",
         name: "Fitnesstracker",
         short_name: "Fitness",
-        description: "Persönlicher Fitnesstracker ohne Werbung.",
+        description: "Persönlicher Fitnesstracker ohne Werbung. 🏋️",
         // The plugin would otherwise emit "en" for a German-language app.
         lang: "de",
         categories: ["health", "fitness", "sports"],

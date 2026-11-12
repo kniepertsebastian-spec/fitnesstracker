@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen bg-bg pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-text lg:grid lg:grid-cols-[248px_1fr]">
+    <div className="min-h-screen bg-bg pt-[env(safe-area-inset-top)] text-text lg:grid lg:grid-cols-[248px_1fr] lg:pb-[env(safe-area-inset-bottom)]">
       <LightBand />
       <aside className="sticky top-0 z-10 hidden h-screen flex-col gap-4 border-r border-border bg-bg-sidebar p-4 lg:flex">
         <Logo />
@@ -55,7 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 pb-24 pt-4 lg:px-10 lg:pb-6 lg:pt-6">{children}</main>
+        <main className="flex-1 px-4 pb-[calc(3.5rem+env(safe-area-inset-bottom))] pt-4 lg:px-10 lg:pb-6 lg:pt-6">{children}</main>
       </div>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen} title="Menü" className="gap-4 p-4">
