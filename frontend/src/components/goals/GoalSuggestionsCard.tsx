@@ -3,6 +3,7 @@ import { CalcInfoButton } from "../info/CalcInfoButton";
 import type { GoalSuggestionDto } from "@fitnesstracker/shared";
 import { useCreateGoal, useGoalSuggestions } from "../../hooks/useGoals";
 import { Badge, Button, Card, SegmentedControl } from "../ui";
+import { formatKg } from "../../lib/trainingSets";
 
 type Tier = "conservative" | "realistic" | "ambitious";
 
@@ -55,7 +56,7 @@ function SuggestionRow({ suggestion }: { suggestion: GoalSuggestionDto }) {
 
       <div className="flex items-center justify-between gap-3">
         <p className="tabular text-small text-text-subtle">
-          Ziel: {selected.targetValue} {unit(suggestion.type)}
+          Ziel: {formatKg(selected.targetValue)} {unit(suggestion.type)}
           <span className="text-text-faint"> · bis {formatDate(selected.targetDate)}</span>
         </p>
         <Button

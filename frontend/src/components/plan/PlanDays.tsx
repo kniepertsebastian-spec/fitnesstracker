@@ -1,12 +1,26 @@
 import { useState } from "react";
-import { ArrowDown, ArrowUp, Dumbbell, GripVertical, Plus, Repeat2, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Dumbbell, GripVertical, MoreHorizontal, Plus, Repeat2, Trash2 } from "lucide-react";
 import type { PlanExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
 import { useCardioPlan } from "../../hooks/useCardioPlan";
 import { useDeletePlanExercise, usePlanExercises, useUpdatePlanExercise } from "../../hooks/usePlanExercises";
 import { useStretchPlan } from "../../hooks/useStretching";
 import { cardioMinutes, matchDay, stretchMinutes } from "../../lib/dayPlan";
 import { PlanExerciseFormDialog } from "../trainingPlan/PlanExerciseFormDialog";
-import { Button, Card, EmptyState, IconButton, ListRow, SegmentedControl, Skeleton, cn } from "../ui";
+import { useUndoStore } from "../../stores/undoStore";
+import {
+  Button,
+  Card,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  EmptyState,
+  IconButton,
+  ListRow,
+  SegmentedControl,
+  Skeleton,
+  cn,
+} from "../ui";
 import { DayCardioPanel } from "./DayCardioPanel";
 import { DayStretchPanel } from "./DayStretchPanel";
 import { formatSetsReps } from "../../lib/planPrescription";
@@ -55,6 +69,11 @@ function Row({
   onReplace: () => void;
 }) {
   const remove = useDeletePlanExercise(entry.phase);
+  const scheduleDelete = useUndoStore((s) => s.scheduleDelete);
+  // The server only hears about it after the undo window, see stores/undoStore.ts.
+  const handleDelete = () =>
+    scheduleDelete(entry.id, `${entry.exerciseName} gelöscht`, () => remove.mutateAsync(entry.id));
+  const iconButton = "h-9! w-9! border-transparent bg-transparent";
   return (
     <div
       draggable
@@ -68,21 +87,44 @@ function Row({
       >
         <div className="flex items-center gap-2">
           <GripVertical size={16} aria-hidden className="shrink-0 cursor-grab text-text-faint" />
-          <span className="min-w-0 flex-1 truncate">{entry.exerciseName}</span>
-          <span className="flex shrink-0 items-center">
-            <IconButton aria-label={`${entry.exerciseName} ersetzen`} className="h-9! w-9! border-transparent bg-transparent" onClick={onReplace}>
+          {/* Phones: the name may wrap onto two lines and the actions sit in one menu — four icon
+              buttons left the name about 90 px. From sm up the icons stay as they were. */}
+          <span className="min-w-0 flex-1 wrap-break-word sm:truncate">{entry.exerciseName}</span>
+          <span className="hidden shrink-0 items-center sm:flex">
+            <IconButton aria-label={`${entry.exerciseName} ersetzen`} className={iconButton} onClick={onReplace}>
               <Repeat2 size={16} aria-hidden />
             </IconButton>
-            <IconButton aria-label={`${entry.exerciseName} nach oben`} className="h-9! w-9! border-transparent bg-transparent" disabled={index === 0} onClick={() => onMove("up")}>
+            <IconButton aria-label={`${entry.exerciseName} nach oben`} className={iconButton} disabled={index === 0} onClick={() => onMove("up")}>
               <ArrowUp size={16} aria-hidden />
             </IconButton>
-            <IconButton aria-label={`${entry.exerciseName} nach unten`} className="h-9! w-9! border-transparent bg-transparent" disabled={last} onClick={() => onMove("down")}>
+            <IconButton aria-label={`${entry.exerciseName} nach unten`} className={iconButton} disabled={last} onClick={() => onMove("down")}>
               <ArrowDown size={16} aria-hidden />
             </IconButton>
-            <IconButton aria-label={`${entry.exerciseName} löschen`} className="h-9! w-9! border-transparent bg-transparent hover:text-danger-text" onClick={() => remove.mutate(entry.id)}>
+            <IconButton aria-label={`${entry.exerciseName} löschen`} className={cn(iconButton, "hover:text-danger-text")} onClick={handleDelete}>
               <Trash2 size={16} aria-hidden />
             </IconButton>
           </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton aria-label={`Aktionen für ${entry.exerciseName}`} className="border-transparent bg-transparent sm:hidden">
+                <MoreHorizontal size={18} aria-hidden />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem icon={<Repeat2 size={16} />} onSelect={onReplace}>
+                Ersetzen
+              </DropdownMenuItem>
+              <DropdownMenuItem icon={<ArrowUp size={16} />} disabled={index === 0} onSelect={() => onMove("up")}>
+                Nach oben
+              </DropdownMenuItem>
+              <DropdownMenuItem icon={<ArrowDown size={16} />} disabled={last} onSelect={() => onMove("down")}>
+                Nach unten
+              </DropdownMenuItem>
+              <DropdownMenuItem tone="danger" icon={<Trash2 size={16} />} onSelect={handleDelete}>
+                Löschen
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </ListRow>
     </div>
@@ -90,7 +132,10 @@ function Row({
 }
 
 export function PlanDays({ phase }: { phase: TrainingPhase }) {
-  const { data: entries, isLoading } = usePlanExercises(phase);
+  const { data: allEntries, isLoading } = usePlanExercises(phase);
+  const pendingDeletes = useUndoStore((s) => s.pendingIds);
+  // Rows whose delete is still inside the undo window are already gone from the list.
+  const entries = allEntries?.filter((e) => !pendingDeletes.has(e.id));
   const update = useUpdatePlanExercise(phase);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [replacing, setReplacing] = useState<PlanExerciseDto | null>(null);

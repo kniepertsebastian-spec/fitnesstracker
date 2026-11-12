@@ -119,7 +119,7 @@ export function PhaseRotation({ current, selected, phases, onSelect }: Props) {
               iconLeft={<Plus size={14} aria-hidden />}
               onClick={() => handleOpenAdd(false)}
             >
-              + Phase hinzufügen
+              Phase hinzufügen
             </Button>
           )}
         </div>

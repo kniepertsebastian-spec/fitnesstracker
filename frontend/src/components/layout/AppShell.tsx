@@ -8,6 +8,7 @@ import { LightBand } from "./LightBand";
 import { Logo } from "./Logo";
 import { NavMenu } from "./NavMenu";
 import { PRToastHost } from "./PRToastHost";
+import { UndoToastHost } from "./UndoToastHost";
 import { RestTimerWidget } from "./RestTimerWidget";
 import { StartTrainingButton } from "./StartTrainingButton";
 import { SyncStatusIndicator } from "./SyncStatusIndicator";
@@ -55,7 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 pb-[calc(3.5rem+env(safe-area-inset-bottom))] pt-4 lg:px-10 lg:pb-6 lg:pt-6">{children}</main>
+        <main className="flex-1 px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-4 lg:px-10 lg:pb-6 lg:pt-6">{children}</main>
       </div>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen} title="Menü" className="gap-4 p-4">
@@ -77,6 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <BottomTabBar onOpenMenu={() => setMenuOpen(true)} />
       <PRToastHost />
+      <UndoToastHost />
       <RestTimerWidget />
     </div>
   );

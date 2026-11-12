@@ -14,6 +14,7 @@ import { entriesToReadings } from "../../lib/scaleReadings";
 import { BodyFatEstimateCard } from "./BodyFatEstimateCard";
 import { ArrowDown, ArrowRight, ArrowUp, Scale, Trash2 } from "lucide-react";
 import { Button, Callout, Card, EmptyState, Field, IconButton, Input, ListRow, Skeleton, StatTile } from "../ui";
+import { formatKg } from "../../lib/trainingSets";
 
 const num = (value: number) => value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const clock = (iso: string) => new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
@@ -109,14 +110,15 @@ export function BodyCompositionCard() {
               <StatTile
                 className="p-3"
                 label={BODY_METRIC_INFO.weightKg.label}
-                value={<>{latest.weightKg} <Trend current={latest.weightKg} previous={previous?.weightKg} /></>}
+                value={formatKg(latest.weightKg)}
                 unit="kg"
+                trend={<Trend current={latest.weightKg} previous={previous?.weightKg} />}
               />
               {latest.bodyFatPercent !== null && (
                 <StatTile
                   className="p-3"
                   label={BODY_METRIC_INFO.bodyFatPercent.label}
-                  value={latest.bodyFatPercent}
+                  value={formatKg(latest.bodyFatPercent)}
                   unit="%"
                   sub={categorizeBodyFat(latest.bodyFatPercent, profile?.gender) ?? undefined}
                   info={<CalcInfoButton id="body-fat-category" />}
@@ -126,7 +128,7 @@ export function BodyCompositionCard() {
                 <StatTile
                   className="p-3"
                   label={BODY_METRIC_INFO.muscleMassKg.label}
-                  value={latest.muscleMassKg}
+                  value={formatKg(latest.muscleMassKg)}
                   unit="kg"
                 />
               )}
@@ -134,7 +136,7 @@ export function BodyCompositionCard() {
                 <StatTile
                   className="p-3"
                   label={BODY_METRIC_INFO.bodyWaterPercent.label}
-                  value={latest.bodyWaterPercent}
+                  value={formatKg(latest.bodyWaterPercent)}
                   unit="%"
                 />
               )}
@@ -183,10 +185,10 @@ export function BodyCompositionCard() {
                 <div className="min-w-0">
                   <p className="text-body text-text-muted">{formatDate(entry.measuredAt)}</p>
                   <p className="text-xs text-text-faint">
-                    {entry.weightKg} kg
-                    {entry.bodyFatPercent !== null && ` · ${entry.bodyFatPercent} % KF`}
-                    {entry.muscleMassKg !== null && ` · ${entry.muscleMassKg} kg Muskeln`}
-                    {entry.bodyWaterPercent !== null && ` · ${entry.bodyWaterPercent} % Wasser`}
+                    {formatKg(entry.weightKg)} kg
+                    {entry.bodyFatPercent !== null && ` · ${formatKg(entry.bodyFatPercent)} % KF`}
+                    {entry.muscleMassKg !== null && ` · ${formatKg(entry.muscleMassKg)} kg Muskeln`}
+                    {entry.bodyWaterPercent !== null && ` · ${formatKg(entry.bodyWaterPercent)} % Wasser`}
                   </p>
                 </div>
                 <IconButton

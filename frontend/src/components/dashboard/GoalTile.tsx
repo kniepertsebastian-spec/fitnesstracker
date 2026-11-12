@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { GOAL_TYPE_LABELS, GOAL_TYPE_UNITS, useGoals } from "../../hooks/useGoals";
 import { Card, EmptyState, ProgressBar } from "../ui";
 import { Target } from "lucide-react";
+import { formatKg } from "../../lib/trainingSets";
 
 export function GoalTile() {
   const { data: goals } = useGoals();
@@ -25,7 +26,7 @@ export function GoalTile() {
             {best.goal.exerciseName ?? GOAL_TYPE_LABELS[best.goal.type]}
           </p>
           <p className="tabular mt-0.5 text-small text-text-subtle">
-            {best.goal.currentValue} / {best.goal.targetValue} {GOAL_TYPE_UNITS[best.goal.type]}
+            {best.goal.currentValue !== null ? formatKg(best.goal.currentValue) : "–"} / {formatKg(best.goal.targetValue)} {GOAL_TYPE_UNITS[best.goal.type]}
           </p>
           <ProgressBar className="mt-3" value={best.progress * 100} label="Zielfortschritt" />
         </>

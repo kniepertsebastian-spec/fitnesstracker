@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { GOAL_TYPE_LABELS, GOAL_TYPE_UNITS, useGoals } from "../../hooks/useGoals";
 import { Card, ProgressBar } from "../ui";
+import { formatKg } from "../../lib/trainingSets";
 
 const MAX_VISIBLE = 4;
 
@@ -34,7 +35,7 @@ export function GoalsProgressCard() {
               <div className="flex items-center justify-between gap-2 text-body">
                 <span className="truncate text-text">{name}</span>
                 <span className="tabular shrink-0 text-small text-text-faint">
-                  {goal.currentValue !== null ? `${goal.currentValue}/${goal.targetValue} ${unit}` : `${goal.targetValue} ${unit}`}
+                  {goal.currentValue !== null ? `${formatKg(goal.currentValue)}/${formatKg(goal.targetValue)} ${unit}` : `${formatKg(goal.targetValue)} ${unit}`}
                 </span>
               </div>
               {progress !== null && <ProgressBar className="mt-1.5" value={progress * 100} label={`Ziel ${name}`} />}

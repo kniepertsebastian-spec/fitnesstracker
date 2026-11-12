@@ -33,7 +33,8 @@ export function BodyDataCard({ range }: { range: ProgressRange }) {
         label={label}
         value={value !== null ? value.toLocaleString("de-DE", { maximumFractionDigits: 1 }) : "–"}
         unit={value !== null ? unit : undefined}
-        sub={value !== null && base !== null ? `${formatDelta(value - base, 1)} ${unit}` : undefined}
+        // A change in a percentage is in percentage points, not "%".
+        sub={value !== null && base !== null ? `${formatDelta(value - base, 1)} ${unit === "%" ? "Prozentpunkte" : unit}` : undefined}
         className="p-3"
       />
     );

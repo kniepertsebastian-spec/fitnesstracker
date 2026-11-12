@@ -209,11 +209,13 @@ export function DashboardPage() {
             </div>
             <div className="grid grid-cols-2 gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-2 lg:grid-cols-1">
               <GoalTile />
-              <div className="col-span-2 lg:col-span-1">
-                <QuickWeightCard />
-              </div>
+              {/* Right after the goal tile so the two narrow tiles share one row on phones; the
+                  wide weight card follows. From lg up this tile is hidden (it has its own table). */}
               <div className="lg:hidden">
                 <LastWorkoutTile days={workoutDays} />
+              </div>
+              <div className="col-span-2 lg:col-span-1">
+                <QuickWeightCard />
               </div>
             </div>
             <div className="hidden lg:col-start-1 lg:row-start-3 lg:block">
