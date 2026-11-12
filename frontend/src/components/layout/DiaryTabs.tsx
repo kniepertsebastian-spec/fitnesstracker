@@ -19,7 +19,7 @@ export function DiaryTabs() {
           to={tab.to}
           className={({ isActive }) =>
             cn(
-              "flex min-h-[40px] items-center rounded-sm px-4 text-small font-medium transition-colors duration-150",
+              "flex min-h-11 items-center rounded-sm px-4 text-small font-medium transition-colors duration-150",
               isActive ? "bg-surface-2 text-text" : "text-text-muted hover:text-text",
             )
           }

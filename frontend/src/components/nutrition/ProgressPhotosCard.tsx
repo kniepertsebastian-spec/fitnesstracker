@@ -122,7 +122,7 @@ export function ProgressPhotosCard() {
                   <p className="mt-1 text-center text-xs text-text-faint">{formatDate(photo.takenAt)}</p>
                   <IconButton
                     onClick={() => deletePhoto.mutate(photo.id)}
-                    className="absolute right-1 top-1 h-9! w-9! rounded-full bg-bg"
+                    className="absolute right-1 top-1 rounded-full bg-bg"
                     aria-label={`Foto vom ${formatDate(photo.takenAt)} löschen`}
                   >
                     <X size={14} aria-hidden />

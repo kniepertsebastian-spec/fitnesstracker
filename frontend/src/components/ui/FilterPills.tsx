@@ -16,7 +16,7 @@ export interface FilterPillsProps {
 export function FilterPills({ label, options, value, onChange, allLabel = "Alle", formatOption, className }: FilterPillsProps) {
   const pill = (selected: boolean) =>
     cn(
-      "min-h-9 shrink-0 whitespace-nowrap rounded-full border px-3.5 text-small font-medium transition-colors duration-150",
+      "min-h-11 shrink-0 whitespace-nowrap rounded-full border px-3.5 text-small font-medium transition-colors duration-150",
       selected
         ? "border-accent-border bg-accent-soft text-accent-text"
         : "border-border-strong text-text-muted hover:bg-surface-2",

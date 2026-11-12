@@ -73,7 +73,7 @@ function Row({
   // The server only hears about it after the undo window, see stores/undoStore.ts.
   const handleDelete = () =>
     scheduleDelete(entry.id, `${entry.exerciseName} gelöscht`, () => remove.mutateAsync(entry.id));
-  const iconButton = "h-9! w-9! border-transparent bg-transparent";
+  const iconButton = "border-transparent bg-transparent";
   return (
     <div
       draggable

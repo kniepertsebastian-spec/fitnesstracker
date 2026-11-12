@@ -34,7 +34,7 @@ export const StatusPill = forwardRef<HTMLButtonElement, StatusPillProps>(functio
       ref={ref}
       type={type}
       className={cn(
-        "inline-flex min-h-9 min-w-0 max-w-full items-center gap-1.5 rounded-full px-3 text-xs font-medium",
+        "inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-full px-3 text-xs font-medium",
         TONES[tone],
         className,
       )}

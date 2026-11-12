@@ -17,7 +17,7 @@ export function CalcInfoButton({ id, className }: { id: string; className?: stri
       <IconButton
         aria-label={`Info zur Berechnung: ${info.title}`}
         title="Wie wird das berechnet?"
-        className={cn("h-8! w-8! border-transparent bg-transparent", className)}
+        className={cn("border-transparent bg-transparent", className)}
         onClick={() => setOpen(true)}
       >
         <Info size={16} aria-hidden />

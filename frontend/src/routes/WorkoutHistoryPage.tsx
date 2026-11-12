@@ -121,7 +121,7 @@ function HistoryCalendar({ view, dayKeysWithLogs, selectedDate, onSelectDay, onP
               aria-pressed={isSelected}
               aria-label={`${day}.${hasLogs ? " mit Training" : ""}`}
               className={cn(
-                "tabular aspect-square min-h-9 rounded-lg text-small",
+                "tabular aspect-square min-h-11 rounded-lg text-small",
                 isSelected
                   ? "bg-accent font-semibold text-on-accent"
                   : hasLogs
@@ -174,10 +174,10 @@ function ExerciseLogGroup({ exerciseName, logs, onEdit }: ExerciseGroupProps) {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-small text-text-subtle">{formatTime(log.performedAt)}</span>
                 <span className="flex">
-                  <IconButton aria-label={`Satz ${log.setNumber} bearbeiten`} className="h-9! w-9! border-transparent bg-transparent" onClick={() => onEdit(log)}>
+                  <IconButton aria-label={`Satz ${log.setNumber} bearbeiten`} className="border-transparent bg-transparent" onClick={() => onEdit(log)}>
                     <Pencil size={16} aria-hidden />
                   </IconButton>
-                  <IconButton aria-label={`Satz ${log.setNumber} löschen`} className="h-9! w-9! border-transparent bg-transparent hover:text-danger-text" onClick={() => setDeleting(log)}>
+                  <IconButton aria-label={`Satz ${log.setNumber} löschen`} className="border-transparent bg-transparent hover:text-danger-text" onClick={() => setDeleting(log)}>
                     <Trash2 size={16} aria-hidden />
                   </IconButton>
                 </span>
