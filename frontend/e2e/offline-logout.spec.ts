@@ -9,6 +9,11 @@ test.describe("Abmelden ohne Verbindung", () => {
 
     await goOffline(page, context);
     await page.getByRole("button", { name: "Abmelden" }).filter({ visible: true }).first().click();
+    // A single tap no longer logs out: the dialog asks first and warns about the offline state.
+    const dialog = page.getByRole("dialog", { name: "Abmelden?" });
+    await expect(dialog).toContainText("Du bist offline");
+    await expect(page).not.toHaveURL(/\/login/);
+    await dialog.getByRole("button", { name: "Abmelden" }).click();
     await page.waitForURL("/login");
 
     await goOnline(page, context);
