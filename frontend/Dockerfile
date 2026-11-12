@@ -18,6 +18,9 @@ COPY frontend/src frontend/src
 COPY frontend/public frontend/public
 COPY frontend/index.html frontend/index.html
 COPY frontend/vite.config.ts frontend/vite.config.ts
+# Tailwind 4 runs as a PostCSS plugin. Without this file Vite silently skips it and ships the
+# raw `@import "tailwindcss"` source (no utilities, no theme) — the app then renders unstyled.
+COPY frontend/postcss.config.js frontend/postcss.config.js
 COPY frontend/tsconfig.json frontend/tsconfig.json
 RUN pnpm --filter @fitnesstracker/shared build
 RUN pnpm --filter frontend build
