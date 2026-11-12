@@ -52,6 +52,16 @@ export async function signUp(app: FastifyInstance, label: string): Promise<Sessi
   return { id: body.user.id, email, accessToken: body.accessToken, refreshToken: refreshCookieOf(res)! };
 }
 
+// The operator account (OPERATOR_EMAIL, set in vitest.config.ts); created on first use.
+export async function operatorSession(app: FastifyInstance): Promise<Session> {
+  const email = env.OPERATOR_EMAIL;
+  await register(app, email); // 409 when an earlier run already created it
+  const res = await login(app, email);
+  if (res.statusCode !== 200) throw new Error(`operator login failed: ${res.body}`);
+  const body = res.json() as { user: { id: string }; accessToken: string };
+  return { id: body.user.id, email, accessToken: body.accessToken, refreshToken: refreshCookieOf(res)! };
+}
+
 export function authed(session: Session) {
   return { authorization: `Bearer ${session.accessToken}` };
 }

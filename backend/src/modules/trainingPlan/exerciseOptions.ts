@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { coldStartInputSchema, DEFAULT_EQUIPMENT, type ExerciseOptionDto } from "@fitnesstracker/shared";
 import { equipmentTagOf, scoreExercise, type CatalogRow } from "../aiPlanGenerator/planAssembly.js";
+import { visibleToUser } from "../exercises/exercise.service.js";
 
 const OPTION_CATEGORIES = ["strength", "powerlifting"];
 const SWAP_OPTIONS = 6;
@@ -17,7 +18,7 @@ export async function loadOptionPool(prisma: PrismaClient, userId: string): Prom
   const [user, rows, logged] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { aiPlanPreferences: true } }),
     prisma.exercise.findMany({
-      where: { isActive: true, category: { in: OPTION_CATEGORIES } },
+      where: { isActive: true, category: { in: OPTION_CATEGORIES }, ...visibleToUser(userId) },
       select: { id: true, name: true, nameDe: true, equipment: true, primaryMuscles: true, category: true },
     }),
     prisma.workoutLog.groupBy({ by: ["exerciseId"], where: { userId, deletedAt: null }, _count: { _all: true } }),

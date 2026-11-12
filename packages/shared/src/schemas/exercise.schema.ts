@@ -18,7 +18,13 @@ export type ExerciseDto = z.infer<typeof exerciseDtoSchema>;
 export const createExerciseSchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(5000).optional(),
-  videoUrl: z.string().url().optional(),
+  // Rendered as a link/player, so only plain web addresses (no javascript:, data: ...).
+  videoUrl: z
+    .string()
+    .url()
+    .max(2048)
+    .refine((value) => /^https?:\/\//i.test(value), "Nur http(s)-Adressen sind erlaubt.")
+    .optional(),
   equipment: z.string().max(200).optional(),
   category: z.string().max(200).optional(),
   primaryMuscles: z.array(z.string()).optional(),

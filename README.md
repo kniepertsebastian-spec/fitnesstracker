@@ -72,6 +72,11 @@ Passworts („Passwort vergessen“) braucht ein eigenes `RESET_TOKEN` (mindeste
 verschieden vom `SETUP_TOKEN`); ohne gesetztes `RESET_TOKEN` ist der Reset abgeschaltet. So kann
 jemand, dem du das `SETUP_TOKEN` zum Registrieren gibst, kein fremdes Konto übernehmen.
 
+Eigene Übungen sind privat: Sie sind nur für das Konto sichtbar und änderbar, das sie angelegt hat.
+Der Übungskatalog (importierte Übungen) ist für alle sichtbar, darf aber nur vom Betreiberkonto
+importiert und geändert werden. Das ist das Konto aus `OPERATOR_EMAIL` in der `.env`; ist die
+Variable leer, gilt das älteste Konto (das mit dem `SETUP_TOKEN` angelegte).
+
 ## Übungen importieren
 
 Statt Übungen von Hand zu pflegen, gibt es einen Import-Endpunkt, der einen kompletten

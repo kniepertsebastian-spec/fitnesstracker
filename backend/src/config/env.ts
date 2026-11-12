@@ -47,6 +47,10 @@ const envSchema = z
       .optional()
       .default("")
       .refine((val) => val === "" || val.length >= 16, { message: "RESET_TOKEN must be at least 16 characters when set" }),
+    // The operator account may import the exercise catalog and edit/delete catalog exercises (the
+    // ones nobody owns). Empty = the oldest account is the operator, which is the one created
+    // with the setup token.
+    OPERATOR_EMAIL: z.string().optional().default(""),
     FRONTEND_ORIGIN: z.string().url().default("http://localhost:5173"),
     // Requests per minute and IP on /auth/login and /auth/register. Keep the default in production;
     // only the CI raises it, because every E2E scenario registers and logs in its own account from

@@ -5,7 +5,7 @@ import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { env } from "../config/env.js";
-import { authed, hasTestDb, multipartFile, signUp, startApp, type Session } from "./testApp.js";
+import { authed, hasTestDb, multipartFile, operatorSession, signUp, startApp, type Session } from "./testApp.js";
 
 // Everybody who gets an account (friends included) must only ever see and change their own data.
 describe.skipIf(!hasTestDb)("data separation between accounts (integration)", () => {
@@ -60,6 +60,38 @@ describe.skipIf(!hasTestDb)("data separation between accounts (integration)", ()
     const aliceList = await call(alice, "GET", "/api/supplements");
     expect(aliceList.json().items).toHaveLength(1);
     expect(aliceList.json().items[0].name).toBe("Alice creatine");
+  });
+
+  it("exercises: custom ones are private; the catalog is only changeable by the operator", async () => {
+    const created = await call(alice, "POST", "/api/exercises", { name: `Alice curl ${randomUUID()}` });
+    expect(created.statusCode).toBe(201);
+    const id = created.json().id as string;
+
+    // Bob neither sees nor changes Alice's exercise.
+    expect((await call(bob, "GET", `/api/exercises/${id}`)).statusCode).toBe(404);
+    expect((await call(bob, "PATCH", `/api/exercises/${id}`, { name: "hijacked" })).statusCode).toBe(404);
+    expect((await call(bob, "DELETE", `/api/exercises/${id}`)).statusCode).toBe(404);
+    const bobList = (await call(bob, "GET", "/api/exercises?pageSize=200")).json().items as { id: string }[];
+    expect(bobList.some((e) => e.id === id)).toBe(false);
+    // ... and cannot put it into a plan or goal either.
+    expect((await call(bob, "POST", "/api/goals", { type: "WEIGHT", exerciseId: id, targetValue: 100 })).statusCode).toBe(404);
+
+    // Alice can.
+    expect((await call(alice, "PATCH", `/api/exercises/${id}`, { name: "Alice curl v2" })).statusCode).toBe(200);
+    expect((await call(alice, "DELETE", `/api/exercises/${id}`)).statusCode).toBe(204);
+
+    // The shared catalog (no owner) is visible to everybody but not changeable by a normal account.
+    expect((await call(bob, "GET", `/api/exercises/${exerciseId}`)).statusCode).toBe(200);
+    expect((await call(bob, "PATCH", `/api/exercises/${exerciseId}`, { name: "hijacked" })).statusCode).toBe(403);
+    expect((await call(bob, "DELETE", `/api/exercises/${exerciseId}`)).statusCode).toBe(403);
+    const operator = await operatorSession(app);
+    expect((await call(operator, "PATCH", `/api/exercises/${exerciseId}`, { description: "ok" })).statusCode).toBe(200);
+  });
+
+  it("exercises: only the operator may import the catalog; videoUrl must be http(s)", async () => {
+    expect((await call(bob, "POST", "/api/exercises/import", { source: "free-exercise-db" })).statusCode).toBe(403);
+    const bad = await call(alice, "POST", "/api/exercises", { name: "x", videoUrl: "javascript:alert(1)" });
+    expect(bad.statusCode).toBe(400);
   });
 
   it("workout logs: lists, edits and deletes only the own ones", async () => {
