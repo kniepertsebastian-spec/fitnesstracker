@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { applyCalibrationOffset } from "./schemas/bodyFatCalibration.schema.js";
 import {
   bodyFatRange,
   estimateBodyFatCunBae,
@@ -100,5 +101,12 @@ describe("bodyFatRange", () => {
   });
   it("has no range without a waist", () => {
     expect(bodyFatRange({ heightCm: 182, gender: "MALE", neckCm: 39 })).toBeNull();
+  });
+});
+
+describe("applyCalibrationOffset", () => {
+  it("moves both ends by the offset and clamps to 0-100", () => {
+    expect(applyCalibrationOffset({ low: 17.3, high: 22.6 }, -2)).toEqual({ low: 15.3, high: 20.6 });
+    expect(applyCalibrationOffset({ low: 1, high: 5 }, -3)).toEqual({ low: 0, high: 2 });
   });
 });

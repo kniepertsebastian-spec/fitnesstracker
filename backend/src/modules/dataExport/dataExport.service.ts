@@ -8,6 +8,7 @@ import { toTrainingPlanDto } from "../trainingPlan/trainingPlan.types.js";
 import { planExerciseInclude, toPlanExerciseDto } from "../trainingPlan/planExercise.types.js";
 import { listEntries } from "../bodyComposition/bodyComposition.service.js";
 import { toBodyCompositionEntryDto } from "../bodyComposition/bodyComposition.types.js";
+import { listCalibrations, toBodyFatCalibrationDto } from "../bodyComposition/bodyFatCalibration.service.js";
 import { toCardioLogDto } from "../cardioLogs/cardioLog.types.js";
 import { listSupplements } from "../supplements/supplement.service.js";
 import { toSupplementDto } from "../supplements/supplement.types.js";
@@ -41,6 +42,7 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     { plan, nextRotationOn, history },
     planExercises,
     bodyCompositionEntries,
+    bodyFatCalibrations,
     cardioLogs,
     supplements,
     profile,
@@ -58,6 +60,7 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
       orderBy: [{ phase: "asc" }, { order: "asc" }],
     }),
     listEntries(prisma, userId),
+    listCalibrations(prisma, userId),
     prisma.cardioLog.findMany({ where: { userId, deletedAt: null }, orderBy: { performedAt: "asc" } }),
     listSupplements(prisma, userId),
     getProfile(prisma, userId),
@@ -85,6 +88,7 @@ export async function buildFullBackup(prisma: PrismaClient, userId: string) {
     workoutLogs: workoutLogs.map(toWorkoutLogDto),
     goals: goalsWithCurrentValue,
     bodyCompositionEntries: bodyCompositionEntries.map(toBodyCompositionEntryDto),
+    bodyFatCalibrations: bodyFatCalibrations.map(toBodyFatCalibrationDto),
     cardioLogs: cardioLogs.map(toCardioLogDto),
     // Own cardio plan versions (F9); days without a row use the rule-based suggestion.
     cardioPlanDays: cardioPlanDays.map((d) => ({ phase: d.phase, dayLabel: d.dayLabel, items: d.items })),
