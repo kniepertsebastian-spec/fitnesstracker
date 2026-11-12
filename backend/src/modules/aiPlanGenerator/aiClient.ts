@@ -1,5 +1,6 @@
 import type { AiProvider } from "@prisma/client";
 import { HttpError } from "../../errors/httpErrors.js";
+import { describeFetchError, fetchWithTimeout } from "../../lib/fetchWithTimeout.js";
 
 // All four providers expose (or fully proxy) an OpenAI-compatible chat-completions endpoint, so
 // one call shape covers all of them — Gemini via Google's own OpenAI-compat surface, Groq and
@@ -64,7 +65,7 @@ export async function callChatCompletion(
 
   let res: Response;
   try {
-    res = await fetch(url, {
+    res = await fetchWithTimeout(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -83,7 +84,7 @@ export async function callChatCompletion(
     });
   } catch (error) {
     throw new AiProviderError(
-      `Could not reach the AI provider: ${error instanceof Error ? error.message : String(error)}`,
+      `Der KI-Anbieter konnte nicht erreicht werden: ${describeFetchError(error)}`,
     );
   }
 

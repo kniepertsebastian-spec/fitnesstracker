@@ -1,3 +1,4 @@
+import { fetchWithTimeout } from "../../../lib/fetchWithTimeout.js";
 import type { ExerciseSourceAdapter, ImportedExercise } from "./types.js";
 
 const DATASET_URL =
@@ -23,7 +24,7 @@ export const freeExerciseDbAdapter: ExerciseSourceAdapter = {
   name: "free-exercise-db",
 
   async fetchExercises(): Promise<ImportedExercise[]> {
-    const res = await fetch(DATASET_URL);
+    const res = await fetchWithTimeout(DATASET_URL);
     if (!res.ok) {
       throw new Error(`free-exercise-db fetch failed: ${res.status} ${res.statusText}`);
     }

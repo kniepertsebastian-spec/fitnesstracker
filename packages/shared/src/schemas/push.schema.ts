@@ -1,8 +1,39 @@
 import { z } from "zod";
 
+// The server POSTs to whatever endpoint a client registers, so only the push services that real
+// browsers use are accepted — anything else would let an account make the server call arbitrary
+// (internal) addresses.
+const PUSH_SERVICE_HOSTS = [
+  "fcm.googleapis.com", // Chrome, Edge, Brave, Android
+  "updates.push.services.mozilla.com", // Firefox
+  "web.push.apple.com", // Safari / iOS home-screen apps
+];
+const PUSH_SERVICE_SUFFIXES = [
+  ".push.apple.com",
+  ".notify.windows.com", // Windows Notification Service (legacy Edge)
+  ".push.services.mozilla.com",
+];
+
+// Parsed by hand (this package has no DOM/Node typings, so no `URL`): https only, no credentials
+// (`@`), optional default port, then a path/query/fragment.
+const HTTPS_ENDPOINT = /^https:\/\/([^/?#@:\s]+)(?::443)?(?:[/?#]|$)/i;
+
+export function isKnownPushEndpoint(value: string): boolean {
+  const match = HTTPS_ENDPOINT.exec(value);
+  if (!match) return false;
+  const host = match[1]!.toLowerCase();
+  return PUSH_SERVICE_HOSTS.includes(host) || PUSH_SERVICE_SUFFIXES.some((suffix) => host.endsWith(suffix));
+}
+
+export const pushEndpointSchema = z
+  .string()
+  .url()
+  .max(2048)
+  .refine(isKnownPushEndpoint, "Unbekannter Push-Dienst: nur HTTPS-Endpunkte der Browser-Anbieter sind erlaubt.");
+
 // Matches the shape of the browser's PushSubscription.toJSON() output.
 export const pushSubscribeSchema = z.object({
-  endpoint: z.string().url(),
+  endpoint: pushEndpointSchema,
   keys: z.object({
     p256dh: z.string().min(1),
     auth: z.string().min(1),
@@ -11,7 +42,7 @@ export const pushSubscribeSchema = z.object({
 export type PushSubscribeInput = z.infer<typeof pushSubscribeSchema>;
 
 export const pushUnsubscribeSchema = z.object({
-  endpoint: z.string().url(),
+  endpoint: z.string().url().max(2048),
 });
 export type PushUnsubscribeInput = z.infer<typeof pushUnsubscribeSchema>;
 

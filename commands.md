@@ -64,6 +64,13 @@ docker compose -f docker-compose.prod.yml logs -f caddy
 docker compose -f docker-compose.prod.yml ps
 ```
 
+### Gesundheit und sauberes Neustarten
+
+```bash
+docker compose -f docker-compose.prod.yml ps      # backend: "healthy" (Healthcheck fragt /api/health inkl. DB ab)
+time docker compose -f docker-compose.prod.yml restart backend    # fährt per SIGTERM sauber herunter, < 3 s
+```
+
 ### Migrationen manuell prüfen/anwenden (normalerweise nicht nötig, siehe oben)
 
 ```bash

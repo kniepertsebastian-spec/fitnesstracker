@@ -22,6 +22,9 @@
     "check:css": "node scripts/check-frontend-css.mjs frontend/dist"
   },
   "pnpm": {
+    "overrides": {
+      "deepmerge-ts": "^8.0.2"
+    },
     "onlyBuiltDependencies": [
       "@prisma/client",
       "@prisma/engines",

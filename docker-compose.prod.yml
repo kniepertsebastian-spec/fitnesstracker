@@ -50,6 +50,14 @@ services:
       # Progress-photo uploads live on the VPS filesystem (no cloud storage, see
       # ARCHITECTURE.md) and must survive container recreation, same as pgdata below.
       - uploads:/app/backend/uploads
+    # Ready once the API answers and can reach the database (/api/health runs SELECT 1). The long
+    # start period covers `prisma generate` + migrations that run before the server boots.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     depends_on:
       postgres:
         condition: service_healthy
