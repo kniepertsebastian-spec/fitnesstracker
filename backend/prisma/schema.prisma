@@ -141,6 +141,7 @@ model User {
   supplements            Supplement[]
   bodyCompositionEntries BodyCompositionEntry[]
   bodyAnalyses           BodyAnalysis[]
+  bodyFatCalibrations    BodyFatCalibration[]
   progressPhotos         ProgressPhoto[]
   planExercises          PlanExercise[]
   planSnapshots          PlanSnapshot[]
@@ -460,12 +461,32 @@ model BodyCompositionEntry {
   bodyFatPercent   Decimal? @db.Decimal(4, 1)
   muscleMassKg     Decimal? @db.Decimal(5, 2)
   bodyWaterPercent Decimal? @db.Decimal(4, 1)
+  // Tape measurements in cm for the body-fat estimate (RFM, US Navy) and the waist trend.
+  waistCm          Decimal? @db.Decimal(4, 1)
+  neckCm           Decimal? @db.Decimal(4, 1)
+  hipCm            Decimal? @db.Decimal(4, 1)
   // Everything else a scale report states plus the raw impedances (see ScaleDetails in the shared
   // package); null for manually entered measurements.
   scaleDetails     Json?
   createdAt        DateTime @default(now())
 
   @@index([userId, measuredAt])
+}
+
+// A reference body-fat value (e.g. a DEXA scan) with the app's own estimate for the same day. The
+// difference is applied to later estimates, which turns a rough formula into a personal one.
+model BodyFatCalibration {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  measuredOn       DateTime @db.Date
+  referencePercent Decimal  @db.Decimal(4, 1)
+  // Middle of the formula range on the nearest tape measurement, and reference minus that.
+  estimatePercent  Decimal  @db.Decimal(4, 1)
+  offsetPercent    Decimal  @db.Decimal(4, 1)
+  createdAt        DateTime @default(now())
+
+  @@index([userId, measuredOn])
 }
 
 // Imported body-composition report. Only extracted text and the reviewed interpretation are stored;

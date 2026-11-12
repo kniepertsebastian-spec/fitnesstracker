@@ -2,11 +2,18 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
   createBodyCompositionEntrySchema,
+  createBodyFatCalibrationSchema,
   importBodyCompositionSchema,
   saveScaleReportSchema,
   updateBodyCompositionEntrySchema,
 } from "@fitnesstracker/shared";
 import { createEntry, deleteEntry, importEntries, listEntries, saveScaleReport, updateEntry } from "./bodyComposition.service.js";
+import {
+  createCalibration,
+  deleteCalibration,
+  listCalibrations,
+  toBodyFatCalibrationDto,
+} from "./bodyFatCalibration.service.js";
 import { parseFitdaysReport } from "./scaleReport.parser.js";
 import { recognizeImageText } from "../../lib/imageOcr.js";
 import { resolveTimeZone } from "../activity/activity.service.js";
@@ -81,6 +88,33 @@ export default async function bodyCompositionRoutes(fastify: FastifyInstance) {
       if (error instanceof HttpError) {
         return reply.code(error.statusCode).send({ message: error.message });
       }
+      throw error;
+    }
+  });
+
+  fastify.get("/body-fat-calibrations", async (request, reply) => {
+    const rows = await listCalibrations(fastify.prisma, request.user.sub);
+    return reply.send({ items: rows.map(toBodyFatCalibrationDto) });
+  });
+
+  fastify.post("/body-fat-calibrations", async (request, reply) => {
+    const input = createBodyFatCalibrationSchema.parse(request.body);
+    try {
+      const row = await createCalibration(fastify.prisma, request.user.sub, input);
+      return reply.code(201).send(toBodyFatCalibrationDto(row));
+    } catch (error) {
+      if (error instanceof HttpError) return reply.code(error.statusCode).send({ message: error.message });
+      throw error;
+    }
+  });
+
+  fastify.delete("/body-fat-calibrations/:id", async (request, reply) => {
+    const { id } = idParamSchema.parse(request.params);
+    try {
+      await deleteCalibration(fastify.prisma, request.user.sub, id);
+      return reply.code(204).send();
+    } catch (error) {
+      if (error instanceof HttpError) return reply.code(error.statusCode).send({ message: error.message });
       throw error;
     }
   });

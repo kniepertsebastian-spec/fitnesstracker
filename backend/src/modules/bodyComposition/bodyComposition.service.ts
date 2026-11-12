@@ -26,6 +26,9 @@ export function createEntry(prisma: PrismaClient, userId: string, input: CreateB
       bodyFatPercent: input.bodyFatPercent,
       muscleMassKg: input.muscleMassKg,
       bodyWaterPercent: input.bodyWaterPercent,
+      waistCm: input.waistCm,
+      neckCm: input.neckCm,
+      hipCm: input.hipCm,
       measuredAt: input.measuredAt ? new Date(input.measuredAt) : undefined,
     },
   });
@@ -100,6 +103,9 @@ export async function updateEntry(
       bodyFatPercent: input.bodyFatPercent,
       muscleMassKg: input.muscleMassKg,
       bodyWaterPercent: input.bodyWaterPercent,
+      waistCm: input.waistCm,
+      neckCm: input.neckCm,
+      hipCm: input.hipCm,
       measuredAt: input.measuredAt ? new Date(input.measuredAt) : undefined,
     },
   });

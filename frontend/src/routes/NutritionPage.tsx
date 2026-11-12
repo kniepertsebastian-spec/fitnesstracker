@@ -8,6 +8,7 @@ import { ScaleAnalysisCard } from "../components/nutrition/ScaleAnalysisCard";
 import { ScaleReportImportCard } from "../components/nutrition/ScaleReportImportCard";
 import { BodyAnalysisCard } from "../components/nutrition/BodyAnalysisCard";
 import { FatLossGoalCard } from "../components/nutrition/FatLossGoalCard";
+import { Disclosure } from "../components/ui";
 import { ProgressPhotosCard } from "../components/nutrition/ProgressPhotosCard";
 
 const TABS = [
@@ -34,15 +35,18 @@ export function NutritionPage() {
       {tab === "rechner" && <ProfileForm />}
       {tab === "koerper" && (
         <div className="flex flex-col gap-6">
-          <BodyAnalysisCard />
-          <FatLossGoalCard />
-          <ScaleReportImportCard />
           <BodyCompositionCard />
-          <ScaleAnalysisCard />
+          <FatLossGoalCard />
           <div>
             <h2 className="mb-2 text-h2 text-text">Fortschrittsfotos</h2>
             <ProgressPhotosCard />
           </div>
+          {/* Rarely used tools stay folded away; the measurement and the estimate come first. */}
+          <Disclosure title="Importe und Analysen" hint="Waagenbericht einlesen, Waagen-Analyse, Körperanalyse">
+            <ScaleReportImportCard />
+            <ScaleAnalysisCard />
+            <BodyAnalysisCard />
+          </Disclosure>
         </div>
       )}
       {tab === "supplements" && <SupplementCard />}

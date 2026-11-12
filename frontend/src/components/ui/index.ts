@@ -5,6 +5,7 @@ export * from "./Card";
 export * from "./CheckRow";
 export * from "./cn";
 export * from "./Dialog";
+export * from "./Disclosure";
 export * from "./DropdownMenu";
 export * from "./EmptyState";
 export * from "./IconButton";
