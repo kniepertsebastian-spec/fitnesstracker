@@ -14,14 +14,10 @@ FROM deps AS build
 COPY tsconfig.base.json ./
 COPY packages/shared/src packages/shared/src
 COPY packages/shared/tsconfig.json packages/shared/tsconfig.json
-COPY frontend/src frontend/src
-COPY frontend/public frontend/public
-COPY frontend/index.html frontend/index.html
-COPY frontend/vite.config.ts frontend/vite.config.ts
-# Tailwind 4 runs as a PostCSS plugin. Without this file Vite silently skips it and ships the
-# raw `@import "tailwindcss"` source (no utilities, no theme) — the app then renders unstyled.
-COPY frontend/postcss.config.js frontend/postcss.config.js
-COPY frontend/tsconfig.json frontend/tsconfig.json
+# The whole frontend folder (node_modules/dist/test output are excluded by .dockerignore) rather
+# than a list of single files: a new build config file (postcss.config.js was the one that went
+# missing and shipped the app unstyled) must not need a matching Dockerfile edit.
+COPY frontend frontend
 RUN pnpm --filter @fitnesstracker/shared build
 RUN pnpm --filter frontend build
 

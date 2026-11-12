@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
-import sharp from "sharp";
 import { ConflictError } from "../errors/httpErrors.js";
+import { loadSharp } from "./loadSharp.js";
 
 // Local text recognition for screenshots and photos (Tesseract, German + English). Shared by the
 // AI-explained body analysis and the plain scale-report import, so both read an image the same way.
@@ -36,6 +36,14 @@ export async function recognizeImageText(input: Buffer, mimeType: string): Promi
     throw new ConflictError("Bitte eine JPG-, PNG- oder WebP-Datei hochladen.");
   }
   if (input.length > MAX_IMAGE_BYTES) throw new ConflictError("Das Bild darf maximal 10 MB groß sein.");
+
+  let sharp: Awaited<ReturnType<typeof loadSharp>>;
+  try {
+    sharp = await loadSharp();
+  } catch (error) {
+    console.error("Failed to load sharp — text recognition unavailable:", error);
+    throw new ConflictError("Bildverarbeitung derzeit nicht verfügbar.");
+  }
 
   let prepared: Buffer;
   try {

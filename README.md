@@ -67,7 +67,10 @@ pnpm --filter frontend dev    # http://localhost:5173 (in einem zweiten Terminal
 ```
 
 Registrierung erfordert das `SETUP_TOKEN` aus der `.env` (schützt die offene Registrierung auf
-einem öffentlich erreichbaren VPS, da die App nur für dich gedacht ist).
+einem öffentlich erreichbaren VPS, da die App nur für dich gedacht ist). Das Zurücksetzen eines
+Passworts („Passwort vergessen“) braucht ein eigenes `RESET_TOKEN` (mindestens 16 Zeichen,
+verschieden vom `SETUP_TOKEN`); ohne gesetztes `RESET_TOKEN` ist der Reset abgeschaltet. So kann
+jemand, dem du das `SETUP_TOKEN` zum Registrieren gibst, kein fremdes Konto übernehmen.
 
 ## Übungen importieren
 
@@ -109,6 +112,44 @@ docker compose -f docker-compose.prod.yml up -d --build
 Voraussetzung: ein separat laufender `cloudflared`-Container (nicht Teil dieses Repos, eine
 Ebene darüber für alle PWAs gemeinsam) mit einer Public-Hostname-Route von `DOMAIN` auf
 `http://fitnesstracker-caddy:80`. Kein DNS-A-Record, kein offener Port am Router nötig.
+
+### Backup und Restore
+
+Nicht aus Git wiederherstellbar sind die Datenbank (Volume `pgdata`) und die Fotos (Volume
+`uploads`). `scripts/backup.sh` sichert beides in einen Ordner mit Zeitstempel, löscht
+Sicherungen nach 14 Tagen (`BACKUP_KEEP_DAYS`) und kopiert auf Wunsch auf ein zweites Gerät
+(`BACKUP_REMOTE`, per rsync). Ein Backup, das nur auf dem Mini-PC liegt, schützt nicht vor einem
+Ausfall des Mini-PCs.
+
+```bash
+# Einmal von Hand (Datenbank-Dump + Foto-Archiv):
+BACKUP_REMOTE=user@anderer-rechner:/backups/fitness/ scripts/backup.sh
+```
+
+Nächtlich per Cron (`crontab -e` auf dem Mini-PC, 03:30 Uhr):
+
+```bash
+30 3 * * * cd /pfad/zu/fitnesstracker && BACKUP_REMOTE=user@anderer-rechner:/backups/fitness/ scripts/backup.sh >> ~/fitnesstracker-backups/backup.log 2>&1
+```
+
+Optional: `BACKUP_GPG_RECIPIENT=<Schlüssel>` verschlüsselt beide Dateien, bevor sie den Rechner
+verlassen (zum Wiederherstellen vorher mit `gpg --decrypt` entschlüsseln).
+
+**Restore proben (ohne Livedaten anzufassen).** In eine neue, leere Datenbank wiederherstellen und
+nachzählen:
+
+```bash
+scripts/restore.sh ~/fitnesstracker-backups/<Zeitstempel> restore_probe
+docker compose -f docker-compose.prod.yml exec postgres sh -c 'psql -U "$POSTGRES_USER" -d restore_probe -c "SELECT count(*) FROM \"User\""'
+docker compose -f docker-compose.prod.yml exec postgres sh -c 'dropdb -U "$POSTGRES_USER" restore_probe'
+```
+
+**Echter Restore** (überschreibt Datenbank und Fotos; fragt zur Sicherheit nach dem Datenbanknamen,
+hält das Backend an und startet es danach wieder):
+
+```bash
+scripts/restore.sh ~/fitnesstracker-backups/<Zeitstempel>
+```
 
 ## Nützliche Skripte
 

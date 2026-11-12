@@ -54,6 +54,12 @@ describe("POST /api/health-sync/webhook", () => {
     expect(createMany).not.toHaveBeenCalled();
   });
 
+  it("has no debug endpoint that echoes token details", async () => {
+    const { app } = await setup();
+    const response = await app.inject({ method: "GET", url: "/api/health-sync/webhook/debug", headers: { authorization: `Bearer ${TOKEN}` } });
+    expect(response.statusCode).toBe(404);
+  });
+
   it("stores the days of a payload for the token's user", async () => {
     const { app, createMany, tokenUpdate } = await setup();
     const response = await post(

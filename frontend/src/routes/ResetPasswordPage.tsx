@@ -8,7 +8,7 @@ import { ApiError } from "../api/client";
 import { AuthLayout } from "../components/layout/AuthLayout";
 import { Button, Callout, Field, Input } from "../components/ui";
 
-// There is no mail delivery. Whoever runs the app (the holder of the setup token) resets a
+// There is no mail delivery. Whoever runs the app (the holder of the reset token) resets a
 // forgotten password here, for themselves or for a friend.
 export function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -40,14 +40,14 @@ export function ResetPasswordPage() {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <p className="text-small text-text-subtle">
-          Ohne E-Mail-Versand geht das mit dem Setup-Token des Servers. Alle bestehenden Anmeldungen des Kontos
+          Ohne E-Mail-Versand geht das mit dem Reset-Token des Servers. Alle bestehenden Anmeldungen des Kontos
           werden beendet.
         </p>
         <Field label="E-Mail" error={errors.email?.message}>
           {(p) => <Input {...p} type="email" autoComplete="email" {...register("email")} />}
         </Field>
-        <Field label="Setup-Token" error={errors.setupToken?.message}>
-          {(p) => <Input {...p} type="text" autoComplete="off" {...register("setupToken")} />}
+        <Field label="Reset-Token" error={errors.resetToken?.message}>
+          {(p) => <Input {...p} type="text" autoComplete="off" {...register("resetToken")} />}
         </Field>
         <Field label="Neues Passwort" error={errors.newPassword?.message}>
           {(p) => <Input {...p} type="password" autoComplete="new-password" {...register("newPassword")} />}

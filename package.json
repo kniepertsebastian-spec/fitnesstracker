@@ -18,7 +18,8 @@
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "check:ui": "node scripts/check-ui-tokens.mjs --strict"
+    "check:ui": "node scripts/check-ui-tokens.mjs --strict",
+    "check:css": "node scripts/check-frontend-css.mjs frontend/dist"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

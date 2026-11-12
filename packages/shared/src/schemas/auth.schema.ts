@@ -45,11 +45,11 @@ export const changePasswordSchema = z.object({
 });
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
-// There is no mail delivery, so a forgotten password is reset with the operator's SETUP_TOKEN —
-// the same secret that gates registration. Whoever hosts the app hands it out, nobody else can.
+// There is no mail delivery, so a forgotten password is reset with the operator's RESET_TOKEN —
+// a secret of its own, not the SETUP_TOKEN that is handed to everyone who may register.
 export const resetPasswordSchema = z.object({
   email: z.string().email(),
-  setupToken: z.string().min(1),
+  resetToken: z.string().min(1),
   newPassword: newPasswordField,
 });
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

@@ -12,6 +12,7 @@ import { recognizeImageText } from "../../lib/imageOcr.js";
 import { resolveTimeZone } from "../activity/activity.service.js";
 import { toBodyCompositionEntryDto } from "./bodyComposition.types.js";
 import { HttpError } from "../../errors/httpErrors.js";
+import { HEAVY_RATE_LIMIT } from "../../lib/rateLimits.js";
 
 const idParamSchema = z.object({ id: z.string().uuid() });
 const reportQuerySchema = z.object({ tz: z.string().min(1).max(64).optional() });
@@ -37,7 +38,7 @@ export default async function bodyCompositionRoutes(fastify: FastifyInstance) {
 
   // Reads a scale-report screenshot (no AI): returns the values, the checks they passed and the
   // ones that need a look. Nothing is stored until the draft is confirmed with POST .../report.
-  fastify.post("/body-composition/report/parse", async (request, reply) => {
+  fastify.post("/body-composition/report/parse", HEAVY_RATE_LIMIT, async (request, reply) => {
     const query = reportQuerySchema.parse(request.query);
     const upload = await request.file();
     if (!upload) return reply.code(400).send({ message: "Bitte einen Screenshot des Berichts auswählen." });

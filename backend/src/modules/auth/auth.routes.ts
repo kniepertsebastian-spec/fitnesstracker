@@ -125,7 +125,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // No mail delivery exists, so this is gated by the operator's setup token instead of a mailed link.
+  // No mail delivery exists, so this is gated by the operator's RESET_TOKEN instead of a mailed link.
   fastify.post("/reset-password", AUTH_RATE_LIMIT, async (request, reply) => {
     const input = resetPasswordSchema.parse(request.body);
     try {
