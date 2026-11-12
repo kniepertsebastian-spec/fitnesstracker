@@ -1,5 +1,6 @@
 import type { DailyChallengeCategory, PrismaClient } from "@prisma/client";
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
+import { getUserTimeZone, localDateAsUtc, localDayKey, localHour } from "../../lib/userTime.js";
 import { sendNotificationToUser } from "../push/push.service.js";
 
 const ITEMS_PER_DAY = 3;
@@ -23,15 +24,6 @@ export function isPortableBodyweightExercise(exercise: {
   if (exercise.equipment !== "body only") return false;
   const searchableName = `${exercise.name} ${exercise.nameDe ?? ""}`.toLowerCase();
   return !EXCLUDE_KEYWORDS.some((keyword) => searchableName.includes(keyword));
-}
-
-function todayUtcDate(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
-function utcDayKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
 }
 
 // `sort(() => Math.random() - 0.5)` is not a uniform shuffle (V8's sort doesn't call the
@@ -118,8 +110,9 @@ async function recentPerformance(
   });
   if (logs.length === 0) return null;
 
-  const mostRecentDay = utcDayKey(logs[0].performedAt);
-  const sameSession = logs.filter((log) => utcDayKey(log.performedAt) === mostRecentDay);
+  const timeZone = await getUserTimeZone(prisma, userId);
+  const mostRecentDay = localDayKey(logs[0].performedAt, timeZone);
+  const sameSession = logs.filter((log) => localDayKey(log.performedAt, timeZone) === mostRecentDay);
   const avgReps = Math.round(sameSession.reduce((sum, log) => sum + log.reps, 0) / sameSession.length);
   const maxReps = Math.max(...logs.map((log) => log.reps));
   return { avgReps, maxReps };
@@ -187,7 +180,8 @@ async function daysTrainedInLastWeek(prisma: PrismaClient, userId: string): Prom
     where: { userId, deletedAt: null, performedAt: { gte: since } },
     select: { performedAt: true },
   });
-  return new Set(logs.map((log) => utcDayKey(log.performedAt))).size;
+  const timeZone = await getUserTimeZone(prisma, userId);
+  return new Set(logs.map((log) => localDayKey(log.performedAt, timeZone))).size;
 }
 
 // RECOVERY only enters the pool on a high-load week (5+ of the last 7 days trained) — pushing
@@ -205,7 +199,8 @@ const withExercise = { include: { exercise: true } } as const;
 // Selection happens once per user per day: the first read of the day picks the categories,
 // exercises and targets; every subsequent read that day returns the same rows.
 export async function getOrCreateTodayChallenge(prisma: PrismaClient, userId: string) {
-  const date = todayUtcDate();
+  // The challenge changes at midnight where the user lives, not at UTC midnight.
+  const date = localDateAsUtc(new Date(), await getUserTimeZone(prisma, userId));
   const existing = await prisma.dailyChallengeItem.findMany({
     where: { userId, date },
     ...withExercise,
@@ -298,26 +293,25 @@ export async function rerollChallengeItem(prisma: PrismaClient, userId: string, 
   });
 }
 
-const REMINDER_HOUR_UTC = 20;
+const REMINDER_HOUR_LOCAL = 20;
 
 // Once-daily nudge, only for a user whose challenge already exists for today (i.e. they opened
 // the app at least once — getOrCreateTodayChallenge generates it lazily, so a scheduler
 // generating challenges for everyone just to remind them would be a much bigger, more
 // speculative feature than this reminder needs to be) and isn't fully completed yet.
 export async function sendDueDailyChallengeReminders(prisma: PrismaClient): Promise<{ sent: number }> {
-  if (new Date().getUTCHours() < REMINDER_HOUR_UTC) return { sent: 0 };
-  const date = todayUtcDate();
-
+  const now = new Date();
   const candidates = await prisma.user.findMany({
-    where: {
-      remindDailyChallenge: true,
-      OR: [{ lastDailyChallengeReminderSentOn: null }, { lastDailyChallengeReminderSentOn: { lt: date } }],
-    },
-    select: { id: true },
+    where: { remindDailyChallenge: true },
+    select: { id: true, timeZone: true, lastDailyChallengeReminderSentOn: true },
   });
 
   let sent = 0;
   for (const user of candidates) {
+    // From 20:00 on the user's own clock, once per local day.
+    if (localHour(now, user.timeZone) < REMINDER_HOUR_LOCAL) continue;
+    const date = localDateAsUtc(now, user.timeZone);
+    if (user.lastDailyChallengeReminderSentOn && user.lastDailyChallengeReminderSentOn >= date) continue;
     const items = await prisma.dailyChallengeItem.findMany({ where: { userId: user.id, date } });
     if (items.length === 0) continue;
     const allDone = items.every((item) => item.completedReps >= item.targetReps);

@@ -8,6 +8,8 @@ interface AuthState {
   status: "idle" | "loading" | "authenticated" | "unauthenticated";
   setSession: (user: UserDto, accessToken: string) => void;
   setAccessToken: (accessToken: string) => void;
+  /** Replaces the user record of the running session (e.g. after a profile change). */
+  updateUser: (user: UserDto) => void;
   clearSession: () => void;
   setStatus: (status: AuthState["status"]) => void;
 }
@@ -54,6 +56,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, accessToken, status: "authenticated" });
   },
   setAccessToken: (accessToken) => set({ accessToken }),
+  updateUser: (user) => {
+    writeCachedUser(user);
+    set({ user });
+  },
   clearSession: () => {
     writeCachedUser(null);
     void clearQueryCache();

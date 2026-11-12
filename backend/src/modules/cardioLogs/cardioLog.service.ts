@@ -1,31 +1,22 @@
 import type { PrismaClient } from "@prisma/client";
 import type { CreateCardioLogInput } from "@fitnesstracker/shared";
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
+import { getUserTimeZone, localDayStart, localWeekStart } from "../../lib/userTime.js";
 
-// Same UTC-calendar-day convention as daily-challenge — the dashboard cardio card only
-// ever shows "today", no history view to page through yet.
-function todayUtcDate(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
-// Monday 00:00 UTC of the week containing `date` (same week boundary as the plan-week status).
-export function weekStartUtc(date: Date = new Date()): Date {
-  const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
-  return day;
-}
-
-export function listWeekCardioLogs(prisma: PrismaClient, userId: string) {
+// "This week" and "today" start at the user's local Monday / midnight (same boundaries as the
+// plan-week status).
+export async function listWeekCardioLogs(prisma: PrismaClient, userId: string) {
+  const weekStart = localWeekStart(new Date(), await getUserTimeZone(prisma, userId));
   return prisma.cardioLog.findMany({
-    where: { userId, deletedAt: null, performedAt: { gte: weekStartUtc() } },
+    where: { userId, deletedAt: null, performedAt: { gte: weekStart } },
     orderBy: { performedAt: "desc" },
   });
 }
 
-export function listTodayCardioLogs(prisma: PrismaClient, userId: string) {
+export async function listTodayCardioLogs(prisma: PrismaClient, userId: string) {
+  const dayStart = localDayStart(new Date(), await getUserTimeZone(prisma, userId));
   return prisma.cardioLog.findMany({
-    where: { userId, deletedAt: null, performedAt: { gte: todayUtcDate() } },
+    where: { userId, deletedAt: null, performedAt: { gte: dayStart } },
     orderBy: { createdAt: "asc" },
   });
 }

@@ -105,6 +105,9 @@ model User {
   // reminder kind this app sends, so without these a user can't turn off just one kind (e.g.
   // photo nudges) while keeping the others. Default true preserves existing subscribers' current
   // behavior (get everything) until they explicitly opt out of something (see Phase 30).
+  // IANA zone of the account (taken from the browser at login). "Today", "this week" and the
+  // evening reminders are computed in it, not in UTC — see lib/userTime.ts.
+  timeZone                         String    @default("Europe/Berlin")
   remindPhaseChange                Boolean   @default(true)
   remindSupplements                Boolean   @default(true)
   remindProgressPhoto              Boolean   @default(true)

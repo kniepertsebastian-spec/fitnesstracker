@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
+import { useSyncTimeZone } from "../../hooks/useSyncTimeZone";
 import { IconButton, Sheet, SheetClose } from "../ui";
 import { BottomTabBar } from "./BottomTabBar";
 import { InstallButton } from "./InstallButton";
@@ -19,6 +20,7 @@ import { UserRow } from "./UserRow";
 export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  useSyncTimeZone();
 
   // Close on navigation, so picking an item never leaves a stale open menu behind.
   useEffect(() => {

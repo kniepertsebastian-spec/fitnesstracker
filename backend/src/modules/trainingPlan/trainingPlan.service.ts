@@ -14,6 +14,7 @@ import {
   getRotationalPhases,
   resolvePhaseConfigs,
 } from "./trainingPlan.types.js";
+import { getUserTimeZone, localWeekStartAsUtc } from "../../lib/userTime.js";
 
 const ROTATION_WEEKS = 8;
 // Upper bound for "+1 Woche" so a phase can't be stretched indefinitely by accident.
@@ -37,15 +38,8 @@ function addWeeks(date: Date, weeks: number) {
   return result;
 }
 
-// Normalizes to UTC midnight of the Monday of `date`'s week — `phaseStartedOn` is always a
-// Monday so that "8 weeks later" also always lands on a Monday.
-function mostRecentMonday(date: Date) {
-  const daysSinceMonday = (date.getUTCDay() + 6) % 7;
-  const result = new Date(date);
-  result.setUTCDate(result.getUTCDate() - daysSinceMonday);
-  result.setUTCHours(0, 0, 0, 0);
-  return result;
-}
+// `phaseStartedOn` is always the user's local Monday (stored as a bare date, UTC midnight), so
+// that "8 weeks later" also always lands on a Monday.
 
 export async function getOrCreateTrainingPlan(
   prisma: PrismaClient,
@@ -58,7 +52,7 @@ export async function getOrCreateTrainingPlan(
     data: {
       userId,
       currentPhase: "AUFBAU",
-      phaseStartedOn: mostRecentMonday(new Date()),
+      phaseStartedOn: localWeekStartAsUtc(new Date(), await getUserTimeZone(prisma, userId)),
       phaseConfigs: getDefaultPhaseConfigs() as unknown as Prisma.InputJsonValue,
     },
   });
@@ -171,7 +165,7 @@ export async function changeTrainingPhase(
   }
   if (plan.currentPhase === phase) return plan;
 
-  const phaseStartedOn = mostRecentMonday(new Date());
+  const phaseStartedOn = localWeekStartAsUtc(new Date(), await getUserTimeZone(prisma, userId));
   const [, updatedPlan] = await prisma.$transaction([
     prisma.trainingPlanPhaseHistory.create({
       data: {
@@ -366,7 +360,11 @@ export async function restartCurrentPhase(prisma: PrismaClient, userId: string) 
   const plan = await getOrCreateTrainingPlan(prisma, userId);
   return prisma.trainingPlan.update({
     where: { id: plan.id },
-    data: { phaseStartedOn: mostRecentMonday(new Date()), pausedAt: null, extensionWeeks: 0 },
+    data: {
+      phaseStartedOn: localWeekStartAsUtc(new Date(), await getUserTimeZone(prisma, userId)),
+      pausedAt: null,
+      extensionWeeks: 0,
+    },
   });
 }
 

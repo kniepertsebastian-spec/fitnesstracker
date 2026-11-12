@@ -8,6 +8,7 @@ import {
   registerSchema,
   resetPasswordSchema,
   updateNameSchema,
+  updateTimeZoneSchema,
 } from "@fitnesstracker/shared";
 import {
   changePassword,
@@ -110,6 +111,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const user = await fastify.prisma.user.update({
       where: { id: request.user.sub },
       data: { firstName: input.firstName, lastName: input.lastName },
+    });
+    return reply.send(toUserDto(user));
+  });
+
+  fastify.put("/me/time-zone", { preHandler: fastify.authenticate }, async (request, reply) => {
+    const input = updateTimeZoneSchema.parse(request.body);
+    const user = await fastify.prisma.user.update({
+      where: { id: request.user.sub },
+      data: { timeZone: input.timeZone },
     });
     return reply.send(toUserDto(user));
   });

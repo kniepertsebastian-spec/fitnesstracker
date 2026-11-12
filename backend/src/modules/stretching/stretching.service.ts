@@ -21,6 +21,7 @@ import {
   rankMuscles,
   type StretchCandidate,
 } from "./stretchSelection.js";
+import { getUserTimeZone, localDayKey } from "../../lib/userTime.js";
 
 // free-exercise-db tags every stretch with this category, so the catalog imported for the
 // Übungen menu already contains the stretch library — no second import source needed.
@@ -285,8 +286,8 @@ export async function resetStretchPlan(prisma: PrismaClient, userId: string, pha
   await prisma.stretchPlanItem.deleteMany({ where: { userId, phase } });
 }
 
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+async function todayKey(prisma: PrismaClient, userId: string): Promise<string> {
+  return localDayKey(new Date(), await getUserTimeZone(prisma, userId));
 }
 
 export async function getDailyStretch(
@@ -295,7 +296,7 @@ export async function getDailyStretch(
   focus: string | null,
 ): Promise<DailyStretchDto> {
   const candidates = await loadStretchCandidates(prisma);
-  const picked = pickDailyStretches(candidates, focus, `${userId}:${todayKey()}`);
+  const picked = pickDailyStretches(candidates, focus, `${userId}:${await todayKey(prisma, userId)}`);
   return {
     focus: focus as DailyStretchDto["focus"],
     items: picked.map((c) => toItemDto(c)),

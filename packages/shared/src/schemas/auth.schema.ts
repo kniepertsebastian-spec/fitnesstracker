@@ -25,8 +25,24 @@ export const userDtoSchema = z.object({
   displayName: z.string().nullable(),
   firstName: z.string().nullable(),
   lastName: z.string().nullable(),
+  timeZone: z.string(),
 });
 export type UserDto = z.infer<typeof userDtoSchema>;
+
+function isIanaTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Sent by the browser (Intl.DateTimeFormat().resolvedOptions().timeZone) after login.
+export const updateTimeZoneSchema = z.object({
+  timeZone: z.string().min(1).max(64).refine(isIanaTimeZone, "Unbekannte Zeitzone"),
+});
+export type UpdateTimeZoneInput = z.infer<typeof updateTimeZoneSchema>;
 
 // Real name for the activity report. Empty string clears it.
 const nameField = z.preprocess(
