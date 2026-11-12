@@ -1,3 +1,4 @@
+import { flushPendingLogout, hasPendingLogout } from "../lib/pendingLogout";
 import { useAuthStore } from "../stores/authStore";
 
 const BASE_URL = "/api";
@@ -19,6 +20,12 @@ type RefreshResult = "ok" | "rejected" | "unavailable";
 let refreshPromise: Promise<RefreshResult> | null = null;
 
 async function refreshAccessToken(): Promise<RefreshResult> {
+  // The user logged out while the server could not be reached: finish that instead of
+  // refreshing — the session must not come back to life.
+  if (hasPendingLogout()) {
+    await flushPendingLogout();
+    return "rejected";
+  }
   if (!refreshPromise) {
     refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
       method: "POST",
