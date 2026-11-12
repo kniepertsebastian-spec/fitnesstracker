@@ -1,3 +1,4 @@
+import { equipmentLabel, muscleLabel } from "../../lib/exerciseLabels";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ExerciseOptionDto } from "@fitnesstracker/shared";
@@ -65,7 +66,7 @@ export function ExercisePickerDialog({ open, title, description, options, recomm
               <OptionButton
                 key={o.exerciseId}
                 name={o.exerciseName}
-                meta={[o.exerciseId === recommendedId ? "Alternative aus dem Plan" : null, o.equipment].filter(Boolean).join(" · ")}
+                meta={[o.exerciseId === recommendedId ? "Alternative aus dem Plan" : null, o.equipment ? equipmentLabel(o.equipment) : null].filter(Boolean).join(" · ")}
                 onClick={() => pick(o.exerciseId, o.exerciseName)}
               />
             ))}
@@ -85,7 +86,7 @@ export function ExercisePickerDialog({ open, title, description, options, recomm
             <OptionButton
               key={r.id}
               name={r.name}
-              meta={[r.equipment, r.primaryMuscles[0]].filter(Boolean).join(" · ")}
+              meta={[r.equipment ? equipmentLabel(r.equipment) : null, r.primaryMuscles[0] ? muscleLabel(r.primaryMuscles[0]) : null].filter(Boolean).join(" · ")}
               onClick={() => pick(r.id, r.name)}
             />
           ))}

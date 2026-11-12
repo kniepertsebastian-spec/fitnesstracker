@@ -7,11 +7,13 @@ export interface FilterPillsProps {
   value: string;
   onChange: (value: string) => void;
   allLabel?: string;
+  /** Display text for an option; the option itself stays the filter key. */
+  formatOption?: (option: string) => string;
   className?: string;
 }
 
 // Single-choice filter chips in a horizontally scrollable row (muscle group, equipment, …).
-export function FilterPills({ label, options, value, onChange, allLabel = "Alle", className }: FilterPillsProps) {
+export function FilterPills({ label, options, value, onChange, allLabel = "Alle", formatOption, className }: FilterPillsProps) {
   const pill = (selected: boolean) =>
     cn(
       "min-h-9 shrink-0 whitespace-nowrap rounded-full border px-3.5 text-small font-medium transition-colors duration-150",
@@ -26,7 +28,7 @@ export function FilterPills({ label, options, value, onChange, allLabel = "Alle"
       </button>
       {options.map((o) => (
         <button key={o} type="button" aria-pressed={value === o} className={pill(value === o)} onClick={() => onChange(value === o ? "" : o)}>
-          {o}
+          {formatOption ? formatOption(o) : o}
         </button>
       ))}
     </div>

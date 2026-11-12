@@ -1,3 +1,4 @@
+import { germanErrorMessage } from "../lib/errorMessages";
 import { flushPendingLogout, hasPendingLogout } from "../lib/pendingLogout";
 import { useAuthStore } from "../stores/authStore";
 
@@ -76,7 +77,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({ message: res.statusText }));
-    throw new ApiError(res.status, data.message ?? "Request failed");
+    throw new ApiError(res.status, germanErrorMessage(res.status, data.message));
   }
 
   if (res.status === 204) {
@@ -106,7 +107,7 @@ export async function apiUpload<T>(path: string, formData: FormData, skipAuthRet
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({ message: res.statusText }));
-    throw new ApiError(res.status, data.message ?? "Request failed");
+    throw new ApiError(res.status, germanErrorMessage(res.status, data.message));
   }
 
   return res.json();
@@ -129,7 +130,7 @@ export async function apiFetchBlob(path: string, skipAuthRetry = false): Promise
   }
 
   if (!res.ok) {
-    throw new ApiError(res.status, res.statusText);
+    throw new ApiError(res.status, germanErrorMessage(res.status, res.statusText));
   }
 
   return res.blob();

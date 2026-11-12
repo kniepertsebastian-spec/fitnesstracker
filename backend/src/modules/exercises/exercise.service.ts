@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import type { CreateExerciseInput, UpdateExerciseInput } from "@fitnesstracker/shared";
 import { env } from "../../config/env.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../../errors/httpErrors.js";
+import { germanExerciseName } from "./nameTranslations.js";
 import { getSourceAdapter } from "./sources/index.js";
 
 export interface ListExercisesFilters {
@@ -174,8 +175,11 @@ export async function importExercisesFromSource(
 
   for (const entry of imported) {
     const where = { source_sourceId: { source: adapter.name, sourceId: entry.sourceId } };
+    const nameDe = adapter.name === "free-exercise-db" ? germanExerciseName(entry.name) : undefined;
     const data = {
       name: entry.name,
+      // Only set when a translation exists; undefined leaves a manually edited nameDe untouched.
+      nameDe,
       description: entry.description,
       videoUrl: entry.videoUrl,
       imageUrls: entry.imageUrls,

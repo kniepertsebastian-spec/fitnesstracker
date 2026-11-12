@@ -1,3 +1,4 @@
+import { muscleLabel } from "../../lib/exerciseLabels";
 import { useEffect, useState } from "react";
 import { BookOpen, ChevronDown, Link2, Plus, Repeat2 } from "lucide-react";
 import type { ExerciseDto, PlanDiaryExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
@@ -155,7 +156,7 @@ export function ExerciseCard({
       <div className="flex flex-wrap items-center gap-2">
         {exercise?.primaryMuscles.slice(0, 2).map((m) => (
           <Badge key={m} tone="info">
-            {m}
+            {muscleLabel(m)}
           </Badge>
         ))}
         <Badge tone="accent">{PROGRESSION_LABEL[phase]}</Badge>
