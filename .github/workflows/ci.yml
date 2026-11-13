@@ -218,3 +218,71 @@ jobs:
           name: playwright-report
           path: frontend/test-results/
           retention-days: 7
+
+  # Roadmap 4.6 — Lighthouse (Performance, Accessibility, Best Practices) gegen den Produktions-
+  # Build der Login-Seite. Bewusst nur Warnung (continue-on-error + ::warning::), damit Regressionen
+  # sichtbar werden, ohne PRs wegen Messschwankungen zu blockieren. Lighthouse 12 hat keine
+  # PWA-Kategorie mehr; Installierbarkeit prüft frontend/e2e/pwa-install.spec.ts.
+  lighthouse:
+    name: Lighthouse (Warnung, blockiert nicht)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build:shared
+
+      - name: Build frontend
+        working-directory: frontend
+        run: pnpm build
+
+      - name: Serve the production build
+        working-directory: frontend
+        run: |
+          nohup pnpm exec vite preview --host 127.0.0.1 --port 4173 > preview.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:4173/login > /dev/null && exit 0
+            sleep 1
+          done
+          echo "Preview never became ready" >&2
+          cat preview.log >&2
+          exit 1
+
+      - name: Run Lighthouse
+        run: |
+          mkdir -p lighthouse
+          npx --yes lighthouse@12.6.1 http://127.0.0.1:4173/login \
+            --only-categories=performance,accessibility,best-practices \
+            --chrome-flags="--headless=new --no-sandbox" \
+            --output=json --output=html --output-path=lighthouse/report
+
+      - name: Scores and thresholds
+        run: |
+          node -e '
+            const r = require("./lighthouse/report.report.json");
+            const min = { performance: 80, accessibility: 95, "best-practices": 90 };
+            for (const [id, c] of Object.entries(r.categories)) {
+              const score = Math.round(c.score * 100);
+              console.log(`${c.title}: ${score}`);
+              if (score < min[id]) {
+                console.log(`::warning title=Lighthouse::${c.title} ${score} liegt unter ${min[id]}`);
+              }
+            }
+          '
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-report
+          path: lighthouse/
+          retention-days: 14

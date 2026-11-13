@@ -9,6 +9,19 @@ Das ist die eine Roadmap des Projekts. Sie enthält vier Teile:
 
 Die UI-Planung steht getrennt in [`docs/ROADMAP-UI.md`](./docs/ROADMAP-UI.md), neue Änderungen im [`CHANGELOG.md`](./CHANGELOG.md).
 
+**Stand Stufe 4 (13.11.2026):** 4.1 Backup einspielen, 4.2 README, 4.3 eine Roadmap und 4.5 Git-Schutz sind erledigt. 4.6 ist eingerichtet (siehe unten). Offen bleiben 4.4 (Git-Historie: belassen oder per Force-Push bereinigen – Entscheidung liegt beim Betreiber) und 4.7 (Test auf echtem iPhone/Android).
+
+## Lighthouse (4.6)
+
+CI-Job `lighthouse` (nur bei PRs, `continue-on-error`): Performance, Accessibility und Best Practices der Login-Seite gegen den Produktions-Build, Schwellen 80/95/90, Unterschreitung erscheint als Warnung, der HTML/JSON-Bericht hängt als Artefakt am Lauf. Lighthouse 12 hat keine PWA-Kategorie mehr; Installierbarkeit deckt `frontend/e2e/pwa-install.spec.ts` ab.
+
+Erste Messung lokal (`/login`, Produktions-Build): Performance 85, Accessibility 95, Best Practices 96.
+
+- [x] Links im Fließtext der Auth-Seiten nur an der Farbe erkennbar (`link-in-text-block`) → unterstrichen (Login, Registrieren, Passwort zurücksetzen).
+- [ ] Performance: FCP ≈ 2,8 s, LCP ≈ 3,6 s bei gedrosseltem Mobilprofil. Ursachen: render-blockierendes CSS und ungenutztes JS in den Chunks `vendor-react`, Radix und UI auf der Login-Seite. Mögliche Maßnahme: Radix/UI-Code nicht für die Auth-Routen laden.
+- [ ] Konsolenfehler 401 beim Token-Refresh der Login-Seite, wenn kein Backend läuft (nur im Messaufbau, in Produktion nicht erwartbar). Prüfen, ob der Refresh für nicht angemeldete Nutzer ganz entfallen kann.
+- [ ] Screenreader-Durchgang (VoiceOver/TalkBack) für Login und Training: nur manuell möglich, liegt beim Betreiber.
+
 ---
 
 # Teil 1 – Phasen 0–34
