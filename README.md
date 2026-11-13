@@ -3,29 +3,20 @@
 Ein werbefreier, persönlicher Fitnesstracker als installierbare PWA. Sätze/Wiederholungen/Gewicht
 pro Übung protokollieren, Trainingsplan-Phasen rotieren automatisch alle 8 Wochen, offline nutzbar
 mit Sync sobald wieder online. Siehe [`ARCHITECTURE.md`](./ARCHITECTURE.md) für die technischen
-Entscheidungen und [`ROADMAP.md`](./ROADMAP.md) für den vollständigen Ausbauplan.
+Entscheidungen.
 
-Aktueller Stand (Phasen 0–14 abzüglich 6/7 – Foundation, Übungsbibliothek,
-Trainingsplan-Rotation, Ziele (inkl. automatischer Vorschläge), Offline-Sync, Push,
-Ernährungsrechner, Wasser-Tracking, Supplement-Erinnerungen, Körperkomposition-Tracking,
-Fortschritts-Fotos & Tages-Challenge): Login/Registrierung, die Trainings-Tabelle
-(Satz/Wiederholungen/Gewicht/Übung, inklusive Offline-Nutzung mit automatischer Sync sobald
-wieder online), die Übungsbibliothek (durchsuchen, nach Muskelgruppe/Equipment filtern,
-Detailansicht), die automatische 8-Wochen-Trainingsplan-Rotation (Aufbau → Muskelausdauer →
-Negativ), Ziele (Gewicht/Wiederholungen pro Übung mit automatischem Fortschritt,
-Körpergewicht/Sonstiges mit manueller Erreicht-Markierung, dazu automatisch vorgeschlagene
-Gewichts-Ziele mit realistischem Zieldatum basierend auf der bisherigen Trainings-Progression),
-Push-Erinnerungen bei Trainingsplan-Wechsel, ein Profil-/Ernährungsrechner
-(Kalorien-/Proteinbedarf nach Mifflin-St-Jeor), ein täglicher Wasser-Zähler, eigene
-Supplement-Erinnerungen (tägliche Push-Erinnerung zur lokalen Uhrzeit) mit statischer
-Referenzliste, manuelles Körperkomposition-Tracking (Gewicht/Körperfett/Muskelmasse/
-Wasseranteil mit Trend-Anzeige), private Fortschritts-Fotos (Upload, Galerie, Vorher/Nachher-
-Vergleich, wöchentliche Push-Erinnerung, Speicherung auf dem eigenen VPS-Dateisystem) und eine
-tägliche Bodyweight-Challenge (3 Zufallsübungen ohne Geräte, aus dem importierten Katalog) sind
-Ende-zu-Ende lauffähig. Die Übungs-API liefert dafür volle CRUD-Verwaltung plus einen
-Import-Mechanismus, der Übungen aus externen, frei verfügbaren Datenbanken zieht und in die
-eigene DB schreibt (siehe unten). Claude-API-Integration ist als Datenmodell bereits angelegt,
-aber noch ohne UI; VPS-Politur/Deployment (Phase 7) steht noch aus (siehe Roadmap).
+## Funktionsumfang
+
+- **Konten:** Registrierung per `SETUP_TOKEN` (mehrere Konten möglich, alle Daten pro Konto getrennt), Passwort ändern und zurücksetzen, Konto löschen.
+- **Training:** Fokusmodus für laufende Einheiten (Sätze, RIR, Pausen-Timer, Rekord-Hinweise, Aufwärmen, Cardio, Dehnen), Fitnesstagebuch, Historie, Übungsbibliothek (importierter Katalog plus eigene Übungen).
+- **Trainingsplan:** Phasen-Rotation alle 8 Wochen (Aufbau, Muskelausdauer, Negativ) mit Pausieren, Verlängern und Neustart; optionaler KI-Plan-Generator mit eigenem API-Schlüssel.
+- **Ziele und Fortschritt:** Ziele mit automatischem Fortschritt und Vorschlägen, Fortschrittsseite mit Kraft, Volumen, Rekorden und Körperdaten, Aktivitätsbericht (Schritte, Rad) mit Health-Connect-Anbindung.
+- **Ernährung und Körper:** Kalorien- und Proteinrechner, Körpermessungen mit Taille, Hals und Hüfte, Körperfett-Schätzung als Bereich aus RFM und US Navy (optional mit DEXA-Referenzwert kalibriert), Waage nur als 7-Tage-Trend, Waagenbericht einlesen, Fortschrittsfotos, Supplement-Erinnerungen.
+- **Daily:** Tages-Challenge und Dehnroutine passend zum Plan.
+- **Offline und Push:** Installierbare PWA, alles Wichtige offline nutzbar mit Sync, sobald wieder Netz da ist; Push-Erinnerungen einzeln abschaltbar.
+- **Daten gehören dir:** Vollständiges Backup als JSON (wieder einspielbar in ein leeres Konto) und Trainingslog als CSV.
+
+Die Roadmap steht in [`ROADMAP.md`](./ROADMAP.md), die technischen Entscheidungen in [`ARCHITECTURE.md`](./ARCHITECTURE.md), neue Änderungen im [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## Stack
 
@@ -37,7 +28,7 @@ aber noch ohne UI; VPS-Politur/Deployment (Phase 7) steht noch aus (siehe Roadma
 
 ## Voraussetzungen
 
-- Node.js ≥ 20, pnpm ≥ 9
+- Node.js ≥ 22.12, pnpm ≥ 10 (siehe `engines` und `packageManager` in der `package.json`)
 - PostgreSQL 16 (lokal installiert oder via Docker)
 - Docker + Docker Compose (für den vollständigen Dev-Stack bzw. Deployment)
 
@@ -149,6 +140,11 @@ docker compose -f docker-compose.prod.yml exec postgres sh -c 'psql -U "$POSTGRE
 docker compose -f docker-compose.prod.yml exec postgres sh -c 'dropdb -U "$POSTGRES_USER" restore_probe'
 ```
 
+**Konto aus dem App-Export wiederherstellen.** Das JSON-Backup aus Einstellungen → „Export & Backup“
+lässt sich in ein leeres Konto zurückspielen (Einstellungen → „Sicherung einspielen“). Es füllt nur
+ein Konto ohne Daten, mischt also nie zwei Verläufe. Fotos sind im JSON nur mit Datum enthalten, die
+Bilddateien liegen im Foto-Archiv von `scripts/backup.sh`.
+
 **Echter Restore** (überschreibt Datenbank und Fotos; fragt zur Sicherheit nach dem Datenbanknamen,
 hält das Backend an und startet es danach wieder):
 
@@ -165,3 +161,4 @@ scripts/restore.sh ~/fitnesstracker-backups/<Zeitstempel>
 | `pnpm --filter backend prisma:seed` | Beispiel-Übungen einspielen |
 | `pnpm typecheck` | TypeScript-Check in allen Packages |
 | `pnpm build` | Backend + Frontend bauen |
+| `pnpm check:tracked` | Prüft, dass Git kein `node_modules/`, `dist/` oder `build/` verfolgt (läuft in der CI) |

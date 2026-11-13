@@ -22,7 +22,7 @@ export function roundToHalf(value: number): number {
 }
 
 // Best of the last 3 sessions never beat the best of everything before that — same rule as
-// StrengthProgressCard's client-side stagnation flag (docs/roadmap2.md/additionals consistency), kept
+// StrengthProgressCard's client-side stagnation flag (ROADMAP.md Teil 3/4 consistency), kept
 // as a small local reimplementation here since this runs server-side against Prisma rows instead
 // of the client's cached LocalWorkoutLog[].
 export function detectPlateau(series: number[]): boolean {

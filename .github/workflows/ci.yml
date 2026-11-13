@@ -35,6 +35,10 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # Before the install: rejects commits that track node_modules/, dist/ or build/.
+      - name: No dependencies or build output in Git
+        run: pnpm run check:tracked
+
       - run: pnpm install --frozen-lockfile
 
       # Warning only (like Lighthouse in the other repos): an advisory without a fix available

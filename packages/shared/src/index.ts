@@ -11,6 +11,7 @@ export * from "./schemas/dailyChallenge.schema.js";
 export * from "./schemas/supplement.schema.js";
 export * from "./schemas/bodyComposition.schema.js";
 export * from "./schemas/bodyFatCalibration.schema.js";
+export * from "./schemas/backupImport.schema.js";
 export * from "./schemas/progressPhoto.schema.js";
 export * from "./schemas/aiPlanGenerator.schema.js";
 export * from "./schemas/cardioLog.schema.js";
