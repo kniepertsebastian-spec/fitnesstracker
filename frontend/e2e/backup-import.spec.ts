@@ -37,6 +37,6 @@ test.describe("Backup einspielen", () => {
       mimeType: "application/json",
       buffer: Buffer.from(backup),
     });
-    await expect(page.getByText(/nur in ein leeres Konto/)).toBeVisible();
+    await expect(page.getByText(/Der Import geht nur in ein leeres Konto/)).toBeVisible();
   });
 });
