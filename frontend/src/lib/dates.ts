@@ -31,3 +31,55 @@ export function trainingStreak(trainedDayKeys: ReadonlySet<string>): number {
   }
   return streak;
 }
+
+// --- Nachträgliches Protokollieren -----------------------------------------------------------
+// Datum + Uhrzeit aus den nativen <input type="date|time">-Feldern (lokale Zeit des Geräts) und
+// der ISO-Zeitpunkt, den die API als `performedAt` erwartet.
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** "YYYY-MM-DD" des lokalen Kalendertags (Format von <input type="date">). */
+export function localDateInputValue(date: Date = new Date()): string {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+/** "HH:mm" der lokalen Uhrzeit (Format von <input type="time">). */
+export function localTimeInputValue(date: Date = new Date()): string {
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
+/** Gestern als "YYYY-MM-DD" (lokal). */
+export function localYesterdayInputValue(now: Date = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  return localDateInputValue(d);
+}
+
+/**
+ * Lokales Datum + Uhrzeit → ISO-Zeitpunkt (UTC). `null` bei ungültiger oder unvollständiger
+ * Eingabe (z. B. leeres Feld) — der Aufrufer zeigt dann einen Fehler statt zu raten.
+ */
+export function localDateTimeToIso(date: string, time: string): string | null {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  const t = /^(\d{2}):(\d{2})$/.exec(time);
+  if (!d || !t) return null;
+  const [year, month, day, hour, minute] = [d[1], d[2], d[3], t[1], t[2]].map(Number) as [
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  const result = new Date(year, month - 1, day, hour, minute, 0, 0);
+  // new Date rolls over impossible values (31.02. → 03.03.); treat that as invalid input.
+  if (
+    Number.isNaN(result.getTime()) ||
+    result.getFullYear() !== year ||
+    result.getMonth() !== month - 1 ||
+    result.getDate() !== day
+  ) {
+    return null;
+  }
+  return result.toISOString();
+}
