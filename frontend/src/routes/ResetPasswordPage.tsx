@@ -33,7 +33,7 @@ export function ResetPasswordPage() {
     <AuthLayout
       title="Passwort zurücksetzen"
       footer={
-        <Link to="/login" className="text-accent-text hover:text-accent-text-hover">
+        <Link to="/login" className="text-accent-text underline underline-offset-2 hover:text-accent-text-hover">
           Zurück zur Anmeldung
         </Link>
       }

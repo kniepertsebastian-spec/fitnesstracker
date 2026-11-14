@@ -1,5 +1,31 @@
 # Roadmap
 
+Das ist die eine Roadmap des Projekts. Sie enthält vier Teile:
+
+1. [Teil 1 – Phasen 0–34](#teil-1--phasen-034): was gebaut und geprüft wurde, mit Konzept und Verifikation je Phase.
+2. [Teil 2 – Roadmap 3](#teil-2--roadmap-3-fitnesstracker): Nutzerwünsche und PWA-Review vom 19.10.2026 (P0–P4). Im Code verweisen Kommentare mit „roadmap3 P1.2“ usw. auf diese Punkte.
+3. [Teil 3 – Roadmap 2](#teil-3--roadmap-2-todo-vor-hardening): die Checkliste „TODO vor Hardening“, vollständig erledigt. Die Phasen 22–33 in Teil 1 setzen sie um.
+4. [Teil 4 – Roadmap v2, Ergänzungen](#teil-4--roadmap-v2-ergänzungen): Leitprinzip und Prioritäten P0–P2 (ursprünglich eine Word-Datei). P0.7 steht als Phase 34 in Teil 1, einiges andere in Roadmap 3.
+
+Die UI-Planung steht getrennt in [`docs/ROADMAP-UI.md`](./docs/ROADMAP-UI.md), neue Änderungen im [`CHANGELOG.md`](./CHANGELOG.md).
+
+**Stand Stufe 4 (13.11.2026):** 4.1 Backup einspielen, 4.2 README, 4.3 eine Roadmap und 4.5 Git-Schutz sind erledigt. 4.6 ist eingerichtet (siehe unten). Offen bleiben 4.4 (Git-Historie: belassen oder per Force-Push bereinigen – Entscheidung liegt beim Betreiber) und 4.7 (Test auf echtem iPhone/Android).
+
+## Lighthouse (4.6)
+
+CI-Job `lighthouse` (nur bei PRs, `continue-on-error`): Performance, Accessibility und Best Practices der Login-Seite gegen den Produktions-Build, Schwellen 80/95/90, Unterschreitung erscheint als Warnung, der HTML/JSON-Bericht hängt als Artefakt am Lauf. Lighthouse 12 hat keine PWA-Kategorie mehr; Installierbarkeit deckt `frontend/e2e/pwa-install.spec.ts` ab.
+
+Erste Messung lokal (`/login`, Produktions-Build): Performance 85, Accessibility 95, Best Practices 96.
+
+- [x] Links im Fließtext der Auth-Seiten nur an der Farbe erkennbar (`link-in-text-block`) → unterstrichen (Login, Registrieren, Passwort zurücksetzen).
+- [ ] Performance: FCP ≈ 2,8 s, LCP ≈ 3,6 s bei gedrosseltem Mobilprofil. Ursachen: render-blockierendes CSS und ungenutztes JS in den Chunks `vendor-react`, Radix und UI auf der Login-Seite. Mögliche Maßnahme: Radix/UI-Code nicht für die Auth-Routen laden.
+- [ ] Konsolenfehler 401 beim Token-Refresh der Login-Seite, wenn kein Backend läuft (nur im Messaufbau, in Produktion nicht erwartbar). Prüfen, ob der Refresh für nicht angemeldete Nutzer ganz entfallen kann.
+- [ ] Screenreader-Durchgang (VoiceOver/TalkBack) für Login und Training: nur manuell möglich, liegt beim Betreiber.
+
+---
+
+# Teil 1 – Phasen 0–34
+
 ## Phase 0 — Foundation ✅ (dieser Stand)
 
 - Monorepo-Grundgerüst (pnpm Workspaces, Docker Compose, Caddy)
@@ -256,7 +282,7 @@
   siehe `ARCHITECTURE.md` für die Details der Eigenimplementierung
 
 <!-- ROADMAP_FITNESSTRACKER.md -->
-# Roadmap & Refactoring: Fitnesstracker
+## Roadmap & Refactoring: Fitnesstracker
 
 ### 16. Robustheit & Scheduler
 - [x] **Timing-Drift bei Supplement-Erinnerungen abfangen**
@@ -286,7 +312,7 @@
 
 
 <!-- ROADMAP_FITNESSTRACKER_FEATURES.md -->
-# Feature-Roadmap: Fitnesstracker
+## Feature-Roadmap: Fitnesstracker
 
 ---
 
@@ -460,3 +486,607 @@ Mit Phase 33 ist die vollständige `docs/roadmap2.md`-P1-Liste (7/7 Punkte) abge
   - **Umgesetzt — Tipps:** Der bisherige "Tipps"-Tab auf `/nutrition` (statische `NUTRITION_TIPS`-Liste plus die jetzt entfernte Supplement-Referenzliste) komplett aus `NutritionPage` entfernt, `nutritionTips.ts` gelöscht. `NutritionPage` hat jetzt drei statt fünf Tabs: Rechner, Körper, Supplements.
   - **Bewusst nicht angetastet:** `bodyWaterPercent` (Körperwasseranteil als Body-Composition-Metrik) ist ein komplett anderes Feature als der Trink-Tracker und blieb unverändert — reine Namensähnlichkeit ("Wasser"), keine inhaltliche Überschneidung.
   - End-to-end verifiziert (Playwright + direkte Checks, `test@example.com`): `/nutrition` zeigt korrekt nur noch drei Tabs, kein "Wasser", kein "Tipps"; Supplement-Erinnerungskarte weiterhin voll funktionsfähig (Anlegen/Löschen eines Test-Eintrags erfolgreich), keine Referenzliste mehr darauf; `?tab=wasser` fällt sauber auf den Rechner-Tab zurück statt zu crashen; `GET /api/water` liefert jetzt 404 statt 200; `pnpm typecheck`/`pnpm build` in Backend, Frontend und `packages/shared` sauber; kein horizontaler Overflow bei 375px.
+
+---
+
+# Teil 2 – Roadmap 3: Fitnesstracker
+
+Quelle: Wünsche des Nutzers (P0, höchste Priorität) und das strenge PWA-Review vom 19.10.2026
+(P1–P4). Reihenfolge innerhalb einer Priorität = empfohlene Umsetzungsreihenfolge.
+
+---
+
+## P0 – Nutzerwünsche (an allererster Stelle)
+
+### P0.1 Plan im Fokusmodus anpassen
+
+- [x] **Übungen direkt im Training ändern.** Im Fokusmodus („Training starten“) eine Übung des
+  heutigen Tages austauschen, hinzufügen, entfernen und in der Reihenfolge verschieben, ohne den
+  Fokusmodus zu verlassen.
+- [x] **Austausch-Vorschläge.** Beim Tauschen werden Alternativen mit gleicher Hauptmuskelgruppe
+  und erlaubtem Equipment angeboten (siehe P0.2), z. B. wenn ein Gerät belegt ist.
+- [x] **Nur heute oder dauerhaft.** Beim Ändern wählen, ob die Änderung nur für diese Einheit gilt
+  oder in den Plan (Phase + Trainingstag) übernommen wird.
+- [x] Bereits geloggte Sätze bleiben unverändert; Fortschritt, „Letztes Mal“ und PR-Erkennung
+  beziehen sich auf die tatsächlich trainierte Übung.
+- [x] **Offline-fähig** wie das übrige Training: Die Änderung wird lokal gespeichert und
+  synchronisiert, sobald wieder Netz da ist.
+
+### P0.2 KI-Plan-Generator: Split und Equipment abfragen
+
+- [x] **Bevorzugten Split abfragen.** Der Fragebogen fragt aktiv nach dem Split (z. B.
+  Ganzkörper, Ober-/Unterkörper, Push/Pull/Beine, Bro-Split, „egal – KI entscheidet“), statt ihn
+  nur aus der Trainingshäufigkeit abzuleiten (`SPLIT_TEMPLATES` in `promptBuilder.ts`). Die
+  Auswahl wird gespeichert und bei der nächsten Generierung vorbelegt.
+- [x] **Erlaubtes Equipment als Mehrfachauswahl** statt der drei Pauschalwerte
+  `homegym | dumbbells | fullgym`:
+  - Geräte/Maschinen
+  - Kurzhanteln
+  - Langhantel (inkl. SZ-Stange)
+  - Kabelturm
+  - Ohne Geräte (Körpergewicht)
+  - optional: Kettlebells, Bänder, Medizinball, Gymnastikball, Foam Roller, Sonstiges
+- [x] **Ausschlüsse ausdrücklich abfragen** („Mit welchen Mitteln möchtest du keine Übungen?“).
+  Ausgeschlossenes Equipment wird hart herausgefiltert: im Kandidatenkatalog vor dem Prompt
+  und zusätzlich in der Validierung der KI-Antwort, damit die KI nichts davon vorschlagen kann.
+- [x] **Standard für alle neuen Fragebögen:** nur Geräte, Kurzhanteln, Langhantel, Kabelturm und
+  Körpergewicht. **Keine** Übungen mit Gymnastikball (`exercise ball`), Medizinball
+  (`medicine ball`) oder ähnlichem Kleingerät.
+- [x] Equipment-Präferenz gilt auch für die Austausch-Vorschläge aus P0.1. (Tages-Challenge ist
+  ohnehin gerätefrei, Ziel-Vorschläge beziehen sich nur auf bereits trainierte Übungen.)
+
+### P0.3 Dehnübungen ohne Partner
+
+- [x] **Partner-Dehnübungen streichen.** Dehnübungen, für die zwei Personen nötig sind (im
+  free-exercise-db-Katalog z. B. Namen mit „Partner“ / „with partner“ / „assisted“), werden aus der
+  Dehnplan-Auswahl (`stretching.service.ts`, `stretchSelection.ts`), der Daily-Dehnroutine und
+  der KI-Dehnplan-Erstellung ausgeschlossen.
+- [x] Bestehende Dehnpläne bereinigen (Migration oder einmaliges Neu-Erzeugen betroffener Tage).
+- [x] Test: Kein Partner-Stretch landet mehr in einem generierten oder vorgeschlagenen Plan.
+
+### P0.4 KI-Plan-Generator: Qualität und Kontrolle
+
+- [x] **Ausgewogener Übungskatalog für den Prompt.** Bisher gingen die ersten 150 Übungen in
+  Datenbank-Reihenfolge an die KI (bei „Vollausgestattetes Studio“ praktisch A–C; Beinpresse,
+  Latzug, Rudern am Kabel, Klimmzüge, Rumänisches Kreuzheben fehlten). Neu: je Muskelgruppe
+  eine feste Anzahl, bevorzugt Grundübungen und bereits geloggte Übungen.
+- [x] **KI-Zusatzinfos speichern statt verwerfen:** Wiederholungsbereich, Ziel-RIR, Satzpause,
+  Technik-Hinweis und Alternativübung je Plan-Übung; Begründung des Plans anzeigen. Die
+  Satzpause startet den Pausen-Timer, die Alternative dient dem Übungstausch (P0.1).
+- [x] **Vorschau vor dem Übernehmen.** Der generierte Plan ist zuerst ein Entwurf: übernehmen,
+  verwerfen oder einzelne Tage neu generieren. Der vorherige Plan bleibt einmal
+  wiederherstellbar.
+- [x] **Fragebogen-Antworten speichern** und beim nächsten Mal vorbelegen (bisher jedes Mal
+  „Homegym“ + „Anfänger“).
+- [x] **Antwort prüfen:** Übungsanzahl je Tag, keine Duplikate am selben Tag; fehlende Einträge
+  aus dem Katalog passend zum Tagesfokus auffüllen.
+- [x] **Startgewicht vorschlagen** aus den Bestleistungen der letzten 8 Wochen.
+
+---
+
+## P1 – Kritisch (Kernnutzen im Studio)
+
+### P1.1 Mobile Darstellung bei großer Schrift/Anzeigegröße ✅
+
+- [x] Bei schmalem Viewport (~320 px, z. B. große System-Schrift nach Android-Update) lief jede
+  Seite seitlich über. Behoben: Kopfzeile schrumpft, einspaltige Grids mit `grid-cols-1`,
+  Wochen-Kacheln skalieren. Verifiziert bei 300–412 px.
+- [x] Regressionsschutz: E2E-Test, der alle Seiten bei 320 px auf `scrollWidth <= innerWidth`
+  prüft.
+
+### P1.2 Training offline kaltstarten
+
+- [x] React-Query-Cache in IndexedDB persistieren (`PersistQueryClientProvider` +
+  Async-Storage-Persister, `gcTime` ≥ 24 h). Mindestens Plan, Wochenstatus, Übungen des Plans,
+  Cardio- und Dehnplan.
+- [x] E2E-Test: App offline frisch öffnen → Training starten → Satz loggen → online → Sync.
+
+### P1.3 Bildschirm im Training wach halten, Pausen-Timer bei Sperrbildschirm
+
+- [x] Screen Wake Lock (`navigator.wakeLock`) im Fokusmodus, bei `visibilitychange` neu
+  anfordern.
+- [x] Pausen-Ende bei gesperrtem Bildschirm melden: beim Start der Pause einen verzögerten Push
+  serverseitig planen, bei Abbruch/±15 s stornieren bzw. verschieben.
+
+### P1.4 Gelöschte Sätze verschwinden auf allen Geräten
+
+- [x] `fetchAndCacheWorkoutLogs` gleicht ab: lokal synchronisierte Zeilen (`id !== null`), die
+  der Server nicht mehr liefert und die nicht in der Pending-Queue stehen, werden entfernt.
+- [x] Danach Delta-Sync (siehe P2.1). (`bulkPut` statt einzelner `put` ist schon umgesetzt.)
+
+---
+
+## P2 – Hoch (Performance, Robustheit, Installierbarkeit)
+
+### P2.1 Delta-Sync statt komplette Historie
+
+- [x] `GET /workout-logs?updatedSince=…` plus Tombstones für Löschungen; `bulkPut` statt
+  einzelner `put`-Aufrufe.
+
+### P2.2 Code-Splitting
+
+- [x] Routen mit `React.lazy` laden (aktuell ein einziger JS-Chunk mit ca. 780 KB). Ui-Kit,
+  Kamera, KI-Generator, Körperanalyse zuerst auslagern. Ergebnis: JS beim ersten Laden der Login-Seite
+  796 → 379 KB (−52 %), Weg bis zum Dashboard rund 470 KB; Vendor-Pakete getrennt, damit App-Updates
+  weniger Daten ziehen.
+
+### P2.3 Caddy: Cache- und Security-Header
+
+- [x] `Cache-Control: no-cache` für `/sw.js`, `/index.html`, `/manifest.webmanifest`.
+- [x] `Cache-Control: public, max-age=31536000, immutable` für `/assets/*`.
+- [x] CSP, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`.
+- [x] ~~Cloudflare-Caching für `sw.js` prüfen~~ Entfällt (Entscheidung des Nutzers).
+
+### P2.4 Manifest vervollständigen
+
+- [x] `lang: "de"` (Build erzeugt derzeit `"en"`), `id`.
+- [x] `shortcuts`: „Training starten“, „Daily“, „Fortschritt“.
+- [x] `screenshots` (schmal + breit) für den erweiterten Android-Installationsdialog.
+- [x] `apple-touch-icon` in 180×180. Dabei aufgefallen: Die PWA-Icons waren ein blaues Platzhalter-Quadrat und
+  passten nicht zum App-Logo — jetzt aus dem Logo erzeugt (`scripts/generate-pwa-icons.mjs`).
+
+### P2.5 Dauerhafter Speicher
+
+- [x] `navigator.storage.persist()` nach dem Login anfordern, damit offline geloggte, noch nicht
+  synchronisierte Sätze nicht vom Browser gelöscht werden.
+
+---
+
+## P3 – Bedienung und Effizienz
+
+- [x] **Satz loggen mit einem Tap:** Speichern-Button als größte, daumennahe Fläche;
+  Gewichts-Schrittweite je Übung merken (2,5 / 5 kg); RIR als Auswahl 0–4 statt Eingabefeld.
+- [x] **Progressionsvorschlag in der Satzzeile** (Logik aus Phase 24 sichtbar machen), z. B.
+  „Heute: 82,5 kg × 8 (+2,5)“.
+- [x] **Untere Tab-Leiste** auf dem Handy (Heute · Training · Fortschritt · Plan · Mehr) statt
+  Hamburger-Menü mit zehn Einträgen; Tagebuch und Historie zusammenlegen.
+- [x] **App-Badge** (`navigator.setAppBadge`) für offene Session bzw. nicht synchronisierte Sätze.
+- [x] ~~**Aktionen in Benachrichtigungen**, z. B. Supplement-Erinnerung direkt mit „Genommen“
+  bestätigen.~~ Entfällt (Entscheidung des Nutzers): keine Einnahme-Erfassung geplant.
+- [x] Eigenen Timer-Sound als Blob in IndexedDB statt als Data-URL im localStorage speichern.
+- [x] Skeleton der App-Shell statt „Lädt…“ beim Offline-Kaltstart (`ProtectedRoute`).
+
+---
+
+## P3b – KI-Generator Ausbau
+
+- [x] Alle drei Rotationsphasen in einem Durchgang generieren; Hauptübungen bleiben über die
+  Phasen gleich, nur Sätze/Wiederholungen/Tempo wechseln.
+- [x] Plateau-Erkennung (aus den Ziel-Vorschlägen) nutzen: stagnierende Übungen durch Varianten
+  ersetzen.
+- [x] Cardio und Dehnen im selben Fragebogen planen.
+
+---
+
+## P4 – Fehlende Funktionen
+
+- [x] **Plattenrechner** in der Satzzeile (welche Scheiben pro Seite).
+- [x] **Automatische Aufwärmsätze** (z. B. 40/60/80 % des Arbeitsgewichts), zählen nicht ins
+  Volumen und nicht als PR.
+- [x] **Notiz pro Übung/Satz** (z. B. Sitzeinstellung, Beschwerden), im Training sichtbar.
+- [x] **Wochenvolumen pro Muskelgruppe** (Sätze pro Muskel) auf der Fortschrittsseite.
+- [x] **Körpergewicht schnell erfassen** vom Dashboard, mit gleitendem 7-Tage-Mittel.
+- [x] **Health-Integration** (Health Connect bzw. Import aus Apple Health): Import von Gewicht und Körperfett aus Export-Dateien (Apple Health, Samsung Health, Google/CSV). Eine direkte Anbindung ist aus einer Web-App nicht möglich.
+- [x] **Trainingszusammenfassung teilen** (`navigator.share`).
+- [x] **Kalender-Heatmap der Trainingstage + Streak** auf dem Dashboard.
+- [x] **Geschätzter Kalorienverbrauch pro Übung** (aus Gewicht, Größe, Alter, Geschlecht sowie Wdh. und Gewicht
+  der Sätze) im Training, im Tagebuch und in der Historie.
+- [x] **Info-Bereich „Berechnungen & Quellen“** (Einstellungen) mit Formel, Eingaben und Herkunft jeder Berechnung
+  sowie (i)-Knöpfe an den berechneten Werten.
+
+---
+
+# Teil 3 – Roadmap 2: TODO vor Hardening
+
+🔴 P0 – Kritisch
+
+☑ Trainingsablauf vollständig machen – Start, Sätze, Pause, Abbruch, Fortsetzen und Abschluss zuverlässig. (Als Buttons umgesetzt, offline-fähig wie das Satz-Logging — siehe ARCHITECTURE.md/ROADMAP.md.)
+☑ Trainingsplan & Rotation finalisieren – Phasenwechsel, 8-Wochen-Zyklus, Pausen und Neustart eindeutig. (Pausieren/Fortsetzen/Phase neu starten als Buttons — siehe ARCHITECTURE.md/ROADMAP.md.)
+☑ Progressionslogik festlegen – Klare Regeln für Steigerung, Fehlversuche und Deloads. (Aufbau/Negativ: Gewicht, Muskelausdauer: Wdh. — Vorschlag + Prefill im Plan-Tagebuch, siehe ARCHITECTURE.md/ROADMAP.md.)
+☑ Offline-Sync fachlich fertigstellen – Offline-Trainings zuverlässig und vollständig synchronisieren. (Periodischer Retry, fehlgeschlagene Mutationen werden sichtbar statt still verworfen, Session-Queue jetzt auch im "ausstehend"-Badge — siehe ARCHITECTURE.md/ROADMAP.md.)
+☑ Datenkonflikte definieren – Verhalten bei parallelen/Offline-Änderungen festlegen. (Policy: jüngste Aktion gewinnt; zwei parallel gestartete Sessions werden automatisch aufgelöst; Löschen schlägt ein verspätetes Update — siehe ARCHITECTURE.md/ROADMAP.md.)
+
+🟠 P1 – Wichtig
+
+☑ Dashboard finalisieren – Heutiges Training, Fortschritt und Ziele übersichtlich. (Log-Tabelle auf heute begrenzt, kompakte Ziele-Karte mit Fortschrittsbalken ergänzt — siehe ARCHITECTURE.md/ROADMAP.md.)
+☑ Fortschrittsansicht abrunden – Gewicht, Körperdaten, Kraft, Volumen, PRs und Zeiträume. (Neue Seite `/progress` mit Zeitraum-Filter, reine Frontend-Auswertung bestehender Daten — siehe ARCHITECTURE.md/ROADMAP.md.)
+☑ Progress-Fotos komplettieren – Aufnahme, Upload, Datum, Galerie und Vorher/Nachher. (Aufnahme/Upload/Galerie/Vorher-Nachher waren schon fertig — Lücke war "Datum": Upload-Plumbing akzeptierte bereits ein eigenes Datum, aber die UI zeigte nie ein Datumsfeld, jetzt ergänzt — siehe ARCHITECTURE.md/ROADMAP.md.)
+☑ Push-Einstellungen fertigstellen – Erinnerungen individuell aktivierbar und konfigurierbar. (Drei Reminder-Typen (Phasenwechsel/Supplements/Foto) einzeln umschaltbar statt einem Alles-oder-nichts-Schalter — siehe ARCHITECTURE.md/ROADMAP.md.)
+☑ Workout-Historie vervollständigen – Vergangene Trainings ansehen und bearbeiten. (Neue Seite `/history`, nach Tag gruppiert, Übungsfilter, Bearbeiten/Löschen — siehe ROADMAP.md Phase 31 / ARCHITECTURE.md)
+☑ Übungsverwaltung finalisieren – Übungen anlegen, bearbeiten, deaktivieren und korrekt verwenden. (Anlegen/Bearbeiten-Dialog, neues `isActive`-Feld statt Hard-Delete, Picker filtern automatisch — siehe ROADMAP.md Phase 32 / ARCHITECTURE.md)
+☑ Ziele vollständig machen – Ziele erstellen, Fortschritt und Abschluss sauber behandeln. (Auto-Abschluss für Gewicht/Wiederholungen-Ziele, Bearbeiten-Dialog für Zielwert/-datum — siehe ROADMAP.md Phase 33 / ARCHITECTURE.md; damit P1 vollständig)
+
+🟡 P2 – Abrunden
+
+☑ Wasser-Tracking finalisieren – Tagesziel, Eingabe und Verlauf.
+☑ Supplement-Tracking finalisieren – Einnahmen, Status und Erinnerungen.
+☑ Daily Challenge abrunden – Anzeige, Erledigung und Verlauf.
+☑ Ernährungsrechner abrunden – Eingaben, Berechnung und Zielwerte.
+☑ Export/Backup prüfen – Persönliche Daten sicher exportierbar machen.
+☑ Empty/Error/Loading States – Alle zentralen Ansichten sauber behandeln.
+☑ Mobile UX finalisieren – Touch-Bedienung und schnelle Eingaben optimieren.
+
+🟢 P3 – Optional
+
+☒ AI-Übungsvorschläge – Komfortfeature. (verworfen, nicht geplant)
+☐ Wearables/Health-Integrationen – Nach Feature Freeze.
+☐ Erweiterte Statistiken – Nur bei echtem Mehrwert.
+☐ Social Features – Nicht vor Hardening nötig.
+
+🏁 Feature Freeze
+
+☑ Keine neuen großen Features – Danach nur Fehlerbehebung/Stabilisierung.
+☑ Kernflows komplett testen – Login → Dashboard → Training → Abschluss → Historie → Fortschritt.
+☑ Offline-Kernflow testen – Offline erfassen → online gehen → Sync kontrollieren.
+
+---
+
+# Teil 4 – Roadmap v2: Ergänzungen
+
+## Leitprinzip
+
+Die App soll sich von einer Feature-Sammlung zu einem fokussierten, persönlichen Trainingsbegleiter entwickeln.
+
+Der Fokus liegt auf:
+- schneller und angenehmer Nutzung während des Trainings
+- zuverlässiger Offline-Nutzung
+- Schutz und Eigentum der persönlichen Daten
+- intelligenter Auswertung vorhandener Trainingsdaten
+- personalisierten Features statt generischer Fitness-Features
+- hoher technischer Qualität und langfristiger Wartbarkeit
+
+## P0 — Foundation & Stabilität
+
+Ziel: Die technische Basis absichern, bevor neue größere Features entwickelt werden.
+
+### P0.1 CI Pipeline einführen
+
+GitHub Actions als zentrale CI-Plattform etablieren.
+
+Bei jedem Push:
+- Lint
+- Typecheck
+- Unit Tests
+- Build
+
+Bei Pull Requests:
+- Integration Tests
+- Playwright E2E Tests
+- Offline-Sync Tests
+- Build Verification
+
+Branch Protection für main:
+- Pull Request erforderlich
+- alle Required Checks müssen erfolgreich sein
+- Branch muss aktuell sein
+- keine offenen Review-/Conversation-Probleme
+
+Ziel: main ist jederzeit buildbar, getestet und deploybar.
+
+### P0.2 Deployment Pipeline
+
+Nach erfolgreichem Merge auf main:
+- CI erfolgreich
+- Docker Build
+- Deployment
+- Health Check
+
+Deployment erfolgt nur bei erfolgreicher CI.
+
+### P0.3 Offline-Sync UX
+
+Der bestehende Offline-Sync muss transparent sein.
+
+Anzeigen:
+- Online
+- Offline
+- Synchronisierung läuft
+- Anzahl ausstehender Änderungen
+- Synchronisierung fehlgeschlagen
+
+Bei Fehlern:
+- verständliche Fehlermeldung
+- Retry-Möglichkeit
+- keine stillen Fehler
+
+Ziel: Der Nutzer soll jederzeit verstehen, ob seine Daten sicher gespeichert und synchronisiert sind.
+
+### P0.4 Kritische Offline E2E Tests
+
+Automatisierte Tests für:
+- Login
+- Offline gehen
+- Workout erstellen
+- Workout bearbeiten
+- App neu laden
+- lokale Daten prüfen
+- Online gehen
+- Synchronisierung
+- Server-State prüfen
+
+Zusätzliche Szenarien:
+- mehrere Offline-Änderungen
+- Mutation Coalescing
+- Create + Delete offline
+- Sync Fehler
+- Retry
+- App Reload während Pending Mutations
+
+### P0.5 Progress Photo Security Review
+- Zugriff nur für berechtigte Nutzer
+- keine öffentlich erratbaren URLs
+- Authorization vor Bildzugriff
+- MIME-Type Validation
+- File Size Limits
+- Image Dimension Limits
+- EXIF Metadata entfernen
+- sicheres echtes Delete
+
+Optional:
+- serverseitige Image-Komprimierung
+- WebP/AVIF Konvertierung
+
+### P0.6 PWA Update Flow
+- neue Version erkennen
+- Update-Banner anzeigen
+- Nutzer entscheidet über Reload
+- kein automatisches Reload während aktivem Workout
+
+### P0.7 Produktfokus – statische Features entfernen
+
+Entfernen:
+- Water Tracker
+- Supplement Tipps
+
+Begründung: Beide Features erzeugen zusätzliche Navigation, UI-Komplexität und Wartungsaufwand, liefern aber keinen ausreichenden dynamischen Mehrwert.
+
+Ziel: Weniger Features, aber stärkere Features.
+
+## P1 — Core Training Experience
+
+Ziel: Das eigentliche Trainingserlebnis deutlich verbessern.
+
+### P1.1 Workout Flow optimieren
+- Previous Performance direkt sichtbar
+- letzte Werte sinnvoll vorausfüllen
+- möglichst wenige Interaktionen
+- schnelle Gewichtsanpassung
+- schnelle Rep-Anpassung
+- Sets schnell hinzufügen
+- Sets schnell löschen
+- klare visuelle Struktur während aktivem Workout
+
+Leitfrage: Wie schnell kann ein Nutzer einen Satz loggen?
+
+### P1.2 Timer verbessern
+
+Das bestehende frei konfigurierbare Timer-Konzept bleibt bestehen.
+
+Keine festen automatischen Pausenzeiten, da Pausenzeiten:
+- übungsabhängig
+- trainingszielabhängig
+- personenabhängig
+
+Ergänzen:
+- optionale Vibration bei Timer-Ende
+- optionaler Sound
+- zuverlässiges Verhalten bei App-Wechsel
+
+### P1.3 PR Detection
+
+Automatisch erkennen:
+- Weight PR
+- Rep PR
+- Estimated 1RM PR
+- Volume PR
+
+Die Anzeige soll motivierend, aber nicht aufdringlich sein.
+
+### P1.4 Progress Intelligence
+
+Vorhandene Trainingsdaten besser nutzen:
+- Exercise Progress Charts
+- Trainingsvolumen-Trends
+- Progress über Zeit
+- Konsistenz
+- Stagnation erkennen
+- Training Frequency
+
+Ziel: Die App soll nicht nur Daten speichern, sondern dem Nutzer helfen, diese zu verstehen.
+
+### P1.5 Smart Goal Suggestions
+
+Goal Suggestions von einer statischen Progressionslogik zu einem datenbasierten Modell weiterentwickeln.
+
+Berücksichtigen:
+- Exercise Type
+- bisherige Progression
+- Trainingsfrequenz
+- Trainingsvolumen
+- Rep Range
+- Plateaus
+- bisherige Zielerreichung
+
+Mögliche Zielstufen:
+- Konservativ
+- Realistisch
+- Ambitioniert
+
+Wichtig: Zunächst regelbasiert entwickeln. Kein AI-Zwang.
+
+### P1.6 Export & Backup
+
+Mindestens:
+- JSON Full Backup
+- CSV Workout Export
+
+Mögliche Exportbereiche:
+- Workouts
+- Goals
+- Body Metrics
+- Training Plans
+- Settings
+
+Ziel: Persönliche Trainingsdaten sollen nicht ausschließlich an die App gebunden sein.
+
+### P1.7 Notification Preferences
+
+Notifications bleiben vollständig personalisierbar.
+
+Bereiche:
+
+Training:
+- Planwechsel
+- Workout Reminder
+
+Progress:
+- Personal Records
+- Goal Achievements
+
+Challenges:
+- Daily Challenges
+
+System:
+- Sync Errors
+- wichtige App Updates
+
+Der Nutzer entscheidet selbst, welche Kategorien aktiviert sind.
+
+### P1.8 Plan-aware Daily Challenges
+
+Daily Challenges werden nicht generisch erzeugt.
+
+Sie sollen sich orientieren an:
+- aktuellem Trainingsplan
+- aktueller Trainingsphase
+- geplanten Übungen
+- Trainingshistorie
+- aktueller Progression
+
+Mögliche Kategorien:
+- Technique
+- Progression
+- Volume
+- Consistency
+- optional Recovery
+
+Challenge Rotation:
+- aktuelle Challenge
+- 1–2 Rotationen verfügbar
+- neue Challenge muss weiterhin zum Trainingsplan passen
+
+Wichtig: Die Rotation darf nicht komplett zufällig sein. Alle Alternativen müssen zum aktuellen Trainingskontext passen.
+
+## P2 — Quality & Polish
+
+Ziel: Die App langfristig technisch und UX-seitig weiter verbessern.
+
+### P2.1 Lighthouse CI
+
+Automatisierte Qualitätschecks für:
+- Performance
+- Accessibility
+- Best Practices
+
+Performance Regressionen sollen sichtbar werden.
+
+### P2.2 Accessibility Audit
+
+Prüfen:
+- Screenreader Unterstützung
+- Kontrast
+- Focus States
+- Icon Labels
+- Keyboard Navigation
+- Bottom Sheets
+- Modals
+- Reduced Motion
+
+Ziel: Alle zentralen Trainingsflows sollen möglichst zugänglich sein.
+
+### P2.3 Performance Optimierung
+
+Analysieren und optimieren:
+- Bundle Size
+- Route Code Splitting
+- Lazy Loading
+- Image Loading
+- Image Compression
+- Caching
+- Rendering Performance
+
+Besonders priorisieren:
+- Workout Screen
+- Dashboard
+- Exercise Library
+
+### P2.4 Trainingsplan-Rotation UX
+
+Automatische Planwechsel nicht vollständig ohne Nutzerkontrolle durchführen.
+
+Möglichkeiten:
+- Phase wechseln
+- Phase eine Woche verlängern
+
+Ziel: Automatisierung mit Nutzerkontrolle kombinieren.
+
+## Langfristige Architektur-Richtung
+
+Die App bleibt Account-basiert.
+
+Der Account ermöglicht:
+- Backup
+- Multi-Device Sync
+- Datenwiederherstellung
+- Push Notifications
+
+Die lokale Datenbank bleibt jedoch zentral für die User Experience.
+
+Leitprinzip:
+
+Local-first UX + Account-based Cloud Sync.
+
+## Zielbild
+
+Die App soll langfristig kein generischer Fitness-Hub sein.
+
+Nicht: Eine App mit möglichst vielen Fitness-Features.
+
+Sondern: Ein persönlicher Trainingsbegleiter, der meine Trainingsdaten versteht, meinen Fortschritt sichtbar macht und mich während des Trainings möglichst wenig aufhält.
+
+## Prioritätenübersicht
+
+P0 — FOUNDATION
+- GitHub Actions CI
+- Branch Protection
+- Deployment Pipeline
+- Offline Sync UI
+- Offline E2E Tests
+- Progress Photo Security
+- PWA Update Flow
+- Water + Supplement Features entfernen
+
+P1 — CORE VALUE
+- Workout UX
+- Timer Vibration
+- PR Detection
+- Progress Intelligence
+- Smart Goal Suggestions
+- Export / Backup
+- Notification Preferences
+- Plan-aware Daily Challenges
+- 1–2 Challenge Rotations
+
+P2 — QUALITY & POLISH
+- Lighthouse CI
+- Accessibility
+- Performance Optimierung
+- Plan Rotation UX
+
+## Grundsatz für zukünftige Features
+
+Bevor ein neues Feature entwickelt wird, sollte es diese Frage beantworten:
+
+Verbessert es das Training, das Verständnis des Fortschritts oder die langfristige Motivation anhand persönlicher Daten?
+
+Wenn nicht, sollte kritisch geprüft werden, ob es wirklich in die App gehört.

@@ -34,7 +34,7 @@ export function LoginPage() {
       footer={
         <>
           Noch kein Konto?{" "}
-          <Link to="/register" className="text-accent-text hover:text-accent-text-hover">
+          <Link to="/register" className="text-accent-text underline underline-offset-2 hover:text-accent-text-hover">
             Registrieren
           </Link>
         </>
@@ -51,7 +51,7 @@ export function LoginPage() {
         <Button type="submit" variant="primary" size="lg" fullWidth disabled={isSubmitting}>
           Anmelden
         </Button>
-        <Link to="/reset-password" className="text-center text-small text-accent-text hover:text-accent-text-hover">
+        <Link to="/reset-password" className="text-center text-small text-accent-text underline underline-offset-2 hover:text-accent-text-hover">
           Passwort vergessen?
         </Link>
       </form>

@@ -19,7 +19,7 @@ export function getOpenWorkoutSession(prisma: PrismaClient, userId: string) {
 // or the offline sync queue replaying) returns the existing session instead of creating a
 // second one.
 //
-// Datenkonflikte (docs/roadmap2.md P0.5): two devices can each start a session offline, unaware of
+// Datenkonflikte (ROADMAP.md Teil 3, P0.5): two devices can each start a session offline, unaware of
 // each other — both queue a "create" with their own clientId, and both eventually sync. Without
 // reconciliation that leaves two simultaneously "open" (ACTIVE/PAUSED) sessions server-side,
 // silently violating the "at most one open session" invariant the rest of the app assumes.

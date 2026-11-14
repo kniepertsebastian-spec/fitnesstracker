@@ -7,6 +7,10 @@ fortgeführt.
 
 Format: `- **Titel** — was sich geändert hat und warum, falls nicht offensichtlich. Verifiziert: wie.`
 
+## 2026-11-13
+
+- **Aufräumen (Roadmap Stufe 4): `backup.json` einspielen, README, Roadmap, Git-Schutz** — Neu: `POST /api/import/backup.json` und „Sicherung einspielen“ unter Einstellungen → „Export & Backup“. Der Import füllt nur ein leeres Konto (sonst 409 mit deutscher Meldung), vergibt neue Ids, legt eigene Übungen unter ihrem Namen neu an, wenn es sie im Zielkonto nicht gibt, und überspringt unvollständige Zeilen mit Zählung. Nicht enthalten sind Fotodateien und Zugangsdaten (stehen auch nicht im Export). README nennt den heutigen Funktionsumfang (kein Wasser-Tracking mehr) und Node ≥ 22.12. `ROADMAP.md` ist jetzt die eine Roadmap (Teil 1 Phasen, Teil 2 Roadmap 3, Teil 3 Roadmap 2, Teil 4 Roadmap v2); `roadmap3.md`, `docs/roadmap2.md`, `roadmapv2_additionals.md` (eine Word-Datei mit `.md`-Endung), `context.txt` und `context2.txt` sind entfernt. Neu: `pnpm check:tracked` lässt die CI fehlschlagen, wenn Git `node_modules/`, `dist/` oder `build/` verfolgt. Verifiziert: Integrationstests (Export A → Import B, zweiter Import abgelehnt, kaputte Zeilen übersprungen), E2E über die Oberfläche, Skript gegen ein Wegwerf-Repo mit eingechecktem `node_modules/` (schlägt fehl).
+
 ## 2026-11-05
 
 - **React 18 → 19** — `react`/`react-dom` 19.3.1 und die Typen; der Code brauchte keine Anpassung (kein `forwardRef`-Zwang, keine `defaultProps`, kein `ReactDOM.render`). `zustand` bleibt vorerst auf 4 (läuft unter React 19). Verifiziert: Typecheck, Lint, Unit-Tests, Build, Playwright-Suite 15/15.
