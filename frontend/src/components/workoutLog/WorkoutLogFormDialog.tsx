@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { Minus, Plus } from "lucide-react";
@@ -12,6 +12,13 @@ import { buildWarmupPyramid } from "../../lib/oneRepMax";
 import { detectPRs, prLabels } from "../../lib/prDetection";
 import { Button, Callout, Dialog, Field, IconButton, Input, SegmentedControl, Select } from "../ui";
 import { formatKg } from "../../lib/trainingSets";
+import {
+  localDateInputValue,
+  localDateTimeToIso,
+  localTimeInputValue,
+  localYesterdayInputValue,
+  utcDayKey,
+} from "../../lib/dates";
 
 const formSchema = z.object({
   exerciseId: z.string().uuid({ message: "Bitte eine Übung wählen" }),
@@ -30,7 +37,15 @@ interface Props {
   open: boolean;
   onClose: () => void;
   editingLog: LocalWorkoutLog | null;
+  /** "YYYY-MM-DD" (lokal): öffnet den Dialog direkt im Nachtragen-Modus für diesen Tag. */
+  initialDate?: string | null;
 }
+
+// Uhrzeit, die beim Nachtragen für einen vergangenen Tag vorgeschlagen wird — ein Satz "um
+// irgendwann am Abend" ist näher an der Wahrheit als eine Mitternachts-Uhrzeit.
+const DEFAULT_BACKDATE_TIME = "18:00";
+
+type WhenChoice = "now" | "yesterday" | "custom";
 
 // Remembered for the lifetime of the tab (module-level, not persisted) so "add to last group"
 // works across dialog opens within one session without needing a new data model just to track
@@ -38,16 +53,6 @@ interface Props {
 let lastSupersetGroupId: string | null = null;
 
 type SupersetMode = "none" | "new" | "join";
-
-function isToday(performedAt: string): boolean {
-  const d = new Date(performedAt);
-  const now = new Date();
-  return (
-    d.getUTCFullYear() === now.getUTCFullYear() &&
-    d.getUTCMonth() === now.getUTCMonth() &&
-    d.getUTCDate() === now.getUTCDate()
-  );
-}
 
 // +/- stepper alongside the number input — the roadmap's "schnelle Gewichts-/Rep-Anpassung" ask:
 // a big tap target beats opening the on-screen keyboard for a ±1 rep or ±2.5kg change mid-set.
@@ -102,7 +107,7 @@ function SteppedNumberField({
   );
 }
 
-export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
+export function WorkoutLogFormDialog({ open, onClose, editingLog, initialDate = null }: Props) {
   const { data: exercises } = useExercises();
   const { data: allLogs } = useWorkoutLogs();
   const createLog = useCreateWorkoutLog();
@@ -115,6 +120,15 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
   // "Abbrechen" close-button label and lets the dialog stay open across consecutive sets instead
   // of forcing reopen-reselect-exercise for every single set of a workout.
   const [savedCount, setSavedCount] = useState(0);
+  // "Wann?": by default a set is stamped "jetzt"; with `backdate` the user picks date + time
+  // (Training nachtragen, or correcting the time of an existing set). Plain state instead of
+  // react-hook-form fields: the choice drives the dialog title, rest timer and set numbering.
+  const [backdate, setBackdate] = useState(false);
+  const [dateValue, setDateValue] = useState(() => localDateInputValue());
+  const [timeValue, setTimeValue] = useState(() => localTimeInputValue());
+  const [whenError, setWhenError] = useState<string | null>(null);
+  const originalWhen = useRef<{ date: string; time: string } | null>(null);
+  const previousExerciseId = useRef<string | undefined>(undefined);
 
   const {
     register,
@@ -130,7 +144,16 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
   const watchedExerciseId = watch("exerciseId");
 
   useEffect(() => {
+    const today = localDateInputValue();
+    setWhenError(null);
+    previousExerciseId.current = undefined;
     if (editingLog) {
+      const performed = new Date(editingLog.performedAt);
+      const parts = { date: localDateInputValue(performed), time: localTimeInputValue(performed) };
+      originalWhen.current = parts;
+      setBackdate(true);
+      setDateValue(parts.date);
+      setTimeValue(parts.time);
       reset({
         exerciseId: editingLog.exerciseId,
         setNumber: editingLog.setNumber,
@@ -143,28 +166,61 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
     } else {
       reset({ exerciseId: undefined, setNumber: 1, reps: 10, weightKg: 0, rir: "", note: "" });
       setSupersetMode("none");
+      originalWhen.current = null;
+      if (initialDate && initialDate < today) {
+        setBackdate(true);
+        setDateValue(initialDate);
+        setTimeValue(DEFAULT_BACKDATE_TIME);
+      } else {
+        setBackdate(false);
+        setDateValue(today);
+        setTimeValue(localTimeInputValue());
+      }
     }
     setShowWarmup(false);
     setSavedCount(0);
-  }, [editingLog, reset, open]);
+  }, [editingLog, reset, open, initialDate]);
+
+  // The instant this set will be stamped with, for the live preview of the chosen day (set
+  // numbering). Null while the date/time inputs are incomplete.
+  const chosenIso = backdate ? localDateTimeToIso(dateValue, timeValue) : new Date().toISOString();
+  const chosenDayKey = chosenIso ? utcDayKey(new Date(chosenIso)) : null;
+  const whenChoice: WhenChoice = !backdate ? "now" : dateValue === localYesterdayInputValue() ? "yesterday" : "custom";
+
+  const chooseWhen = (choice: WhenChoice) => {
+    setWhenError(null);
+    if (choice === "now") {
+      setBackdate(false);
+      return;
+    }
+    if (!backdate) setTimeValue(choice === "yesterday" ? DEFAULT_BACKDATE_TIME : localTimeInputValue());
+    setBackdate(true);
+    if (choice === "yesterday") setDateValue(localYesterdayInputValue());
+  };
 
   // Prefills reps/weight from the last time this exercise was logged, and sets the set number to
-  // "however many sets of this exercise are already logged today, plus one" — the roadmap's
-  // "letzte Werte sinnvoll vorausfüllen" ask. Only runs when picking a *new* exercise (not on
-  // every keystroke) and never in edit mode, where the existing values are the point.
+  // "however many sets of this exercise are already logged on the chosen day, plus one" — the
+  // roadmap's "letzte Werte sinnvoll vorausfüllen" ask. Reps/weight only when picking a *new*
+  // exercise (not on every keystroke), the set number also when the day changes; never in edit
+  // mode, where the existing values are the point.
   useEffect(() => {
     if (editingLog || !watchedExerciseId || !allLogs) return;
-    const lastLog = allLogs.find((log) => log.exerciseId === watchedExerciseId);
-    const todaysSetCount = allLogs.filter(
-      (log) => log.exerciseId === watchedExerciseId && isToday(log.performedAt),
-    ).length;
-    if (lastLog) {
-      setValue("weightKg", lastLog.weightKg);
-      setValue("reps", lastLog.reps);
+    if (previousExerciseId.current !== watchedExerciseId) {
+      const lastLog = allLogs.find((log) => log.exerciseId === watchedExerciseId);
+      if (lastLog) {
+        setValue("weightKg", lastLog.weightKg);
+        setValue("reps", lastLog.reps);
+      }
+      previousExerciseId.current = watchedExerciseId;
     }
-    setValue("setNumber", todaysSetCount + 1);
+    if (chosenDayKey) {
+      const setsOnDay = allLogs.filter(
+        (log) => log.exerciseId === watchedExerciseId && utcDayKey(new Date(log.performedAt)) === chosenDayKey,
+      ).length;
+      setValue("setNumber", setsOnDay + 1);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedExerciseId]);
+  }, [watchedExerciseId, chosenDayKey]);
 
   const lastLogForExercise = !editingLog
     ? allLogs?.find((log) => log.exerciseId === watchedExerciseId)
@@ -192,10 +248,31 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
     const note = data.note?.trim() || null;
     const supersetGroupId = resolveSupersetGroupId();
 
+    // Validated before anything is written, so an invalid time never half-saves a set.
+    let performedAtOverride: string | undefined;
+    if (backdate) {
+      const iso = localDateTimeToIso(dateValue, timeValue);
+      if (!iso) {
+        setWhenError("Bitte Datum und Uhrzeit angeben.");
+        return;
+      }
+      if (new Date(iso).getTime() > Date.now()) {
+        setWhenError("Der Zeitpunkt liegt in der Zukunft.");
+        return;
+      }
+      // Editing only sends the time when the user actually changed it, so fixing a typo in the
+      // weight never rewrites the original timestamp (it has seconds; the inputs only minutes).
+      const original = originalWhen.current;
+      if (!editingLog || !original || original.date !== dateValue || original.time !== timeValue) {
+        performedAtOverride = iso;
+      }
+    }
+    setWhenError(null);
+
     if (editingLog) {
       await updateLog.mutateAsync({
         clientId: editingLog.clientId,
-        input: { ...data, rir, note },
+        input: { ...data, rir, note, ...(performedAtOverride ? { performedAt: performedAtOverride } : {}) },
         exerciseName,
       });
       onClose();
@@ -204,22 +281,29 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
 
     // Captured before the create call — once it resolves, allLogs (the react-query cache) has
     // already absorbed the new set, which would make it compare against itself.
-    const performedAt = new Date().toISOString();
+    const performedAt = performedAtOverride ?? new Date().toISOString();
     const prs = detectPRs(allLogs ?? [], data.exerciseId, [
       { reps: data.reps, weightKg: data.weightKg, performedAt },
     ]);
 
     await createLog.mutateAsync({
-      input: { ...data, rir, note, supersetGroupId, clientId: crypto.randomUUID() },
+      input: {
+        ...data,
+        rir,
+        note,
+        supersetGroupId,
+        clientId: crypto.randomUUID(),
+        ...(performedAtOverride ? { performedAt: performedAtOverride } : {}),
+      },
       exerciseName,
     });
     if (prLabels(prs).length > 0) {
       showPR(exerciseName, prLabels(prs));
     }
     // Only a newly logged set starts the rest timer — editing a past entry (e.g. fixing a
-    // typo) isn't "I just finished a set", so it shouldn't interrupt whatever timer is
-    // already running (or start one out of nowhere).
-    if (autoStartEnabled) {
+    // typo) isn't "I just finished a set", and neither is a set entered after the fact, so
+    // neither should interrupt whatever timer is already running (or start one out of nowhere).
+    if (autoStartEnabled && !backdate) {
       startRestTimer(autoStartSeconds);
     }
     // A "Neue Gruppe" tap only starts a group once — the next quick set for the same exercise
@@ -241,9 +325,61 @@ export function WorkoutLogFormDialog({ open, onClose, editingLog }: Props) {
     <Dialog
       open={open}
       onOpenChange={(next) => !next && onClose()}
-      title={editingLog ? "Satz bearbeiten" : "Satz hinzufügen"}
+      title={editingLog ? "Satz bearbeiten" : backdate ? "Satz nachtragen" : "Satz hinzufügen"}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
+          {!editingLog && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-small font-medium text-text-muted">Wann?</span>
+              <SegmentedControl
+                label="Zeitpunkt des Satzes"
+                value={whenChoice}
+                onChange={chooseWhen}
+                options={[
+                  { value: "now", label: "Jetzt" },
+                  { value: "yesterday", label: "Gestern" },
+                  { value: "custom", label: "Anderes Datum" },
+                ]}
+              />
+            </div>
+          )}
+          {backdate && (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Datum" error={whenError}>
+                {(p) => (
+                  <Input
+                    {...p}
+                    type="date"
+                    className="h-12"
+                    // No `max`: a native max would block submission silently (no JS handler, no
+                    // message); the explicit "liegt in der Zukunft" check in onSubmit explains it.
+                    value={dateValue}
+                    onChange={(e) => {
+                      setWhenError(null);
+                      setDateValue(e.target.value);
+                    }}
+                  />
+                )}
+              </Field>
+              <Field label="Uhrzeit">
+                {(p) => (
+                  <Input
+                    {...p}
+                    type="time"
+                    className="h-12"
+                    value={timeValue}
+                    onChange={(e) => {
+                      setWhenError(null);
+                      setTimeValue(e.target.value);
+                    }}
+                  />
+                )}
+              </Field>
+            </div>
+          )}
+        </div>
+
         <Field
           label="Übung"
           error={errors.exerciseId?.message}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import type { LocalWorkoutLog } from "../offline/db";
 import { DiaryTabs } from "../components/layout/DiaryTabs";
 import { AppShell } from "../components/layout/AppShell";
@@ -7,6 +7,7 @@ import { WorkoutLogFormDialog } from "../components/workoutLog/WorkoutLogFormDia
 import { Button, Card, Dialog, EmptyState, IconButton, Input, ListRow, Select, Skeleton, cn } from "../components/ui";
 import { useDeleteWorkoutLog, useExercises, useWorkoutLogs } from "../hooks/useWorkoutLogs";
 import { formatKg } from "../lib/trainingSets";
+import { localDateInputValue, localYesterdayInputValue } from "../lib/dates";
 import { KcalEstimate } from "../components/workoutLog/KcalEstimate";
 import { Dumbbell } from "lucide-react";
 
@@ -69,6 +70,7 @@ const WEEKDAY_LABELS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 interface CalendarProps {
   view: MonthView;
   dayKeysWithLogs: Set<string>;
+  todayKey: string;
   selectedDate: string | null;
   onSelectDay: (key: string) => void;
   onPrevMonth: () => void;
@@ -77,7 +79,7 @@ interface CalendarProps {
 
 // A month grid instead of a scrolling day-by-day list — browsing stays bounded to ~31 cells no
 // matter how many months of history exist, and only the selected day's data ever renders below it.
-function HistoryCalendar({ view, dayKeysWithLogs, selectedDate, onSelectDay, onPrevMonth, onNextMonth }: CalendarProps) {
+function HistoryCalendar({ view, dayKeysWithLogs, todayKey, selectedDate, onSelectDay, onPrevMonth, onNextMonth }: CalendarProps) {
   const cells = buildCalendarCells(view.year, view.month);
   const monthLabel = new Date(Date.UTC(view.year, view.month, 1)).toLocaleDateString("de-DE", {
     month: "long",
@@ -112,12 +114,15 @@ function HistoryCalendar({ view, dayKeysWithLogs, selectedDate, onSelectDay, onP
           const key = `${view.year}-${pad(view.month + 1)}-${pad(day)}`;
           const hasLogs = dayKeysWithLogs.has(key);
           const isSelected = key === selectedDate;
+          // Past days without a workout stay selectable: that is where a forgotten training is
+          // entered after the fact. Only the future is closed.
+          const isFuture = key > todayKey;
           return (
             <button
               key={i}
               type="button"
               onClick={() => onSelectDay(key)}
-              disabled={!hasLogs}
+              disabled={!hasLogs && isFuture}
               aria-pressed={isSelected}
               aria-label={`${day}.${hasLogs ? " mit Training" : ""}`}
               className={cn(
@@ -126,7 +131,9 @@ function HistoryCalendar({ view, dayKeysWithLogs, selectedDate, onSelectDay, onP
                   ? "bg-accent font-semibold text-on-accent"
                   : hasLogs
                     ? "bg-accent-soft text-text hover:bg-track"
-                    : "text-text-faint",
+                    : isFuture
+                      ? "text-text-faint"
+                      : "text-text-subtle hover:bg-track",
               )}
             >
               {day}
@@ -150,7 +157,10 @@ function ExerciseLogGroup({ exerciseName, logs, onEdit }: ExerciseGroupProps) {
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState<LocalWorkoutLog | null>(null);
   const deleteLog = useDeleteWorkoutLog();
-  const sorted = [...logs].sort((a, b) => (a.performedAt < b.performedAt ? -1 : 1));
+  // Sets entered after the fact in one go share a timestamp; the set number keeps their order.
+  const sorted = [...logs].sort((a, b) =>
+    a.performedAt === b.performedAt ? a.setNumber - b.setNumber : a.performedAt < b.performedAt ? -1 : 1,
+  );
 
   return (
     <Card className="p-0 lg:p-0">
@@ -226,6 +236,8 @@ export function WorkoutHistoryPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<LocalWorkoutLog | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  // Day ("YYYY-MM-DD") the "nachtragen" dialog opens for; null = the dialog's own default.
+  const [backfillDate, setBackfillDate] = useState<string | null>(null);
   const [view, setView] = useState<MonthView | null>(null);
 
   const filtered = useMemo(
@@ -273,6 +285,14 @@ export function WorkoutHistoryPage() {
 
   const openEdit = (log: LocalWorkoutLog) => {
     setEditingLog(log);
+    setBackfillDate(null);
+    setDialogOpen(true);
+  };
+
+  // Training nachtragen: for the selected past day, otherwise yesterday as the likeliest case.
+  const openBackfill = (day: string | null) => {
+    setEditingLog(null);
+    setBackfillDate(day && day < localDateInputValue() ? day : localYesterdayInputValue());
     setDialogOpen(true);
   };
 
@@ -283,7 +303,17 @@ export function WorkoutHistoryPage() {
   return (
     <AppShell>
       <DiaryTabs />
-      <h1 className="mb-4 text-h1 text-text lg:text-h1-lg">Historie</h1>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h1 className="min-w-0 text-h1 text-text lg:text-h1-lg">Historie</h1>
+        <Button
+          variant="primary"
+          iconLeft={<CalendarPlus size={18} aria-hidden />}
+          onClick={() => openBackfill(selectedDate)}
+          className="shrink-0"
+        >
+          Nachtragen
+        </Button>
+      </div>
 
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Input
@@ -318,6 +348,7 @@ export function WorkoutHistoryPage() {
             <HistoryCalendar
               view={view}
               dayKeysWithLogs={new Set(logsByDay.keys())}
+              todayKey={dayKey(new Date().toISOString())}
               selectedDate={selectedDate}
               onSelectDay={setSelectedDate}
               onPrevMonth={() => setView((v) => (v ? shiftMonth(v, -1) : v))}
@@ -329,10 +360,23 @@ export function WorkoutHistoryPage() {
             <div>
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
                 <h2 className="text-h2 text-text">{dayLabel(selectedDate)}</h2>
-                <KcalEstimate sets={selectedDayGroups.flatMap(([, exerciseLogs]) => exerciseLogs)} withHint />
+                {selectedDayGroups.length > 0 && (
+                  <KcalEstimate sets={selectedDayGroups.flatMap(([, exerciseLogs]) => exerciseLogs)} withHint />
+                )}
               </div>
               {selectedDayGroups.length === 0 ? (
-                <p className="text-small text-text-faint">Keine Einträge für diese Auswahl.</p>
+                <Card>
+                  <p className="mb-3 text-small text-text-faint">Für diesen Tag ist kein Training protokolliert.</p>
+                  {selectedDate < localDateInputValue() && (
+                    <Button
+                      variant="secondary"
+                      iconLeft={<CalendarPlus size={18} aria-hidden />}
+                      onClick={() => openBackfill(selectedDate)}
+                    >
+                      Training für diesen Tag nachtragen
+                    </Button>
+                  )}
+                </Card>
               ) : (
                 <div className="flex flex-col gap-2">
                   {selectedDayGroups.map(([name, exerciseLogs]) => (
@@ -345,7 +389,12 @@ export function WorkoutHistoryPage() {
         </div>
       )}
 
-      <WorkoutLogFormDialog open={dialogOpen} onClose={() => setDialogOpen(false)} editingLog={editingLog} />
+      <WorkoutLogFormDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        editingLog={editingLog}
+        initialDate={backfillDate}
+      />
     </AppShell>
   );
 }
