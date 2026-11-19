@@ -4,6 +4,7 @@ import {
   createPlanExerciseRequest,
   deletePlanExerciseRequest,
   getWeeklyPlanStatusRequest,
+  listExerciseAlternativesRequest,
   listPlanExercisesRequest,
   updatePlanExerciseRequest,
 } from "../api/planExercise.api";
@@ -63,5 +64,16 @@ export function useDeletePlanExercise(phase: TrainingPhase) {
       queryClient.setQueryData<PlanExerciseDto[]>(planExercisesKey(phase), (old) => old?.filter((e) => e.id !== id));
       invalidatePlan(queryClient, phase);
     },
+  });
+}
+
+// Direct replacements for one exercise (same muscles, allowed equipment, nothing avoided).
+export function useExerciseAlternatives(exerciseId: string | null | undefined, excludeIds: string[] = []) {
+  const exclude = [...new Set(excludeIds)].sort();
+  return useQuery({
+    queryKey: ["exercise-alternatives", exerciseId, exclude],
+    queryFn: () => listExerciseAlternativesRequest(exerciseId!, exclude).then((r) => r.items),
+    enabled: !!exerciseId,
+    staleTime: 5 * 60_000,
   });
 }

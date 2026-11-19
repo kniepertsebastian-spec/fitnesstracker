@@ -248,6 +248,7 @@ export function PlanDays({ phase }: { phase: TrainingPhase }) {
         open={dialogOpen}
         dayLabel={replacing?.dayLabel ?? active?.dayLabel ?? null}
         replacingEntry={replacing}
+        dayExerciseIds={active?.entries.map((e) => e.exerciseId)}
         onClose={() => {
           setDialogOpen(false);
           setReplacing(null);

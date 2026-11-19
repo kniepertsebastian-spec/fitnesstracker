@@ -18,10 +18,20 @@ import { parseCsv, parseJson, parseXml, rowsToCsv, rowsToJson, rowsToXml } from 
 import { exportPlanExercises, importPlanExercises } from "./planExport.service.js";
 import { getWeeklyPlanStatus } from "./planWeekStatus.service.js";
 import { HttpError } from "../../errors/httpErrors.js";
+import { visibleToUser } from "../exercises/exercise.service.js";
+import { alternativesFor, loadOptionPool } from "./exerciseOptions.js";
 
 const idParamSchema = z.object({ id: z.string().uuid() });
 const phaseQuerySchema = z.object({ phase: trainingPhaseSchema });
 const exportQuerySchema = z.object({ format: planExportFormatSchema });
+const alternativesQuerySchema = z.object({
+  exerciseId: z.string().uuid(),
+  // Exercises already on the day, comma separated — not offered again.
+  exclude: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v.split(",").filter((id) => z.string().uuid().safeParse(id).success) : [])),
+});
 
 const CONTENT_TYPES: Record<PlanExportFormat, string> = {
   csv: "text/csv; charset=utf-8",
@@ -43,6 +53,20 @@ export default async function planExerciseRoutes(fastify: FastifyInstance) {
     const { phase } = phaseQuerySchema.parse(request.query);
     const status = await getWeeklyPlanStatus(fastify.prisma, request.user.sub, phase);
     return reply.send(status);
+  });
+
+  // Short list of direct replacements for one exercise (same muscles, allowed equipment, nothing
+  // the user wants to avoid) — see alternativesFor in exerciseOptions.ts.
+  fastify.get("/plan-exercises/alternatives", async (request, reply) => {
+    const { exerciseId, exclude } = alternativesQuerySchema.parse(request.query);
+    const userId = request.user.sub;
+    const exercise = await fastify.prisma.exercise.findFirst({
+      where: { id: exerciseId, ...visibleToUser(userId) },
+      select: { id: true, primaryMuscles: true },
+    });
+    if (!exercise) return reply.code(404).send({ message: "Übung nicht gefunden" });
+    const pool = await loadOptionPool(fastify.prisma, userId);
+    return reply.send({ items: alternativesFor(pool, exercise, new Set(exclude)) });
   });
 
   // Exports the whole plan (all three phases), not just the currently selected one — "export my
