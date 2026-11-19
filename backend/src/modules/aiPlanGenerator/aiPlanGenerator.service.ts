@@ -7,6 +7,7 @@ import {
   type GeneratePlanRequest,
   type GeneratePlanResponse,
   type PlanDraftDto,
+  type ReplaceDraftItemRequest,
   type PlanDraftItemDto,
   type PlanDraftStateDto,
   type PlanExerciseDto,
@@ -16,6 +17,7 @@ import { env } from "../../config/env.js";
 import { decryptSecret } from "../../lib/crypto.js";
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
 import { planExerciseInclude, toPlanExerciseDto } from "../trainingPlan/planExercise.types.js";
+import { visibleToUser } from "../exercises/exercise.service.js";
 import { GoogleGenAI, Type } from "@google/genai";
 import { OUTGOING_TIMEOUT_MS } from "../../lib/fetchWithTimeout.js";
 import { AiProviderError, callChatCompletion } from "./aiClient.js";
@@ -385,6 +387,48 @@ export async function getPlanDraftState(
     draft: draft ? snapshotToDraft(draft) : null,
     hasBackup: snapshots.some((s) => s.kind === "BACKUP"),
   };
+}
+
+// Replaces one draft exercise in place: sets, reps and rest stay, exercise-specific details (cue,
+// alternative, start weight) are cleared because they belonged to the old exercise.
+export async function replaceDraftItem(
+  prisma: PrismaClient,
+  userId: string,
+  input: ReplaceDraftItemRequest,
+): Promise<PlanDraftDto> {
+  const draft = await prisma.planSnapshot.findUnique({
+    where: { userId_phase_kind: { userId, phase: input.phase, kind: "DRAFT" } },
+  });
+  if (!draft) throw new NotFoundError("Kein Entwurf für diese Phase vorhanden");
+  const items = draft.items as unknown as PlanDraftItemDto[];
+  const current = items[input.index];
+  if (!current) throw new NotFoundError("Übung im Entwurf nicht gefunden");
+  const exercise = await prisma.exercise.findFirst({
+    where: { id: input.exerciseId, isActive: true, ...visibleToUser(userId) },
+    select: { id: true, name: true, nameDe: true, equipment: true, primaryMuscles: true },
+  });
+  if (!exercise) throw new NotFoundError("Übung nicht gefunden");
+  if (items.some((item, i) => i !== input.index && item.day === current.day && item.exerciseId === exercise.id)) {
+    throw new ConflictError("Diese Übung ist an diesem Tag schon im Entwurf");
+  }
+  const next = [...items];
+  next[input.index] = {
+    ...current,
+    exerciseId: exercise.id,
+    exerciseName: exercise.nameDe ?? exercise.name,
+    equipment: exercise.equipment,
+    primaryMuscles: exercise.primaryMuscles,
+    notes: null,
+    startWeightKg: null,
+    alternativeExerciseId: null,
+    alternativeExerciseName: null,
+    filledByServer: false,
+  };
+  const saved = await prisma.planSnapshot.update({
+    where: { id: draft.id },
+    data: { items: next as unknown as Prisma.InputJsonValue },
+  });
+  return snapshotToDraft(saved);
 }
 
 export async function discardPlanDraft(prisma: PrismaClient, userId: string, phase: TrainingPhase) {

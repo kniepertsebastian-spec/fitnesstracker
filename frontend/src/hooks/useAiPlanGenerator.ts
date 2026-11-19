@@ -7,6 +7,7 @@ import {
   fetchPlanPreferences,
   generatePlanRequest,
   restorePlanBackupRequest,
+  replaceDraftItemRequest,
 } from "../api/aiPlanGenerator.api";
 
 const draftKey = (phase: TrainingPhase) => ["ai-plan-draft", phase] as const;
@@ -73,5 +74,19 @@ export function useRestorePlanBackup(phase: TrainingPhase) {
   return useMutation({
     mutationFn: () => restorePlanBackupRequest(phase),
     onSuccess: () => invalidatePlan(queryClient, phase),
+  });
+}
+
+// Swaps one exercise of the draft in place; the answer is the updated draft.
+export function useReplaceDraftItem(phase: TrainingPhase) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ index, exerciseId }: { index: number; exerciseId: string }) =>
+      replaceDraftItemRequest(phase, index, exerciseId),
+    onSuccess: ({ draft }) =>
+      queryClient.setQueryData(draftKey(phase), (current: { hasBackup: boolean } | undefined) => ({
+        hasBackup: current?.hasBackup ?? false,
+        draft,
+      })),
   });
 }

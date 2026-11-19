@@ -1,6 +1,8 @@
-import { RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { Repeat2, RefreshCw } from "lucide-react";
 import type { PlanDraftDto, PlanDraftItemDto } from "@fitnesstracker/shared";
 import { Badge, Button, Callout } from "../ui";
+import { ExerciseAlternatives } from "../training/ExerciseAlternatives";
 import { formatPrescription } from "../../lib/planPrescription";
 
 interface Props {
@@ -8,16 +10,22 @@ interface Props {
   busyDay: string | null;
   disabled: boolean;
   onRegenerateDay: (day: string) => void;
+  // Swaps the exercise at `index` of draft.items for another one, nothing else is regenerated.
+  onReplaceItem: (index: number, exerciseId: string) => Promise<unknown>;
   onAccept: () => void;
   onDiscard: () => void;
 }
 
 // The generated plan before it replaces the live one: per day the exercises with their coaching
-// details, a per-day "neu generieren", and accept/discard for the whole draft.
-export function PlanDraftPreview({ draft, busyDay, disabled, onRegenerateDay, onAccept, onDiscard }: Props) {
+// details, a per-day "neu generieren", per exercise "Ersetzen" with direct alternatives, and
+// accept/discard for the whole draft.
+export function PlanDraftPreview({ draft, busyDay, disabled, onRegenerateDay, onReplaceItem, onAccept, onDiscard }: Props) {
+  const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
   const days = draft.days.length > 0 ? draft.days : ["Plan"];
   const singleDay = days.length === 1;
-  const itemsFor = (day: string) => draft.items.filter((i) => (singleDay ? true : i.day === day));
+  // Keeps each item's position in draft.items — the replace request addresses items by it.
+  const itemsFor = (day: string) =>
+    draft.items.map((item, index) => ({ item, index })).filter(({ item }) => (singleDay ? true : item.day === day));
   const filled = draft.items.filter((i) => i.filledByServer).length;
 
   return (
@@ -55,8 +63,19 @@ export function PlanDraftPreview({ draft, busyDay, disabled, onRegenerateDay, on
             </Button>
           </div>
           <ol className="flex flex-col divide-y divide-border">
-            {itemsFor(day).map((item, index) => (
-              <DraftItem key={`${item.exerciseId}-${index}`} item={item} />
+            {itemsFor(day).map(({ item, index }, _i, dayItems) => (
+              <DraftItem
+                key={`${item.exerciseId}-${index}`}
+                item={item}
+                disabled={disabled}
+                replacing={replacingIndex === index}
+                dayExerciseIds={dayItems.map((d) => d.item.exerciseId)}
+                onToggleReplace={() => setReplacingIndex((current) => (current === index ? null : index))}
+                onPick={async (exerciseId) => {
+                  await onReplaceItem(index, exerciseId);
+                  setReplacingIndex(null);
+                }}
+              />
             ))}
           </ol>
         </section>
@@ -74,12 +93,35 @@ export function PlanDraftPreview({ draft, busyDay, disabled, onRegenerateDay, on
   );
 }
 
-function DraftItem({ item }: { item: PlanDraftItemDto }) {
+interface DraftItemProps {
+  item: PlanDraftItemDto;
+  disabled: boolean;
+  replacing: boolean;
+  dayExerciseIds: string[];
+  onToggleReplace: () => void;
+  onPick: (exerciseId: string) => Promise<void>;
+}
+
+function DraftItem({ item, disabled, replacing, dayExerciseIds, onToggleReplace, onPick }: DraftItemProps) {
   return (
     <li className="flex flex-col gap-0.5 py-2 first:pt-0 last:pb-0">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-        <span className="min-w-0 wrap-break-word text-body font-medium text-text">{item.exerciseName}</span>
-        {item.filledByServer && <Badge tone="neutral">ergänzt</Badge>}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <span className="min-w-0 wrap-break-word text-body font-medium text-text">{item.exerciseName}</span>
+          {item.filledByServer && <Badge tone="neutral">ergänzt</Badge>}
+        </div>
+        <Button
+          variant={replacing ? "selected" : "ghost"}
+          size="sm"
+          className="shrink-0"
+          iconLeft={<Repeat2 size={14} aria-hidden />}
+          aria-expanded={replacing}
+          aria-label={`${item.exerciseName} ersetzen`}
+          disabled={disabled}
+          onClick={onToggleReplace}
+        >
+          Ersetzen
+        </Button>
       </div>
       <span className="tabular text-small text-text-muted">
         {formatPrescription(item)}
@@ -88,6 +130,16 @@ function DraftItem({ item }: { item: PlanDraftItemDto }) {
       {item.notes && <span className="text-small text-text-subtle">{item.notes}</span>}
       {item.alternativeExerciseName && (
         <span className="text-xs text-text-faint">Alternative: {item.alternativeExerciseName}</span>
+      )}
+      {replacing && (
+        <div className="mt-2">
+          <ExerciseAlternatives
+            exerciseId={item.exerciseId}
+            excludeIds={dayExerciseIds}
+            disabled={disabled}
+            onPick={(o) => void onPick(o.exerciseId)}
+          />
+        </div>
       )}
     </li>
   );

@@ -133,6 +133,14 @@ export type PlanDraftStateDto = z.infer<typeof planDraftStateDtoSchema>;
 
 export const planPhaseRequestSchema = z.object({ phase: trainingPhaseSchema });
 
+// Swaps one exercise of the draft (by its position in `items`) without regenerating anything.
+export const replaceDraftItemRequestSchema = z.object({
+  phase: trainingPhaseSchema,
+  index: z.number().int().min(0),
+  exerciseId: z.string().uuid(),
+});
+export type ReplaceDraftItemRequest = z.infer<typeof replaceDraftItemRequestSchema>;
+
 // Discriminated union: the backend can't tell whether cold-start input is needed until it has
 // checked the user's history, so a first call without `coldStart` may come back asking for it
 // instead of a plan — the frontend then shows the 4-step modal and retries with it filled in.
