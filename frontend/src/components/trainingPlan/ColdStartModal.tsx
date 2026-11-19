@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePlanQuestions } from "../../hooks/useAiPlanGenerator";
 import {
   DEFAULT_EQUIPMENT,
   EQUIPMENT_TAGS,
@@ -54,7 +55,9 @@ const GOAL_OPTIONS: { value: ColdStartInput["goal"]; label: string }[] = [
   { value: "general_fitness", label: "Allgemeine Fitness" },
 ];
 
-const STEP_COUNT = 9;
+// The last step shows the AI's follow-up questions to the answers of steps 1-9.
+const STEP_COUNT = 10;
+const QUESTIONS_STEP = 10;
 
 // A step-by-step wizard rather than one long form. It opens before every generation, because
 // goals, available time, equipment and limitations can change even when history already exists.
@@ -75,30 +78,54 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
   const [includeCardio, setIncludeCardio] = useState(initial?.includeCardio ?? false);
   const [includeStretching, setIncludeStretching] = useState(initial?.includeStretching ?? false);
 
+  const questions = usePlanQuestions();
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  // Answers of steps 1-9 the shown questions were asked for; changed answers ask again.
+  const [askedFor, setAskedFor] = useState<string | null>(null);
+
   const toggleEquipment = (tag: EquipmentTag) =>
     setEquipment((current) => (current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag]));
   const canContinue = step !== 4 || equipment.length > 0;
 
-  const next = () => setStep((s) => Math.min(STEP_COUNT, s + 1));
   const back = () => setStep((s) => Math.max(1, s - 1));
 
+  const buildInput = (): ColdStartInput => ({
+    frequencyPerWeek,
+    split,
+    customSplit: split === "custom" ? customSplit.trim() : undefined,
+    equipment,
+    experience,
+    goal,
+    sessionDurationMinutes,
+    equipmentDetails: equipmentDetails.trim() || undefined,
+    priorityMuscles: priorityMuscles.trim() || undefined,
+    preferredExercises: preferredExercises.trim() || undefined,
+    avoidedExercises: avoidedExercises.trim() || undefined,
+    limitations: limitations.trim() || undefined,
+    includeCardio,
+    includeStretching,
+  });
+
+  const next = () => {
+    const target = Math.min(STEP_COUNT, step + 1);
+    if (target === QUESTIONS_STEP) {
+      const input = buildInput();
+      const key = JSON.stringify(input);
+      if (key !== askedFor) {
+        setAskedFor(key);
+        setAnswers({});
+        questions.mutate(input);
+      }
+    }
+    setStep(target);
+  };
+
   const handleFinish = () => {
-    onSubmit({
-      frequencyPerWeek,
-      split,
-      customSplit: split === "custom" ? customSplit.trim() : undefined,
-      equipment,
-      experience,
-      goal,
-      sessionDurationMinutes,
-      equipmentDetails: equipmentDetails.trim() || undefined,
-      priorityMuscles: priorityMuscles.trim() || undefined,
-      preferredExercises: preferredExercises.trim() || undefined,
-      avoidedExercises: avoidedExercises.trim() || undefined,
-      limitations: limitations.trim() || undefined,
-      includeCardio,
-      includeStretching,
-    });
+    const asked = questions.data?.questions ?? [];
+    const followUps = asked
+      .map((q, i) => ({ question: q.question, answer: (answers[i] ?? "").trim() }))
+      .filter((f) => f.answer.length > 0);
+    onSubmit({ ...buildInput(), followUps: followUps.length > 0 ? followUps : undefined });
   };
 
   return (
@@ -117,7 +144,7 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
               Weiter
             </Button>
           ) : (
-            <Button variant="primary" disabled={isSubmitting} onClick={handleFinish}>
+            <Button variant="primary" disabled={isSubmitting || questions.isPending} onClick={handleFinish}>
               {isSubmitting ? "Generiert…" : "Plan generieren"}
             </Button>
           )}
@@ -247,6 +274,16 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
           <Toggle label="Dehnen mitplanen (eine Routine pro Trainingstag)" checked={includeStretching} onChange={setIncludeStretching} />
         </div>
       )}
+
+      {step === QUESTIONS_STEP && (
+        <FollowUpQuestions
+          loading={questions.isPending}
+          failed={questions.isError}
+          questions={questions.data?.questions ?? []}
+          answers={answers}
+          onAnswer={(index, value) => setAnswers((a) => ({ ...a, [index]: value }))}
+        />
+      )}
     </Dialog>
   );
 }
@@ -282,6 +319,56 @@ function Choices<T extends string>({
         >
           {opt.label}
         </button>
+      ))}
+    </div>
+  );
+}
+
+interface FollowUpProps {
+  loading: boolean;
+  failed: boolean;
+  questions: { question: string; suggestions: string[] }[];
+  answers: Record<number, string>;
+  onAnswer: (index: number, value: string) => void;
+}
+
+// The AI's follow-up questions; every answer is optional, a tap on a suggestion fills it in.
+function FollowUpQuestions({ loading, failed, questions, answers, onAnswer }: FollowUpProps) {
+  if (loading) {
+    return <p className="text-small text-text-subtle">Die KI schaut sich deine Antworten an und überlegt Rückfragen…</p>;
+  }
+  if (failed || questions.length === 0) {
+    return (
+      <p className="text-small text-text-subtle">
+        Rückfragen sind gerade nicht verfügbar. Du kannst den Plan trotzdem direkt generieren.
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-small text-text-subtle">
+        Ein paar Rückfragen, damit der Plan genauer passt. Alles optional, leere Antworten werden übersprungen.
+      </p>
+      {questions.map((q, index) => (
+        <div key={index} className="flex flex-col gap-2">
+          <Field label={q.question}>
+            {(p) => (
+              <Input {...p} value={answers[index] ?? ""} onChange={(e) => onAnswer(index, e.target.value)} placeholder="Deine Antwort (optional)" />
+            )}
+          </Field>
+          {q.suggestions.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {q.suggestions.map((s) => {
+                const active = (answers[index] ?? "") === s;
+                return (
+                  <Button key={s} size="sm" variant={active ? "selected" : "ghost"} aria-pressed={active} onClick={() => onAnswer(index, active ? "" : s)}>
+                    {s}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );

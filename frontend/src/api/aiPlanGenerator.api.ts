@@ -4,6 +4,7 @@ import type {
   GeneratePlanResponse,
   PlanDraftDto,
   PlanDraftStateDto,
+  PlanQuestionsResponse,
   PlanExerciseDto,
   TrainingPhase,
 } from "@fitnesstracker/shared";
@@ -38,4 +39,8 @@ export function replaceDraftItemRequest(phase: TrainingPhase, index: number, exe
     method: "POST",
     body: { phase, index, exerciseId },
   });
+}
+
+export function planQuestionsRequest(coldStart: ColdStartInput) {
+  return apiFetch<PlanQuestionsResponse>("/ai/plan-questions", { method: "POST", body: { coldStart } });
 }

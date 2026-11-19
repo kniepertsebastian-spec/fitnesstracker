@@ -6,6 +6,7 @@ import {
   fetchPlanDraftState,
   fetchPlanPreferences,
   generatePlanRequest,
+  planQuestionsRequest,
   restorePlanBackupRequest,
   replaceDraftItemRequest,
 } from "../api/aiPlanGenerator.api";
@@ -89,4 +90,9 @@ export function useReplaceDraftItem(phase: TrainingPhase) {
         draft,
       })),
   });
+}
+
+// Follow-up questions the AI asks about the questionnaire answers before generating.
+export function usePlanQuestions() {
+  return useMutation({ mutationFn: planQuestionsRequest });
 }
