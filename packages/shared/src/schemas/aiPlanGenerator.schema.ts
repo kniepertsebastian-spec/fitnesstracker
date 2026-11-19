@@ -56,6 +56,13 @@ export const trainingGoalSchema = z.enum([
   "general_fitness",
 ]);
 
+// A follow-up question the AI asked after the questionnaire, with the user's answer.
+export const planFollowUpSchema = z.object({
+  question: z.string().trim().min(1).max(300),
+  answer: z.string().trim().max(500),
+});
+export type PlanFollowUp = z.infer<typeof planFollowUpSchema>;
+
 export const coldStartInputSchema = z.object({
   frequencyPerWeek: z.number().int().min(1).max(7),
   split: splitPreferenceSchema.default("auto"),
@@ -76,8 +83,22 @@ export const coldStartInputSchema = z.object({
   // plans stay as they are.
   includeCardio: z.boolean().default(false),
   includeStretching: z.boolean().default(false),
+  // Answers to the AI's follow-up questions; skipped questions are left out.
+  followUps: z.array(planFollowUpSchema).max(6).optional(),
 });
 export type ColdStartInput = z.infer<typeof coldStartInputSchema>;
+
+// Before generating, the AI asks a few questions tailored to the questionnaire answers.
+export const planQuestionsRequestSchema = z.object({ coldStart: coldStartInputSchema });
+export type PlanQuestionsRequest = z.input<typeof planQuestionsRequestSchema>;
+export const planQuestionSchema = z.object({
+  question: z.string().min(1).max(300),
+  // Short tap-to-answer options; the user can always type their own answer.
+  suggestions: z.array(z.string().min(1).max(80)).max(4).default([]),
+});
+export type PlanQuestion = z.infer<typeof planQuestionSchema>;
+export const planQuestionsResponseSchema = z.object({ questions: z.array(planQuestionSchema).max(5) });
+export type PlanQuestionsResponse = z.infer<typeof planQuestionsResponseSchema>;
 // What the client sends; `split` may be omitted and defaults to "auto".
 export type ColdStartInputPayload = z.input<typeof coldStartInputSchema>;
 
@@ -132,6 +153,14 @@ export const planDraftStateDtoSchema = z.object({
 export type PlanDraftStateDto = z.infer<typeof planDraftStateDtoSchema>;
 
 export const planPhaseRequestSchema = z.object({ phase: trainingPhaseSchema });
+
+// Swaps one exercise of the draft (by its position in `items`) without regenerating anything.
+export const replaceDraftItemRequestSchema = z.object({
+  phase: trainingPhaseSchema,
+  index: z.number().int().min(0),
+  exerciseId: z.string().uuid(),
+});
+export type ReplaceDraftItemRequest = z.infer<typeof replaceDraftItemRequestSchema>;
 
 // Discriminated union: the backend can't tell whether cold-start input is needed until it has
 // checked the user's history, so a first call without `coldStart` may come back asking for it

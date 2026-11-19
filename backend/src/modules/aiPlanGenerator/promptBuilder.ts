@@ -1,7 +1,7 @@
 import type { PrismaClient, TrainingPhase } from "@prisma/client";
 import type { ColdStartInput, EquipmentTag, SplitPreference } from "@fitnesstracker/shared";
 import { isExcluded, type ExerciseExclusions } from "./injuryFilter.js";
-import { equipmentTagOf, selectBalancedCatalog, type PhaseDefaults, type SplitDay } from "./planAssembly.js";
+import { equipmentTagOf, selectBalancedCatalog, smallMuscleCap, type PhaseDefaults, type SplitDay } from "./planAssembly.js";
 import { visibleToUser } from "../exercises/exercise.service.js";
 
 export type { ColdStartInput };
@@ -182,9 +182,12 @@ export async function loadLimitationTexts(
   coldStart: ColdStartInput | null,
 ): Promise<string[]> {
   const plan = await prisma.trainingPlan.findUnique({ where: { userId }, select: { remarks: true } });
-  return [plan?.remarks, coldStart?.limitations, coldStart?.avoidedExercises].filter(
-    (t): t is string => !!t,
-  );
+  return [
+    plan?.remarks,
+    coldStart?.limitations,
+    coldStart?.avoidedExercises,
+    ...(coldStart?.followUps ?? []).map((f) => f.answer),
+  ].filter((t): t is string => !!t);
 }
 
 const EQUIPMENT_LABELS: Record<EquipmentTag, string> = {
@@ -236,8 +239,32 @@ export function buildColdStartContext(input: ColdStartInput): string {
     `Priorisierte Muskelgruppen: ${input.priorityMuscles?.trim() || "keine"}. ` +
     `Bevorzugte Übungen: ${input.preferredExercises?.trim() || "keine angegeben"}. ` +
     `Zu vermeidende Übungen: ${input.avoidedExercises?.trim() || "keine angegeben"}. ` +
-    `Körperliche Einschränkungen: ${input.limitations?.trim() || "keine angegeben"}.`
+    `Körperliche Einschränkungen: ${input.limitations?.trim() || "keine angegeben"}.` +
+    followUpContext(input)
   );
+}
+
+function followUpContext(input: ColdStartInput): string {
+  const answered = (input.followUps ?? []).filter((f) => f.answer.trim());
+  if (answered.length === 0) return "";
+  return (
+    `\nAntworten auf Rückfragen (genauso verbindlich wie die Angaben oben):\n` +
+    answered.map((f) => `- ${f.question} → ${f.answer.trim()}`).join("\n")
+  );
+}
+
+// Asks for a few follow-up questions that close the gaps in the questionnaire answers.
+export function buildQuestionsPrompt(): string {
+  return `Du bist ein erfahrener Fitness-Trainer. Ein Nutzer hat einen Fragebogen für einen neuen
+Trainingsplan ausgefüllt (siehe Kontext). Stelle 3 bis 5 kurze Rückfragen auf Deutsch, deren Antworten
+den Plan spürbar besser auf ihn zuschneiden. Gehe konkret auf seine Angaben ein, z. B. Widersprüche
+(Schultern priorisieren, aber Überkopfdrücken vermeiden), unklare Einschränkungen, andere Sportarten
+neben dem Training, Lieblings- oder Hassübungen, Erholung, Trainingsort oder Bereiche, die ihm wichtig
+sind. Frage nichts, was im Fragebogen schon klar beantwortet ist. Jede Frage höchstens 140 Zeichen,
+dazu bis zu 4 kurze Antwortvorschläge zum Antippen (je höchstens 40 Zeichen).
+
+Antworte AUSSCHLIESSLICH mit validem JSON in exakt diesem Format, ohne Freitext davor oder danach:
+{"questions": [{"question": "<Frage>", "suggestions": ["<Vorschlag>", "..."]}]}`;
 }
 
 export function exercisesPerDayForDuration(minutes?: number): number {
@@ -271,6 +298,13 @@ Bevorzugte Übungen sind Wünsche, zu vermeidende Übungen und gesundheitliche E
 Ausschlusskriterien. Priorisierte Muskelgruppen dürfen mehr sinnvolles Volumen erhalten, ohne
 automatisch erkannte Gegenspieler-Asymmetrien weiter zu verstärken. Beginne jeden Tag mit den
 schweren Mehrgelenksübungen, danach Isolationsübungen.
+
+AUSGEWOGENHEIT pro Tag: Jeder große Bereich, den ein Tag trainiert (lats, middle back, lower back,
+chest, shoulders, quadriceps, hamstrings, glutes), bekommt mindestens eine Übung, bevor ein Bereich
+eine zweite bekommt. Kleine Muskeln (biceps, triceps, forearms, calves, traps, abdominals) bekommen
+an Tagen mit großen Bereichen höchstens ${smallMuscleCap(exercisesPerDay)} Übung(en). Beispiel Rücken/Bizeps:
+Latzug, Rudern, Rückenstrecker und ein bis zwei Curls statt drei Curls. Der Server prüft das und
+ersetzt Verstöße.
 
 Trainingstage (jeder Tag trainiert NUR die genannten Muskeln, gemessen an der ersten Muskelgruppe
 einer Übung im Katalog):

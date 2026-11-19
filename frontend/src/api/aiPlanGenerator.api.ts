@@ -2,7 +2,9 @@ import type {
   ColdStartInput,
   GeneratePlanRequest,
   GeneratePlanResponse,
+  PlanDraftDto,
   PlanDraftStateDto,
+  PlanQuestionsResponse,
   PlanExerciseDto,
   TrainingPhase,
 } from "@fitnesstracker/shared";
@@ -30,4 +32,15 @@ export function acceptPlanDraftRequest(phase: TrainingPhase) {
 
 export function restorePlanBackupRequest(phase: TrainingPhase) {
   return apiFetch<{ items: PlanExerciseDto[] }>("/ai/plan-backup/restore", { method: "POST", body: { phase } });
+}
+
+export function replaceDraftItemRequest(phase: TrainingPhase, index: number, exerciseId: string) {
+  return apiFetch<{ draft: PlanDraftDto }>("/ai/plan-draft/replace-item", {
+    method: "POST",
+    body: { phase, index, exerciseId },
+  });
+}
+
+export function planQuestionsRequest(coldStart: ColdStartInput) {
+  return apiFetch<PlanQuestionsResponse>("/ai/plan-questions", { method: "POST", body: { coldStart } });
 }

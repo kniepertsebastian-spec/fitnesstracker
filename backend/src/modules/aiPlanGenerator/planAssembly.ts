@@ -289,10 +289,39 @@ function normalize(item: RawPlanItem, defaults: PhaseDefaults, catalogById: Map<
   };
 }
 
+// --- Day balance ---------------------------------------------------------------------------
+
+// Muscles that only need one or two isolation exercises next to the big lifts of a day.
+export const SMALL_MUSCLES = new Set(["biceps", "triceps", "forearms", "calves", "traps", "neck", "adductors", "abductors", "abdominals"]);
+// The areas every day that trains them should hit at least once — e.g. a back day covers lats,
+// upper back and lower back instead of piling up curls.
+export const MAJOR_MUSCLES = ["lats", "middle back", "lower back", "chest", "shoulders", "quadriceps", "hamstrings", "glutes"];
+
+// Isolation exercises per small muscle on a day that also trains a big area.
+export function smallMuscleCap(perDay: number): number {
+  return perDay <= 4 ? 1 : 2;
+}
+
+function serverItem(day: string, c: CatalogRow, defaults: PhaseDefaults): AssembledItem {
+  return {
+    day,
+    exerciseId: c.id,
+    targetSets: defaults.sets,
+    repRangeMin: defaults.repMin,
+    repRangeMax: defaults.repMax,
+    targetRir: defaults.rir,
+    restSeconds: defaults.restSeconds,
+    notes: null,
+    alternativeExerciseId: null,
+    filledByServer: true,
+  };
+}
+
 // The model is asked for exactly `perDay` exercises per day from the catalog, matching the day's
 // focus — and doesn't always deliver. Invalid ids/days, off-focus picks and same-day duplicates
-// are dropped, surplus is cut, and missing slots are filled from the catalog (preferring muscles
-// the day doesn't cover yet) with the phase's default sets/reps.
+// are dropped, surplus is cut, small muscles are capped (no three curls on a back day), missing
+// slots are filled from the catalog (big areas the day doesn't cover yet first) with the phase's
+// default sets/reps, and a big area still missing replaces a duplicate of another muscle.
 export function assembleDays(
   raw: RawPlanItem[],
   days: SplitDay[],
@@ -303,55 +332,82 @@ export function assembleDays(
 ): AssembledItem[] {
   const catalogById = new Map(catalog.map((c) => [c.id, c]));
   const result: AssembledItem[] = [];
+  const muscleOf = (item: AssembledItem) => catalogById.get(item.exerciseId)?.primaryMuscles[0] ?? "";
+  const score = (c: CatalogRow) => scoreExercise(c, loggedCounts.get(c.id) ?? 0);
 
   for (const day of days) {
     const focus = new Set(day.muscles);
+    const hasMajor = MAJOR_MUSCLES.some((m) => focus.has(m));
+    const cap = hasMajor ? smallMuscleCap(perDay) : Infinity;
     const items: AssembledItem[] = [];
     const used = new Set<string>();
+    const perMuscle = new Map<string, number>();
     const fromModel = raw.filter((r) => r.day === day.label).sort((a, b) => a.order - b.order);
     for (const item of fromModel) {
       const exercise = catalogById.get(item.exerciseId);
       if (!exercise || used.has(exercise.id)) continue;
       if (!exercise.primaryMuscles.some((m) => focus.has(m))) continue;
+      const muscle = exercise.primaryMuscles[0];
+      if (SMALL_MUSCLES.has(muscle) && (perMuscle.get(muscle) ?? 0) >= cap) continue;
       items.push(normalize(item, defaults, catalogById));
       used.add(exercise.id);
+      perMuscle.set(muscle, (perMuscle.get(muscle) ?? 0) + 1);
       if (items.length === perDay) break;
     }
 
-    if (items.length < perDay) {
-      const covered = new Set(
-        items.flatMap((i) => catalogById.get(i.exerciseId)?.primaryMuscles.slice(0, 1) ?? []),
-      );
-      const pool = catalog.filter((c) => !used.has(c.id) && c.primaryMuscles.some((m) => focus.has(m)));
-      while (items.length < perDay) {
-        // Re-ranked per pick, so two fill-ups don't hit the same muscle while another is missing.
-        let best: CatalogRow | null = null;
-        let bestScore = -1;
-        for (const c of pool) {
-          if (used.has(c.id)) continue;
-          const score = (covered.has(c.primaryMuscles[0]) ? 0 : 10_000) + scoreExercise(c, loggedCounts.get(c.id) ?? 0);
-          if (score > bestScore) {
-            best = c;
-            bestScore = score;
-          }
+    const pool = catalog.filter((c) => c.primaryMuscles.some((m) => focus.has(m)));
+    const bestFor = (accept: (c: CatalogRow) => boolean, rank: (c: CatalogRow) => number = () => 0) => {
+      let best: CatalogRow | null = null;
+      let bestScore = -Infinity;
+      for (const c of pool) {
+        if (used.has(c.id) || !accept(c)) continue;
+        const muscle = c.primaryMuscles[0];
+        if (SMALL_MUSCLES.has(muscle) && (perMuscle.get(muscle) ?? 0) >= cap) continue;
+        const total = rank(c) + score(c);
+        if (total > bestScore) {
+          best = c;
+          bestScore = total;
         }
-        if (!best) break;
-        const c = best;
-        items.push({
-          day: day.label,
-          exerciseId: c.id,
-          targetSets: defaults.sets,
-          repRangeMin: defaults.repMin,
-          repRangeMax: defaults.repMax,
-          targetRir: defaults.rir,
-          restSeconds: defaults.restSeconds,
-          notes: null,
-          alternativeExerciseId: null,
-          filledByServer: true,
-        });
-        used.add(c.id);
-        covered.add(c.primaryMuscles[0]);
       }
+      return best;
+    };
+    const take = (c: CatalogRow) => {
+      used.add(c.id);
+      perMuscle.set(c.primaryMuscles[0], (perMuscle.get(c.primaryMuscles[0]) ?? 0) + 1);
+      return serverItem(day.label, c, defaults);
+    };
+
+    while (items.length < perDay) {
+      // Re-ranked per pick, so two fill-ups don't hit the same muscle while another is missing.
+      const best = bestFor(
+        () => true,
+        (c) => {
+          const muscle = c.primaryMuscles[0];
+          if ((perMuscle.get(muscle) ?? 0) > 0) return 0;
+          return MAJOR_MUSCLES.includes(muscle) ? 20_000 : 10_000;
+        },
+      );
+      if (!best) break;
+      items.push(take(best));
+    }
+
+    // Big areas of the day still without an exercise take the slot of a muscle that has two —
+    // the last-placed one, small muscles first.
+    const missing = MAJOR_MUSCLES.filter(
+      (m) => focus.has(m) && !perMuscle.get(m) && pool.some((c) => c.primaryMuscles[0] === m),
+    );
+    for (const muscle of missing) {
+      const candidates = items
+        .map((item, index) => ({ index, muscle: muscleOf(item) }))
+        .filter((x) => (perMuscle.get(x.muscle) ?? 0) > 1)
+        .sort((a, b) => Number(SMALL_MUSCLES.has(b.muscle)) - Number(SMALL_MUSCLES.has(a.muscle)) || b.index - a.index);
+      const victim = candidates[0];
+      if (!victim) break;
+      const replacement = bestFor((c) => c.primaryMuscles[0] === muscle);
+      if (!replacement) continue;
+      used.delete(items[victim.index].exerciseId);
+      perMuscle.set(victim.muscle, (perMuscle.get(victim.muscle) ?? 1) - 1);
+      items[victim.index] = take(replacement);
     }
     result.push(...items);
   }

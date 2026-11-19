@@ -7,6 +7,9 @@ import {
   type GeneratePlanRequest,
   type GeneratePlanResponse,
   type PlanDraftDto,
+  type PlanQuestionsResponse,
+  planQuestionsResponseSchema,
+  type ReplaceDraftItemRequest,
   type PlanDraftItemDto,
   type PlanDraftStateDto,
   type PlanExerciseDto,
@@ -16,12 +19,14 @@ import { env } from "../../config/env.js";
 import { decryptSecret } from "../../lib/crypto.js";
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
 import { planExerciseInclude, toPlanExerciseDto } from "../trainingPlan/planExercise.types.js";
+import { visibleToUser } from "../exercises/exercise.service.js";
 import { GoogleGenAI, Type } from "@google/genai";
 import { OUTGOING_TIMEOUT_MS } from "../../lib/fetchWithTimeout.js";
 import { AiProviderError, callChatCompletion } from "./aiClient.js";
 import {
   buildColdStartContext,
   buildPlanRemarksContext,
+  buildQuestionsPrompt,
   buildSystemPrompt,
   buildWarmStartContext,
   estimateWeeklyFrequency,
@@ -31,6 +36,7 @@ import {
   selectCatalog,
 } from "./promptBuilder.js";
 import { assembleDays, resolveSplit, suggestStartWeights, type RawPlanItem } from "./planAssembly.js";
+import { buildAvoidMatchers } from "./avoidFilter.js";
 import { buildExclusions } from "./injuryFilter.js";
 import { findPlateauExerciseIds } from "../goals/goalSuggestion.service.js";
 import { derivePhaseItems, TRAINING_PHASES } from "./phaseRotation.js";
@@ -113,7 +119,7 @@ async function callModel(
   userId: string,
   systemPrompt: string,
   context: string,
-  options?: { baseUrlOverride?: string },
+  options?: { baseUrlOverride?: string; geminiResponseSchema?: object; maxOutputTokens?: number },
 ): Promise<string> {
   if (!env.AI_SETTINGS_ENCRYPTION_KEY) {
     throw new ConflictError("Der Server hat noch keinen AI_SETTINGS_ENCRYPTION_KEY konfiguriert");
@@ -132,10 +138,10 @@ async function callModel(
         contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\nKontext:\n${context}` }] }],
         config: {
           temperature: 0.2,
-          maxOutputTokens: 8192,
+          maxOutputTokens: options?.maxOutputTokens ?? 8192,
           thinkingConfig: { thinkingBudget: 0 },
           responseMimeType: "application/json",
-          responseSchema: geminiWorkoutPlanResponseSchema,
+          responseSchema: options?.geminiResponseSchema ?? geminiWorkoutPlanResponseSchema,
         },
       });
       return response.text ?? "";
@@ -155,6 +161,71 @@ async function callModel(
     ],
     options,
   );
+}
+
+const geminiQuestionsResponseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    questions: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          question: { type: Type.STRING },
+          suggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+        },
+        required: ["question"],
+      },
+    },
+  },
+  required: ["questions"],
+};
+
+// 3-5 follow-up questions tailored to the questionnaire, asked before the plan is generated.
+// Over-long or surplus entries from the model are trimmed rather than failing the whole request.
+export async function generatePlanQuestions(
+  prisma: PrismaClient,
+  userId: string,
+  coldStartPayload: unknown,
+  options?: { baseUrlOverride?: string },
+): Promise<PlanQuestionsResponse> {
+  const coldStart = coldStartInputSchema.parse(coldStartPayload);
+  const history = await buildWarmStartContext(prisma, userId);
+  const context = [buildColdStartContext({ ...coldStart, followUps: undefined }), history]
+    .filter((part) => part.trim().length > 0)
+    .join("\n");
+  const raw = await callModel(prisma, userId, buildQuestionsPrompt(), context, {
+    ...options,
+    geminiResponseSchema: geminiQuestionsResponseSchema,
+    maxOutputTokens: 2048,
+  });
+  let json: unknown;
+  try {
+    json = JSON.parse(raw.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, ""));
+  } catch {
+    throw new AiProviderError("Antwort des KI-Anbieters war kein gültiges JSON");
+  }
+  const loose = z
+    .object({
+      questions: z.array(
+        z.object({ question: z.string(), suggestions: z.array(z.string()).optional().nullable() }),
+      ),
+    })
+    .safeParse(json);
+  if (!loose.success) {
+    throw new AiProviderError("Antwort des KI-Anbieters entsprach nicht dem erwarteten Format");
+  }
+  const questions = loose.data.questions
+    .map((q) => ({
+      question: q.question.trim().slice(0, 300),
+      suggestions: (q.suggestions ?? [])
+        .map((s) => s.trim().slice(0, 80))
+        .filter(Boolean)
+        .slice(0, 4),
+    }))
+    .filter((q) => q.question.length > 0)
+    .slice(0, 5);
+  return planQuestionsResponseSchema.parse({ questions });
 }
 
 function parseModelResponse(rawContent: string) {
@@ -239,7 +310,11 @@ export async function generatePlan(
     throw new ConflictError("Dieser Tag gehört nicht mehr zum Split — bitte den ganzen Plan neu generieren");
   }
 
-  const exclusions = buildExclusions(...(await loadLimitationTexts(prisma, userId, prefs)));
+  const limitationTexts = await loadLimitationTexts(prisma, userId, prefs);
+  const exclusions = {
+    ...buildExclusions(...limitationTexts),
+    avoid: buildAvoidMatchers(prefs.avoidedExercises, ...limitationTexts),
+  };
   // Exercises of the current plan that stopped progressing are swapped for variants.
   const planned = await prisma.planExercise.findMany({
     where: { userId },
@@ -380,6 +455,48 @@ export async function getPlanDraftState(
     draft: draft ? snapshotToDraft(draft) : null,
     hasBackup: snapshots.some((s) => s.kind === "BACKUP"),
   };
+}
+
+// Replaces one draft exercise in place: sets, reps and rest stay, exercise-specific details (cue,
+// alternative, start weight) are cleared because they belonged to the old exercise.
+export async function replaceDraftItem(
+  prisma: PrismaClient,
+  userId: string,
+  input: ReplaceDraftItemRequest,
+): Promise<PlanDraftDto> {
+  const draft = await prisma.planSnapshot.findUnique({
+    where: { userId_phase_kind: { userId, phase: input.phase, kind: "DRAFT" } },
+  });
+  if (!draft) throw new NotFoundError("Kein Entwurf für diese Phase vorhanden");
+  const items = draft.items as unknown as PlanDraftItemDto[];
+  const current = items[input.index];
+  if (!current) throw new NotFoundError("Übung im Entwurf nicht gefunden");
+  const exercise = await prisma.exercise.findFirst({
+    where: { id: input.exerciseId, isActive: true, ...visibleToUser(userId) },
+    select: { id: true, name: true, nameDe: true, equipment: true, primaryMuscles: true },
+  });
+  if (!exercise) throw new NotFoundError("Übung nicht gefunden");
+  if (items.some((item, i) => i !== input.index && item.day === current.day && item.exerciseId === exercise.id)) {
+    throw new ConflictError("Diese Übung ist an diesem Tag schon im Entwurf");
+  }
+  const next = [...items];
+  next[input.index] = {
+    ...current,
+    exerciseId: exercise.id,
+    exerciseName: exercise.nameDe ?? exercise.name,
+    equipment: exercise.equipment,
+    primaryMuscles: exercise.primaryMuscles,
+    notes: null,
+    startWeightKg: null,
+    alternativeExerciseId: null,
+    alternativeExerciseName: null,
+    filledByServer: false,
+  };
+  const saved = await prisma.planSnapshot.update({
+    where: { id: draft.id },
+    data: { items: next as unknown as Prisma.InputJsonValue },
+  });
+  return snapshotToDraft(saved);
 }
 
 export async function discardPlanDraft(prisma: PrismaClient, userId: string, phase: TrainingPhase) {

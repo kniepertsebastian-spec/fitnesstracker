@@ -6,7 +6,7 @@ vi.mock("../../config/env.js", () => ({
   },
 }));
 
-import { acceptPlanDraft, generatePlan } from "./aiPlanGenerator.service.js";
+import { acceptPlanDraft, generatePlan, replaceDraftItem } from "./aiPlanGenerator.service.js";
 
 vi.mock("@google/genai", () => {
   const generateContentMock = vi.fn().mockResolvedValue({
@@ -193,5 +193,71 @@ describe("acceptPlanDraft companions", () => {
     expect(tx.cardioPlanDay.deleteMany).not.toHaveBeenCalled();
     expect(tx.stretchPlanItem.deleteMany).not.toHaveBeenCalled();
     expect(tx.trainingPlan.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("replaceDraftItem", () => {
+  const item = (exerciseId: string, day: string) => ({
+    day,
+    exerciseId,
+    exerciseName: exerciseId,
+    equipment: "barbell",
+    primaryMuscles: ["biceps"],
+    targetSets: 4,
+    targetReps: 10,
+    repRangeMin: 8,
+    repRangeMax: 10,
+    targetRir: 2,
+    restSeconds: 90,
+    notes: "Ellbogen fixieren",
+    startWeightKg: 30,
+    alternativeExerciseId: "alt",
+    alternativeExerciseName: "Alt",
+    filledByServer: true,
+  });
+  const draft = {
+    id: "snap",
+    phase: "AUFBAU",
+    days: ["Pull"],
+    items: [item("curl", "Pull"), item("hammer", "Pull")],
+    rationale: null,
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+  };
+  const newId = "00000000-0000-0000-0000-0000000000aa";
+
+  const prismaWith = (exercise: unknown) => {
+    const update = vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...draft, items: data.items }));
+    return {
+      update,
+      prisma: {
+        planSnapshot: { findUnique: vi.fn().mockResolvedValue(draft), update },
+        exercise: { findFirst: vi.fn().mockResolvedValue(exercise) },
+      } as never,
+    };
+  };
+
+  it("swaps the exercise, keeps the prescription and clears exercise-specific details", async () => {
+    const { prisma } = prismaWith({ id: newId, name: "Hyperextensions", nameDe: "Rückenstrecker", equipment: "body only", primaryMuscles: ["lower back"] });
+    const result = await replaceDraftItem(prisma, "u1", { phase: "AUFBAU", index: 1, exerciseId: newId });
+    expect(result.items[0].exerciseId).toBe("curl");
+    expect(result.items[1]).toMatchObject({
+      exerciseId: newId,
+      exerciseName: "Rückenstrecker",
+      primaryMuscles: ["lower back"],
+      targetSets: 4,
+      repRangeMax: 10,
+      notes: null,
+      startWeightKg: null,
+      alternativeExerciseId: null,
+      filledByServer: false,
+    });
+  });
+
+  it("rejects an unknown index and a duplicate on the same day", async () => {
+    const { prisma } = prismaWith({ id: "curl", name: "Curl", nameDe: null, equipment: "barbell", primaryMuscles: ["biceps"] });
+    await expect(replaceDraftItem(prisma, "u1", { phase: "AUFBAU", index: 5, exerciseId: newId })).rejects.toThrow();
+    await expect(replaceDraftItem(prisma, "u1", { phase: "AUFBAU", index: 1, exerciseId: newId })).rejects.toThrow(
+      "schon im Entwurf",
+    );
   });
 });

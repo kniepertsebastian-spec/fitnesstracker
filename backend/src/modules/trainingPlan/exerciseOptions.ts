@@ -1,11 +1,13 @@
 import type { PrismaClient } from "@prisma/client";
 import { coldStartInputSchema, DEFAULT_EQUIPMENT, type ExerciseOptionDto } from "@fitnesstracker/shared";
+import { buildAvoidMatchers, isAvoided } from "../aiPlanGenerator/avoidFilter.js";
 import { equipmentTagOf, scoreExercise, type CatalogRow } from "../aiPlanGenerator/planAssembly.js";
 import { visibleToUser } from "../exercises/exercise.service.js";
 
 const OPTION_CATEGORIES = ["strength", "powerlifting"];
 const SWAP_OPTIONS = 6;
 const ADD_OPTIONS = 8;
+const ALTERNATIVE_OPTIONS = 8;
 
 export interface OptionPool {
   rows: CatalogRow[];
@@ -13,10 +15,12 @@ export interface OptionPool {
 }
 
 // Candidate exercises for in-workout swaps: active strength exercises with equipment the user
-// allowed in the AI questionnaire (or the default set when it was never filled in).
+// allowed in the AI questionnaire (or the default set when it was never filled in), minus the
+// exercises the user wants to avoid ("Übungen vermeiden", "keinen Handstand" in the remarks).
 export async function loadOptionPool(prisma: PrismaClient, userId: string): Promise<OptionPool> {
-  const [user, rows, logged] = await Promise.all([
+  const [user, plan, rows, logged] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { aiPlanPreferences: true } }),
+    prisma.trainingPlan.findUnique({ where: { userId }, select: { remarks: true } }),
     prisma.exercise.findMany({
       where: { isActive: true, category: { in: OPTION_CATEGORIES }, ...visibleToUser(userId) },
       select: { id: true, name: true, nameDe: true, equipment: true, primaryMuscles: true, category: true },
@@ -25,8 +29,11 @@ export async function loadOptionPool(prisma: PrismaClient, userId: string): Prom
   ]);
   const prefs = coldStartInputSchema.safeParse(user?.aiPlanPreferences);
   const allowed = new Set(prefs.success ? prefs.data.equipment : DEFAULT_EQUIPMENT);
+  const avoid = prefs.success
+    ? buildAvoidMatchers(prefs.data.avoidedExercises, prefs.data.limitations, plan?.remarks)
+    : buildAvoidMatchers(null, plan?.remarks);
   return {
-    rows: rows.filter((r) => allowed.has(equipmentTagOf(r.equipment))),
+    rows: rows.filter((r) => allowed.has(equipmentTagOf(r.equipment)) && !isAvoided(r, avoid)),
     loggedCounts: new Map(logged.map((l) => [l.exerciseId, l._count._all])),
   };
 }
@@ -81,4 +88,35 @@ export function addOptionsFor(pool: OptionPool, muscles: string[], dayExerciseId
     }
   }
   return picked.map(toOption);
+}
+
+// Direct replacements for one exercise when editing a plan: same primary muscle first, then
+// exercises that work it as a secondary target of their muscle list — so the user picks from a
+// short list instead of searching the whole catalog.
+export function alternativesFor(
+  pool: OptionPool,
+  exercise: { id: string; primaryMuscles: string[] },
+  excludeIds: Set<string>,
+  limit = ALTERNATIVE_OPTIONS,
+): ExerciseOptionDto[] {
+  const [main, ...rest] = exercise.primaryMuscles;
+  if (!main) return [];
+  const usable = pool.rows.filter((r) => r.id !== exercise.id && !excludeIds.has(r.id));
+  const sameMain = ranked(pool, usable.filter((r) => r.primaryMuscles[0] === main));
+  // Exact muscle-set matches (e.g. lats + biceps for a row) are the closest; keep them on top.
+  const key = [...exercise.primaryMuscles].sort().join(",");
+  const exact = sameMain.filter((r) => [...r.primaryMuscles].sort().join(",") === key);
+  const related = ranked(
+    pool,
+    usable.filter((r) => r.primaryMuscles[0] !== main && (r.primaryMuscles.includes(main) || rest.includes(r.primaryMuscles[0]))),
+  );
+  const seen = new Set<string>();
+  const out: CatalogRow[] = [];
+  for (const r of [...exact, ...sameMain, ...related]) {
+    if (out.length >= limit) break;
+    if (seen.has(r.id)) continue;
+    seen.add(r.id);
+    out.push(r);
+  }
+  return out.map(toOption);
 }

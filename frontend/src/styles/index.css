@@ -106,6 +106,8 @@
   --text-timer--font-weight: 700;
 
   --shadow-overlay: -24px 0 48px rgba(0, 0, 0, 0.35);
+  /* Toggled-on controls (e.g. Supersatz): a soft violet glow so "on" reads at a glance. */
+  --shadow-accent-glow: 0 0 0 1px rgba(168, 85, 247, 0.55), 0 0 18px rgba(139, 92, 246, 0.45);
 
   --background-image-hero: linear-gradient(
     135deg,

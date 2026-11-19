@@ -6,6 +6,7 @@ import { ApiError } from "../../api/client";
 import { useAiSettings } from "../../hooks/useAiSettings";
 import {
   useAcceptPlanDraft,
+  useReplaceDraftItem,
   useDiscardPlanDraft,
   useGeneratePlan,
   usePlanDraftState,
@@ -29,6 +30,7 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
   const acceptDraft = useAcceptPlanDraft(phase);
   const discardDraft = useDiscardPlanDraft(phase);
   const restoreBackup = useRestorePlanBackup(phase);
+  const replaceItem = useReplaceDraftItem(phase);
 
   const [coldStartOpen, setColdStartOpen] = useState(false);
   const [busyDay, setBusyDay] = useState<string | null>(null);
@@ -57,7 +59,8 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
   const companions = [preferences?.includeCardio && "Cardio", preferences?.includeStretching && "Dehnen"].filter(Boolean);
   const acceptedNotice =
     companions.length > 0 ? `Plan übernommen — ${companions.join(" und ")} passend zu den neuen Tagen vorgeschlagen.` : "Plan übernommen.";
-  const busy = generatePlan.isPending || acceptDraft.isPending || discardDraft.isPending || restoreBackup.isPending;
+  const busy =
+    generatePlan.isPending || acceptDraft.isPending || discardDraft.isPending || restoreBackup.isPending || replaceItem.isPending;
 
   const runGenerate = async (coldStart?: ColdStartInput, day?: string) => {
     setError(null);
@@ -172,6 +175,9 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
           busyDay={busyDay}
           disabled={busy}
           onRegenerateDay={(day) => runGenerate(undefined, day)}
+          onReplaceItem={(index, exerciseId) =>
+            run(() => replaceItem.mutateAsync({ index, exerciseId }), "Übung ersetzt.", "Ersetzen fehlgeschlagen.")
+          }
           onAccept={() => run(() => acceptDraft.mutateAsync(), acceptedNotice, "Übernehmen fehlgeschlagen.")}
           onDiscard={() => run(() => discardDraft.mutateAsync(), "Entwurf verworfen.", "Verwerfen fehlgeschlagen.")}
         />

@@ -6,6 +6,7 @@ import type { CreatePlanExerciseInput, ExerciseDto, PlanExerciseDto, TrainingPha
 import { useExercises } from "../../hooks/useWorkoutLogs";
 import { useCreatePlanExercise, useUpdatePlanExercise } from "../../hooks/usePlanExercises";
 import { Button, Dialog, Field, Input, Select } from "../ui";
+import { ExerciseAlternatives } from "../training/ExerciseAlternatives";
 
 const formSchema = z.object({
   exerciseId: z.string().uuid("Bitte eine Übung wählen"),
@@ -23,9 +24,11 @@ interface Props {
   onClose: () => void;
   dayLabel?: string | null;
   replacingEntry?: PlanExerciseDto | null;
+  // Exercises already on the day, left out of the alternatives.
+  dayExerciseIds?: string[];
 }
 
-export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replacingEntry }: Props) {
+export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replacingEntry, dayExerciseIds }: Props) {
   const { data: exercises } = useExercises();
   const createPlanExercise = useCreatePlanExercise(phase);
   const updatePlanExercise = useUpdatePlanExercise(phase);
@@ -35,6 +38,8 @@ export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replaci
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormInput, unknown, FormValues>({ resolver: zodResolver(formSchema) });
 
@@ -47,6 +52,8 @@ export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replaci
     });
     setSearch("");
   }, [open, replacingEntry, reset]);
+
+  const selectedId = watch("exerciseId");
 
   const filteredExercises = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("de");
@@ -82,7 +89,19 @@ export function PlanExerciseFormDialog({ phase, open, onClose, dayLabel, replaci
       description={dayLabel ? `Trainingstag: ${dayLabel}` : undefined}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-        <Field label="Übung suchen">
+        {replacingEntry && (
+          <ExerciseAlternatives
+            exerciseId={replacingEntry.exerciseId}
+            excludeIds={dayExerciseIds}
+            selectedId={selectedId}
+            onPick={(o) => {
+              // Clear the search so the picked exercise is visible in the select below.
+              setSearch("");
+              setValue("exerciseId", o.exerciseId, { shouldValidate: true, shouldDirty: true });
+            }}
+          />
+        )}
+        <Field label={replacingEntry ? "Oder im ganzen Katalog suchen" : "Übung suchen"}>
           {(p) => (
             <Input
               {...p}

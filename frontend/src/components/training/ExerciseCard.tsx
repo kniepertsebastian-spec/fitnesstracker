@@ -393,14 +393,15 @@ export function ExerciseCard({
         >
           Satz
         </Button>
+        {/* Variant swap instead of extra classes: cn() does not merge, so appended border/text
+            colors lost against the dashed variant's own and the active state did not show. */}
         <Button
-          variant="dashed"
+          variant={supersetActive ? "selected" : "dashed"}
           iconLeft={<Link2 size={16} aria-hidden />}
           aria-pressed={supersetActive}
-          className={cn(supersetActive && "border-accent-border text-accent-text")}
           onClick={onToggleSuperset}
         >
-          Supersatz
+          {supersetActive ? "Supersatz aktiv" : "Supersatz"}
         </Button>
         {setCount > Math.max(1, done.length) && (
           <Button variant="ghost" size="sm" className="ml-auto" onClick={() => onSetCountChange(setCount - 1)}>

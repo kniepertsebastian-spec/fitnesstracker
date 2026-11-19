@@ -110,15 +110,86 @@ describe("assembleDays", () => {
         { day: push.label, exerciseId: "bench", targetSets: 3, repRangeMin: 12, repRangeMax: 8, alternativeExerciseId: "bench", order: 0 },
         { day: push.label, exerciseId: "fly", targetSets: 3, alternativeExerciseId: "bench", order: 1 },
         { day: push.label, exerciseId: "ohp", targetSets: 3, order: 2 },
+        { day: push.label, exerciseId: "pushdown", targetSets: 3, order: 3 },
       ],
       [push],
       catalog,
-      2,
+      3,
       defaults,
     );
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
+    expect(items.map((i) => i.exerciseId)).not.toContain("pushdown");
     expect(items[0]).toMatchObject({ repRangeMin: 8, repRangeMax: 12, alternativeExerciseId: null });
     expect(items[1].alternativeExerciseId).toBe("bench");
+  });
+
+  it("caps curls on a back day and covers the lower back instead", () => {
+    const back = resolveSplit("push_pull_legs", 3)[1];
+    const backCatalog = [
+      row("pulldown", "Wide-Grip Lat Pulldown", "lats", "cable"),
+      row("cablerow", "Seated Cable Rows", "middle back", "cable"),
+      row("curl", "Barbell Curl", "biceps"),
+      row("hammer", "Hammer Curls", "biceps", "dumbbell"),
+      row("preacher", "Preacher Curl", "biceps"),
+      row("hyper", "Hyperextensions (Back Extensions)", "lower back", "body only"),
+    ];
+    const items = assembleDays(
+      [
+        { day: back.label, exerciseId: "pulldown", targetSets: 3, order: 0 },
+        { day: back.label, exerciseId: "cablerow", targetSets: 3, order: 1 },
+        { day: back.label, exerciseId: "curl", targetSets: 3, order: 2 },
+        { day: back.label, exerciseId: "hammer", targetSets: 3, order: 3 },
+        { day: back.label, exerciseId: "preacher", targetSets: 3, order: 4 },
+      ],
+      [back],
+      backCatalog,
+      5,
+      defaults,
+    );
+    const ids = items.map((i) => i.exerciseId);
+    expect(ids).toHaveLength(5);
+    expect(ids.filter((id) => ["curl", "hammer", "preacher"].includes(id))).toHaveLength(2);
+    expect(ids).toContain("hyper");
+    expect(items.find((i) => i.exerciseId === "hyper")?.filledByServer).toBe(true);
+  });
+
+  it("swaps a duplicate for a big area the day misses", () => {
+    const back = resolveSplit("push_pull_legs", 3)[1];
+    const backCatalog = [
+      row("pulldown", "Wide-Grip Lat Pulldown", "lats", "cable"),
+      row("pullup", "Pullups", "lats", "body only"),
+      row("cablerow", "Seated Cable Rows", "middle back", "cable"),
+      row("hyper", "Hyperextensions (Back Extensions)", "lower back", "body only"),
+    ];
+    const items = assembleDays(
+      [
+        { day: back.label, exerciseId: "pulldown", targetSets: 3, order: 0 },
+        { day: back.label, exerciseId: "pullup", targetSets: 3, order: 1 },
+        { day: back.label, exerciseId: "cablerow", targetSets: 3, order: 2 },
+      ],
+      [back],
+      backCatalog,
+      3,
+      defaults,
+    );
+    expect(items.map((i) => i.exerciseId)).toEqual(["pulldown", "hyper", "cablerow"]);
+  });
+
+  it("does not cap small muscles on an arm day", () => {
+    const arms = resolveSplit("bro_split", 5)[4];
+    const armCatalog = [
+      row("curl", "Barbell Curl", "biceps"),
+      row("hammer", "Hammer Curls", "biceps", "dumbbell"),
+      row("preacher", "Preacher Curl", "biceps"),
+    ];
+    const items = assembleDays(
+      armCatalog.map((c, order) => ({ day: arms.label, exerciseId: c.id, targetSets: 3, order })),
+      [arms],
+      armCatalog,
+      3,
+      defaults,
+    );
+    expect(items).toHaveLength(3);
   });
 
   it("rejects an alternative that trains a different muscle", () => {

@@ -1,12 +1,19 @@
 import type { FastifyInstance } from "fastify";
 import { HEAVY_RATE_LIMIT } from "../../lib/rateLimits.js";
-import { generatePlanRequestSchema, planPhaseRequestSchema } from "@fitnesstracker/shared";
+import {
+  generatePlanRequestSchema,
+  planPhaseRequestSchema,
+  planQuestionsRequestSchema,
+  replaceDraftItemRequestSchema,
+} from "@fitnesstracker/shared";
 import {
   acceptPlanDraft,
   discardPlanDraft,
   generatePlan,
+  generatePlanQuestions,
   getPlanDraftState,
   getPlanPreferences,
+  replaceDraftItem,
   restorePlanBackup,
 } from "./aiPlanGenerator.service.js";
 
@@ -16,6 +23,11 @@ export default async function aiPlanGeneratorRoutes(fastify: FastifyInstance) {
   fastify.post("/ai/generate-plan", HEAVY_RATE_LIMIT, async (request, reply) => {
     const input = generatePlanRequestSchema.parse(request.body);
     return reply.send(await generatePlan(fastify.prisma, request.user.sub, input));
+  });
+
+  fastify.post("/ai/plan-questions", HEAVY_RATE_LIMIT, async (request, reply) => {
+    const { coldStart } = planQuestionsRequestSchema.parse(request.body);
+    return reply.send(await generatePlanQuestions(fastify.prisma, request.user.sub, coldStart));
   });
 
   fastify.get("/ai/preferences", async (request, reply) => {
@@ -31,6 +43,11 @@ export default async function aiPlanGeneratorRoutes(fastify: FastifyInstance) {
     const { phase } = planPhaseRequestSchema.parse(request.query);
     await discardPlanDraft(fastify.prisma, request.user.sub, phase);
     return reply.code(204).send();
+  });
+
+  fastify.post("/ai/plan-draft/replace-item", async (request, reply) => {
+    const input = replaceDraftItemRequestSchema.parse(request.body);
+    return reply.send({ draft: await replaceDraftItem(fastify.prisma, request.user.sub, input) });
   });
 
   fastify.post("/ai/plan-draft/accept", async (request, reply) => {

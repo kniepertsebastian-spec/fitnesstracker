@@ -1,5 +1,6 @@
 import type {
   CreatePlanExerciseInput,
+  ExerciseOptionDto,
   PlanExerciseDto,
   PlanExportFormat,
   PlanImportResult,
@@ -37,4 +38,10 @@ export function updatePlanExerciseRequest(id: string, input: UpdatePlanExerciseI
 
 export function deletePlanExerciseRequest(id: string) {
   return apiFetch<void>(`/plan-exercises/${id}`, { method: "DELETE" });
+}
+
+export function listExerciseAlternativesRequest(exerciseId: string, excludeIds: string[] = []) {
+  const params = new URLSearchParams({ exerciseId });
+  if (excludeIds.length > 0) params.set("exclude", excludeIds.join(","));
+  return apiFetch<{ items: ExerciseOptionDto[] }>(`/plan-exercises/alternatives?${params}`);
 }
