@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import type { LinkProps } from "react-router-dom";
 import { cn } from "./cn";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "dashed" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "dashed" | "danger" | "selected";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const VARIANTS: Record<ButtonVariant, string> = {
@@ -13,6 +13,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary: "bg-control text-text border border-border-strong hover:bg-track",
   ghost: "bg-transparent text-text-muted border border-border-strong hover:bg-surface-2",
   dashed: "bg-transparent text-text-muted border border-dashed border-border-strong hover:bg-surface-2",
+  // A toggle that is switched on (aria-pressed): violet tint, solid accent border and glow.
+  selected: "bg-accent-soft text-accent-text border border-accent shadow-accent-glow hover:brightness-110",
   danger: "bg-danger-soft text-danger-text border border-danger/40 hover:bg-danger/20",
 };
 
