@@ -4,6 +4,8 @@
 // stress the region are removed from the catalog before the model ever sees them (anything it
 // still returns is dropped by the catalog check in aiPlanGenerator.service.ts).
 
+import { isAvoided, type AvoidMatcher } from "./avoidFilter.js";
+
 interface BodyRegion {
   // Matched (case-insensitive substring) against the user's free text.
   triggers: string[];
@@ -57,6 +59,8 @@ const REGIONS: BodyRegion[] = [
 export interface ExerciseExclusions {
   muscles: string[];
   nameKeywords: string[];
+  // Exercises the user explicitly does not want — see avoidFilter.ts.
+  avoid?: AvoidMatcher[];
 }
 
 // A region word alone ("Schultern priorisieren", "mehr Rücken") is no injury — it only counts
@@ -98,6 +102,7 @@ export function isExcluded(
   exclusions: ExerciseExclusions,
 ): boolean {
   if (exclusions.muscles.some((m) => exercise.primaryMuscles.includes(m))) return true;
+  if (exclusions.avoid && isAvoided(exercise, exclusions.avoid)) return true;
   const name = `${exercise.name} ${exercise.nameDe ?? ""}`.toLowerCase();
   return exclusions.nameKeywords.some((k) => name.includes(k));
 }

@@ -31,6 +31,7 @@ import {
   selectCatalog,
 } from "./promptBuilder.js";
 import { assembleDays, resolveSplit, suggestStartWeights, type RawPlanItem } from "./planAssembly.js";
+import { buildAvoidMatchers } from "./avoidFilter.js";
 import { buildExclusions } from "./injuryFilter.js";
 import { findPlateauExerciseIds } from "../goals/goalSuggestion.service.js";
 import { derivePhaseItems, TRAINING_PHASES } from "./phaseRotation.js";
@@ -239,7 +240,11 @@ export async function generatePlan(
     throw new ConflictError("Dieser Tag gehört nicht mehr zum Split — bitte den ganzen Plan neu generieren");
   }
 
-  const exclusions = buildExclusions(...(await loadLimitationTexts(prisma, userId, prefs)));
+  const limitationTexts = await loadLimitationTexts(prisma, userId, prefs);
+  const exclusions = {
+    ...buildExclusions(...limitationTexts),
+    avoid: buildAvoidMatchers(prefs.avoidedExercises, ...limitationTexts),
+  };
   // Exercises of the current plan that stopped progressing are swapped for variants.
   const planned = await prisma.planExercise.findMany({
     where: { userId },
