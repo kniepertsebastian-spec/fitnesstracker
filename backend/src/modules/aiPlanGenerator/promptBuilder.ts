@@ -1,7 +1,7 @@
 import type { PrismaClient, TrainingPhase } from "@prisma/client";
 import type { ColdStartInput, EquipmentTag, SplitPreference } from "@fitnesstracker/shared";
 import { isExcluded, type ExerciseExclusions } from "./injuryFilter.js";
-import { equipmentTagOf, selectBalancedCatalog, type PhaseDefaults, type SplitDay } from "./planAssembly.js";
+import { equipmentTagOf, selectBalancedCatalog, smallMuscleCap, type PhaseDefaults, type SplitDay } from "./planAssembly.js";
 import { visibleToUser } from "../exercises/exercise.service.js";
 
 export type { ColdStartInput };
@@ -271,6 +271,13 @@ Bevorzugte Übungen sind Wünsche, zu vermeidende Übungen und gesundheitliche E
 Ausschlusskriterien. Priorisierte Muskelgruppen dürfen mehr sinnvolles Volumen erhalten, ohne
 automatisch erkannte Gegenspieler-Asymmetrien weiter zu verstärken. Beginne jeden Tag mit den
 schweren Mehrgelenksübungen, danach Isolationsübungen.
+
+AUSGEWOGENHEIT pro Tag: Jeder große Bereich, den ein Tag trainiert (lats, middle back, lower back,
+chest, shoulders, quadriceps, hamstrings, glutes), bekommt mindestens eine Übung, bevor ein Bereich
+eine zweite bekommt. Kleine Muskeln (biceps, triceps, forearms, calves, traps, abdominals) bekommen
+an Tagen mit großen Bereichen höchstens ${smallMuscleCap(exercisesPerDay)} Übung(en). Beispiel Rücken/Bizeps:
+Latzug, Rudern, Rückenstrecker und ein bis zwei Curls statt drei Curls. Der Server prüft das und
+ersetzt Verstöße.
 
 Trainingstage (jeder Tag trainiert NUR die genannten Muskeln, gemessen an der ersten Muskelgruppe
 einer Übung im Katalog):
