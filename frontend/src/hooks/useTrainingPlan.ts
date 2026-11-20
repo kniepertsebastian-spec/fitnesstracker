@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addTrainingPhaseRequest,
+  applyPhaseTemplateRequest,
   changeTrainingPhaseRequest,
   deleteTrainingPhaseRequest,
   extendPhaseRequest,
@@ -14,6 +15,7 @@ import {
 } from "../api/trainingPlan.api";
 import type {
   AddTrainingPhaseInput,
+  ApplyPhaseTemplateInput,
   RenameTrainingPhaseInput,
   TrainingGoalValue,
   TrainingPhase,
@@ -108,6 +110,21 @@ export function useUpdateTrainingPlanRemarks() {
   return useMutation({
     mutationFn: (input: UpdateTrainingPlanRemarksInput) => updateTrainingPlanRemarksRequest(input),
     onSuccess: (plan) => queryClient.setQueryData(TRAINING_PLAN_KEY, plan),
+  });
+}
+
+// Lays a phase template onto the plan. Everything phase-related is stale afterwards: the phases are new
+// and (empty or not) their exercises, week status, cardio and stretch plans may all differ.
+export function useApplyPhaseTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ApplyPhaseTemplateInput) => applyPhaseTemplateRequest(input),
+    onSuccess: (plan) => {
+      queryClient.setQueryData(TRAINING_PLAN_KEY, plan);
+      void queryClient.invalidateQueries({ queryKey: ["plan-exercises"] });
+      void queryClient.invalidateQueries({ queryKey: ["cardio"] });
+      void queryClient.invalidateQueries({ queryKey: ["stretching"] });
+    },
   });
 }
 

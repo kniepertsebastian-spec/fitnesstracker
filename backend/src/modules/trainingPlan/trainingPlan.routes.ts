@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
   addTrainingPhase,
+  applyPhaseTemplate,
   changeTrainingPhase,
   deleteTrainingPhase,
   extendCurrentPhase,
@@ -15,6 +16,7 @@ import {
 } from "./trainingPlan.service.js";
 import {
   addTrainingPhaseSchema,
+  applyPhaseTemplateSchema,
   changeTrainingPhaseSchema,
   renameTrainingPhaseSchema,
   trainingPhaseSchema,
@@ -142,6 +144,21 @@ export default async function trainingPlanRoutes(fastify: FastifyInstance) {
   fastify.patch("/training-plan/remarks", async (request, reply) => {
     const { remarks } = updateTrainingPlanRemarksSchema.parse(request.body);
     await updateTrainingPlanRemarks(fastify.prisma, request.user.sub, remarks);
+    const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(fastify.prisma, request.user.sub);
+    return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
+  });
+
+  // Suggested phase order for a training goal (see shared/phaseTemplates.ts): creates the phases empty.
+  fastify.post("/training-plan/phase-template", async (request, reply) => {
+    const input = applyPhaseTemplateSchema.parse(request.body);
+    try {
+      await applyPhaseTemplate(fastify.prisma, request.user.sub, input);
+    } catch (error) {
+      if (error instanceof HttpError) {
+        return reply.code(error.statusCode).send({ message: error.message });
+      }
+      throw error;
+    }
     const { plan, nextRotationOn, history } = await getCurrentTrainingPlan(fastify.prisma, request.user.sub);
     return reply.send(toTrainingPlanDto(plan, nextRotationOn, history));
   });

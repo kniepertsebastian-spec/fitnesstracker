@@ -40,4 +40,30 @@ describe("computeRotation", () => {
     expect(r.closedHistory.map((h) => h.phase)).toEqual(["AUFBAU", "MUSKELAUSDAUER"]);
     expect(r.currentPhase).toBe("NEGATIV");
   });
+
+  it("uses the configured length of each phase", () => {
+    // Hypertrophie 8 weeks, then a one-week deload, then Maximalkraft.
+    const phaseConfigs = [
+      { phase: "AUFBAU", label: "Hypertrophie", isDaily: false, weeks: 8 },
+      { phase: "MUSKELAUSDAUER", label: "Deload", isDaily: false, weeks: 1 },
+      { phase: "NEGATIV", label: "Maximalkraft", isDaily: false, weeks: 6 },
+    ];
+    const at8 = computeRotation({ ...plan(), phaseConfigs }, weeksAfter(8));
+    expect(at8.currentPhase).toBe("MUSKELAUSDAUER");
+    expect(at8.nextRotationOn.toISOString()).toBe(weeksAfter(9).toISOString());
+
+    const at9 = computeRotation({ ...plan(), phaseConfigs }, weeksAfter(9));
+    expect(at9.currentPhase).toBe("NEGATIV");
+    expect(at9.closedHistory.map((h) => h.phase)).toEqual(["AUFBAU", "MUSKELAUSDAUER"]);
+    expect(at9.nextRotationOn.toISOString()).toBe(weeksAfter(15).toISOString());
+  });
+
+  it("keeps 8 weeks for phases without a configured length", () => {
+    const phaseConfigs = [
+      { phase: "AUFBAU", label: "A", isDaily: false },
+      { phase: "MUSKELAUSDAUER", label: "B", isDaily: false },
+    ];
+    expect(computeRotation({ ...plan(), phaseConfigs }, weeksAfter(7)).currentPhase).toBe("AUFBAU");
+    expect(computeRotation({ ...plan(), phaseConfigs }, weeksAfter(8)).currentPhase).toBe("MUSKELAUSDAUER");
+  });
 });

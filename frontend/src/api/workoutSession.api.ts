@@ -2,11 +2,12 @@ import type {
   CreateWorkoutSessionInput,
   UpdateWorkoutSessionInput,
   WorkoutSessionDto,
+  WorkoutSessionKind,
 } from "@fitnesstracker/shared";
 import { apiFetch } from "./client";
 
-export function getOpenWorkoutSessionRequest() {
-  return apiFetch<WorkoutSessionDto | null>("/workout-sessions/open");
+export function getOpenWorkoutSessionRequest(kind: WorkoutSessionKind = "TRAINING") {
+  return apiFetch<WorkoutSessionDto | null>(`/workout-sessions/open?kind=${kind}`);
 }
 
 export function createWorkoutSessionRequest(input: CreateWorkoutSessionInput) {

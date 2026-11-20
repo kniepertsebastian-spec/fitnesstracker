@@ -3,6 +3,7 @@ import {
   phaseConfigItemSchema,
   TRAINING_PHASE_LABELS,
   TRAINING_PHASE_ROTATION,
+  getPhaseWeeks,
   type PhaseConfigItem,
   type TrainingPhase,
   type TrainingPlanDto,
@@ -30,6 +31,10 @@ export function resolvePhaseConfigs(raw: unknown): PhaseConfigItem[] {
 export function getRotationalPhases(configs: PhaseConfigItem[]): TrainingPhase[] {
   const rotational = configs.filter((c) => !c.isDaily).map((c) => c.phase);
   return rotational.length > 0 ? rotational : [...TRAINING_PHASE_ROTATION];
+}
+
+export function weeksOfPhase(configs: PhaseConfigItem[], phase: TrainingPhase): number {
+  return getPhaseWeeks(configs, phase);
 }
 
 export function getPhaseLabel(configs: PhaseConfigItem[], phase: TrainingPhase): string {

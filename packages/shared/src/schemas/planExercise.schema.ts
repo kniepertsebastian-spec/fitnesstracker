@@ -56,9 +56,22 @@ export type PlanExportFormat = z.infer<typeof planExportFormatSchema>;
 export const planImportResultSchema = z.object({
   created: z.number().int(),
   updated: z.number().int(),
+  // Entries removed from the target phase first ("replace" mode).
+  deleted: z.number().int().default(0),
   errors: z.array(z.string()),
 });
 export type PlanImportResult = z.infer<typeof planImportResultSchema>;
+
+// merge: update matching entries and add the rest; replace: empty the target phase first.
+export const planImportModeSchema = z.enum(["merge", "replace"]);
+export type PlanImportMode = z.infer<typeof planImportModeSchema>;
+
+// What an uploaded plan file contains, shown before anything is written.
+export const planImportPreviewSchema = z.object({
+  phases: z.array(z.object({ phase: trainingPhaseSchema, count: z.number().int(), days: z.array(z.string()) })),
+  errors: z.array(z.string()),
+});
+export type PlanImportPreview = z.infer<typeof planImportPreviewSchema>;
 
 // Progression suggestion for one exercise, derived from its most recently logged sets — see
 // planWeekStatus.service.ts's computeProgression for the rules. "weight" mode (Aufbau/Negativ)

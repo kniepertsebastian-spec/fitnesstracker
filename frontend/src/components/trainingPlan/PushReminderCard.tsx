@@ -1,10 +1,10 @@
 import type { PushSettingsDto } from "@fitnesstracker/shared";
 import { usePushSubscription } from "../../hooks/usePushSubscription";
 import { usePushSettings, useUpdatePushSettings } from "../../hooks/usePushSettings";
-import { Button, Callout, Card, Toggle } from "../ui";
+import { Button, Callout, Card, Field, Select, Toggle } from "../ui";
 
 interface ReminderType {
-  key: keyof PushSettingsDto;
+  key: Exclude<keyof PushSettingsDto, "dailyReminderHour">;
   label: string;
   // Shown only for categories with no current sender — see the User model's schema comment
   // (schema.prisma) for why: a sync failure is already known locally while the app is open, and
@@ -33,7 +33,7 @@ const REMINDER_GROUPS: { title: string; types: ReminderType[] }[] = [
   },
   {
     title: "Challenges",
-    types: [{ key: "remindDailyChallenge", label: "Tages-Challenge nicht abgeschlossen" }],
+    types: [{ key: "remindDailyChallenge", label: "Daily-Erinnerung: heute noch offen (Challenge und Daily-Übungen)" }],
   },
   {
     title: "System",
@@ -93,6 +93,24 @@ export function PushReminderCard() {
                       />
                     ))}
                   </div>
+                  {group.title === "Challenges" && settings.remindDailyChallenge && (
+                    <Field label="Erinnern ab" hint="Einmal am Tag, nur wenn noch etwas offen ist." className="mt-2">
+                      {(p) => (
+                        <Select
+                          {...p}
+                          value={settings.dailyReminderHour}
+                          onChange={(e) => updateSettings.mutate({ dailyReminderHour: Number(e.target.value) })}
+                          className="w-32"
+                        >
+                          {Array.from({ length: 18 }, (_, i) => i + 6).map((hour) => (
+                            <option key={hour} value={hour}>
+                              {String(hour).padStart(2, "0")}:00 Uhr
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+                    </Field>
+                  )}
                 </div>
               ))}
             </div>

@@ -17,7 +17,7 @@ export function StartTrainingButton({ onNavigate, ...props }: ButtonProps & { on
       navigate("/training");
       return;
     }
-    start.mutate(crypto.randomUUID(), { onSuccess: () => navigate("/training") });
+    start.mutate({ clientId: crypto.randomUUID() }, { onSuccess: () => navigate("/training") });
   };
 
   return (

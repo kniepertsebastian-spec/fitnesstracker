@@ -1,9 +1,10 @@
 import type { Exercise, PlanExercise, PrismaClient, TrainingPhase } from "@prisma/client";
-import type { ProgressionSuggestion, WeeklyPlanStatusDto } from "@fitnesstracker/shared";
+import type { PhaseStyle, ProgressionSuggestion, WeeklyPlanStatusDto } from "@fitnesstracker/shared";
 import { planExerciseInclude, toPlanExerciseDto } from "./planExercise.types.js";
 import { addOptionsFor, loadOptionPool, swapOptionsFor } from "./exerciseOptions.js";
 import { getUserTimeZone, localDayStart, localWeekStart } from "../../lib/userTime.js";
 import { pickDayRotation } from "./dayRotation.js";
+import { resolvePhaseConfigs } from "./trainingPlan.types.js";
 
 const DEFAULT_TARGET_REPS: Record<TrainingPhase, number> = {
   AUFBAU: 10,
@@ -30,12 +31,17 @@ function computeProgression(
   phase: TrainingPhase,
   targetRepsOverride: number | null,
   recentLogs: RecentSet[],
+  // Set when the phase came from a phase template: the style decides, not the slot's name.
+  style?: PhaseStyle,
 ): ProgressionSuggestion | null {
   const [last, secondLast] = recentLogs;
   if (!last) return null;
+  // A deload is about doing less, not about progressing.
+  if (style === "DELOAD") return null;
 
   const targetReps = targetRepsOverride ?? DEFAULT_TARGET_REPS[phase] ?? 10;
-  const mode: ProgressionSuggestion["mode"] = phase === "MUSKELAUSDAUER" ? "reps" : "weight";
+  const reps = style ? style === "ENDURANCE" : phase === "MUSKELAUSDAUER";
+  const mode: ProgressionSuggestion["mode"] = reps ? "reps" : "weight";
   const hitTarget = last.reps >= targetReps;
   const bothMissedSameWeight =
     !hitTarget && !!secondLast && secondLast.reps < targetReps && secondLast.weightKg === last.weightKg;
@@ -134,10 +140,12 @@ export async function getWeeklyPlanStatus(
   const trainedExerciseIds = new Set(trainedInPeriod.map((w) => w.exerciseId));
 
   const distinctExerciseIds = [...new Set(entries.map((e) => e.exerciseId))];
-  const [recentSetsByExercise, pool] = await Promise.all([
+  const [recentSetsByExercise, pool, planRow] = await Promise.all([
     fetchRecentSetsByExercise(prisma, userId, distinctExerciseIds),
     loadOptionPool(prisma, userId),
+    prisma.trainingPlan.findUnique({ where: { userId }, select: { phaseConfigs: true } }),
   ]);
+  const phaseStyle = resolvePhaseConfigs(planRow?.phaseConfigs).find((c) => c.phase === phase)?.style;
 
   const dayIds = (group: EntryWithExercise[]) => new Set(group.map((e) => e.exerciseId));
   const toDiaryExercise = (entry: EntryWithExercise, group: EntryWithExercise[]) => ({
@@ -147,6 +155,7 @@ export async function getWeeklyPlanStatus(
       phase,
       entry.targetReps,
       recentSetsByExercise.get(entry.exerciseId) ?? [],
+      phaseStyle,
     ),
     swapOptions: swapOptionsFor(pool, entry.exercise.primaryMuscles[0], dayIds(group), entry.alternativeExerciseId),
   });

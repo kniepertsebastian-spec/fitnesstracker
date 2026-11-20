@@ -67,6 +67,8 @@ export const pushSettingsDtoSchema = z.object({
   remindPersonalRecords: z.boolean(),
   remindGoalAchievements: z.boolean(),
   remindDailyChallenge: z.boolean(),
+  // Local hour (0-23) from which the daily reminder may go out.
+  dailyReminderHour: z.number().int().min(0).max(23),
   remindSyncErrors: z.boolean(),
   remindAppUpdates: z.boolean(),
 });
