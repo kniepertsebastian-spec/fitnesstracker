@@ -1,4 +1,4 @@
-import type { CreateWorkoutSessionInput, WorkoutSessionStatus } from "@fitnesstracker/shared";
+import type { CreateWorkoutSessionInput, WorkoutSessionKind, WorkoutSessionStatus } from "@fitnesstracker/shared";
 import {
   createWorkoutSessionRequest,
   getOpenWorkoutSessionRequest,
@@ -12,7 +12,11 @@ import { offlineDb, type LocalWorkoutSession, type MutationOp } from "./db";
 import { refreshSyncCounts } from "./syncCounts";
 import { currentAccountId, isTransientFailure } from "./account";
 
-export const WORKOUT_SESSION_QUERY_KEY = ["workout-session", "open"];
+// One open session per kind: the regular workout and the Daily session exist side by side.
+export const workoutSessionQueryKey = (kind: WorkoutSessionKind) => ["workout-session", "open", kind] as const;
+const SESSION_KINDS: WorkoutSessionKind[] = ["TRAINING", "DAILY"];
+// Rows cached before sessions had a kind are regular workouts.
+const kindOf = (s: { kind?: WorkoutSessionKind }): WorkoutSessionKind => s.kind ?? "TRAINING";
 
 const OPEN_STATUSES: WorkoutSessionStatus[] = ["ACTIVE", "PAUSED"];
 
@@ -44,31 +48,33 @@ async function enqueueSessionMutation(accountId: string, clientId: string, op: M
 
 // Local-only read of whichever session is currently open (ACTIVE/PAUSED) — at most one in normal
 // use; picks the most recently updated if that's ever violated, same safety net as the backend.
-async function readCachedOpenSession(): Promise<LocalWorkoutSession | null> {
+async function readCachedOpenSession(kind: WorkoutSessionKind = "TRAINING"): Promise<LocalWorkoutSession | null> {
   const accountId = currentAccountId();
   if (!accountId) return null;
   const sessions = await offlineDb.workoutSessions
     .where("accountId")
     .equals(accountId)
-    .filter((s) => OPEN_STATUSES.includes(s.status))
+    .filter((s) => OPEN_STATUSES.includes(s.status) && kindOf(s) === kind)
     .toArray();
   if (sessions.length === 0) return null;
   return sessions.reduce((latest, s) => (s.updatedAt > latest.updatedAt ? s : latest));
 }
 
 async function syncSessionQueryCache() {
-  queryClient.setQueryData(WORKOUT_SESSION_QUERY_KEY, await readCachedOpenSession());
+  for (const kind of SESSION_KINDS) {
+    queryClient.setQueryData(workoutSessionQueryKey(kind), await readCachedOpenSession(kind));
+  }
 }
 
 // Cache-then-network read, same pattern as fetchAndCacheWorkoutLogs: try the server first and
 // merge into the local cache (skipping a session with an unsynced local mutation so a background
 // refresh can't clobber it), then always serve from the cache.
-export async function fetchAndCacheOpenSession(): Promise<LocalWorkoutSession | null> {
+export async function fetchAndCacheOpenSession(kind: WorkoutSessionKind = "TRAINING"): Promise<LocalWorkoutSession | null> {
   const accountId = currentAccountId();
   if (!accountId) return null;
   try {
-    const dto = await getOpenWorkoutSessionRequest();
-    if (currentAccountId() !== accountId) return readCachedOpenSession();
+    const dto = await getOpenWorkoutSessionRequest(kind);
+    if (currentAccountId() !== accountId) return readCachedOpenSession(kind);
     const pendingClientIds = new Set(
       (await offlineDb.pendingSessionMutations.where("accountId").equals(accountId).toArray()).map((m) => m.clientId),
     );
@@ -82,7 +88,7 @@ export async function fetchAndCacheOpenSession(): Promise<LocalWorkoutSession | 
       const stale = await offlineDb.workoutSessions
         .where("accountId")
         .equals(accountId)
-        .filter((s) => OPEN_STATUSES.includes(s.status) && s.id !== null && !pendingClientIds.has(s.clientId))
+        .filter((s) => OPEN_STATUSES.includes(s.status) && kindOf(s) === kind && s.id !== null && !pendingClientIds.has(s.clientId))
         .toArray();
       for (const s of stale) {
         await offlineDb.workoutSessions.put({ ...s, status: "COMPLETED", endedAt: s.endedAt ?? now, updatedAt: now });
@@ -91,10 +97,10 @@ export async function fetchAndCacheOpenSession(): Promise<LocalWorkoutSession | 
   } catch {
     // Offline or the request otherwise failed — fall through and serve what's cached.
   }
-  return readCachedOpenSession();
+  return readCachedOpenSession(kind);
 }
 
-export async function startWorkoutSessionLocal(clientId: string) {
+export async function startWorkoutSessionLocal(clientId: string, kind: WorkoutSessionKind = "TRAINING") {
   const accountId = currentAccountId();
   if (!accountId) throw new Error("Zum Starten muss ein Account angemeldet sein.");
   const now = new Date().toISOString();
@@ -103,6 +109,7 @@ export async function startWorkoutSessionLocal(clientId: string) {
     accountId,
     clientId,
     status: "ACTIVE",
+    kind,
     startedAt: now,
     endedAt: null,
     stopPromptSentAt: null,
@@ -110,7 +117,7 @@ export async function startWorkoutSessionLocal(clientId: string) {
     updatedAt: now,
   };
   await offlineDb.workoutSessions.put(local);
-  const input: CreateWorkoutSessionInput = { clientId };
+  const input: CreateWorkoutSessionInput = { clientId, kind };
   await enqueueSessionMutation(accountId, clientId, "create", input);
   await syncSessionQueryCache();
   void flushPendingSessionMutations();

@@ -1,8 +1,11 @@
 import type { Prisma, PrismaClient, TrainingPhase, TrainingPlan, TrainingPlanPhaseHistory } from "@prisma/client";
 import {
   CUSTOM_TRAINING_PHASES,
+  PHASE_TEMPLATES,
   TRAINING_PHASE_ROTATION,
+  phaseTemplateConfigs,
   type AddTrainingPhaseInput,
+  type ApplyPhaseTemplateInput,
   type RenameTrainingPhaseInput,
 } from "@fitnesstracker/shared";
 import { BadRequestError, ConflictError, NotFoundError } from "../../errors/httpErrors.js";
@@ -13,10 +16,12 @@ import {
   getPhaseLabel,
   getRotationalPhases,
   resolvePhaseConfigs,
+  weeksOfPhase,
 } from "./trainingPlan.types.js";
 import { getUserTimeZone, localWeekStartAsUtc } from "../../lib/userTime.js";
 
-const ROTATION_WEEKS = 8;
+// Shortest phase a configuration can have — a plan is due for rotation at the earliest after this.
+const MIN_PHASE_WEEKS = 1;
 // Upper bound for "+1 Woche" so a phase can't be stretched indefinitely by accident.
 export const MAX_EXTENSION_WEEKS = 8;
 
@@ -65,8 +70,9 @@ export interface RotationComputation {
   closedHistory: Array<Pick<TrainingPlanPhaseHistory, "phase" | "startedOn" | "endedOn">>;
 }
 
-// Pure phase math. The current phase lasts 8 weeks plus any "+1 Woche" extension; every phase
-// after it is a plain 8 weeks (the extension belongs to the phase it was added to).
+// Pure phase math. The current phase lasts its configured length (8 weeks unless set otherwise) plus
+// any "+1 Woche" extension; every phase after it lasts its own configured length (the extension
+// belongs to the phase it was added to).
 // Non-rotational phases (such as DAILY) are ignored by the rotation cycle.
 export function computeRotation(
   plan: Pick<TrainingPlan, "currentPhase" | "phaseStartedOn" | "extensionWeeks"> & {
@@ -79,14 +85,14 @@ export function computeRotation(
 
   let currentPhase = plan.currentPhase;
   let phaseStartedOn = plan.phaseStartedOn;
-  let nextRotationOn = addWeeks(phaseStartedOn, ROTATION_WEEKS + plan.extensionWeeks);
+  let nextRotationOn = addWeeks(phaseStartedOn, weeksOfPhase(configs, currentPhase) + plan.extensionWeeks);
   const closedHistory: RotationComputation["closedHistory"] = [];
 
   while (nextRotationOn <= now) {
     closedHistory.push({ phase: currentPhase, startedOn: phaseStartedOn, endedOn: nextRotationOn });
     currentPhase = nextPhase(currentPhase, rotation);
     phaseStartedOn = nextRotationOn;
-    nextRotationOn = addWeeks(phaseStartedOn, ROTATION_WEEKS);
+    nextRotationOn = addWeeks(phaseStartedOn, weeksOfPhase(configs, currentPhase));
   }
 
   return { currentPhase, phaseStartedOn, nextRotationOn, closedHistory };
@@ -313,7 +319,9 @@ export async function updateTrainingPlanRemarks(
 // Scheduler tick: rotates every plan with an overdue phase. Cheap to call often — plans that
 // aren't due are filtered out in SQL before any rotation logic runs.
 export async function rotateAllDuePlans(prisma: PrismaClient): Promise<{ rotatedPlans: number }> {
-  const cutoff = addWeeks(new Date(), -ROTATION_WEEKS);
+  // Phases differ in length now, so only the shortest possible one can be used to narrow this down;
+  // rotatePhaseIfDue checks each plan against its own phase length.
+  const cutoff = addWeeks(new Date(), -MIN_PHASE_WEEKS);
   const duePlans = await prisma.trainingPlan.findMany({
     where: { phaseStartedOn: { lte: cutoff }, pausedAt: null },
     include: { user: { select: { remindPhaseChange: true } } },
@@ -384,4 +392,62 @@ export async function setTrainingGoal(
 ) {
   const plan = await getOrCreateTrainingPlan(prisma, userId);
   return prisma.trainingPlan.update({ where: { id: plan.id }, data: { trainingGoal: goal } });
+}
+
+export interface PhaseTemplateConflict {
+  phases: TrainingPhase[];
+  entries: number;
+}
+
+// Lays the phase template of a goal onto the plan: the phases are created empty, the rotation starts
+// at the first one this week. The DAILY phase is kept as it is. Entries of the rotation phases are only
+// deleted with `clearExisting`; otherwise the call is refused while any exist, with the count.
+export async function applyPhaseTemplate(prisma: PrismaClient, userId: string, input: ApplyPhaseTemplateInput) {
+  const goal = input.goal;
+  const plan = await getOrCreateTrainingPlan(prisma, userId);
+  const configs = resolvePhaseConfigs(plan.phaseConfigs);
+  const daily = configs.filter((c) => c.isDaily);
+  const rotationalPhases = configs.filter((c) => !c.isDaily).map((c) => c.phase);
+
+  const entries = await prisma.planExercise.count({ where: { userId, phase: { in: rotationalPhases } } });
+  if (entries > 0 && !input.clearExisting) {
+    throw new ConflictError(
+      `In deinen Phasen liegen noch ${entries} Übungen. Die Vorlage legt leere Phasen an — Übungen vorher exportieren oder beim Übernehmen löschen.`,
+    );
+  }
+
+  const nextConfigs = [...phaseTemplateConfigs(goal), ...daily];
+  const firstPhase = nextConfigs[0].phase;
+  const phaseStartedOn = localWeekStartAsUtc(new Date(), await getUserTimeZone(prisma, userId));
+  const allRotationSlots = [...TRAINING_PHASE_ROTATION, ...CUSTOM_TRAINING_PHASES];
+
+  const operations: Prisma.PrismaPromise<unknown>[] = [];
+  if (input.clearExisting) {
+    operations.push(
+      prisma.planExercise.deleteMany({ where: { userId, phase: { in: allRotationSlots } } }),
+      prisma.cardioPlanDay.deleteMany({ where: { userId, phase: { in: allRotationSlots } } }),
+      prisma.stretchPlanItem.deleteMany({ where: { userId, phase: { in: allRotationSlots } } }),
+      prisma.planSnapshot.deleteMany({ where: { userId, phase: { in: allRotationSlots } } }),
+    );
+  }
+  // The period that ends here stays in the history (once per start date).
+  operations.push(
+    prisma.trainingPlanPhaseHistory.createMany({
+      data: [{ trainingPlanId: plan.id, phase: plan.currentPhase, startedOn: plan.phaseStartedOn, endedOn: phaseStartedOn }],
+      skipDuplicates: true,
+    }),
+    prisma.trainingPlan.update({
+      where: { id: plan.id },
+      data: {
+        phaseConfigs: nextConfigs as unknown as Prisma.InputJsonValue,
+        currentPhase: firstPhase,
+        phaseStartedOn,
+        extensionWeeks: 0,
+        pausedAt: null,
+        trainingGoal: goal,
+      },
+    }),
+  );
+  await prisma.$transaction(operations);
+  return { goal, summary: PHASE_TEMPLATES[goal].summary };
 }

@@ -5,6 +5,7 @@ import type { TrainingPhase } from "@fitnesstracker/shared";
 import { AppShell } from "../components/layout/AppShell";
 import { FreeCardioCard } from "../components/plan/FreeCardioCard";
 import { PhaseHero } from "../components/plan/PhaseHero";
+import { PhaseTemplateCard } from "../components/plan/PhaseTemplateCard";
 import { PhaseRotation } from "../components/plan/PhaseRotation";
 import { PlanDays } from "../components/plan/PlanDays";
 import { RecommendedSplitsSection } from "../components/trainingPlan/RecommendedSplitsSection";
@@ -80,6 +81,8 @@ export function TrainingPlanPage() {
       ) : (
         <div className="flex flex-col gap-4">
           <PhaseHero plan={plan} />
+
+          <PhaseTemplateCard plan={plan} />
 
           {selectedPhase && (
             <PhaseRotation

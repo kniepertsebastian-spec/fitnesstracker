@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { createWorkoutSessionSchema, updateWorkoutSessionSchema } from "@fitnesstracker/shared";
+import { createWorkoutSessionSchema, updateWorkoutSessionSchema, workoutSessionKindSchema } from "@fitnesstracker/shared";
 import {
   createWorkoutSession,
   getOpenWorkoutSession,
@@ -14,7 +14,8 @@ export default async function workoutSessionRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
 
   fastify.get("/workout-sessions/open", async (request, reply) => {
-    const session = await getOpenWorkoutSession(fastify.prisma, request.user.sub);
+    const { kind } = z.object({ kind: workoutSessionKindSchema.optional() }).parse(request.query);
+    const session = await getOpenWorkoutSession(fastify.prisma, request.user.sub, kind ?? "TRAINING");
     return reply.send(session ? toWorkoutSessionDto(session) : null);
   });
 

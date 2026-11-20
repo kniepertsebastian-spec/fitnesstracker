@@ -24,7 +24,7 @@ export function WorkoutSessionBar() {
         <Button
           variant="primary"
           disabled={start.isPending}
-          onClick={() => start.mutate(crypto.randomUUID())}
+          onClick={() => start.mutate({ clientId: crypto.randomUUID() })}
         >
           Training starten
         </Button>

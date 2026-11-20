@@ -1,20 +1,22 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import type { WorkoutSessionStatus } from "@fitnesstracker/shared";
+import type { WorkoutSessionKind, WorkoutSessionStatus } from "@fitnesstracker/shared";
 import {
   fetchAndCacheOpenSession,
   startWorkoutSessionLocal,
   keepWorkoutSessionAliveLocal,
   updateWorkoutSessionStatusLocal,
-  WORKOUT_SESSION_QUERY_KEY,
+  workoutSessionQueryKey,
 } from "../offline/workoutSessionSync";
 
 // Same `networkMode: "always"` rationale as useWorkoutLogs: the queryFn already falls back to
 // the local Dexie cache on its own, so it must run even while offline instead of parking as
 // "pending" under the default online-only mode.
-export function useOpenWorkoutSession() {
+//
+// `kind`: the regular workout (default) or the Daily session, which runs next to it.
+export function useOpenWorkoutSession(kind: WorkoutSessionKind = "TRAINING") {
   return useQuery({
-    queryKey: WORKOUT_SESSION_QUERY_KEY,
-    queryFn: fetchAndCacheOpenSession,
+    queryKey: workoutSessionQueryKey(kind),
+    queryFn: () => fetchAndCacheOpenSession(kind),
     networkMode: "always",
     // The server can raise the "Training noch aktiv?" prompt or auto-complete the session while
     // the app stays open, so look again once a minute.
@@ -28,7 +30,8 @@ export function useOpenWorkoutSession() {
 // running immediately.
 export function useStartWorkoutSession() {
   return useMutation({
-    mutationFn: (clientId: string) => startWorkoutSessionLocal(clientId),
+    mutationFn: ({ clientId, kind }: { clientId: string; kind?: WorkoutSessionKind }) =>
+      startWorkoutSessionLocal(clientId, kind),
     networkMode: "always",
   });
 }

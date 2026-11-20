@@ -1,5 +1,6 @@
 import type {
   AddTrainingPhaseInput,
+  ApplyPhaseTemplateInput,
   ChangeTrainingPhaseInput,
   RenameTrainingPhaseInput,
   TrainingPhase,
@@ -15,6 +16,10 @@ export function getTrainingPlanRequest() {
 
 export function changeTrainingPhaseRequest(input: ChangeTrainingPhaseInput) {
   return apiFetch<TrainingPlanDto>("/training-plan/phase", { method: "PATCH", body: input });
+}
+
+export function applyPhaseTemplateRequest(input: ApplyPhaseTemplateInput) {
+  return apiFetch<TrainingPlanDto>("/training-plan/phase-template", { method: "POST", body: input });
 }
 
 export function addTrainingPhaseRequest(input: AddTrainingPhaseInput) {

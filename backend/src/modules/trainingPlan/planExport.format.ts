@@ -1,7 +1,11 @@
 // Hand-rolled CSV/JSON/XML (de)serialization for the plan export/import — no parser dependency
-// needed since the row shape is small and fixed (phase, exerciseName, targetSets, targetReps,
-// order), and a real XML parser would be overkill (and pulls in XXE-adjacent surface) for a
-// handful of flat tags.
+// needed since the row shape is small and fixed, and a real XML parser would be overkill (and
+// pulls in XXE-adjacent surface) for a handful of flat tags.
+//
+// Format v2 carries everything a plan entry has (day, rep range, RIR, pause, notes, start weight,
+// alternative), so a phase can be moved between phases or accounts without losing the split days.
+// Files of the first format (phase, exerciseName, targetSets, targetReps, order) still import: a
+// field that is absent from the file stays untouched, a field that is present but empty clears it.
 
 export interface PlanExportRow {
   phase: string;
@@ -9,39 +13,70 @@ export interface PlanExportRow {
   targetSets: number | null;
   targetReps: number | null;
   order: number;
+  dayLabel: string | null;
+  repRangeMin: number | null;
+  repRangeMax: number | null;
+  targetRir: number | null;
+  restSeconds: number | null;
+  notes: string | null;
+  startWeightKg: number | null;
+  alternativeExerciseName: string | null;
 }
 
 // Raw, not-yet-validated fields as read from an uploaded file — see planExport.service.ts's
-// normalizeRow for validation/coercion.
+// normalizeRow for validation/coercion. `undefined` = the file has no such column.
 export interface RawImportRow {
   phase?: unknown;
   exerciseName?: unknown;
   targetSets?: unknown;
   targetReps?: unknown;
   order?: unknown;
+  dayLabel?: unknown;
+  repRangeMin?: unknown;
+  repRangeMax?: unknown;
+  targetRir?: unknown;
+  restSeconds?: unknown;
+  notes?: unknown;
+  startWeightKg?: unknown;
+  alternativeExerciseName?: unknown;
 }
 
-const CSV_COLUMNS = ["phase", "exerciseName", "targetSets", "targetReps", "order"] as const;
+export const PLAN_COLUMNS = [
+  "phase",
+  "exerciseName",
+  "targetSets",
+  "targetReps",
+  "order",
+  "dayLabel",
+  "repRangeMin",
+  "repRangeMax",
+  "targetRir",
+  "restSeconds",
+  "notes",
+  "startWeightKg",
+  "alternativeExerciseName",
+] as const satisfies readonly (keyof PlanExportRow)[];
+
+type Column = (typeof PLAN_COLUMNS)[number];
+
+function cell(row: PlanExportRow, column: Column): string {
+  const value = row[column];
+  return value === null || value === undefined ? "" : String(value);
+}
 
 function csvEscape(value: string): string {
-  if (/[",\r\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  // A cell that starts with = + - @ would run as a formula when the file is opened in a spreadsheet.
+  const safe = /^[=+@]/.test(value) || /^-(?!\d)/.test(value) ? `'${value}` : value;
+  if (/[",\r\n]/.test(safe)) {
+    return `"${safe.replace(/"/g, '""')}"`;
   }
-  return value;
+  return safe;
 }
 
 export function rowsToCsv(rows: PlanExportRow[]): string {
-  const lines = [CSV_COLUMNS.join(",")];
+  const lines = [PLAN_COLUMNS.join(",")];
   for (const row of rows) {
-    lines.push(
-      [
-        row.phase,
-        csvEscape(row.exerciseName),
-        row.targetSets ?? "",
-        row.targetReps ?? "",
-        row.order,
-      ].join(","),
-    );
+    lines.push(PLAN_COLUMNS.map((column) => csvEscape(cell(row, column))).join(","));
   }
   return lines.join("\r\n") + "\r\n";
 }
@@ -102,13 +137,15 @@ function csvToTable(text: string): string[][] {
 }
 
 export function parseCsv(text: string): RawImportRow[] {
-  const table = csvToTable(text);
+  const table = csvToTable(text.replace(/^\uFEFF/, ""));
   if (table.length === 0) return [];
   const header = table[0].map((h) => h.trim());
   return table.slice(1).map((cols) => {
     const row: Record<string, string> = {};
     header.forEach((key, index) => {
-      row[key] = cols[index] ?? "";
+      // Undo the formula guard of csvEscape.
+      const value = cols[index] ?? "";
+      row[key] = value.startsWith("'") && /^'[=+\-@]/.test(value) ? value.slice(1) : value;
     });
     return row;
   });
@@ -120,10 +157,11 @@ export function rowsToJson(rows: PlanExportRow[]): string {
 
 export function parseJson(text: string): RawImportRow[] {
   const data: unknown = JSON.parse(text);
-  if (!Array.isArray(data)) {
-    throw new Error("JSON root must be an array");
-  }
-  return data as RawImportRow[];
+  if (Array.isArray(data)) return data as RawImportRow[];
+  // Also accept { "exercises": [...] } so a hand-edited or wrapped file still works.
+  const wrapped = (data as { exercises?: unknown } | null)?.exercises;
+  if (Array.isArray(wrapped)) return wrapped as RawImportRow[];
+  throw new Error("JSON root must be an array");
 }
 
 function xmlEscape(value: string): string {
@@ -147,13 +185,8 @@ function xmlUnescape(value: string): string {
 export function rowsToXml(rows: PlanExportRow[]): string {
   const entries = rows
     .map(
-      (row) => `  <entry>
-    <phase>${xmlEscape(row.phase)}</phase>
-    <exerciseName>${xmlEscape(row.exerciseName)}</exerciseName>
-    <targetSets>${row.targetSets ?? ""}</targetSets>
-    <targetReps>${row.targetReps ?? ""}</targetReps>
-    <order>${row.order}</order>
-  </entry>`,
+      (row) =>
+        `  <entry>\n${PLAN_COLUMNS.map((column) => `    <${column}>${xmlEscape(cell(row, column))}</${column}>`).join("\n")}\n  </entry>`,
     )
     .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<trainingPlan>\n${entries}\n</trainingPlan>\n`;
@@ -166,11 +199,9 @@ function extractTag(block: string, tag: string): string | undefined {
 
 export function parseXml(text: string): RawImportRow[] {
   const entries = text.match(/<entry>[\s\S]*?<\/entry>/g) ?? [];
-  return entries.map((block) => ({
-    phase: extractTag(block, "phase"),
-    exerciseName: extractTag(block, "exerciseName"),
-    targetSets: extractTag(block, "targetSets"),
-    targetReps: extractTag(block, "targetReps"),
-    order: extractTag(block, "order"),
-  }));
+  return entries.map((block) => {
+    const row: Record<string, string | undefined> = {};
+    for (const column of PLAN_COLUMNS) row[column] = extractTag(block, column);
+    return row;
+  });
 }

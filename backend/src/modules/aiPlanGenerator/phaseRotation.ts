@@ -1,6 +1,6 @@
 import type { TrainingPhase } from "@prisma/client";
-import type { PlanDraftItemDto } from "@fitnesstracker/shared";
-import { PHASE_DEFAULTS } from "./promptBuilder.js";
+import type { PhaseStyle, PlanDraftItemDto } from "@fitnesstracker/shared";
+import { phaseDefaultsFor } from "./promptBuilder.js";
 import { suggestStartWeights } from "./planAssembly.js";
 
 export const TRAINING_PHASES: TrainingPhase[] = ["AUFBAU", "MUSKELAUSDAUER", "NEGATIV"];
@@ -25,9 +25,11 @@ export function derivePhaseItems(
   from: TrainingPhase,
   to: TrainingPhase,
   loggedSets: { exerciseId: string; weightKg: number; reps: number }[],
+  // Styles of the two phases (see PhaseConfigItem.style): a styled phase follows its style, not its slot.
+  styles: { from?: PhaseStyle | null; to?: PhaseStyle | null } = {},
 ): PlanDraftItemDto[] {
-  const target = PHASE_DEFAULTS[to];
-  const restFactor = target.restSeconds / PHASE_DEFAULTS[from].restSeconds;
+  const target = phaseDefaultsFor(to, styles.to);
+  const restFactor = target.restSeconds / phaseDefaultsFor(from, styles.from).restSeconds;
   const weights = suggestStartWeights(
     loggedSets,
     items.map((i) => ({ exerciseId: i.exerciseId, reps: target.repMax, rir: target.rir })),
@@ -42,7 +44,7 @@ export function derivePhaseItems(
       repRangeMax: target.repMax,
       targetRir: target.rir,
       restSeconds: item.restSeconds === null ? target.restSeconds : round5(item.restSeconds * restFactor),
-      notes: to === "NEGATIV" ? [base, NEGATIVE_TEMPO_NOTE].filter(Boolean).join(" ") : base,
+      notes: to === "NEGATIV" && !styles.to ? [base, NEGATIVE_TEMPO_NOTE].filter(Boolean).join(" ") : base,
       startWeightKg: weights.get(item.exerciseId) ?? null,
       filledByServer: false,
     };

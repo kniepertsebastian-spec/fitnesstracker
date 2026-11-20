@@ -3,6 +3,8 @@ import type {
   ExerciseOptionDto,
   PlanExerciseDto,
   PlanExportFormat,
+  PlanImportMode,
+  PlanImportPreview,
   PlanImportResult,
   TrainingPhase,
   UpdatePlanExerciseInput,
@@ -18,14 +20,30 @@ export function getWeeklyPlanStatusRequest(phase: TrainingPhase) {
   return apiFetch<WeeklyPlanStatusDto>(`/plan-exercises/week-status?phase=${phase}`);
 }
 
-export function exportPlanExercisesRequest(format: PlanExportFormat) {
-  return apiFetchBlob(`/plan-exercises/export?format=${format}`);
+export function exportPlanExercisesRequest(format: PlanExportFormat, phase?: TrainingPhase) {
+  return apiFetchBlob(`/plan-exercises/export?format=${format}${phase ? `&phase=${phase}` : ""}`);
 }
 
-export function importPlanExercisesRequest(file: File, format: PlanExportFormat) {
+export function previewPlanImportRequest(file: File, format: PlanExportFormat) {
   const formData = new FormData();
   formData.append("file", file);
-  return apiUpload<PlanImportResult>(`/plan-exercises/import?format=${format}`, formData);
+  return apiUpload<PlanImportPreview>(`/plan-exercises/import/preview?format=${format}`, formData);
+}
+
+export interface PlanImportOptions {
+  sourcePhase?: TrainingPhase;
+  targetPhase?: TrainingPhase;
+  mode?: PlanImportMode;
+}
+
+export function importPlanExercisesRequest(file: File, format: PlanExportFormat, options: PlanImportOptions = {}) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const params = new URLSearchParams({ format });
+  if (options.sourcePhase) params.set("sourcePhase", options.sourcePhase);
+  if (options.targetPhase) params.set("targetPhase", options.targetPhase);
+  if (options.mode) params.set("mode", options.mode);
+  return apiUpload<PlanImportResult>(`/plan-exercises/import?${params.toString()}`, formData);
 }
 
 export function createPlanExerciseRequest(input: CreatePlanExerciseInput) {

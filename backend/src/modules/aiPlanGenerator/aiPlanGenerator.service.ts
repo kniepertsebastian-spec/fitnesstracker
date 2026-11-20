@@ -32,7 +32,7 @@ import {
   estimateWeeklyFrequency,
   exercisesPerDayForDuration,
   loadLimitationTexts,
-  PHASE_DEFAULTS,
+  phaseDefaultsFor,
   selectCatalog,
 } from "./promptBuilder.js";
 import { assembleDays, resolveSplit, suggestStartWeights, type RawPlanItem } from "./planAssembly.js";
@@ -40,6 +40,7 @@ import { buildAvoidMatchers } from "./avoidFilter.js";
 import { buildExclusions } from "./injuryFilter.js";
 import { findPlateauExerciseIds } from "../goals/goalSuggestion.service.js";
 import { derivePhaseItems, TRAINING_PHASES } from "./phaseRotation.js";
+import { resolvePhaseConfigs } from "../trainingPlan/trainingPlan.types.js";
 import { refreshDetectedAsymmetries } from "../trainingPlan/trainingAsymmetry.service.js";
 
 const MIN_LOGGED_SETS_FOR_WARM_START = 5;
@@ -345,7 +346,8 @@ export async function generatePlan(
     .filter((part) => part.trim().length > 0)
     .join("\n");
   const perDay = exercisesPerDayForDuration(prefs.sessionDurationMinutes);
-  const systemPrompt = buildSystemPrompt(input.phase, catalog.entries, targetDays, perDay);
+  const phaseStyle = await loadPhaseStyle(prisma, userId, input.phase);
+  const systemPrompt = buildSystemPrompt(input.phase, catalog.entries, targetDays, perDay, phaseStyle);
 
   const response = parseModelResponse(await callModel(prisma, userId, systemPrompt, context, options));
   const assembled = assembleDays(
@@ -353,7 +355,7 @@ export async function generatePlan(
     targetDays,
     catalog.rows,
     perDay,
-    PHASE_DEFAULTS[input.phase],
+    phaseDefaultsFor(input.phase, phaseStyle),
     catalog.loggedCounts,
   );
   if (assembled.length === 0) {
@@ -430,18 +432,25 @@ export async function generatePlan(
 
   // One model call, three phases: the other phases reuse the chosen exercises.
   const otherPhases = TRAINING_PHASES.filter((p) => p !== input.phase);
+  const otherStyles = new Map(await Promise.all(otherPhases.map(async (p) => [p, await loadPhaseStyle(prisma, userId, p)] as const)));
   const loggedSets = recentSets.map((s) => ({ exerciseId: s.exerciseId, weightKg: Number(s.weightKg), reps: s.reps }));
   const [snapshot, ...others] = await prisma.$transaction([
     upsertDraft(input.phase, data),
     ...otherPhases.map((phase) =>
       upsertDraft(phase, {
         ...data,
-        items: derivePhaseItems(newItems, input.phase, phase, loggedSets) as unknown as Prisma.InputJsonValue,
+        items: derivePhaseItems(newItems, input.phase, phase, loggedSets, { from: phaseStyle, to: otherStyles.get(phase) }) as unknown as Prisma.InputJsonValue,
         rationale: `Abgeleitet aus dem Entwurf für ${input.phase}: gleiche Übungen, angepasste Sätze, Wiederholungen, Pausen und Tempo.`,
       }),
     ),
   ]);
   return { status: "draft", draft: snapshotToDraft(snapshot), otherDrafts: others.map(snapshotToDraft), replacedPlateaus: plateauNames };
+}
+
+// The style a phase was given by a phase template (deload, maintenance, ...); null for plain phases.
+async function loadPhaseStyle(prisma: PrismaClient, userId: string, phase: TrainingPhase) {
+  const plan = await prisma.trainingPlan.findUnique({ where: { userId }, select: { phaseConfigs: true } });
+  return resolvePhaseConfigs(plan?.phaseConfigs).find((c) => c.phase === phase)?.style ?? null;
 }
 
 export async function getPlanDraftState(

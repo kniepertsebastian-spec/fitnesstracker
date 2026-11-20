@@ -90,15 +90,20 @@ interface Summary {
 export function TrainingPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: session, isLoading: sessionLoading } = useOpenWorkoutSession();
   const { data: plan, isLoading: planLoading } = useTrainingPlan();
 
-  // Allows switching between the active rotational phase and the standalone DAILY phase during a
-  // workout without touching the plan's active rotational phase.
-  const [trainingPhaseOverride, setTrainingPhaseOverride] = useState<TrainingPhase | null>(null);
+  // Allows switching between the active rotational phase and the standalone DAILY phase without
+  // touching the plan's active rotational phase. `?mode=daily` (from the Daily page) opens the Daily one.
+  const [trainingPhaseOverride, setTrainingPhaseOverride] = useState<TrainingPhase | null>(() =>
+    searchParams.get("mode") === "daily" ? "DAILY" : null,
+  );
   const dailyPhaseConfig = plan?.phases?.find((p) => p.isDaily || p.phase === "DAILY") ?? null;
   const activeTrainingPhase: TrainingPhase =
     trainingPhaseOverride ?? plan?.currentPhase ?? "AUFBAU";
+  // The Daily phase has its own session, so it can be done in pieces over the day (started, paused,
+  // picked up again) while a regular workout stays untouched next to it.
+  const sessionKind = activeTrainingPhase === "DAILY" ? "DAILY" : "TRAINING";
+  const { data: session, isLoading: sessionLoading } = useOpenWorkoutSession(sessionKind);
 
   const { data: status, isLoading: statusLoading } = useWeeklyPlanStatus(activeTrainingPhase, {
     enabled: !!plan,
@@ -154,8 +159,8 @@ export function TrainingPage() {
     if (shortcutHandled.current || sessionLoading || searchParams.get("start") !== "1") return;
     shortcutHandled.current = true;
     setSearchParams({}, { replace: true });
-    if (!session) startSession.mutate(crypto.randomUUID());
-  }, [sessionLoading, session, searchParams, setSearchParams, startSession]);
+    if (!session) startSession.mutate({ clientId: crypto.randomUUID(), kind: sessionKind });
+  }, [sessionLoading, session, sessionKind, searchParams, setSearchParams, startSession]);
 
   useWakeLock(session?.status === "ACTIVE" && !summary);
 
@@ -584,22 +589,41 @@ export function TrainingPage() {
     );
   }
 
+  const modeSwitcher =
+    plan && dailyPhaseConfig ? (
+      <SegmentedControl
+        label="Trainingsmodus"
+        value={activeTrainingPhase}
+        onChange={(nextPhase) => {
+          setTrainingPhaseOverride(nextPhase === plan.currentPhase ? null : nextPhase);
+          setDayIndex(null);
+          setManualIndex(null);
+          setManualStage(null);
+        }}
+        options={[
+          { value: plan.currentPhase, label: `Plan: ${getPhaseDisplayName(plan.currentPhase, plan.phases)}` },
+          { value: dailyPhaseConfig.phase, label: `Daily: ${dailyPhaseConfig.label}` },
+        ]}
+      />
+    ) : null;
+
   if (!session) {
     return (
       <Frame>
+        {modeSwitcher && <div className="mb-4">{modeSwitcher}</div>}
         <Card>
           <EmptyState
             icon={<Dumbbell size={20} aria-hidden />}
-            text="Kein Training aktiv."
+            text={sessionKind === "DAILY" ? "Kein Daily-Training aktiv." : "Kein Training aktiv."}
             action={
               <div className="flex flex-wrap justify-center gap-2">
                 <Button
                   variant="primary"
                   size="lg"
                   disabled={startSession.isPending}
-                  onClick={() => startSession.mutate(crypto.randomUUID())}
+                  onClick={() => startSession.mutate({ clientId: crypto.randomUUID(), kind: sessionKind })}
                 >
-                  Training starten
+                  {sessionKind === "DAILY" ? "Daily starten" : "Training starten"}
                 </Button>
                 <ButtonLink to="/" variant="ghost" size="lg">
                   Zum Dashboard
@@ -622,23 +646,6 @@ export function TrainingPage() {
       : `${getPhaseDisplayName(plan.currentPhase, plan.phases)} · Woche ${phaseWeek(plan)} von ${phaseLength(plan)}`
     : "Freies Training";
 
-  const modeSwitcher =
-    plan && dailyPhaseConfig ? (
-      <SegmentedControl
-        label="Trainingsmodus"
-        value={activeTrainingPhase}
-        onChange={(nextPhase) => {
-          setTrainingPhaseOverride(nextPhase === plan.currentPhase ? null : nextPhase);
-          setDayIndex(null);
-          setManualIndex(null);
-          setManualStage(null);
-        }}
-        options={[
-          { value: plan.currentPhase, label: `Plan: ${getPhaseDisplayName(plan.currentPhase, plan.phases)}` },
-          { value: dailyPhaseConfig.phase, label: `Daily: ${dailyPhaseConfig.label}` },
-        ]}
-      />
-    ) : null;
 
   if (!plan || exercises.length === 0) {
     return (
