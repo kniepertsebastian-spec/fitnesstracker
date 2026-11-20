@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateExerciseInput, ExerciseDto, UpdateExerciseInput } from "@fitnesstracker/shared";
 import { createExerciseRequest, deleteExerciseRequest, getExerciseByIdRequest, updateExerciseRequest } from "../api/exercise.api";
@@ -28,7 +28,15 @@ export interface ExerciseLibraryFilters {
 }
 
 export function useExerciseLibrary(filters: ExerciseLibraryFilters) {
+  const queryClient = useQueryClient();
   const { data, isLoading } = useExerciseCatalog();
+  // Opening the library asks the server whether the catalog changed (a tiny request; an exercise made on
+  // another device a moment ago shows up right away instead of after the next scheduled sync).
+  useEffect(() => {
+    void syncExerciseCatalog(true).then((changed) => {
+      if (changed) void queryClient.invalidateQueries({ queryKey: EXERCISE_CATALOG_KEY });
+    });
+  }, [queryClient]);
   const { search, muscleGroup, equipment, includeInactive } = filters;
   const items = useMemo(
     () => filterCatalog(data ?? [], { search, muscleGroup, equipment, includeInactive } satisfies CatalogFilters),
