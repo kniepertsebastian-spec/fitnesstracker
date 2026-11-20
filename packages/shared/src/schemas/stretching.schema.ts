@@ -80,8 +80,15 @@ export const generateStretchPlanRequestSchema = z.object({
 });
 export type GenerateStretchPlanRequest = z.infer<typeof generateStretchPlanRequestSchema>;
 
+// How the daily routine is picked: "auto" = fits today's challenge exercises, "all" = one stretch per
+// big body region, or a single muscle.
+export const stretchChoiceSchema = z.union([stretchFocusMuscleSchema, z.literal("auto"), z.literal("all")]);
+export type StretchChoice = z.infer<typeof stretchChoiceSchema>;
+
 export const dailyStretchDtoSchema = z.object({
   focus: stretchFocusMuscleSchema.nullable(),
+  // Muscles the stretches were picked for when the routine follows the challenge ("auto").
+  muscles: z.array(z.string()).optional(),
   items: z.array(stretchItemDtoSchema),
   catalogAvailable: z.boolean(),
 });

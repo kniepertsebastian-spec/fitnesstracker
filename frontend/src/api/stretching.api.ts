@@ -1,6 +1,6 @@
 import type {
   DailyStretchDto,
-  StretchFocusMuscle,
+  StretchChoice,
   StretchPlanDto,
   TrainingPhase,
 } from "@fitnesstracker/shared";
@@ -18,6 +18,8 @@ export function resetStretchPlanRequest(phase: TrainingPhase) {
   return apiFetch<void>(`/stretching/plan?phase=${phase}`, { method: "DELETE" });
 }
 
-export function getDailyStretchRequest(focus: StretchFocusMuscle | null) {
-  return apiFetch<DailyStretchDto>(`/stretching/daily${focus ? `?focus=${encodeURIComponent(focus)}` : ""}`);
+export function getDailyStretchRequest(choice: StretchChoice, shuffle = 0) {
+  const params = new URLSearchParams({ focus: choice });
+  if (shuffle > 0) params.set("shuffle", String(shuffle));
+  return apiFetch<DailyStretchDto>(`/stretching/daily?${params.toString()}`);
 }

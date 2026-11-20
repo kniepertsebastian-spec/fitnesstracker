@@ -166,7 +166,7 @@ export function SupplementCard() {
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
-            className="w-28"
+            className="w-28 shrink-0"
           />
           <IconButton aria-label="Supplement direkt hinzufügen" onClick={() => void handleAdd(null)}>
             <Plus size={18} aria-hidden />

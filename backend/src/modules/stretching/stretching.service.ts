@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import type {
   DailyStretchDto,
+  StretchChoice,
   StretchDayDto,
   StretchItemDto,
   StretchPlanDto,
@@ -16,12 +17,14 @@ import { getCurrentTrainingPlan } from "../trainingPlan/trainingPlan.service.js"
 import {
   DEFAULT_HOLD_SECONDS,
   pickDailyStretches,
+  pickStretchesForChallenge,
   pickStretchesForMuscles,
   isPartnerStretch,
   rankMuscles,
   type StretchCandidate,
 } from "./stretchSelection.js";
 import { getUserTimeZone, localDayKey } from "../../lib/userTime.js";
+import { getOrCreateTodayChallenge } from "../dailyChallenge/dailyChallenge.service.js";
 
 // free-exercise-db tags every stretch with this category, so the catalog imported for the
 // Übungen menu already contains the stretch library — no second import source needed.
@@ -290,16 +293,34 @@ async function todayKey(prisma: PrismaClient, userId: string): Promise<string> {
   return localDayKey(new Date(), await getUserTimeZone(prisma, userId));
 }
 
+// `choice`: "auto" follows today's challenge, "all" is one stretch per big region, anything else is a
+// single muscle. `shuffle` is the user's "neu mischen" counter: a different but still stable pick.
 export async function getDailyStretch(
   prisma: PrismaClient,
   userId: string,
-  focus: string | null,
+  choice: StretchChoice,
+  shuffle = 0,
 ): Promise<DailyStretchDto> {
   const candidates = await loadStretchCandidates(prisma);
-  const picked = pickDailyStretches(candidates, focus, `${userId}:${await todayKey(prisma, userId)}`);
+  const seed = `${userId}:${await todayKey(prisma, userId)}:${shuffle}`;
+
+  if (choice === "auto") {
+    const challenge = await getOrCreateTodayChallenge(prisma, userId);
+    const { muscles, picked } = pickStretchesForChallenge(
+      candidates,
+      challenge.map((item) => item.exercise),
+      seed,
+    );
+    if (picked.length > 0) {
+      return { focus: null, muscles, items: picked.map((c) => toItemDto(c)), catalogAvailable: true };
+    }
+    // No challenge yet or nothing in the catalog for its muscles: the full-body routine below.
+  }
+
+  const focus = choice === "auto" || choice === "all" ? null : choice;
   return {
-    focus: focus as DailyStretchDto["focus"],
-    items: picked.map((c) => toItemDto(c)),
+    focus,
+    items: pickDailyStretches(candidates, focus, seed).map((c) => toItemDto(c)),
     catalogAvailable: candidates.length > 0,
   };
 }

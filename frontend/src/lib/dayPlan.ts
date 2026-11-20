@@ -18,6 +18,12 @@ export function stretchMinutes(items: StretchItemDto[]): number {
   return Math.max(1, Math.ceil(seconds / 60));
 }
 
+// The stretching is done twice (before and after the training) at half the hold time each, so the
+// total stays the same. Never shorter than 10 s — too short to be a stretch at all.
+export function halveHold(items: StretchItemDto[]): StretchItemDto[] {
+  return items.map((i) => ({ ...i, holdSeconds: Math.max(10, Math.round(i.holdSeconds / 2)) }));
+}
+
 export function formatHold(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { fetchAnyExercise, goOffline, goOnline, login, openNav, registerTestUser, serverWorkoutLogs } from "./support";
+import { fetchAnyExercise, goOffline, goOnline, login, openNav, registerTestUser, serverWorkoutLogs, skipPreStretchIfShown } from "./support";
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:3000/api";
 
@@ -35,6 +35,7 @@ test.describe("Offline-Kaltstart", () => {
 
     await page.getByRole("button", { name: /Training starten/ }).first().click();
     await page.waitForURL("/training");
+    await skipPreStretchIfShown(page);
     await expect(page.getByRole("heading", { name: exercise.name })).toBeVisible();
     await page.getByRole("button", { name: "Satz 1 abhaken" }).click();
     await expect(page.getByRole("button", { name: "Satz 1 rückgängig" })).toBeVisible();

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isPartnerStretch,
   pickDailyStretches,
+  pickStretchesForChallenge,
   pickStretchesForMuscles,
   rankMuscles,
   type StretchCandidate,
@@ -65,5 +66,41 @@ describe("isPartnerStretch", () => {
   it("keeps self-assisted stretches", () => {
     expect(isPartnerStretch({ name: "Side Neck Stretch", description: "Assist stretch with a gentle pull." })).toBe(false);
     expect(isPartnerStretch({ name: "Chest Stretch", description: null })).toBe(false);
+  });
+});
+
+describe("pickStretchesForChallenge", () => {
+  it("stretches the muscles the challenge exercises load", () => {
+    // Triceps dips with bodyweight -> a triceps stretch, not a random full-body one.
+    const { muscles, picked } = pickStretchesForChallenge(
+      catalog,
+      [{ primaryMuscles: ["triceps"], secondaryMuscles: ["chest", "shoulders"] }],
+      "seed",
+    );
+    expect(muscles[0]).toBe("triceps");
+    expect(picked[0].id).toBe("tri-1");
+  });
+
+  it("is stable for the same seed and changes with another one", () => {
+    const exercises = [{ primaryMuscles: ["chest"], secondaryMuscles: [] }];
+    const a = pickStretchesForChallenge(catalog, exercises, "day:0").picked.map((c) => c.id);
+    expect(pickStretchesForChallenge(catalog, exercises, "day:0").picked.map((c) => c.id)).toEqual(a);
+    const others = ["day:1", "day:2", "day:3", "day:4", "day:5"].map((seed) =>
+      pickStretchesForChallenge(catalog, exercises, seed).picked.map((c) => c.id).join(","),
+    );
+    expect(new Set([a.join(","), ...others]).size).toBeGreaterThan(1);
+  });
+
+  it("picks nothing when there is no challenge", () => {
+    expect(pickStretchesForChallenge(catalog, [], "seed")).toEqual({ muscles: [], picked: [] });
+  });
+
+  it("looks at no more than four muscles", () => {
+    const { muscles } = pickStretchesForChallenge(
+      catalog,
+      [{ primaryMuscles: ["chest", "lats", "triceps", "shoulders", "neck", "calves"], secondaryMuscles: [] }],
+      "seed",
+    );
+    expect(muscles).toHaveLength(4);
   });
 });

@@ -112,8 +112,11 @@ export type PlanDayStatusDto = z.infer<typeof planDayStatusDtoSchema>;
 export const weeklyPlanStatusDtoSchema = z.object({
   // In split sequence (day 1, day 2, ...), not DB insertion order.
   days: z.array(planDayStatusDtoSchema),
-  // Index into `days` of the day to show as "today's workout" — the first not-yet-completed
-  // day this week. Null once every day in the split has been trained this week.
+  // Index into `days` of the day to show as "today's workout" — the day after the one trained
+  // last, skipping days already finished this week. Null once every day was trained this week.
   activeDayIndex: z.number().int().nullable(),
+  // The day after the one trained last, finished or not: the default for the focus mode when
+  // `activeDayIndex` is null. Optional so responses cached by an older build still validate.
+  nextDayIndex: z.number().int().nullable().optional(),
 });
 export type WeeklyPlanStatusDto = z.infer<typeof weeklyPlanStatusDtoSchema>;
