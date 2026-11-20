@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-import type { CreateWorkoutSessionInput, WorkoutSessionStatus } from "@fitnesstracker/shared";
+import type { CreateWorkoutSessionInput, WorkoutSessionKind, WorkoutSessionStatus } from "@fitnesstracker/shared";
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
 
 const TERMINAL_STATUSES: WorkoutSessionStatus[] = ["COMPLETED", "ABORTED"];
@@ -8,9 +8,11 @@ const TERMINAL_STATUSES: WorkoutSessionStatus[] = ["COMPLETED", "ABORTED"];
 // only offers "Start" when it has none locally. `orderBy updatedAt desc` is just a safety net in
 // case that invariant is ever violated (e.g. two devices racing), so the client always gets a
 // single, most-recently-touched session back rather than an ambiguous list.
-export function getOpenWorkoutSession(prisma: PrismaClient, userId: string) {
+//
+// "Open" is per kind: a paused Daily session and a running workout exist side by side.
+export function getOpenWorkoutSession(prisma: PrismaClient, userId: string, kind: WorkoutSessionKind = "TRAINING") {
   return prisma.workoutSession.findFirst({
-    where: { userId, status: { in: ["ACTIVE", "PAUSED"] } },
+    where: { userId, kind, status: { in: ["ACTIVE", "PAUSED"] } },
     orderBy: { updatedAt: "desc" },
   });
 }
@@ -31,6 +33,7 @@ export async function createWorkoutSession(
   userId: string,
   input: CreateWorkoutSessionInput,
 ) {
+  const kind = input.kind ?? "TRAINING";
   return prisma.$transaction(async (tx) => {
     const existing = await tx.workoutSession.findUnique({ where: { clientId: input.clientId } });
     if (existing) {
@@ -41,10 +44,10 @@ export async function createWorkoutSession(
       return existing;
     }
     await tx.workoutSession.updateMany({
-      where: { userId, status: { in: ["ACTIVE", "PAUSED"] } },
+      where: { userId, kind, status: { in: ["ACTIVE", "PAUSED"] } },
       data: { status: "ABORTED", endedAt: new Date() },
     });
-    return tx.workoutSession.create({ data: { clientId: input.clientId, userId } });
+    return tx.workoutSession.create({ data: { clientId: input.clientId, userId, kind } });
   });
 }
 

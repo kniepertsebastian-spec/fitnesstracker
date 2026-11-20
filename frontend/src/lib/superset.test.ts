@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stepAfterPairedSet, type PairMember } from "./superset";
+import { stepAfterGroupSet, stepAfterPairedSet, type PairMember } from "./superset";
 
 const A = (done: number, total = 3): PairMember => ({ id: "A", done, total });
 const B = (done: number, total = 3): PairMember => ({ id: "B", done, total });
@@ -31,5 +31,28 @@ describe("stepAfterPairedSet", () => {
 
   it("returns to the partner when the anchor has no sets left but the partner does", () => {
     expect(stepAfterPairedSet("A", 2, A(2, 2), B(2, 3))).toEqual({ kind: "switch", id: "B", rest: true });
+  });
+});
+
+describe("stepAfterGroupSet (giant set of three)", () => {
+  const C = (done: number, total = 3): PairMember => ({ id: "C", done, total });
+
+  it("goes A → B → C without a pause, then back to A with the pause", () => {
+    expect(stepAfterGroupSet("A", 1, [A(1), B(0), C(0)])).toEqual({ kind: "switch", id: "B", rest: false });
+    expect(stepAfterGroupSet("B", 1, [A(1), B(1), C(0)])).toEqual({ kind: "switch", id: "C", rest: false });
+    expect(stepAfterGroupSet("C", 1, [A(1), B(1), C(1)])).toEqual({ kind: "switch", id: "A", rest: true });
+  });
+
+  it("finishes after the last set of the last member", () => {
+    expect(stepAfterGroupSet("C", 3, [A(3), B(3), C(3)])).toEqual({ kind: "finished", rest: true });
+  });
+
+  it("skips a member that is already complete", () => {
+    expect(stepAfterGroupSet("A", 3, [A(3), B(2, 2), C(2)])).toEqual({ kind: "switch", id: "C", rest: false });
+  });
+
+  it("leaves a lone remaining member to continue by itself with the pause", () => {
+    expect(stepAfterGroupSet("A", 3, [A(3), B(2, 2), C(3)])).toEqual({ kind: "finished", rest: true });
+    expect(stepAfterGroupSet("A", 2, [A(2, 3), B(2, 2), C(2, 2)])).toEqual({ kind: "switch", id: "A", rest: true });
   });
 });

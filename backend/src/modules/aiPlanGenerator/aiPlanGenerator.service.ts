@@ -1,9 +1,20 @@
-import type { Prisma, PrismaClient, TrainingPhase } from "@prisma/client";
+import { Prisma, type PrismaClient, type TrainingPhase } from "@prisma/client";
 import { z } from "zod";
 import {
+  buildSetPlan,
   coldStartInputSchema,
   DEFAULT_EQUIPMENT,
+  getPhaseWeeks,
+  PERIODIZATIONS,
+  periodizationSchema,
+  setPlanSchema,
+  setSchemeSchema,
+  techniqueSchema,
   type ColdStartInput,
+  type Periodization,
+  type PhaseStyle,
+  type SetScheme,
+  type Technique,
   type GeneratePlanRequest,
   type GeneratePlanResponse,
   type PlanDraftDto,
@@ -32,14 +43,16 @@ import {
   estimateWeeklyFrequency,
   exercisesPerDayForDuration,
   loadLimitationTexts,
-  PHASE_DEFAULTS,
+  phaseDefaultsFor,
   selectCatalog,
 } from "./promptBuilder.js";
 import { assembleDays, resolveSplit, suggestStartWeights, type RawPlanItem } from "./planAssembly.js";
 import { buildAvoidMatchers } from "./avoidFilter.js";
+import { applyTechniquePolicy } from "./techniquePolicy.js";
 import { buildExclusions } from "./injuryFilter.js";
 import { findPlateauExerciseIds } from "../goals/goalSuggestion.service.js";
 import { derivePhaseItems, TRAINING_PHASES } from "./phaseRotation.js";
+import { resolvePhaseConfigs } from "../trainingPlan/trainingPlan.types.js";
 import { refreshDetectedAsymmetries } from "../trainingPlan/trainingAsymmetry.service.js";
 
 const MIN_LOGGED_SETS_FOR_WARM_START = 5;
@@ -68,10 +81,15 @@ const aiPlanItemSchema = z.object({
   restSeconds: optionalInt,
   cue: z.string().nullable().optional(),
   alternativeExerciseId: z.string().nullable().optional(),
+  // Intensity technique, group key and set scheme — free text here, techniquePolicy.ts decides what stays.
+  technique: z.string().nullable().optional(),
+  techniqueGroup: z.string().nullable().optional(),
+  setScheme: z.string().nullable().optional(),
   order: z.number().min(0),
 });
 const aiPlanResponseSchema = z.object({
   rationale: z.string().nullable().optional(),
+  periodization: z.string().nullable().optional(),
   items: z.array(aiPlanItemSchema).min(1).max(MAX_PLAN_ITEMS),
 });
 
@@ -79,6 +97,7 @@ export const geminiWorkoutPlanResponseSchema = {
   type: Type.OBJECT,
   properties: {
     rationale: { type: Type.STRING },
+    periodization: { type: Type.STRING, nullable: true },
     items: {
       type: Type.ARRAY,
       items: {
@@ -93,6 +112,9 @@ export const geminiWorkoutPlanResponseSchema = {
           restSeconds: { type: Type.INTEGER },
           cue: { type: Type.STRING },
           alternativeExerciseId: { type: Type.STRING, nullable: true },
+          technique: { type: Type.STRING, nullable: true },
+          techniqueGroup: { type: Type.STRING, nullable: true },
+          setScheme: { type: Type.STRING, nullable: true },
           order: { type: Type.INTEGER },
         },
         required: ["day", "exerciseId", "targetSets", "repRangeMin", "repRangeMax", "targetRir", "restSeconds", "cue", "order"],
@@ -248,6 +270,7 @@ function snapshotToDraft(snapshot: {
   days: string[];
   items: Prisma.JsonValue;
   rationale: string | null;
+  periodization?: string | null;
   createdAt: Date;
 }): PlanDraftDto {
   return {
@@ -255,6 +278,7 @@ function snapshotToDraft(snapshot: {
     days: snapshot.days,
     items: snapshot.items as unknown as PlanDraftItemDto[],
     rationale: snapshot.rationale,
+    periodization: periodizationSchema.nullable().catch(null).parse(snapshot.periodization ?? null),
     createdAt: snapshot.createdAt.toISOString(),
   };
 }
@@ -284,6 +308,9 @@ export async function generatePlan(
       sessionDurationMinutes: 60,
       includeCardio: false,
       includeStretching: false,
+      techniques: [],
+      schemes: ["PYRAMID", "TIME_BASED"],
+      periodizations: ["LINEAR", "WAVE"],
     };
 
   const existingDraft = input.day
@@ -345,20 +372,42 @@ export async function generatePlan(
     .filter((part) => part.trim().length > 0)
     .join("\n");
   const perDay = exercisesPerDayForDuration(prefs.sessionDurationMinutes);
-  const systemPrompt = buildSystemPrompt(input.phase, catalog.entries, targetDays, perDay);
+  const phaseStyle = await loadPhaseStyle(prisma, userId, input.phase);
+  const systemPrompt = buildSystemPrompt(input.phase, catalog.entries, targetDays, perDay, phaseStyle, prefs);
 
   const response = parseModelResponse(await callModel(prisma, userId, systemPrompt, context, options));
-  const assembled = assembleDays(
+  const assembledRaw = assembleDays(
     response.items as RawPlanItem[],
     targetDays,
     catalog.rows,
     perDay,
-    PHASE_DEFAULTS[input.phase],
+    phaseDefaultsFor(input.phase, phaseStyle),
     catalog.loggedCounts,
   );
-  if (assembled.length === 0) {
+  if (assembledRaw.length === 0) {
     throw new AiProviderError("Der KI-Anbieter hat keine gültigen Übungen aus dem Katalog gewählt");
   }
+
+  // Techniques, set schemes and the week pattern are only proposals: keep what the user allowed and
+  // what makes sense (techniquePolicy.ts), in an order where grouped exercises stand together.
+  const policy = applyTechniquePolicy(
+    assembledRaw.map((a) => ({ day: a.day, exerciseId: a.exerciseId, technique: a.technique, techniqueGroup: a.techniqueGroup, setScheme: a.setScheme })),
+    new Map(catalog.rows.map((r) => [r.id, { id: r.id, name: r.name, equipment: r.equipment, primaryMuscles: r.primaryMuscles, secondaryMuscles: r.secondaryMuscles ?? [] }])),
+    {
+      allowedTechniques: prefs.techniques,
+      allowedSchemes: prefs.schemes,
+      experience: prefs.experience,
+      exercisesPerDay: perDay,
+      style: phaseStyle,
+    },
+  );
+  const rawByKey = new Map(assembledRaw.map((a) => [`${a.day}\u0000${a.exerciseId}`, a]));
+  const assembled = policy.items.map((p) => ({
+    ...(rawByKey.get(`${p.day}\u0000${p.exerciseId}`) as (typeof assembledRaw)[number]),
+    technique: p.technique,
+    techniqueGroup: p.techniqueGroup,
+    setScheme: p.setScheme,
+  }));
 
   const recentSets = await prisma.workoutLog.findMany({
     where: {
@@ -396,8 +445,13 @@ export async function generatePlan(
     startWeightKg: startWeights.get(a.exerciseId) ?? null,
     alternativeExerciseId: a.alternativeExerciseId,
     alternativeExerciseName: a.alternativeExerciseId ? nameOf(a.alternativeExerciseId) : null,
+    technique: (a.technique as Technique | null) ?? null,
+    techniqueGroup: a.techniqueGroup ?? null,
+    setScheme: (a.setScheme as SetScheme | null) ?? null,
+    setPlan: buildSetPlan(a.setScheme as SetScheme | null, a.targetSets, a.repRangeMin, a.repRangeMax),
     filledByServer: a.filledByServer,
   }));
+  const periodization = await chooseDraftPeriodization(prisma, userId, input.phase, response.periodization, prefs, phaseStyle);
 
   let items = newItems;
   let rationale = response.rationale?.trim() || null;
@@ -416,6 +470,7 @@ export async function generatePlan(
     days: allDays.map((d) => d.label),
     items: items as unknown as Prisma.InputJsonValue,
     rationale,
+    periodization: input.day && existingDraft ? existingDraft.periodization : periodization,
   };
   const upsertDraft = (phase: TrainingPhase, phaseData: typeof data) =>
     prisma.planSnapshot.upsert({
@@ -430,18 +485,45 @@ export async function generatePlan(
 
   // One model call, three phases: the other phases reuse the chosen exercises.
   const otherPhases = TRAINING_PHASES.filter((p) => p !== input.phase);
+  const otherStyles = new Map(await Promise.all(otherPhases.map(async (p) => [p, await loadPhaseStyle(prisma, userId, p)] as const)));
   const loggedSets = recentSets.map((s) => ({ exerciseId: s.exerciseId, weightKg: Number(s.weightKg), reps: s.reps }));
   const [snapshot, ...others] = await prisma.$transaction([
     upsertDraft(input.phase, data),
     ...otherPhases.map((phase) =>
       upsertDraft(phase, {
         ...data,
-        items: derivePhaseItems(newItems, input.phase, phase, loggedSets) as unknown as Prisma.InputJsonValue,
+        items: derivePhaseItems(newItems, input.phase, phase, loggedSets, { from: phaseStyle, to: otherStyles.get(phase) }) as unknown as Prisma.InputJsonValue,
+        periodization: null,
         rationale: `Abgeleitet aus dem Entwurf für ${input.phase}: gleiche Übungen, angepasste Sätze, Wiederholungen, Pausen und Tempo.`,
       }),
     ),
   ]);
   return { status: "draft", draft: snapshotToDraft(snapshot), otherDrafts: others.map(snapshotToDraft), replacedPlateaus: plateauNames };
+}
+
+// The week-to-week pattern the model proposed for the phase, if the user allowed it, the phase is long
+// enough for it to show (three weeks or more) and it is not a deload or maintenance phase.
+async function chooseDraftPeriodization(
+  prisma: PrismaClient,
+  userId: string,
+  phase: TrainingPhase,
+  proposed: string | null | undefined,
+  prefs: ColdStartInput,
+  style: PhaseStyle | null,
+): Promise<Periodization | null> {
+  const value = proposed?.trim().toUpperCase();
+  if (!value || !(PERIODIZATIONS as readonly string[]).includes(value)) return null;
+  if (!prefs.periodizations.includes(value as Periodization)) return null;
+  if (style === "DELOAD" || style === "MAINTAIN") return null;
+  const plan = await prisma.trainingPlan.findUnique({ where: { userId }, select: { phaseConfigs: true } });
+  if (getPhaseWeeks(resolvePhaseConfigs(plan?.phaseConfigs), phase) < 3) return null;
+  return value as Periodization;
+}
+
+// The style a phase was given by a phase template (deload, maintenance, ...); null for plain phases.
+async function loadPhaseStyle(prisma: PrismaClient, userId: string, phase: TrainingPhase) {
+  const plan = await prisma.trainingPlan.findUnique({ where: { userId }, select: { phaseConfigs: true } });
+  return resolvePhaseConfigs(plan?.phaseConfigs).find((c) => c.phase === phase)?.style ?? null;
 }
 
 export async function getPlanDraftState(
@@ -490,8 +572,20 @@ export async function replaceDraftItem(
     startWeightKg: null,
     alternativeExerciseId: null,
     alternativeExerciseName: null,
+    // The technique belonged to the old exercise; a grouped partner loses its group too.
+    technique: null,
+    techniqueGroup: null,
+    setScheme: null,
+    setPlan: null,
     filledByServer: false,
   };
+  if (current.techniqueGroup) {
+    for (let i = 0; i < next.length; i++) {
+      if (i !== input.index && next[i].day === current.day && next[i].techniqueGroup === current.techniqueGroup) {
+        next[i] = { ...next[i], technique: null, techniqueGroup: null };
+      }
+    }
+  }
   const saved = await prisma.planSnapshot.update({
     where: { id: draft.id },
     data: { items: next as unknown as Prisma.InputJsonValue },
@@ -527,6 +621,10 @@ async function currentPlanAsItems(tx: Tx, userId: string, phase: TrainingPhase):
     startWeightKg: r.startWeightKg === null ? null : Number(r.startWeightKg),
     alternativeExerciseId: r.alternativeExerciseId,
     alternativeExerciseName: r.alternativeExercise ? (r.alternativeExercise.nameDe ?? r.alternativeExercise.name) : null,
+    technique: techniqueSchema.nullable().catch(null).parse(r.technique),
+    techniqueGroup: r.techniqueGroup,
+    setScheme: setSchemeSchema.nullable().catch(null).parse(r.setScheme),
+    setPlan: setPlanSchema.nullable().catch(null).parse(r.setPlan),
     filledByServer: false,
   }));
 }
@@ -569,6 +667,10 @@ async function replacePlan(tx: Tx, userId: string, phase: TrainingPhase, items: 
       notes: i.notes,
       startWeightKg: i.startWeightKg,
       alternativeExerciseId: i.alternativeExerciseId && existing.has(i.alternativeExerciseId) ? i.alternativeExerciseId : null,
+      technique: i.technique ?? null,
+      techniqueGroup: i.techniqueGroup ?? null,
+      setScheme: i.setScheme && i.setScheme !== "STRAIGHT" ? i.setScheme : null,
+      setPlan: i.setPlan ? (i.setPlan as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
     }));
   await tx.planExercise.deleteMany({ where: { userId, phase } });
   await tx.planExercise.createMany({ data: rows });
@@ -597,6 +699,46 @@ async function planCompanions(tx: Tx, userId: string, phase: TrainingPhase) {
   }
 }
 
+// The week pattern the accepted draft came with becomes a property of the phase (none: the same every week).
+async function setPhasePeriodization(tx: Tx, userId: string, phase: TrainingPhase, periodization: Periodization | null) {
+  const plan = await tx.trainingPlan.findUnique({ where: { userId }, select: { id: true, phaseConfigs: true } });
+  if (!plan) return;
+  const configs = resolvePhaseConfigs(plan.phaseConfigs).map((c) => {
+    if (c.phase !== phase) return c;
+    const { periodization: _old, ...rest } = c;
+    void _old;
+    return periodization ? { ...rest, periodization } : rest;
+  });
+  await tx.trainingPlan.update({ where: { id: plan.id }, data: { phaseConfigs: configs as unknown as Prisma.InputJsonValue } });
+}
+
+// Removes the technique (and the set scheme) from one exercise of the draft — and from the others of its
+// group, which cannot stand alone.
+export async function clearDraftTechnique(
+  prisma: PrismaClient,
+  userId: string,
+  phase: TrainingPhase,
+  index: number,
+): Promise<PlanDraftDto> {
+  const draft = await prisma.planSnapshot.findUnique({
+    where: { userId_phase_kind: { userId, phase, kind: "DRAFT" } },
+  });
+  if (!draft) throw new NotFoundError("Kein Entwurf für diese Phase vorhanden");
+  const items = draft.items as unknown as PlanDraftItemDto[];
+  const target = items[index];
+  if (!target) throw new NotFoundError("Übung im Entwurf nicht gefunden");
+  const next = items.map((item, i) => {
+    const sameGroup = !!target.techniqueGroup && item.day === target.day && item.techniqueGroup === target.techniqueGroup;
+    if (i !== index && !sameGroup) return item;
+    return { ...item, technique: null, techniqueGroup: null, setScheme: null, setPlan: null };
+  });
+  const saved = await prisma.planSnapshot.update({
+    where: { id: draft.id },
+    data: { items: next as unknown as Prisma.InputJsonValue },
+  });
+  return snapshotToDraft(saved);
+}
+
 export async function acceptPlanDraft(
   prisma: PrismaClient,
   userId: string,
@@ -609,6 +751,7 @@ export async function acceptPlanDraft(
     if (!draft) throw new NotFoundError("Kein Entwurf für diese Phase vorhanden");
     const result = await replacePlan(tx, userId, phase, draft.items as unknown as PlanDraftItemDto[]);
     await planCompanions(tx, userId, phase);
+    await setPhasePeriodization(tx, userId, phase, periodizationSchema.nullable().catch(null).parse(draft.periodization));
     await tx.planSnapshot.delete({ where: { id: draft.id } });
     return result;
   });

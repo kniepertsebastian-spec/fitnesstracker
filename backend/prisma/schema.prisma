@@ -85,6 +85,13 @@ enum TrainingGoal {
   GENERAL_FITNESS
 }
 
+// TRAINING = the regular workout; DAILY = the Daily phase, done in pieces over the day. At most one
+// open session of each kind per user, so a paused Daily session does not get in the way of a workout.
+enum WorkoutSessionKind {
+  TRAINING
+  DAILY
+}
+
 enum WorkoutSessionStatus {
   ACTIVE
   PAUSED
@@ -127,6 +134,8 @@ model User {
   // to the user instead of a per-supplement row.
   lastWorkoutReminderSentOn        DateTime? @db.Date
   lastDailyChallengeReminderSentOn DateTime? @db.Date
+  // Local hour (0-23) from which the daily reminder (open challenge items + Daily exercises) is sent.
+  dailyReminderHour                Int       @default(20)
   createdAt                        DateTime  @default(now())
   updatedAt                        DateTime  @updatedAt
 
@@ -253,6 +262,10 @@ model WorkoutLog {
   // Free-text note on the set (seat setting, a twinge, ...), shown with the set and again as the
   // reminder the next time the exercise is trained.
   note            String?   @db.VarChar(500)
+  // How the set was done (e.g. PARTIAL_REPS, DROPSET) and, for timed sets, how long. Records and the
+  // 1RM estimate skip partial reps and timed holds.
+  technique       String?
+  durationSeconds Int?
   performedAt     DateTime  @default(now())
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -341,6 +354,13 @@ model PlanExercise {
   restSeconds           Int?
   notes                 String?
   startWeightKg         Decimal?      @db.Decimal(6, 2)
+  // Intensity technique (see packages/shared/src/trainingTechniques.ts). Exercises that share a
+  // `techniqueGroup` within a day are done back to back (superset, giant set, ...).
+  technique             String?
+  techniqueGroup        String?
+  // STRAIGHT (null), PYRAMID or TIME_BASED, and the per-set prescription that goes with it.
+  setScheme             String?
+  setPlan               Json?
   alternativeExerciseId String?
   alternativeExercise   Exercise?     @relation("PlanExerciseAlternative", fields: [alternativeExerciseId], references: [id], onDelete: SetNull)
   createdAt             DateTime      @default(now())
@@ -588,6 +608,7 @@ model WorkoutSession {
   userId    String
   user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   status    WorkoutSessionStatus @default(ACTIVE)
+  kind      WorkoutSessionKind   @default(TRAINING)
   startedAt DateTime             @default(now())
   endedAt   DateTime?
   // "Training vergessen zu beenden": set when the 2h "läuft noch?" push went out; the session is
@@ -655,6 +676,8 @@ model PlanSnapshot {
   days      String[]         @default([])
   items     Json
   rationale String?
+  // LINEAR or WAVE: the week-to-week pattern the AI proposed for the drafted phase.
+  periodization String?
   createdAt DateTime         @default(now())
 
   @@unique([userId, phase, kind])

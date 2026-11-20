@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { sendNotificationToUser } from "../push/push.service.js";
+import { localDayStart } from "../../lib/userTime.js";
 
 // "Training vergessen zu beenden": an open (ACTIVE/PAUSED) session is checked after 2h, and if
 // the question stays unanswered for another 30 min (= 2.5h in total) it is completed
@@ -20,6 +21,7 @@ export async function processForgottenSessions(
   // 1) Unanswered prompts → complete (or treat as answered if the user trained on meanwhile).
   const overdue = await prisma.workoutSession.findMany({
     where: {
+      kind: "TRAINING",
       status: { in: [...OPEN] },
       stopPromptSentAt: { lte: new Date(now.getTime() - AUTO_COMPLETE_AFTER_PROMPT_MS) },
     },
@@ -64,6 +66,7 @@ export async function processForgottenSessions(
   const cutoff = new Date(now.getTime() - PROMPT_AFTER_MS);
   const due = await prisma.workoutSession.findMany({
     where: {
+      kind: "TRAINING",
       status: { in: [...OPEN] },
       stopPromptSentAt: null,
       OR: [{ keepAliveAt: null, startedAt: { lte: cutoff } }, { keepAliveAt: { lte: cutoff } }],
@@ -88,5 +91,31 @@ export async function processForgottenSessions(
     }
   }
 
+  completed += await completeStaleDailySessions(prisma, now);
   return { prompted, completed };
+}
+
+// A Daily session is meant to stay open (and paused) for the whole day so it can be picked up again
+// between other things. It is never prompted or auto-closed after hours like a workout, but it ends at
+// the user's midnight: whatever was done by then is the day's result.
+export async function completeStaleDailySessions(prisma: PrismaClient, now: Date = new Date()): Promise<number> {
+  const open = await prisma.workoutSession.findMany({
+    where: { kind: "DAILY", status: { in: [...OPEN] } },
+    include: { user: { select: { timeZone: true } } },
+  });
+  let completed = 0;
+  for (const session of open) {
+    if (session.startedAt >= localDayStart(now, session.user.timeZone)) continue;
+    const lastLog = await prisma.workoutLog.findFirst({
+      where: { userId: session.userId, deletedAt: null, performedAt: { gte: session.startedAt } },
+      orderBy: { performedAt: "desc" },
+      select: { performedAt: true },
+    });
+    const result = await prisma.workoutSession.updateMany({
+      where: { id: session.id, status: { in: [...OPEN] } },
+      data: { status: "COMPLETED", endedAt: lastLog ? lastLog.performedAt : session.startedAt },
+    });
+    completed += result.count;
+  }
+  return completed;
 }

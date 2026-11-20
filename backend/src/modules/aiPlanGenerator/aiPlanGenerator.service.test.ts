@@ -164,7 +164,7 @@ describe("acceptPlanDraft companions", () => {
       user: { findUnique: vi.fn().mockResolvedValue({ aiPlanPreferences: prefs }) },
       cardioPlanDay: { deleteMany: vi.fn() },
       stretchPlanItem: { deleteMany: vi.fn() },
-      trainingPlan: { updateMany: vi.fn() },
+      trainingPlan: { updateMany: vi.fn(), findUnique: vi.fn().mockResolvedValue(null), update: vi.fn() },
     };
     const prisma = { $transaction: async (fn: (t: typeof tx) => unknown) => fn(tx) };
     await acceptPlanDraft(prisma as unknown as Parameters<typeof acceptPlanDraft>[0], "user-1", "AUFBAU");

@@ -69,7 +69,7 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
         label={`Phasenfortschritt: Woche ${week} von ${total}`}
       />
       <p className="mt-3 text-small text-text-2">
-        {(PHASE_RULES[plan.currentPhase] ?? "Individuelle Phase").replace(/\.$/, "")}.{" "}
+        {(plan.phases?.find((p) => p.phase === plan.currentPhase)?.focus ?? PHASE_RULES[plan.currentPhase] ?? "Individuelle Phase").replace(/\.$/, "")}.{" "}
         {plan.pausedAt
           ? `Pausiert seit ${formatDate(plan.pausedAt)}.`
           : plan.nextRotationOn && rotationalPhases.length > 1
@@ -153,7 +153,7 @@ export function PhaseHero({ plan }: { plan: TrainingPlanDto }) {
         open={phaseChangeOpen}
         onOpenChange={setPhaseChangeOpen}
         title="Trainingsphase wechseln"
-        description="Die neue Phase beginnt mit einem frischen 8-Wochen-Zeitraum. Deine Trainingslogs bleiben erhalten."
+        description="Die neue Phase beginnt mit einem frischen Zeitraum in ihrer eigenen Länge. Deine Trainingslogs bleiben erhalten."
         footer={
           <>
             <Button variant="secondary" onClick={() => setPhaseChangeOpen(false)}>

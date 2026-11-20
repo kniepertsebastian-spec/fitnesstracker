@@ -23,4 +23,6 @@ export * from "./schemas/muscleVolume.schema.js";
 export * from "./schemas/activity.schema.js";
 export * from "./schemas/scaleDetails.schema.js";
 export * from "./scaleAnalysis.js";
+export * from "./phaseTemplates.js";
+export * from "./trainingTechniques.js";
 export * from "./bodyFat.js";

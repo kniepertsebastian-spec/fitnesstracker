@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { HEAVY_RATE_LIMIT } from "../../lib/rateLimits.js";
 import {
+  clearDraftTechniqueRequestSchema,
   generatePlanRequestSchema,
   planPhaseRequestSchema,
   planQuestionsRequestSchema,
@@ -8,6 +9,7 @@ import {
 } from "@fitnesstracker/shared";
 import {
   acceptPlanDraft,
+  clearDraftTechnique,
   discardPlanDraft,
   generatePlan,
   generatePlanQuestions,
@@ -48,6 +50,11 @@ export default async function aiPlanGeneratorRoutes(fastify: FastifyInstance) {
   fastify.post("/ai/plan-draft/replace-item", async (request, reply) => {
     const input = replaceDraftItemRequestSchema.parse(request.body);
     return reply.send({ draft: await replaceDraftItem(fastify.prisma, request.user.sub, input) });
+  });
+
+  fastify.post("/ai/plan-draft/clear-technique", async (request, reply) => {
+    const { phase, index } = clearDraftTechniqueRequestSchema.parse(request.body);
+    return reply.send({ draft: await clearDraftTechnique(fastify.prisma, request.user.sub, phase, index) });
   });
 
   fastify.post("/ai/plan-draft/accept", async (request, reply) => {

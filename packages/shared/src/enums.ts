@@ -11,6 +11,9 @@ export const TRAINING_PHASES = [
 ] as const;
 export type TrainingPhase = (typeof TRAINING_PHASES)[number];
 
+// How long a phase lasts unless its configuration says otherwise (see PhaseConfigItem.weeks).
+export const DEFAULT_PHASE_WEEKS = 8;
+
 // Default order the plan rotates through, every 8 weeks, always starting on a Monday.
 export const TRAINING_PHASE_ROTATION: TrainingPhase[] = [
   "AUFBAU",

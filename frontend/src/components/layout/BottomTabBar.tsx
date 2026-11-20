@@ -38,7 +38,7 @@ export function BottomTabBar({ onOpenMenu }: { onOpenMenu: () => void }) {
       navigate("/training");
       return;
     }
-    start.mutate(crypto.randomUUID(), {
+    start.mutate({ clientId: crypto.randomUUID() }, {
       onSuccess: () => navigate("/training"),
     });
   };

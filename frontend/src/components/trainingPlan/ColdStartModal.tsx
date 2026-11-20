@@ -3,10 +3,19 @@ import { usePlanQuestions } from "../../hooks/useAiPlanGenerator";
 import {
   DEFAULT_EQUIPMENT,
   EQUIPMENT_TAGS,
+  PERIODIZATIONS,
+  PERIODIZATION_INFO,
+  SET_SCHEME_INFO,
+  TECHNIQUES,
+  TECHNIQUE_INFO,
+  techniqueAllowedFor,
   type ColdStartInput,
   type EquipmentTag,
+  type Periodization,
   type SplitPreference,
+  type Technique,
 } from "@fitnesstracker/shared";
+import { TechniqueInfoButton } from "../training/TechniqueInfoButton";
 import { Check } from "lucide-react";
 import { Button, Dialog, Field, Input, Textarea, Toggle, cn } from "../ui";
 
@@ -56,8 +65,9 @@ const GOAL_OPTIONS: { value: ColdStartInput["goal"]; label: string }[] = [
 ];
 
 // The last step shows the AI's follow-up questions to the answers of steps 1-9.
-const STEP_COUNT = 10;
-const QUESTIONS_STEP = 10;
+const STEP_COUNT = 11;
+const TECHNIQUES_STEP = 10;
+const QUESTIONS_STEP = 11;
 
 // A step-by-step wizard rather than one long form. It opens before every generation, because
 // goals, available time, equipment and limitations can change even when history already exists.
@@ -77,6 +87,9 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
   const [limitations, setLimitations] = useState(initial?.limitations ?? "");
   const [includeCardio, setIncludeCardio] = useState(initial?.includeCardio ?? false);
   const [includeStretching, setIncludeStretching] = useState(initial?.includeStretching ?? false);
+  const [techniques, setTechniques] = useState<Technique[]>(initial?.techniques ?? []);
+  const [schemes, setSchemes] = useState<Array<"PYRAMID" | "TIME_BASED">>(initial?.schemes ?? ["PYRAMID", "TIME_BASED"]);
+  const [periodizations, setPeriodizations] = useState<Periodization[]>(initial?.periodizations ?? ["LINEAR", "WAVE"]);
 
   const questions = usePlanQuestions();
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -104,6 +117,9 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
     limitations: limitations.trim() || undefined,
     includeCardio,
     includeStretching,
+    techniques,
+    schemes,
+    periodizations,
   });
 
   const next = () => {
@@ -275,6 +291,18 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
         </div>
       )}
 
+      {step === TECHNIQUES_STEP && (
+        <TechniqueChoices
+          experience={experience}
+          techniques={techniques}
+          onTechniques={setTechniques}
+          schemes={schemes}
+          onSchemes={setSchemes}
+          periodizations={periodizations}
+          onPeriodizations={setPeriodizations}
+        />
+      )}
+
       {step === QUESTIONS_STEP && (
         <FollowUpQuestions
           loading={questions.isPending}
@@ -285,6 +313,103 @@ export function ColdStartModal({ onSubmit, onCancel, isSubmitting, initial }: Pr
         />
       )}
     </Dialog>
+  );
+}
+
+function toggle<T>(list: T[], value: T): T[] {
+  return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+}
+
+interface TechniqueChoicesProps {
+  experience: ColdStartInput["experience"];
+  techniques: Technique[];
+  onTechniques: (next: Technique[]) => void;
+  schemes: Array<"PYRAMID" | "TIME_BASED">;
+  onSchemes: (next: Array<"PYRAMID" | "TIME_BASED">) => void;
+  periodizations: Periodization[];
+  onPeriodizations: (next: Periodization[]) => void;
+}
+
+// What the AI may use besides straight sets. Nothing is chosen for the user; the AI then uses what
+// was ticked sparingly (a few per training day at most) and only where it makes sense.
+function TechniqueChoices({ experience, techniques, onTechniques, schemes, onSchemes, periodizations, onPeriodizations }: TechniqueChoicesProps) {
+  const recommended = TECHNIQUES.filter((t) => techniqueAllowedFor(t, experience) && ["SUPERSET", "DROPSET", "NEGATIVES", "PRE_EXHAUST"].includes(t));
+  return (
+    <div className="flex flex-col gap-5">
+      <div>
+        <p className="text-small font-medium text-text-muted">Intensitätstechniken</p>
+        <p className="mt-1 text-small text-text-subtle">
+          Was darf die KI einbauen? Sie setzt Techniken nur sparsam und nur dort ein, wo sie Sinn machen — nicht in
+          jeder Übung. Ohne Häkchen gibt es normale Sätze. Mit (i) siehst du, was dahintersteckt.
+        </p>
+        <div className="mt-3 flex flex-col gap-1.5">
+          {TECHNIQUES.map((t) => {
+            const allowed = techniqueAllowedFor(t, experience);
+            const checked = techniques.includes(t);
+            return (
+              <div key={t} className="flex items-center gap-1">
+                <label
+                  className={cn(
+                    "flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2",
+                    checked ? "border-accent-border bg-accent-soft" : "border-border-strong",
+                    !allowed && "opacity-60",
+                  )}
+                >
+                  <input type="checkbox" className="h-4 w-4 shrink-0 accent-accent" checked={checked} onChange={() => onTechniques(toggle(techniques, t))} />
+                  <span className="min-w-0">
+                    <span className="block text-body text-text">{TECHNIQUE_INFO[t].label}</span>
+                    <span className="block text-xs text-text-subtle">
+                      {TECHNIQUE_INFO[t].short}
+                      {!allowed ? " · für dein Erfahrungslevel noch nicht vorgesehen" : ""}
+                    </span>
+                  </span>
+                </label>
+                <TechniqueInfoButton subject={{ kind: "technique", id: t }} />
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button size="sm" variant="ghost" onClick={() => onTechniques(recommended)}>
+            Empfehlung für mein Level
+          </Button>
+          <Button size="sm" variant="ghost" disabled={techniques.length === 0} onClick={() => onTechniques([])}>
+            Keine
+          </Button>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-small font-medium text-text-muted">Satzschemata</p>
+        <p className="mt-1 text-small text-text-subtle">Die KI darf sich selbst dafür entscheiden. Gleichbleibende Sätze bleiben der Normalfall.</p>
+        <div className="mt-3 flex flex-col gap-1.5">
+          {(["PYRAMID", "TIME_BASED"] as const).map((s) => (
+            <div key={s} className="flex items-center gap-1">
+              <label className={cn("flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2", schemes.includes(s) ? "border-accent-border bg-accent-soft" : "border-border-strong")}>
+                <input type="checkbox" className="h-4 w-4 shrink-0 accent-accent" checked={schemes.includes(s)} onChange={() => onSchemes(toggle(schemes, s))} />
+                <span className="min-w-0">
+                  <span className="block text-body text-text">{SET_SCHEME_INFO[s].label}</span>
+                  <span className="block text-xs text-text-subtle">{SET_SCHEME_INFO[s].short}</span>
+                </span>
+              </label>
+              <TechniqueInfoButton subject={{ kind: "scheme", id: s }} />
+            </div>
+          ))}
+          {PERIODIZATIONS.map((p) => (
+            <div key={p} className="flex items-center gap-1">
+              <label className={cn("flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2", periodizations.includes(p) ? "border-accent-border bg-accent-soft" : "border-border-strong")}>
+                <input type="checkbox" className="h-4 w-4 shrink-0 accent-accent" checked={periodizations.includes(p)} onChange={() => onPeriodizations(toggle(periodizations, p))} />
+                <span className="min-w-0">
+                  <span className="block text-body text-text">{PERIODIZATION_INFO[p].label}</span>
+                  <span className="block text-xs text-text-subtle">{PERIODIZATION_INFO[p].short}</span>
+                </span>
+              </label>
+              <TechniqueInfoButton subject={{ kind: "periodization", id: p }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 

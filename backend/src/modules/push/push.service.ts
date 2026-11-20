@@ -37,6 +37,7 @@ const PUSH_SETTINGS_SELECT = {
   remindPersonalRecords: true,
   remindGoalAchievements: true,
   remindDailyChallenge: true,
+  dailyReminderHour: true,
   remindSyncErrors: true,
   remindAppUpdates: true,
 } as const;

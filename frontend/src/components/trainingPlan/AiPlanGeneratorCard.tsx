@@ -6,6 +6,7 @@ import { ApiError } from "../../api/client";
 import { useAiSettings } from "../../hooks/useAiSettings";
 import {
   useAcceptPlanDraft,
+  useClearDraftTechnique,
   useReplaceDraftItem,
   useDiscardPlanDraft,
   useGeneratePlan,
@@ -32,6 +33,7 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
   const discardDraft = useDiscardPlanDraft(phase);
   const restoreBackup = useRestorePlanBackup(phase);
   const replaceItem = useReplaceDraftItem(phase);
+  const clearTechnique = useClearDraftTechnique(phase);
 
   const [coldStartOpen, setColdStartOpen] = useState(false);
   const [busyDay, setBusyDay] = useState<string | null>(null);
@@ -177,6 +179,7 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
           busyDay={busyDay}
           disabled={busy}
           onRegenerateDay={(day) => runGenerate(undefined, day)}
+          onClearTechnique={(index) => clearTechnique.mutate(index)}
           onReplaceItem={(index, exerciseId) =>
             run(() => replaceItem.mutateAsync({ index, exerciseId }), "Übung ersetzt.", "Ersetzen fehlgeschlagen.")
           }

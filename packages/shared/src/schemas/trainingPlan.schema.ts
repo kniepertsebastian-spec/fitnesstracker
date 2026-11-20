@@ -1,12 +1,28 @@
 import { z } from "zod";
 import { TRAINING_PHASES } from "../enums.js";
+import { periodizationSchema } from "../trainingTechniques.js";
 
 export const trainingPhaseSchema = z.enum(TRAINING_PHASES);
+
+// What a phase is about, independent of which slot (AUFBAU, CUSTOM_1, ...) it sits in. It decides the
+// default sets/reps/pause the AI generator aims for and how progression is suggested. Phases without
+// a style (the original three, custom phases) behave as before.
+export const PHASE_STYLES = ["HYPERTROPHY", "STRENGTH", "ENDURANCE", "DELOAD", "MAINTAIN"] as const;
+export const phaseStyleSchema = z.enum(PHASE_STYLES);
+export type PhaseStyle = z.infer<typeof phaseStyleSchema>;
 
 export const phaseConfigItemSchema = z.object({
   phase: trainingPhaseSchema,
   label: z.string().trim().min(1).max(40),
   isDaily: z.boolean().default(false),
+  // Length of the phase in weeks; absent = 8. A deload lasts a week, a strength block six.
+  weeks: z.number().int().min(1).max(26).optional(),
+  style: phaseStyleSchema.optional(),
+  // Week-to-week pattern inside the phase (set when a plan with one was accepted): the rep target and
+  // RIR shift by week. Absent = the same every week.
+  periodization: periodizationSchema.optional(),
+  // One line shown on the plan page instead of the slot's built-in rule text.
+  focus: z.string().trim().max(300).optional(),
 });
 export type PhaseConfigItem = z.infer<typeof phaseConfigItemSchema>;
 

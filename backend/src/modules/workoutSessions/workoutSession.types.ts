@@ -6,6 +6,7 @@ export function toWorkoutSessionDto(session: WorkoutSession): WorkoutSessionDto 
     id: session.id,
     clientId: session.clientId,
     status: session.status,
+    kind: session.kind,
     startedAt: session.startedAt.toISOString(),
     endedAt: session.endedAt ? session.endedAt.toISOString() : null,
     stopPromptSentAt: session.stopPromptSentAt ? session.stopPromptSentAt.toISOString() : null,

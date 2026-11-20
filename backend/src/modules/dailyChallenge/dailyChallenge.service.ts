@@ -1,6 +1,7 @@
 import type { DailyChallengeCategory, PrismaClient } from "@prisma/client";
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
-import { getUserTimeZone, localDateAsUtc, localDayKey, localHour } from "../../lib/userTime.js";
+import { getUserTimeZone, localDateAsUtc, localDayKey, localDayStart, localHour } from "../../lib/userTime.js";
+import { dailyReminderBody } from "./dailyReminder.js";
 import { sendNotificationToUser } from "../push/push.service.js";
 
 const ITEMS_PER_DAY = 3;
@@ -293,35 +294,45 @@ export async function rerollChallengeItem(prisma: PrismaClient, userId: string, 
   });
 }
 
-const REMINDER_HOUR_LOCAL = 20;
-
-// Once-daily nudge, only for a user whose challenge already exists for today (i.e. they opened
-// the app at least once — getOrCreateTodayChallenge generates it lazily, so a scheduler
-// generating challenges for everyone just to remind them would be a much bigger, more
-// speculative feature than this reminder needs to be) and isn't fully completed yet.
+// Once-daily nudge from the hour the user chose (default 20:00, their own clock) that names what is
+// still open today: challenge items that exist for today (they are generated lazily when the app is
+// opened, so nobody gets a challenge created just to be reminded) and the exercises of the Daily phase
+// that were not trained yet today. Nothing open, nothing sent.
 export async function sendDueDailyChallengeReminders(prisma: PrismaClient): Promise<{ sent: number }> {
   const now = new Date();
   const candidates = await prisma.user.findMany({
     where: { remindDailyChallenge: true },
-    select: { id: true, timeZone: true, lastDailyChallengeReminderSentOn: true },
+    select: { id: true, timeZone: true, lastDailyChallengeReminderSentOn: true, dailyReminderHour: true },
   });
 
   let sent = 0;
   for (const user of candidates) {
-    // From 20:00 on the user's own clock, once per local day.
-    if (localHour(now, user.timeZone) < REMINDER_HOUR_LOCAL) continue;
+    if (localHour(now, user.timeZone) < user.dailyReminderHour) continue;
     const date = localDateAsUtc(now, user.timeZone);
     if (user.lastDailyChallengeReminderSentOn && user.lastDailyChallengeReminderSentOn >= date) continue;
-    const items = await prisma.dailyChallengeItem.findMany({ where: { userId: user.id, date } });
-    if (items.length === 0) continue;
-    const allDone = items.every((item) => item.completedReps >= item.targetReps);
-    if (allDone) continue;
 
-    await sendNotificationToUser(prisma, user.id, {
-      title: "Tages-Challenge",
-      body: "Noch nicht abgeschlossen — ein paar Wiederholungen fehlen noch.",
-      url: "/",
-    });
+    const [items, dailyEntries, trainedToday] = await Promise.all([
+      prisma.dailyChallengeItem.findMany({ where: { userId: user.id, date }, ...withExercise }),
+      prisma.planExercise.findMany({ where: { userId: user.id, phase: "DAILY" }, orderBy: { order: "asc" }, include: { exercise: true } }),
+      prisma.workoutLog.findMany({
+        where: { userId: user.id, deletedAt: null, performedAt: { gte: localDayStart(now, user.timeZone) } },
+        select: { exerciseId: true },
+      }),
+    ]);
+    const trained = new Set(trainedToday.map((l) => l.exerciseId));
+    const body = dailyReminderBody(
+      items
+        .filter((item) => item.completedReps < item.targetReps)
+        .map((item) => ({
+          name: item.exercise.nameDe ?? item.exercise.name,
+          completedReps: item.completedReps,
+          targetReps: item.targetReps,
+        })),
+      [...new Map(dailyEntries.filter((e) => !trained.has(e.exerciseId)).map((e) => [e.exerciseId, e.exercise.nameDe ?? e.exercise.name])).values()],
+    );
+    if (!body) continue;
+
+    await sendNotificationToUser(prisma, user.id, { title: "Daily", body, url: "/daily" });
     await prisma.user.update({ where: { id: user.id }, data: { lastDailyChallengeReminderSentOn: date } });
     sent += 1;
   }

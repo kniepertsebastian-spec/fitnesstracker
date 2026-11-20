@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { techniqueSchema } from "../trainingTechniques.js";
 
 // RIR (Reps In Reserve): 0 = trained to failure. Capped at 10 — a generous upper bound, not a
 // clinical limit, just enough to reject obvious garbage input.
@@ -24,6 +25,9 @@ export const createWorkoutLogSchema = z.object({
   // Client-generated, shared by every set logged as one superset/drop-set round — see
   // WorkoutLog.supersetGroupId in schema.prisma.
   supersetGroupId: z.string().uuid().nullable().optional(),
+  // How the set was done (partial reps, drop stage, ...) and, for a timed set, how many seconds.
+  technique: techniqueSchema.nullable().optional(),
+  durationSeconds: z.number().int().positive().max(3600).nullable().optional(),
   performedAt: z.string().datetime().optional(),
 });
 export type CreateWorkoutLogInput = z.infer<typeof createWorkoutLogSchema>;
@@ -36,6 +40,8 @@ export const updateWorkoutLogSchema = z.object({
   rir: rirSchema,
   note: noteSchema,
   supersetGroupId: z.string().uuid().nullable().optional(),
+  technique: techniqueSchema.nullable().optional(),
+  durationSeconds: z.number().int().positive().max(3600).nullable().optional(),
   performedAt: z.string().datetime().optional(),
 });
 export type UpdateWorkoutLogInput = z.infer<typeof updateWorkoutLogSchema>;
@@ -51,6 +57,9 @@ export const workoutLogDtoSchema = z.object({
   rir: z.number().int().nullable(),
   note: z.string().nullable(),
   supersetGroupId: z.string().uuid().nullable(),
+  // Optional in the DTO: rows cached by an older build do not have them.
+  technique: techniqueSchema.nullable().optional(),
+  durationSeconds: z.number().int().nullable().optional(),
   performedAt: z.string().datetime(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

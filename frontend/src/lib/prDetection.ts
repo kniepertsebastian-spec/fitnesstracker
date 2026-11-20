@@ -1,5 +1,14 @@
 import type { LocalWorkoutLog } from "../offline/db";
+import type { Technique } from "@fitnesstracker/shared";
 import { estimateOneRepMax } from "./oneRepMax";
+
+// Partial reps, 21s and isometric holds are not the same lift as a full repetition, and a timed set has no
+// repetitions to speak of: they stay out of records and the strength estimate.
+const NOT_FOR_RECORDS: Technique[] = ["PARTIAL_REPS", "TWENTY_ONES", "ISOMETRIC"];
+
+export function countsForRecords(log: { technique?: Technique | null; durationSeconds?: number | null }): boolean {
+  return !(log.technique && NOT_FOR_RECORDS.includes(log.technique)) && !log.durationSeconds;
+}
 
 export interface PRResult {
   weightPR: boolean;
@@ -31,7 +40,7 @@ export function detectPRs(
   exerciseId: string,
   newSets: NewSet[],
 ): PRResult {
-  const past = historyBeforeThisLog.filter((log) => log.exerciseId === exerciseId);
+  const past = historyBeforeThisLog.filter((log) => log.exerciseId === exerciseId && countsForRecords(log));
   // No baseline yet — the very first time an exercise is logged isn't "beating" anything, it
   // would just be four trivially-true PRs on every debut set, which is noise, not motivation.
   if (past.length === 0 || newSets.length === 0) return NO_PR;

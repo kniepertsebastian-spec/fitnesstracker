@@ -149,7 +149,7 @@ export function PhaseRotation({ current, selected, phases, onSelect }: Props) {
                   {item.phase === current && <span className="shrink-0 text-xs text-text-subtle">· aktuell</span>}
                 </span>
                 <span className="mt-1 block text-small text-text-subtle">
-                  {PHASE_RULES[item.phase]}
+                  {item.focus ?? PHASE_RULES[item.phase]}
                 </span>
               </button>
 
