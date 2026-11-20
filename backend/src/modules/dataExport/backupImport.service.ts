@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import {
   GOAL_TYPES,
@@ -11,6 +11,9 @@ import {
   neckCmSchema,
   phaseConfigItemSchema,
   scaleDetailsSchema,
+  setPlanSchema,
+  setSchemeSchema,
+  techniqueSchema,
   upsertProfileSchema,
   waistCmSchema,
   type BackupFile,
@@ -37,6 +40,9 @@ const workoutLogRow = z.object({
   rir: z.number().int().min(0).max(10).nullable().optional(),
   note: z.string().max(500).nullable().optional(),
   supersetGroupId: z.string().uuid().nullable().optional(),
+  // Absent in backups from before techniques existed.
+  technique: techniqueSchema.nullable().optional().catch(null),
+  durationSeconds: z.number().int().positive().max(3600).nullable().optional().catch(null),
   performedAt: dateTime,
 });
 
@@ -64,6 +70,10 @@ const planExerciseRow = z.object({
   notes: z.string().nullable().optional(),
   startWeightKg: nullableNumber,
   alternativeExerciseId: z.string().nullable().optional(),
+  technique: techniqueSchema.nullable().optional().catch(null),
+  techniqueGroup: z.string().max(20).nullable().optional().catch(null),
+  setScheme: setSchemeSchema.nullable().optional().catch(null),
+  setPlan: setPlanSchema.nullable().optional().catch(null),
   alternativeExerciseName: z.string().nullable().optional(),
 });
 
@@ -350,6 +360,10 @@ export async function importBackup(prisma: PrismaClient, userId: string, raw: un
             notes: row.notes ?? null,
             startWeightKg: row.startWeightKg ?? null,
             alternativeExerciseId: row.alternativeExerciseId ? (resolved.get(row.alternativeExerciseId) ?? null) : null,
+            technique: row.technique ?? null,
+            techniqueGroup: row.techniqueGroup ?? null,
+            setScheme: row.setScheme ?? null,
+            setPlan: row.setPlan ? (row.setPlan as Prisma.InputJsonValue) : Prisma.JsonNull,
           },
         ];
       });
@@ -370,6 +384,8 @@ export async function importBackup(prisma: PrismaClient, userId: string, raw: un
             rir: row.rir ?? null,
             note: row.note ?? null,
             supersetGroupId: row.supersetGroupId ?? null,
+            technique: row.technique ?? null,
+            durationSeconds: row.durationSeconds ?? null,
             performedAt: new Date(row.performedAt),
           },
         ];

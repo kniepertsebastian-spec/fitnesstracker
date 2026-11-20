@@ -127,6 +127,7 @@ export interface CatalogRow {
   nameDe: string | null;
   equipment: string | null;
   primaryMuscles: string[];
+  secondaryMuscles?: string[];
   category?: string | null;
 }
 
@@ -249,6 +250,11 @@ export interface RawPlanItem {
   restSeconds?: number | null;
   cue?: string | null;
   alternativeExerciseId?: string | null;
+  // Intensity technique, shared group key and set scheme as the model proposed them; checked and
+  // filtered by techniquePolicy.ts afterwards.
+  technique?: string | null;
+  techniqueGroup?: string | null;
+  setScheme?: string | null;
   order: number;
 }
 
@@ -262,6 +268,9 @@ export interface AssembledItem {
   restSeconds: number;
   notes: string | null;
   alternativeExerciseId: string | null;
+  technique?: string | null;
+  techniqueGroup?: string | null;
+  setScheme?: string | null;
   filledByServer: boolean;
 }
 
@@ -285,6 +294,9 @@ function normalize(item: RawPlanItem, defaults: PhaseDefaults, catalogById: Map<
     restSeconds: clamp(item.restSeconds ?? defaults.restSeconds, 15, 600),
     notes: item.cue?.trim() ? item.cue.trim().slice(0, 300) : null,
     alternativeExerciseId: validAlt,
+    technique: item.technique ?? null,
+    techniqueGroup: item.techniqueGroup ?? null,
+    setScheme: item.setScheme ?? null,
     filledByServer: false,
   };
 }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { trainingPhaseSchema } from "./trainingPlan.schema.js";
+import { periodizationSchema, setPlanSchema, setSchemeSchema, techniqueSchema } from "../trainingTechniques.js";
 
 export const planExerciseDtoSchema = z.object({
   id: z.string().uuid(),
@@ -21,6 +22,12 @@ export const planExerciseDtoSchema = z.object({
   startWeightKg: z.number().nullable(),
   alternativeExerciseId: z.string().uuid().nullable(),
   alternativeExerciseName: z.string().nullable(),
+  // Intensity technique and, for group techniques, the key shared by the exercises done together.
+  technique: techniqueSchema.nullable(),
+  techniqueGroup: z.string().nullable(),
+  // null = straight sets; the per-set prescription goes with PYRAMID / TIME_BASED.
+  setScheme: setSchemeSchema.nullable(),
+  setPlan: setPlanSchema.nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -34,6 +41,9 @@ export const createPlanExerciseSchema = z.object({
   // Manual additions can be assigned to an existing split day. `null` keeps single-day and
   // ungrouped plans backwards compatible.
   dayLabel: z.string().trim().min(1).nullable().optional(),
+  technique: techniqueSchema.nullable().optional(),
+  techniqueGroup: z.string().trim().min(1).max(20).nullable().optional(),
+  setScheme: setSchemeSchema.nullable().optional(),
 });
 export type CreatePlanExerciseInput = z.infer<typeof createPlanExerciseSchema>;
 
@@ -44,6 +54,10 @@ export const updatePlanExerciseSchema = z.object({
   targetSets: z.number().int().positive().nullable().optional(),
   targetReps: z.number().int().positive().nullable().optional(),
   order: z.number().int().optional(),
+  // Changing the scheme or the sets rebuilds the per-set prescription on the server.
+  technique: techniqueSchema.nullable().optional(),
+  techniqueGroup: z.string().trim().min(1).max(20).nullable().optional(),
+  setScheme: setSchemeSchema.nullable().optional(),
 });
 export type UpdatePlanExerciseInput = z.infer<typeof updatePlanExerciseSchema>;
 
@@ -128,6 +142,12 @@ export const weeklyPlanStatusDtoSchema = z.object({
   // Index into `days` of the day to show as "today's workout" — the day after the one trained
   // last, skipping days already finished this week. Null once every day was trained this week.
   activeDayIndex: z.number().int().nullable(),
+  // The week of the phase's periodization (LINEAR / WAVE) the shown rep targets already include;
+  // null when the phase has none.
+  periodization: z
+    .object({ kind: periodizationSchema, week: z.number().int(), totalWeeks: z.number().int(), label: z.string() })
+    .nullable()
+    .optional(),
   // The day after the one trained last, finished or not: the default for the focus mode when
   // `activeDayIndex` is null. Optional so responses cached by an older build still validate.
   nextDayIndex: z.number().int().nullable().optional(),

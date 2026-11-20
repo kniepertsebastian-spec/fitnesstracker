@@ -1,6 +1,7 @@
 import type { PrismaClient, TrainingPhase } from "@prisma/client";
 import { PHASE_STYLE_PROFILES, type ColdStartInput, type EquipmentTag, type PhaseStyle, type SplitPreference } from "@fitnesstracker/shared";
 import { isExcluded, type ExerciseExclusions } from "./injuryFilter.js";
+import { techniquePromptSection } from "./techniquePolicy.js";
 import { equipmentTagOf, selectBalancedCatalog, smallMuscleCap, type PhaseDefaults, type SplitDay } from "./planAssembly.js";
 import { visibleToUser } from "../exercises/exercise.service.js";
 
@@ -96,7 +97,7 @@ export interface CatalogSelection {
   // What the prompt shows (German name where known).
   entries: CatalogEntry[];
   // Raw rows (English name for the staple ranking), for assembleDays.
-  rows: { id: string; name: string; nameDe: string | null; equipment: string | null; primaryMuscles: string[] }[];
+  rows: { id: string; name: string; nameDe: string | null; equipment: string | null; primaryMuscles: string[]; secondaryMuscles?: string[] }[];
   loggedCounts: Map<string, number>;
 }
 
@@ -116,7 +117,7 @@ export async function selectCatalog(
   const [rows, logged] = await Promise.all([
     prisma.exercise.findMany({
       where: { category: { in: GENERATOR_CATEGORIES }, isActive: true, ...visibleToUser(userId) },
-      select: { id: true, name: true, nameDe: true, equipment: true, primaryMuscles: true, category: true },
+      select: { id: true, name: true, nameDe: true, equipment: true, primaryMuscles: true, secondaryMuscles: true, category: true },
     }),
     prisma.workoutLog.groupBy({
       by: ["exerciseId"],
@@ -292,6 +293,7 @@ export function buildSystemPrompt(
   days: SplitDay[],
   exercisesPerDay = EXERCISES_PER_DAY,
   style?: PhaseStyle | null,
+  choices?: Pick<ColdStartInput, "techniques" | "schemes" | "periodizations" | "experience">,
 ): string {
   const catalogLines = catalog
     .map((c) => `${c.id} | ${c.name} | ${c.equipment ?? "-"} | ${c.primaryMuscles.join(",") || "-"}`)
@@ -341,5 +343,16 @@ Antworte AUSSCHLIESSLICH mit validem JSON in exakt diesem Format, ohne Freitext 
 
 Wähle für JEDEN der ${days.length} Tage genau ${exercisesPerDay} Übungen (insgesamt ${totalExercises} Einträge).
 Richtwerte dieser Phase: ${defaults.sets} Sätze, ${defaults.repMin}-${defaults.repMax} Wiederholungen,
-RIR ${defaults.rir}, ${defaults.restSeconds} s Pause — Grundübungen eher längere, Isolationsübungen kürzere Pausen.`;
+RIR ${defaults.rir}, ${defaults.restSeconds} s Pause — Grundübungen eher längere, Isolationsübungen kürzere Pausen.${
+    choices
+      ? techniquePromptSection({
+          allowedTechniques: choices.techniques,
+          allowedSchemes: choices.schemes,
+          allowedPeriodizations: choices.periodizations,
+          experience: choices.experience,
+          exercisesPerDay,
+          style,
+        })
+      : ""
+  }`;
 }

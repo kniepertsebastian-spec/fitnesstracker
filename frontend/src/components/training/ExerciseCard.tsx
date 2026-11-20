@@ -1,7 +1,9 @@
 import { muscleLabel } from "../../lib/exerciseLabels";
 import { useEffect, useState } from "react";
-import { BookOpen, ChevronDown, Link2, Plus, Repeat2, TrendingDown } from "lucide-react";
-import type { ExerciseDto, PlanDiaryExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
+import { BookOpen, ChevronDown, Link2, Pause, Play, Plus, Repeat2, TrendingDown } from "lucide-react";
+import { SET_SCHEME_INFO, TECHNIQUE_INFO, type ExerciseDto, type PlanDiaryExerciseDto, type Technique, type TrainingPhase } from "@fitnesstracker/shared";
+import { segmentReps } from "../../lib/trainingGroups";
+import { TechniqueInfoButton } from "./TechniqueInfoButton";
 import type { LocalWorkoutLog } from "../../offline/db";
 import { formatKg, formatLastTime } from "../../lib/trainingSets";
 import { DEFAULT_BAR_KG, platesPerSide } from "../../lib/plates";
@@ -29,6 +31,8 @@ export interface SetValues {
   reps: number;
   rir: number | null;
   note: string | null;
+  // Timed sets: the seconds held (reps is then 1).
+  durationSeconds?: number | null;
 }
 
 interface Props {
@@ -41,14 +45,21 @@ interface Props {
   disabled: boolean;
   busy: boolean;
   supersetActive: boolean;
-  // Name of the other exercise of the active superset, null when none is active here.
-  supersetWith: string | null;
+  // Technique of the active group ("Supersatz", "Riesensatz", ...) and the other exercises in it.
+  groupLabel: string | null;
+  groupWith: string[];
   // Set on the exercise the superset was started on: the partner can be changed from there.
   supersetPartnerId: string | null;
   supersetPartnerOptions: { id: string; name: string }[];
   onSupersetPartnerChange: (partnerId: string) => void;
-  dropsetActive: boolean;
+  // A run of mini sets (drop set, rest-pause, myo-reps) that is under way on this exercise.
+  segment: { technique: Technique | null; factor: number } | null;
+  // The plan has such a technique for this exercise: offered at the last working set.
+  segmentOffer: { technique: Technique; label: string; extraSets: number } | null;
+  onStartSegment: () => void;
   onToggleDropset: () => void;
+  // Starts the short pause inside a cluster set.
+  onMiniRest: () => void;
   onSetCountChange: (count: number) => void;
   onLogSet: (values: SetValues, setNumber: number) => void;
   onUndoSet: (log: LocalWorkoutLog) => void;
@@ -82,22 +93,46 @@ function loadStep(exerciseName: string): number {
   }
 }
 
-// A drop set continues with about 20 % less weight, rounded to the usual 2.5 kg steps.
-const DROP_FACTOR = 0.8;
 
-function droppedWeight(kg: number): number {
-  return Math.max(0, Math.round((kg * DROP_FACTOR) / 2.5) * 2.5);
+const roundTo = (kg: number, step = 2.5) => Math.max(0, Math.round(kg / step) * step);
+
+// The weight a per-set prescription (pyramid) is a share of: this week's suggestion, else the start weight,
+// else the heaviest of last time.
+function topWeight(entry: PlanDiaryExerciseDto, previous: LocalWorkoutLog[]): number {
+  return entry.progression?.suggestedWeightKg ?? entry.startWeightKg ?? Math.max(0, ...previous.map((l) => l.weightKg));
 }
 
 function initialValues(
   entry: PlanDiaryExerciseDto,
   done: LocalWorkoutLog[],
   previous: LocalWorkoutLog[],
-  dropset = false,
+  segment: { technique: Technique | null; factor: number } | null = null,
 ): SetValues {
   const last = done.at(-1);
+  // Mini sets of a run follow the previous set: a drop set lowers the weight, rest-pause and myo-reps keep it
+  // and cut the reps.
+  if (last && segment) {
+    return {
+      weightKg: segment.factor === 1 ? last.weightKg : roundTo(last.weightKg * segment.factor),
+      reps: segmentReps(segment.technique, last.reps),
+      rir: null,
+      note: null,
+    };
+  }
+  // A pyramid or timed prescription says what the next set should be.
+  const planned = entry.setPlan?.[done.length];
+  if (planned) {
+    const base = topWeight(entry, previous);
+    return {
+      weightKg: planned.weightPct && base > 0 ? roundTo((base * planned.weightPct) / 100) : (last?.weightKg ?? base),
+      reps: planned.seconds ? 1 : (planned.reps ?? last?.reps ?? entry.targetReps ?? 10),
+      durationSeconds: planned.seconds ?? null,
+      rir: null,
+      note: null,
+    };
+  }
   if (last) {
-    return { weightKg: dropset ? droppedWeight(last.weightKg) : last.weightKg, reps: last.reps, rir: null, note: null };
+    return { weightKg: last.weightKg, reps: last.reps, rir: null, note: null };
   }
   const p = entry.progression;
   const prev = previous[0];
@@ -113,6 +148,31 @@ function initialValues(
 // back keeps them for the rest of the visit; deliberately not persisted (warm-ups are never logged).
 const doneWarmups = new Map<string, boolean[]>();
 
+// Countdown for a timed set: the seconds to hold, with a stop button. The result is entered by hand, this is
+// only the clock.
+function HoldTimer({ seconds }: { seconds: number }) {
+  const [remaining, setRemaining] = useState<number | null>(null);
+  useEffect(() => {
+    if (remaining === null) return;
+    if (remaining <= 0) {
+      navigator.vibrate?.([200, 100, 200]);
+      setRemaining(null);
+      return;
+    }
+    const id = setTimeout(() => setRemaining(remaining - 1), 1000);
+    return () => clearTimeout(id);
+  }, [remaining]);
+  return remaining === null ? (
+    <Button size="sm" variant="secondary" iconLeft={<Play size={14} aria-hidden />} onClick={() => setRemaining(seconds)}>
+      {seconds} s halten
+    </Button>
+  ) : (
+    <Button size="sm" variant="primary" iconLeft={<Pause size={14} aria-hidden />} onClick={() => setRemaining(null)} aria-live="off">
+      {remaining} s · Stopp
+    </Button>
+  );
+}
+
 export function ExerciseCard({
   entry,
   phase,
@@ -123,12 +183,16 @@ export function ExerciseCard({
   disabled,
   busy,
   supersetActive,
-  supersetWith,
+  groupLabel,
+  groupWith,
   supersetPartnerId,
   supersetPartnerOptions,
   onSupersetPartnerChange,
-  dropsetActive,
+  segment,
+  segmentOffer,
+  onStartSegment,
   onToggleDropset,
+  onMiniRest,
   onSetCountChange,
   onLogSet,
   onUndoSet,
@@ -136,7 +200,7 @@ export function ExerciseCard({
   onOpenTechnique,
   onSwap,
 }: Props) {
-  const [values, setValues] = useState<SetValues>(() => initialValues(entry, done, previous, dropsetActive));
+  const [values, setValues] = useState<SetValues>(() => initialValues(entry, done, previous, segment));
   const [weightStep, setWeightStep] = useState(() => loadStep(entry.exerciseName));
 
   useEffect(() => {
@@ -155,9 +219,9 @@ export function ExerciseCard({
 
   // After a set is logged (or undone) the next one starts from the last logged values.
   useEffect(() => {
-    setValues(initialValues(entry, done, previous, dropsetActive));
+    setValues(initialValues(entry, done, previous, segment));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [done.length, entry.id, dropsetActive]);
+  }, [done.length, entry.id, segment?.technique]);
 
   const [warmupOpen, setWarmupOpen] = useState(false);
   const [, rerender] = useState(0);
@@ -170,6 +234,10 @@ export function ExerciseCard({
 
   const currentIndex = done.length;
   const complete = done.length >= setCount;
+  // Techniques that change how the reps are done (no extra sets, no other exercise): shown as an instruction.
+  const cueTechnique =
+    entry.technique && TECHNIQUE_INFO[entry.technique].kind === "cue" && entry.technique !== "ISOMETRIC" ? entry.technique : null;
+  const timed = entry.setScheme === "TIME_BASED";
   const p = entry.progression;
   // The most recent note from the last time this exercise was trained, e.g. the seat setting.
   const lastNote = previous.find((log) => log.note)?.note ?? null;
@@ -188,6 +256,18 @@ export function ExerciseCard({
           </Badge>
         ))}
         <Badge tone="accent">{PROGRESSION_LABEL[phase]}</Badge>
+        {entry.technique && (
+          <span className="flex items-center">
+            <Badge tone="magenta">{TECHNIQUE_INFO[entry.technique].label}</Badge>
+            <TechniqueInfoButton subject={{ kind: "technique", id: entry.technique }} />
+          </span>
+        )}
+        {entry.setScheme && entry.setScheme !== "STRAIGHT" && (
+          <span className="flex items-center">
+            <Badge tone="info">{SET_SCHEME_INFO[entry.setScheme].label}</Badge>
+            <TechniqueInfoButton subject={{ kind: "scheme", id: entry.setScheme }} />
+          </span>
+        )}
       </div>
 
       <div className="mt-3 flex items-start justify-between gap-3">
@@ -231,6 +311,18 @@ export function ExerciseCard({
         )}
       </dl>
       {entry.notes && <p className="mt-2 text-small text-text-subtle">{entry.notes}</p>}
+      {cueTechnique && (
+        <div className="mt-2 rounded-lg bg-surface-2 p-3 text-small text-text-2">
+          <p>
+            <strong className="text-text">{TECHNIQUE_INFO[cueTechnique].label}:</strong> {TECHNIQUE_INFO[cueTechnique].how}
+          </p>
+          {cueTechnique === "CLUSTER" && (
+            <Button className="mt-2" size="sm" variant="secondary" iconLeft={<Pause size={14} aria-hidden />} onClick={onMiniRest}>
+              Mini-Pause 20 s
+            </Button>
+          )}
+        </div>
+      )}
 
       {warmups.length > 0 && (
         <div className="mt-4 rounded-lg bg-surface-2">
@@ -287,7 +379,8 @@ export function ExerciseCard({
           const state: SetCheckState = log ? "done" : i === currentIndex ? "current" : "open";
           const prev = previous[i];
           const shownKg = log ? log.weightKg : values.weightKg;
-          const shownReps = log ? log.reps : values.reps;
+          const shownReps = timed ? `${log ? (log.durationSeconds ?? "–") : (values.durationSeconds ?? entry.setPlan?.[i]?.seconds ?? "–")} s` : String(log ? log.reps : values.reps);
+          const target = entry.setPlan?.[i];
           return (
             <div key={i} className="border-t border-border-subtle py-2 first:border-t-0">
               <div className="grid grid-cols-[2rem_1fr_1fr_1fr_3rem] items-center gap-2 px-1">
@@ -321,6 +414,13 @@ export function ExerciseCard({
                 />
               </div>
 
+              {target && state !== "done" && (
+                <p className="mt-1 px-1 text-xs text-text-subtle">
+                  Ziel: {target.seconds ? `${target.seconds} s halten` : `${target.reps ?? "?"} Wdh.`}
+                  {target.weightPct ? ` · ${target.weightPct} % des schwersten Satzes` : ""}
+                </p>
+              )}
+
               {log?.note && <p className="mt-1 px-1 text-small text-text-subtle">{log.note}</p>}
 
               {state === "current" && p && (
@@ -341,15 +441,28 @@ export function ExerciseCard({
                       disabled={disabled}
                       onChange={(weightKg) => setValues((v) => ({ ...v, weightKg }))}
                     />
-                    <Stepper
-                      label="Wiederholungen"
-                      value={values.reps}
-                      step={1}
-                      min={1}
-                      disabled={disabled}
-                      onChange={(reps) => setValues((v) => ({ ...v, reps }))}
-                    />
+                    {timed ? (
+                      <Stepper
+                        label="Dauer"
+                        value={values.durationSeconds ?? entry.setPlan?.[i]?.seconds ?? 30}
+                        step={5}
+                        min={5}
+                        unit="s"
+                        disabled={disabled}
+                        onChange={(durationSeconds) => setValues((v) => ({ ...v, durationSeconds, reps: 1 }))}
+                      />
+                    ) : (
+                      <Stepper
+                        label="Wiederholungen"
+                        value={values.reps}
+                        step={1}
+                        min={1}
+                        disabled={disabled}
+                        onChange={(reps) => setValues((v) => ({ ...v, reps }))}
+                      />
+                    )}
                   </div>
+                  {timed && <HoldTimer seconds={values.durationSeconds ?? entry.setPlan?.[i]?.seconds ?? 30} />}
                   {plateLoad && (
                     <p className="flex flex-wrap items-center gap-x-1 text-small text-text-subtle">
                       Pro Seite:{" "}
@@ -432,12 +545,12 @@ export function ExerciseCard({
           {supersetActive ? "Supersatz aktiv" : "Supersatz"}
         </Button>
         <Button
-          variant={dropsetActive ? "selected" : "dashed"}
+          variant={segment?.technique === "DROPSET" ? "selected" : "dashed"}
           iconLeft={<TrendingDown size={16} aria-hidden />}
-          aria-pressed={dropsetActive}
+          aria-pressed={segment?.technique === "DROPSET"}
           onClick={onToggleDropset}
         >
-          {dropsetActive ? "Dropsatz aktiv" : "Dropsatz"}
+          {segment?.technique === "DROPSET" ? "Dropsatz aktiv" : "Dropsatz"}
         </Button>
         {setCount > Math.max(1, done.length) && (
           <Button variant="ghost" size="sm" className="ml-auto" onClick={() => onSetCountChange(setCount - 1)}>
@@ -446,10 +559,10 @@ export function ExerciseCard({
         )}
       </div>
 
-      {supersetActive && supersetWith && (
+      {supersetActive && groupLabel && groupWith.length > 0 && (
         <div className="mt-3 rounded-xl border border-border bg-surface-2 p-3 text-small text-text-2">
           <p>
-            Supersatz mit <strong className="text-text">{supersetWith}</strong>: nach jedem Satz wechselst du die
+            {groupLabel} mit <strong className="text-text">{groupWith.join(", ")}</strong>: nach jedem Satz wechselst du die
             Übung, die Pause kommt erst nach der Runde.
           </p>
           {supersetPartnerId !== null && (
@@ -461,7 +574,7 @@ export function ExerciseCard({
                 className="mt-1"
               >
                 {!supersetPartnerOptions.some((o) => o.id === supersetPartnerId) && (
-                  <option value={supersetPartnerId}>{supersetWith}</option>
+                  <option value={supersetPartnerId}>{groupWith[0]}</option>
                 )}
                 {supersetPartnerOptions.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -473,10 +586,25 @@ export function ExerciseCard({
           )}
         </div>
       )}
-      {dropsetActive && (
+      {segmentOffer && done.length === setCount - 1 && (
+        <div className="mt-3 rounded-xl border border-accent-border bg-accent-soft p-3 text-small text-text-2">
+          <p>
+            <strong className="text-text">{segmentOffer.label}</strong> ist für diese Übung vorgesehen: beim letzten Satz{" "}
+            {segmentOffer.extraSets} Mini-Sätze anhängen.
+          </p>
+          <div className="mt-2 flex items-center gap-1">
+            <Button size="sm" variant="primary" onClick={onStartSegment}>
+              {segmentOffer.label} starten
+            </Button>
+            <TechniqueInfoButton subject={{ kind: "technique", id: segmentOffer.technique }} />
+          </div>
+        </div>
+      )}
+      {segment && (
         <p className="mt-3 rounded-xl border border-border bg-surface-2 p-3 text-small text-text-2">
-          Dropsatz: nach jedem Satz kurze Pause, das Gewicht wird mit etwa −20 % vorgeschlagen. Mit „Satz“ hängst du
-          eine weitere Stufe an.
+          {segment.technique ? TECHNIQUE_INFO[segment.technique].label : "Dropsatz"}: nach jedem Mini-Satz kurze Pause
+          {segment.factor < 1 ? `, das Gewicht wird mit etwa −${Math.round((1 - segment.factor) * 100)} % vorgeschlagen` : ", gleiches Gewicht, weniger Wiederholungen"}.
+          Mit „Satz“ hängst du eine weitere Stufe an.
         </p>
       )}
 

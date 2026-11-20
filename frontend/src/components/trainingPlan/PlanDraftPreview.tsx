@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Repeat2, RefreshCw } from "lucide-react";
-import type { PlanDraftDto, PlanDraftItemDto } from "@fitnesstracker/shared";
+import { Repeat2, RefreshCw, X } from "lucide-react";
+import { PERIODIZATION_INFO, SET_SCHEME_INFO, TECHNIQUE_INFO, type PlanDraftDto, type PlanDraftItemDto } from "@fitnesstracker/shared";
+import { TechniqueInfoButton } from "../training/TechniqueInfoButton";
 import { Badge, Button, Callout } from "../ui";
 import { ExerciseAlternatives } from "../training/ExerciseAlternatives";
 import { formatPrescription } from "../../lib/planPrescription";
@@ -12,6 +13,8 @@ interface Props {
   onRegenerateDay: (day: string) => void;
   // Swaps the exercise at `index` of draft.items for another one, nothing else is regenerated.
   onReplaceItem: (index: number, exerciseId: string) => Promise<unknown>;
+  // Takes the technique off the exercise at `index` (and off the others of its group).
+  onClearTechnique: (index: number) => void;
   onAccept: () => void;
   onDiscard: () => void;
 }
@@ -19,7 +22,7 @@ interface Props {
 // The generated plan before it replaces the live one: per day the exercises with their coaching
 // details, a per-day "neu generieren", per exercise "Ersetzen" with direct alternatives, and
 // accept/discard for the whole draft.
-export function PlanDraftPreview({ draft, busyDay, disabled, onRegenerateDay, onReplaceItem, onAccept, onDiscard }: Props) {
+export function PlanDraftPreview({ draft, busyDay, disabled, onRegenerateDay, onReplaceItem, onClearTechnique, onAccept, onDiscard }: Props) {
   const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
   const days = draft.days.length > 0 ? draft.days : ["Plan"];
   const singleDay = days.length === 1;
@@ -39,6 +42,17 @@ export function PlanDraftPreview({ draft, busyDay, disabled, onRegenerateDay, on
         <Callout tone="info">
           <span className="font-medium">Warum dieser Plan: </span>
           {draft.rationale}
+        </Callout>
+      )}
+      {draft.periodization && (
+        <Callout tone="info">
+          <span className="flex items-center gap-1 font-medium">
+            Wochenverlauf: {PERIODIZATION_INFO[draft.periodization].label}
+            <TechniqueInfoButton subject={{ kind: "periodization", id: draft.periodization }} />
+          </span>
+          <span className="block text-text-subtle">
+            Gilt für diese Phase, sobald du den Plan übernimmst: {PERIODIZATION_INFO[draft.periodization].short}.
+          </span>
         </Callout>
       )}
       {filled > 0 && (
@@ -70,6 +84,12 @@ export function PlanDraftPreview({ draft, busyDay, disabled, onRegenerateDay, on
                 disabled={disabled}
                 replacing={replacingIndex === index}
                 dayExerciseIds={dayItems.map((d) => d.item.exerciseId)}
+                partnerNames={
+                  item.techniqueGroup
+                    ? dayItems.filter((d) => d.index !== index && d.item.techniqueGroup === item.techniqueGroup).map((d) => d.item.exerciseName)
+                    : []
+                }
+                onClearTechnique={() => onClearTechnique(index)}
                 onToggleReplace={() => setReplacingIndex((current) => (current === index ? null : index))}
                 onPick={async (exerciseId) => {
                   await onReplaceItem(index, exerciseId);
@@ -98,11 +118,14 @@ interface DraftItemProps {
   disabled: boolean;
   replacing: boolean;
   dayExerciseIds: string[];
+  // Other exercises of the same technique group (superset partner, ...).
+  partnerNames: string[];
+  onClearTechnique: () => void;
   onToggleReplace: () => void;
   onPick: (exerciseId: string) => Promise<void>;
 }
 
-function DraftItem({ item, disabled, replacing, dayExerciseIds, onToggleReplace, onPick }: DraftItemProps) {
+function DraftItem({ item, disabled, replacing, dayExerciseIds, partnerNames, onClearTechnique, onToggleReplace, onPick }: DraftItemProps) {
   return (
     <li className="flex flex-col gap-0.5 py-2 first:pt-0 last:pb-0">
       <div className="flex items-start justify-between gap-2">
@@ -127,6 +150,31 @@ function DraftItem({ item, disabled, replacing, dayExerciseIds, onToggleReplace,
         {formatPrescription(item)}
         {item.startWeightKg !== null && <> · Start {item.startWeightKg.toLocaleString("de-DE")} kg</>}
       </span>
+      {(item.technique || item.setScheme) && (
+        <div className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
+          {item.technique && (
+            <>
+              <Badge tone="magenta">{TECHNIQUE_INFO[item.technique].label}</Badge>
+              <TechniqueInfoButton subject={{ kind: "technique", id: item.technique }} />
+            </>
+          )}
+          {item.setScheme && item.setScheme !== "STRAIGHT" && (
+            <>
+              <Badge tone="info">{SET_SCHEME_INFO[item.setScheme].label}</Badge>
+              <TechniqueInfoButton subject={{ kind: "scheme", id: item.setScheme }} />
+            </>
+          )}
+          {partnerNames.length > 0 && <span className="text-xs text-text-subtle">zusammen mit {partnerNames.join(", ")}</span>}
+          <Button variant="ghost" size="sm" iconLeft={<X size={14} aria-hidden />} disabled={disabled} onClick={onClearTechnique}>
+            Weglassen
+          </Button>
+        </div>
+      )}
+      {item.setPlan && (
+        <span className="tabular text-xs text-text-subtle">
+          {item.setPlan.map((s) => (s.seconds ? `${s.seconds} s` : `${s.reps ?? "?"}${s.weightPct ? ` (${s.weightPct} %)` : ""}`)).join(" · ")}
+        </span>
+      )}
       {item.notes && <span className="text-small text-text-subtle">{item.notes}</span>}
       {item.alternativeExerciseName && (
         <span className="text-xs text-text-faint">Alternative: {item.alternativeExerciseName}</span>

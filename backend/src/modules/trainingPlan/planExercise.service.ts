@@ -1,10 +1,24 @@
-import type { PrismaClient, TrainingPhase } from "@prisma/client";
-import type { CreatePlanExerciseInput, UpdatePlanExerciseInput } from "@fitnesstracker/shared";
+import { Prisma, type PrismaClient, type TrainingPhase } from "@prisma/client";
+import { buildSetPlan, type CreatePlanExerciseInput, type SetScheme, type UpdatePlanExerciseInput } from "@fitnesstracker/shared";
 import { ConflictError, NotFoundError } from "../../errors/httpErrors.js";
 import { planExerciseInclude } from "./planExercise.types.js";
 import { visibleToUser } from "../exercises/exercise.service.js";
 
 const withExercise = { include: planExerciseInclude } as const;
+
+// The per-set prescription of a scheme, built from the entry's own sets and rep range.
+export function setPlanFor(
+  scheme: SetScheme | null | undefined,
+  sets: number | null,
+  repMin: number | null,
+  repMax: number | null,
+  targetReps: number | null,
+): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  const max = repMax ?? targetReps ?? 10;
+  const min = repMin ?? Math.max(1, max - 4);
+  const plan = buildSetPlan(scheme, sets ?? 3, min, max);
+  return plan ? (plan as unknown as Prisma.InputJsonValue) : Prisma.JsonNull;
+}
 
 export function listPlanExercises(prisma: PrismaClient, userId: string, phase: TrainingPhase) {
   return prisma.planExercise.findMany({
@@ -58,6 +72,10 @@ export async function createPlanExercise(
       targetReps: input.targetReps,
       order: last ? last.order + 1 : 0,
       dayLabel: input.dayLabel ?? null,
+      technique: input.technique ?? null,
+      techniqueGroup: input.techniqueGroup ?? null,
+      setScheme: input.setScheme && input.setScheme !== "STRAIGHT" ? input.setScheme : null,
+      setPlan: setPlanFor(input.setScheme, input.targetSets ?? null, null, null, input.targetReps ?? null),
     },
     ...withExercise,
   });
@@ -90,6 +108,9 @@ export async function updatePlanExercise(
   }
 
   const swapped = input.exerciseId !== undefined && input.exerciseId !== existing.exerciseId;
+  // A new scheme, or new sets under a scheme, rebuilds the per-set prescription.
+  const scheme = input.setScheme !== undefined ? (input.setScheme === "STRAIGHT" ? null : input.setScheme) : (existing.setScheme as SetScheme | null);
+  const rebuildPlan = input.setScheme !== undefined || (input.targetSets !== undefined && scheme !== null);
   return prisma.planExercise.update({
     where: { id },
     data: {
@@ -97,6 +118,21 @@ export async function updatePlanExercise(
       targetSets: input.targetSets,
       targetReps: input.targetReps,
       order: input.order,
+      technique: input.technique,
+      // Without a technique there is no group to belong to.
+      techniqueGroup: input.techniqueGroup !== undefined ? input.techniqueGroup : input.technique === null ? null : undefined,
+      ...(input.setScheme !== undefined ? { setScheme: scheme } : {}),
+      ...(rebuildPlan
+        ? {
+            setPlan: setPlanFor(
+              scheme,
+              input.targetSets !== undefined ? input.targetSets : existing.targetSets,
+              existing.repRangeMin,
+              existing.repRangeMax,
+              input.targetReps !== undefined ? input.targetReps : existing.targetReps,
+            ),
+          }
+        : {}),
       // The cue and start weight belong to the old exercise; it becomes the way back.
       ...(swapped ? { notes: null, startWeightKg: null, alternativeExerciseId: existing.exerciseId } : {}),
     },

@@ -59,9 +59,11 @@ import {
   type StageState,
 } from "../lib/trainingStages";
 import { loadStretchDone } from "../lib/stretchStorage";
-import { stepAfterPairedSet } from "../lib/superset";
+import { stepAfterGroupSet } from "../lib/superset";
+import { NO_SEGMENT, type ActiveGroup, type RunState } from "../lib/trainingGroups";
+import { SEGMENT_PLANS, TECHNIQUE_INFO, type Technique } from "@fitnesstracker/shared";
 import { createCardioLogLocal } from "../offline/cardioLogSync";
-import { detectPRs, prLabels } from "../lib/prDetection";
+import { NO_PR, countsForRecords, detectPRs, prLabels } from "../lib/prDetection";
 import { unlockAudio } from "../lib/timerSound";
 import { triggerHaptic, withViewTransition } from "../lib/haptic";
 import { formatDuration, formatKg, lastTimeSets, sessionSets } from "../lib/trainingSets";
@@ -122,19 +124,19 @@ export function TrainingPage() {
   const [busy, setBusy] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [techniqueOpen, setTechniqueOpen] = useState(false);
-  // A superset is exactly two exercises: `anchorId` is the one it was started on, `partnerId` the one
-  // that is done in between (plan-entry ids). A drop set belongs to one exercise (`entryId`).
+  // A manual superset is exactly two exercises: `anchorId` is the one it was started on, `partnerId` the one
+  // that is done in between (plan-entry ids). Groups from the plan (superset, giant set, ...) need no
+  // switch: exercises sharing a `techniqueGroup` run together unless turned off (`groupsOff`).
+  // A segment (drop set, rest-pause, myo-reps) belongs to one exercise (`entryId`).
   const [superset, setSuperset] = useState<{
     active: boolean;
     groupId: string | null;
     anchorId: string | null;
     partnerId: string | null;
   }>({ active: false, groupId: null, anchorId: null, partnerId: null });
-  const [dropset, setDropset] = useState<{ active: boolean; groupId: string | null; entryId: string | null }>({
-    active: false,
-    groupId: null,
-    entryId: null,
-  });
+  const [segment, setSegment] = useState<RunState>(NO_SEGMENT);
+  const [groupsOff, setGroupsOff] = useState<string[]>([]);
+  const plannedGroupIds = useRef(new Map<string, string>());
   const [summary, setSummary] = useState<Summary | null>(null);
   const burnProfile = useBurnProfile();
   const [shareNote, setShareNote] = useState<string | null>(null);
@@ -214,8 +216,28 @@ export function TrainingPage() {
   const supersetAnchor = superset.active ? exercises.find((e) => e.id === superset.anchorId) : undefined;
   const supersetPartner = superset.active ? exercises.find((e) => e.id === superset.partnerId) : undefined;
   const supersetPair = supersetAnchor && supersetPartner ? { anchor: supersetAnchor, partner: supersetPartner } : null;
-  const currentInSuperset = !!supersetPair && !!current && (current.id === supersetPair.anchor.id || current.id === supersetPair.partner.id);
-  const dropsetActive = dropset.active && !!current && dropset.entryId === current.id;
+  // The group an exercise currently runs in: the manual pair, else one the plan defined (not turned off).
+  const groupFor = (e: PlanDiaryExerciseDto | undefined): ActiveGroup | null => {
+    if (!e) return null;
+    if (supersetPair && (e.id === supersetPair.anchor.id || e.id === supersetPair.partner.id)) {
+      return { members: [supersetPair.anchor, supersetPair.partner], technique: "SUPERSET", groupId: superset.groupId as string, manual: true, key: "manual" };
+    }
+    if (!e.techniqueGroup) return null;
+    const key = `${e.dayLabel ?? ""}:${e.techniqueGroup}`;
+    if (groupsOff.includes(key)) return null;
+    const members = exercises.filter((x) => x.techniqueGroup === e.techniqueGroup && (x.dayLabel ?? "") === (e.dayLabel ?? ""));
+    if (members.length < 2 || !e.technique) return null;
+    if (!plannedGroupIds.current.has(key)) plannedGroupIds.current.set(key, crypto.randomUUID());
+    return { members, technique: e.technique, groupId: plannedGroupIds.current.get(key) as string, manual: false, key };
+  };
+  const currentGroup = groupFor(current);
+  const segmentFor = (e: PlanDiaryExerciseDto | undefined) => (segment.active && !!e && segment.entryId === e.id ? segment : null);
+  const currentSegment = segmentFor(current);
+  // A planned drop set / rest-pause / myo-reps is offered at the last working set, never forced.
+  const segmentOffer =
+    current && !currentSegment && current.technique && SEGMENT_PLANS[current.technique]
+      ? { technique: current.technique, ...SEGMENT_PLANS[current.technique]! }
+      : null;
   const { data: currentExercise } = useExercise(current?.exerciseId);
 
   const dayLabel = day?.dayLabel ?? null;
@@ -380,8 +402,8 @@ export function TrainingPage() {
   const typicalReps = exercises[0]?.repRangeMax ?? exercises[0]?.targetReps ?? null;
 
   const logSet = async (entry: PlanDiaryExerciseDto, values: SetValues, setNumber: number) => {
-    const inPair = !!supersetPair && (entry.id === supersetPair.anchor.id || entry.id === supersetPair.partner.id);
-    const dropsetActiveFor = (e: PlanDiaryExerciseDto) => dropset.active && dropset.entryId === e.id;
+    const group = groupFor(entry);
+    const seg = segmentFor(entry);
     const tapKey = `${entry.id}:${setNumber}`;
     const nowMs = Date.now();
     const lastTap = lastLogTapRef.current;
@@ -390,9 +412,14 @@ export function TrainingPage() {
     setBusy(true);
     try {
       const performedAt = new Date().toISOString();
-      const prs = detectPRs(allLogs, entry.exerciseId, [
-        { reps: values.reps, weightKg: values.weightKg, performedAt },
-      ]);
+      const wasLastSet = doneFor(entry).length + 1 >= setCountFor(entry);
+      // How the set was done: a mini set of a run, the last set of a cue technique (partial reps, 21s), or a
+      // member of a group. Partial reps and timed sets stay out of the records.
+      const cue = entry.technique && ["PARTIAL_REPS", "TWENTY_ONES", "ISOMETRIC"].includes(entry.technique) && wasLastSet ? entry.technique : null;
+      const loggedTechnique: Technique | null = seg?.technique ?? cue ?? (group ? group.technique : null);
+      const prs = countsForRecords({ technique: loggedTechnique, durationSeconds: values.durationSeconds })
+        ? detectPRs(allLogs, entry.exerciseId, [{ reps: values.reps, weightKg: values.weightKg, performedAt }])
+        : NO_PR;
       await createLog.mutateAsync({
         input: {
           clientId: crypto.randomUUID(),
@@ -402,8 +429,10 @@ export function TrainingPage() {
           weightKg: values.weightKg,
           rir: values.rir,
           note: values.note?.trim() || null,
-          // Supersets and drop sets share the log field: a group id marks sets that belong together.
-          supersetGroupId: inPair ? superset.groupId : dropsetActiveFor(entry) ? dropset.groupId : null,
+          // Group rounds and runs share the log field: a group id marks sets that belong together.
+          supersetGroupId: group ? group.groupId : (seg?.groupId ?? null),
+          technique: loggedTechnique,
+          durationSeconds: values.durationSeconds ?? null,
         },
         exerciseName: entry.exerciseName,
       });
@@ -417,40 +446,37 @@ export function TrainingPage() {
       }
       unlockAudio();
 
-      const wasLastSet = doneFor(entry).length + 1 >= setCountFor(entry);
       const startTimer = (seconds: number, label: string) => {
         if (autoStartEnabled) startRestTimer(seconds, label);
       };
       const goTo = (index: number) => withViewTransition(() => setManualIndex(index));
 
-      // Superset: A → B without a pause, then back to A with the superset pause — never on to a third
-      // exercise. A partner that is already finished (fewer sets) just ends the pairing for the rest.
-      const pair = inPair ? supersetPair : null;
-      if (pair) {
+      if (group) {
+        // A group (superset, compound set, giant set, pre-/post-exhaust): on to the next member without a
+        // pause, the group pause after a full round, then back to the first member — never past the group.
         const member = (e: PlanDiaryExerciseDto) => ({
           id: e.id,
           done: doneFor(e).length + (e.id === entry.id ? 1 : 0),
           total: setCountFor(e),
         });
-        const step = stepAfterPairedSet(entry.id, setNumber, member(pair.anchor), member(pair.partner));
+        const step = stepAfterGroupSet(entry.id, setNumber, group.members.map(member));
+        const label = `${TECHNIQUE_INFO[group.technique].label} · Runde ${setNumber} fertig`;
         if (step.kind === "switch") {
-          if (step.rest) startTimer(supersetRestSeconds, `Supersatz · Runde ${setNumber} fertig`);
+          if (step.rest) startTimer(supersetRestSeconds, label);
           goTo(exercises.findIndex((e) => e.id === step.id));
           return;
         }
-        startTimer(supersetRestSeconds, `Supersatz · Runde ${setNumber} fertig`);
-        setSuperset({ active: false, groupId: null, anchorId: null, partnerId: null });
+        startTimer(supersetRestSeconds, label);
+        if (group.manual) setSuperset({ active: false, groupId: null, anchorId: null, partnerId: null });
+      } else if (seg && !wasLastSet) {
+        // Between the mini sets of a run: the short pause of that technique.
+        startTimer(seg.restSeconds ?? dropsetRestSeconds, `${entry.exerciseName} · ${seg.technique ? TECHNIQUE_INFO[seg.technique].label : "Stufe"} ${setNumber} fertig`);
       } else {
-        // Drop set: short pause between the stages, the normal pause once its last set is done.
-        const dropStage = dropsetActiveFor(entry) && !wasLastSet;
-        startTimer(
-          dropStage ? dropsetRestSeconds : (entry.restSeconds ?? autoStartSeconds),
-          dropStage ? `${entry.exerciseName} · Drop ${setNumber} fertig` : `${entry.exerciseName} · Satz ${setNumber} fertig`,
-        );
+        startTimer(entry.restSeconds ?? autoStartSeconds, `${entry.exerciseName} · Satz ${setNumber} fertig`);
       }
 
       if (wasLastSet) {
-        if (dropsetActiveFor(entry)) setDropset({ active: false, groupId: null, entryId: null });
+        if (seg) setSegment(NO_SEGMENT);
         const next = exercises.findIndex((e, i) => i !== currentIndex && !isComplete(e));
         goTo(next === -1 ? currentIndex : next);
         if (next === -1) setManualStage("kraft");
@@ -472,28 +498,60 @@ export function TrainingPage() {
 
   const toggleSuperset = () => {
     if (!current) return;
-    if (currentInSuperset) {
-      setSuperset({ active: false, groupId: null, anchorId: null, partnerId: null });
+    if (currentGroup) {
+      if (currentGroup.manual) setSuperset({ active: false, groupId: null, anchorId: null, partnerId: null });
+      else setGroupsOff((off) => [...off, currentGroup.key]);
       return;
     }
-    // Partner: the next unfinished exercise after this one, else the first other unfinished one.
+    // A planned group that was turned off is turned back on; otherwise a manual pair starts here:
+    // the partner is the next unfinished exercise after this one, else the first other unfinished one.
+    if (current.techniqueGroup && groupsOff.includes(`${current.dayLabel ?? ""}:${current.techniqueGroup}`)) {
+      setGroupsOff((off) => off.filter((k) => k !== `${current.dayLabel ?? ""}:${current.techniqueGroup}`));
+      return;
+    }
     const open = exercises.filter((e) => e.id !== current.id && !isComplete(e));
     const partner = open.find((e) => exercises.indexOf(e) > currentIndex) ?? open[0];
     if (!partner) return;
-    setDropset({ active: false, groupId: null, entryId: null });
+    setSegment(NO_SEGMENT);
     setSuperset({ active: true, groupId: crypto.randomUUID(), anchorId: current.id, partnerId: partner.id });
   };
 
   const changeSupersetPartner = (partnerId: string) => setSuperset((s) => (s.active ? { ...s, partnerId } : s));
 
+  // Starts a run (drop set, rest-pause, myo-reps) at the last working set: the extra mini sets are added to
+  // the exercise's sets and the weight and pause follow the technique.
+  const startSegment = (technique: Technique) => {
+    if (!current) return;
+    const plan = SEGMENT_PLANS[technique];
+    if (!plan) return;
+    setSuperset({ active: false, groupId: null, anchorId: null, partnerId: null });
+    setSetCounts((c) => ({ ...c, [current.id]: setCountFor(current) + plan.extraSets }));
+    setSegment({
+      active: true,
+      groupId: crypto.randomUUID(),
+      entryId: current.id,
+      technique,
+      factor: plan.weightFactor,
+      // The drop set pause is a setting of its own.
+      restSeconds: technique === "DROPSET" ? null : plan.restSeconds,
+    });
+  };
+
   const toggleDropset = () => {
     if (!current) return;
-    if (dropsetActive) {
-      setDropset({ active: false, groupId: null, entryId: null });
+    if (currentSegment) {
+      setSegment(NO_SEGMENT);
       return;
     }
+    startSegmentManual("DROPSET");
+  };
+  // The manual drop set button of the first version: no extra sets, the user adds them with "Satz".
+  const startSegmentManual = (technique: Technique) => {
+    if (!current) return;
+    const plan = SEGMENT_PLANS[technique];
+    if (!plan) return;
     setSuperset({ active: false, groupId: null, anchorId: null, partnerId: null });
-    setDropset({ active: true, groupId: crypto.randomUUID(), entryId: current.id });
+    setSegment({ active: true, groupId: crypto.randomUUID(), entryId: current.id, technique, factor: plan.weightFactor, restSeconds: null });
   };
 
   const setStatus = (next: "ACTIVE" | "PAUSED" | "COMPLETED" | "ABORTED") =>
@@ -643,7 +701,7 @@ export function TrainingPage() {
   const subtitle = plan
     ? activeTrainingPhase === "DAILY"
       ? `${getPhaseDisplayName("DAILY", plan.phases)} · außerhalb der Rotation`
-      : `${getPhaseDisplayName(plan.currentPhase, plan.phases)} · Woche ${phaseWeek(plan)} von ${phaseLength(plan)}`
+      : `${getPhaseDisplayName(plan.currentPhase, plan.phases)} · Woche ${phaseWeek(plan)} von ${phaseLength(plan)}${status?.periodization ? ` · ${status.periodization.label}` : ""}`
     : "Freies Training";
 
 
@@ -759,17 +817,17 @@ export function TrainingPage() {
               setCount={setCountFor(current)}
               disabled={paused}
               busy={busy}
-              supersetActive={currentInSuperset}
-              supersetWith={
-                supersetPair && currentInSuperset
-                  ? (current.id === supersetPair.anchor.id ? supersetPair.partner : supersetPair.anchor).exerciseName
-                  : null
-              }
-              supersetPartnerId={supersetPair && current.id === supersetPair.anchor.id ? supersetPair.partner.id : null}
+              supersetActive={!!currentGroup}
+              groupLabel={currentGroup ? TECHNIQUE_INFO[currentGroup.technique].label : null}
+              groupWith={currentGroup ? currentGroup.members.filter((m) => m.id !== current.id).map((m) => m.exerciseName) : []}
+              supersetPartnerId={currentGroup?.manual && supersetPair && current.id === supersetPair.anchor.id ? supersetPair.partner.id : null}
               supersetPartnerOptions={exercises.filter((e) => e.id !== current.id && !isComplete(e)).map((e) => ({ id: e.id, name: e.exerciseName }))}
               onSupersetPartnerChange={changeSupersetPartner}
-              dropsetActive={dropsetActive}
+              segment={currentSegment ? { technique: currentSegment.technique, factor: currentSegment.factor } : null}
+              segmentOffer={segmentOffer ? { technique: segmentOffer.technique, label: segmentOffer.label, extraSets: segmentOffer.extraSets } : null}
+              onStartSegment={() => segmentOffer && startSegment(segmentOffer.technique)}
               onToggleDropset={toggleDropset}
+              onMiniRest={() => startRestTimer(20, `${current.exerciseName} · Cluster-Pause`)}
               onSetCountChange={(count) => setSetCounts((c) => ({ ...c, [current.id]: count }))}
               onLogSet={(values, setNumber) => void logSet(current, values, setNumber)}
               onUndoSet={(log) => void undoSet(log)}

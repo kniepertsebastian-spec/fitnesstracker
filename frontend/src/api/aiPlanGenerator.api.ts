@@ -41,6 +41,10 @@ export function replaceDraftItemRequest(phase: TrainingPhase, index: number, exe
   });
 }
 
+export function clearDraftTechniqueRequest(phase: TrainingPhase, index: number) {
+  return apiFetch<{ draft: PlanDraftDto }>("/ai/plan-draft/clear-technique", { method: "POST", body: { phase, index } });
+}
+
 export function planQuestionsRequest(coldStart: ColdStartInput) {
   return apiFetch<PlanQuestionsResponse>("/ai/plan-questions", { method: "POST", body: { coldStart } });
 }

@@ -1,9 +1,10 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import type { PlanImportMode, PlanImportPreview, PlanImportResult, TrainingPhase } from "@fitnesstracker/shared";
-import { TRAINING_PHASES } from "@fitnesstracker/shared";
+import type { PlanImportMode, PlanImportPreview, PlanImportResult, SetScheme, Technique, TrainingPhase } from "@fitnesstracker/shared";
+import { TECHNIQUES, SET_SCHEMES, TRAINING_PHASES } from "@fitnesstracker/shared";
 import { BadRequestError } from "../../errors/httpErrors.js";
 import type { PlanExportRow, RawImportRow } from "./planExport.format.js";
 import { getOrCreateTrainingPlan } from "./trainingPlan.service.js";
+import { setPlanFor } from "./planExercise.service.js";
 import { resolvePhaseConfigs } from "./trainingPlan.types.js";
 
 // `phase` limits the export to one phase; without it the whole plan is exported.
@@ -34,6 +35,9 @@ export async function exportPlanExercises(
     alternativeExerciseName: entry.alternativeExercise
       ? (entry.alternativeExercise.nameDe ?? entry.alternativeExercise.name)
       : null,
+    technique: entry.technique,
+    techniqueGroup: entry.techniqueGroup,
+    setScheme: entry.setScheme,
   }));
 }
 
@@ -55,6 +59,9 @@ export interface NormalizedRow {
   notes: Maybe<string>;
   startWeightKg: Maybe<number>;
   alternativeExerciseName: Maybe<string>;
+  technique: Maybe<Technique>;
+  techniqueGroup: Maybe<string>;
+  setScheme: Maybe<SetScheme>;
 }
 
 function isBlank(value: unknown): boolean {
@@ -81,6 +88,22 @@ function parseOptionalDecimal(value: unknown, label: string, rowNum: number, err
     return undefined;
   }
   return num;
+}
+
+// A value from a fixed list; anything else is reported and ignored (the entry itself still imports).
+function parseOptionalChoice<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  label: string,
+  rowNum: number,
+  errors: string[],
+): Maybe<T> {
+  if (value === undefined) return undefined;
+  if (isBlank(value)) return null;
+  const text = String(value).trim().toUpperCase();
+  if ((allowed as readonly string[]).includes(text)) return text as T;
+  errors.push(`Zeile ${rowNum}: unbekannter Wert für ${label}: "${String(value)}"`);
+  return undefined;
 }
 
 function parseOptionalText(value: unknown, max: number): Maybe<string> {
@@ -117,6 +140,9 @@ export function normalizeRow(raw: RawImportRow, rowNum: number, errors: string[]
     notes: parseOptionalText(raw.notes, 300),
     startWeightKg: parseOptionalDecimal(raw.startWeightKg, "startWeightKg", rowNum, errors),
     alternativeExerciseName: parseOptionalText(raw.alternativeExerciseName, 200),
+    technique: parseOptionalChoice(raw.technique, TECHNIQUES, "technique", rowNum, errors),
+    techniqueGroup: parseOptionalText(raw.techniqueGroup, 20),
+    setScheme: parseOptionalChoice(raw.setScheme, SET_SCHEMES, "setScheme", rowNum, errors),
   };
 }
 
@@ -243,6 +269,13 @@ export async function importPlanExercises(
         notes: row.notes,
         startWeightKg: row.startWeightKg,
         alternativeExerciseId,
+        technique: row.technique,
+        techniqueGroup: row.techniqueGroup,
+        setScheme: row.setScheme === "STRAIGHT" ? null : row.setScheme,
+        // The per-set prescription follows the scheme; rebuilt from this entry's sets and rep range.
+        ...(row.setScheme !== undefined
+          ? { setPlan: setPlanFor(row.setScheme, row.targetSets ?? null, row.repRangeMin ?? null, row.repRangeMax ?? null, row.targetReps ?? null) }
+          : {}),
       };
 
       // `findFirst` rather than `findUnique`: Prisma's compound-unique-input type doesn't accept
@@ -277,6 +310,10 @@ export async function importPlanExercises(
           notes: row.notes ?? null,
           startWeightKg: row.startWeightKg ?? null,
           alternativeExerciseId: alternativeExerciseId ?? null,
+          technique: row.technique ?? null,
+          techniqueGroup: row.techniqueGroup ?? null,
+          setScheme: row.setScheme && row.setScheme !== "STRAIGHT" ? row.setScheme : null,
+          setPlan: setPlanFor(row.setScheme, row.targetSets ?? null, row.repRangeMin ?? null, row.repRangeMax ?? null, row.targetReps ?? null),
         },
       });
       created++;

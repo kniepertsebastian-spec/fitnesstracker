@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRAINING_PHASES } from "../enums.js";
+import { periodizationSchema } from "../trainingTechniques.js";
 
 export const trainingPhaseSchema = z.enum(TRAINING_PHASES);
 
@@ -17,6 +18,9 @@ export const phaseConfigItemSchema = z.object({
   // Length of the phase in weeks; absent = 8. A deload lasts a week, a strength block six.
   weeks: z.number().int().min(1).max(26).optional(),
   style: phaseStyleSchema.optional(),
+  // Week-to-week pattern inside the phase (set when a plan with one was accepted): the rep target and
+  // RIR shift by week. Absent = the same every week.
+  periodization: periodizationSchema.optional(),
   // One line shown on the plan page instead of the slot's built-in rule text.
   focus: z.string().trim().max(300).optional(),
 });

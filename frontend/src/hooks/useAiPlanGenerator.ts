@@ -8,6 +8,7 @@ import {
   generatePlanRequest,
   planQuestionsRequest,
   restorePlanBackupRequest,
+  clearDraftTechniqueRequest,
   replaceDraftItemRequest,
 } from "../api/aiPlanGenerator.api";
 
@@ -84,6 +85,19 @@ export function useReplaceDraftItem(phase: TrainingPhase) {
   return useMutation({
     mutationFn: ({ index, exerciseId }: { index: number; exerciseId: string }) =>
       replaceDraftItemRequest(phase, index, exerciseId),
+    onSuccess: ({ draft }) =>
+      queryClient.setQueryData(draftKey(phase), (current: { hasBackup: boolean } | undefined) => ({
+        hasBackup: current?.hasBackup ?? false,
+        draft,
+      })),
+  });
+}
+
+// Takes the technique off one exercise of the draft (and off the others of its group).
+export function useClearDraftTechnique(phase: TrainingPhase) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (index: number) => clearDraftTechniqueRequest(phase, index),
     onSuccess: ({ draft }) =>
       queryClient.setQueryData(draftKey(phase), (current: { hasBackup: boolean } | undefined) => ({
         hasBackup: current?.hasBackup ?? false,

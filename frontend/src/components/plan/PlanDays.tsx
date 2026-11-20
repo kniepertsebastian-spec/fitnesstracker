@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Dumbbell, GripVertical, MoreHorizontal, Plus, Repeat2, Trash2 } from "lucide-react";
-import type { PlanExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
+import { SET_SCHEME_INFO, TECHNIQUE_INFO, type PlanExerciseDto, type TrainingPhase } from "@fitnesstracker/shared";
 import { useCardioPlan } from "../../hooks/useCardioPlan";
 import { useDeletePlanExercise, usePlanExercises, useUpdatePlanExercise } from "../../hooks/usePlanExercises";
 import { useStretchPlan } from "../../hooks/useStretching";
@@ -89,7 +89,11 @@ function Row({
           <GripVertical size={16} aria-hidden className="shrink-0 cursor-grab text-text-faint" />
           {/* Phones: the name may wrap onto two lines and the actions sit in one menu — four icon
               buttons left the name about 90 px. From sm up the icons stay as they were. */}
-          <span className="min-w-0 flex-1 wrap-break-word sm:truncate">{entry.exerciseName}</span>
+          <span className="min-w-0 flex-1 wrap-break-word sm:truncate">
+            {entry.exerciseName}
+            {entry.technique && <span className="ml-2 text-xs text-accent-text">{TECHNIQUE_INFO[entry.technique].label}{entry.techniqueGroup ? ` · ${entry.techniqueGroup}` : ""}</span>}
+            {entry.setScheme && entry.setScheme !== "STRAIGHT" && <span className="ml-2 text-xs text-info">{SET_SCHEME_INFO[entry.setScheme].label}</span>}
+          </span>
           <span className="hidden shrink-0 items-center sm:flex">
             <IconButton aria-label={`${entry.exerciseName} ersetzen`} className={iconButton} onClick={onReplace}>
               <Repeat2 size={16} aria-hidden />

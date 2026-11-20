@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { trainingPhaseSchema } from "./trainingPlan.schema.js";
+import { periodizationSchema, planStyleChoicesSchema, setPlanSchema, setSchemeSchema, techniqueSchema } from "../trainingTechniques.js";
 
 export const AI_PROVIDERS = ["GEMINI", "OPENAI", "GROQ", "OPENROUTER"] as const;
 export const aiProviderSchema = z.enum(AI_PROVIDERS);
@@ -85,6 +86,12 @@ export const coldStartInputSchema = z.object({
   includeStretching: z.boolean().default(false),
   // Answers to the AI's follow-up questions; skipped questions are left out.
   followUps: z.array(planFollowUpSchema).max(6).optional(),
+  // Which intensity techniques the user is open to (empty = classic sets only), and which set schemes
+  // and week-to-week patterns the AI may pick on its own. The AI uses them sparingly, see
+  // backend/src/modules/aiPlanGenerator/techniquePolicy.ts.
+  techniques: planStyleChoicesSchema.shape.techniques,
+  schemes: planStyleChoicesSchema.shape.schemes,
+  periodizations: planStyleChoicesSchema.shape.periodizations,
 });
 export type ColdStartInput = z.infer<typeof coldStartInputSchema>;
 
@@ -131,6 +138,10 @@ export const planDraftItemSchema = z.object({
   startWeightKg: z.number().nullable(),
   alternativeExerciseId: z.string().uuid().nullable(),
   alternativeExerciseName: z.string().nullable(),
+  technique: techniqueSchema.nullable().optional(),
+  techniqueGroup: z.string().nullable().optional(),
+  setScheme: setSchemeSchema.nullable().optional(),
+  setPlan: setPlanSchema.nullable().optional(),
   // Added by the server because the model returned too few valid exercises for the day.
   filledByServer: z.boolean(),
 });
@@ -141,6 +152,8 @@ export const planDraftDtoSchema = z.object({
   days: z.array(z.string()),
   items: z.array(planDraftItemSchema),
   rationale: z.string().nullable(),
+  // Week-to-week pattern proposed for the phase; takes effect when the draft is accepted.
+  periodization: periodizationSchema.nullable().optional(),
   createdAt: z.string(),
 });
 export type PlanDraftDto = z.infer<typeof planDraftDtoSchema>;
@@ -161,6 +174,13 @@ export const replaceDraftItemRequestSchema = z.object({
   exerciseId: z.string().uuid(),
 });
 export type ReplaceDraftItemRequest = z.infer<typeof replaceDraftItemRequestSchema>;
+
+// Takes the technique (and set scheme) off one exercise of the draft.
+export const clearDraftTechniqueRequestSchema = z.object({
+  phase: trainingPhaseSchema,
+  index: z.number().int().min(0),
+});
+export type ClearDraftTechniqueRequest = z.infer<typeof clearDraftTechniqueRequestSchema>;
 
 // Discriminated union: the backend can't tell whether cold-start input is needed until it has
 // checked the user's history, so a first call without `coldStart` may come back asking for it

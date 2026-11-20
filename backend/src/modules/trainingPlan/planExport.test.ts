@@ -24,6 +24,9 @@ const row = (over: Partial<PlanExportRow> = {}): PlanExportRow => ({
   notes: 'Schulterblätter "zusammen", Pause\nnicht zu lang',
   startWeightKg: 62.5,
   alternativeExerciseName: "Schrägbankdrücken (Kurzhantel)",
+  technique: "SUPERSET",
+  techniqueGroup: "G1",
+  setScheme: "PYRAMID",
   ...over,
 });
 

@@ -1,5 +1,5 @@
 import type { WorkoutLog, Exercise } from "@prisma/client";
-import type { WorkoutLogDto } from "@fitnesstracker/shared";
+import { techniqueSchema, type WorkoutLogDto } from "@fitnesstracker/shared";
 
 type WorkoutLogWithExercise = WorkoutLog & { exercise: Exercise };
 
@@ -16,6 +16,8 @@ export function toWorkoutLogDto(log: WorkoutLogWithExercise): WorkoutLogDto {
     rir: log.rir,
     note: log.note,
     supersetGroupId: log.supersetGroupId,
+    technique: techniqueSchema.nullable().catch(null).parse(log.technique),
+    durationSeconds: log.durationSeconds,
     performedAt: log.performedAt.toISOString(),
     createdAt: log.createdAt.toISOString(),
     updatedAt: log.updatedAt.toISOString(),

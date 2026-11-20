@@ -4,6 +4,7 @@ import { ChevronDown, Dumbbell, PauseCircle } from "lucide-react";
 import type { LocalWorkoutLog } from "../../offline/db";
 import { useWorkoutLogs } from "../../hooks/useWorkoutLogs";
 import { estimateOneRepMax } from "../../lib/oneRepMax";
+import { countsForRecords } from "../../lib/prDetection";
 import { rangeCutoff, type ProgressRange } from "../../lib/progressRange";
 import { formatDelta } from "../../lib/stats";
 import { Badge, Card, EmptyState, Skeleton, cn } from "../ui";
@@ -15,7 +16,7 @@ const MAX_VISIBLE = 8;
 function sessionOneRepMaxSeries(logs: LocalWorkoutLog[], exerciseId: string): number[] {
   const byDay = new Map<string, number>();
   for (const log of logs) {
-    if (log.exerciseId !== exerciseId) continue;
+    if (log.exerciseId !== exerciseId || !countsForRecords(log)) continue;
     const oneRepMax = estimateOneRepMax(log.weightKg, log.reps);
     if (oneRepMax === null) continue;
     const day = log.performedAt.slice(0, 10);

@@ -12,6 +12,9 @@ const base: ColdStartInput = {
   sessionDurationMinutes: 60,
   includeCardio: false,
   includeStretching: false,
+  techniques: [],
+  schemes: [],
+  periodizations: [],
 };
 
 describe("buildColdStartContext", () => {
@@ -42,5 +45,28 @@ describe("prompts", () => {
     const prompt = buildSystemPrompt("AUFBAU", [], resolveSplit("push_pull_legs", 3), 5);
     expect(prompt).toContain("AUSGEWOGENHEIT");
     expect(prompt).toContain("höchstens 2 Übung(en)");
+  });
+});
+
+describe("buildSystemPrompt: techniques", () => {
+  const days = resolveSplit("push_pull_legs", 3);
+
+  it("says nothing about techniques unless the user ticked some", () => {
+    const prompt = buildSystemPrompt("AUFBAU", [], days, 6, null, base);
+    expect(prompt).not.toContain("INTENSITÄTSTECHNIKEN");
+    expect(prompt).not.toContain("SATZSCHEMATA");
+  });
+
+  it("adds the technique rules and the extra JSON fields when some are ticked", () => {
+    const prompt = buildSystemPrompt("AUFBAU", [], days, 6, null, { ...base, techniques: ["SUPERSET", "DROPSET"], schemes: ["PYRAMID"], periodizations: ["LINEAR"] });
+    expect(prompt).toContain("INTENSITÄTSTECHNIKEN");
+    expect(prompt).toContain("SPARSAM");
+    expect(prompt).toContain("techniqueGroup");
+    expect(prompt).toContain("periodization");
+  });
+
+  it("leaves them out of a deload phase", () => {
+    const prompt = buildSystemPrompt("MUSKELAUSDAUER", [], days, 6, "DELOAD", { ...base, techniques: ["DROPSET"] });
+    expect(prompt).not.toContain("INTENSITÄTSTECHNIKEN");
   });
 });

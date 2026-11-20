@@ -3,7 +3,7 @@
 // pulls in XXE-adjacent surface) for a handful of flat tags.
 //
 // Format v2 carries everything a plan entry has (day, rep range, RIR, pause, notes, start weight,
-// alternative), so a phase can be moved between phases or accounts without losing the split days.
+// alternative, technique, group, set scheme), so a phase can be moved between phases or accounts without losing the split days.
 // Files of the first format (phase, exerciseName, targetSets, targetReps, order) still import: a
 // field that is absent from the file stays untouched, a field that is present but empty clears it.
 
@@ -21,6 +21,9 @@ export interface PlanExportRow {
   notes: string | null;
   startWeightKg: number | null;
   alternativeExerciseName: string | null;
+  technique: string | null;
+  techniqueGroup: string | null;
+  setScheme: string | null;
 }
 
 // Raw, not-yet-validated fields as read from an uploaded file — see planExport.service.ts's
@@ -39,6 +42,9 @@ export interface RawImportRow {
   notes?: unknown;
   startWeightKg?: unknown;
   alternativeExerciseName?: unknown;
+  technique?: unknown;
+  techniqueGroup?: unknown;
+  setScheme?: unknown;
 }
 
 export const PLAN_COLUMNS = [
@@ -55,6 +61,9 @@ export const PLAN_COLUMNS = [
   "notes",
   "startWeightKg",
   "alternativeExerciseName",
+  "technique",
+  "techniqueGroup",
+  "setScheme",
 ] as const satisfies readonly (keyof PlanExportRow)[];
 
 type Column = (typeof PLAN_COLUMNS)[number];

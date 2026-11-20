@@ -1,5 +1,5 @@
 import type { TrainingPhase } from "@prisma/client";
-import type { PhaseStyle, PlanDraftItemDto } from "@fitnesstracker/shared";
+import { buildSetPlan, type PhaseStyle, type PlanDraftItemDto } from "@fitnesstracker/shared";
 import { phaseDefaultsFor } from "./promptBuilder.js";
 import { suggestStartWeights } from "./planAssembly.js";
 
@@ -46,6 +46,10 @@ export function derivePhaseItems(
       restSeconds: item.restSeconds === null ? target.restSeconds : round5(item.restSeconds * restFactor),
       notes: to === "NEGATIV" && !styles.to ? [base, NEGATIVE_TEMPO_NOTE].filter(Boolean).join(" ") : base,
       startWeightKg: weights.get(item.exerciseId) ?? null,
+      // The sets and reps changed, so a pyramid or timed prescription is rebuilt; a deload has no techniques.
+      ...(styles.to === "DELOAD"
+        ? { technique: null, techniqueGroup: null, setScheme: null, setPlan: null }
+        : { setPlan: buildSetPlan(item.setScheme, target.sets, target.repMin, target.repMax) }),
       filledByServer: false,
     };
   });
