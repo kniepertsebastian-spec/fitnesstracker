@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { AiProvider } from "@fitnesstracker/shared";
 import { useAiSettings, useDeleteAiSettings, useSaveAiSettings } from "../../hooks/useAiSettings";
 import { Badge, Button, Callout, Card, Field, Input, Select, Skeleton } from "../ui";
+import { GeminiKeyHelp, MODEL_SUGGESTIONS } from "./GeminiKeyHelp";
 
 export const PROVIDER_OPTIONS: { value: AiProvider; label: string }[] = [
   { value: "GEMINI", label: "Google Gemini" },
@@ -17,7 +18,7 @@ export function AiKeyCard() {
   const saveSettings = useSaveAiSettings();
   const deleteSettings = useDeleteAiSettings();
 
-  const [provider, setProvider] = useState<AiProvider>("OPENAI");
+  const [provider, setProvider] = useState<AiProvider>("GEMINI");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
 
@@ -48,6 +49,7 @@ export function AiKeyCard() {
       title="KI-Schlüssel"
       action={settings.hasApiKey ? <Badge tone="magenta">Eigener Schlüssel</Badge> : undefined}
     >
+      {!settings.hasApiKey && <GeminiKeyHelp />}
       <p className="mb-3 text-small text-text-subtle">
         Eigener API-Key (BYOK) für die KI-Planung — der Key verlässt den Server nie außer für Aufrufe an den
         gewählten Anbieter.
@@ -76,8 +78,24 @@ export function AiKeyCard() {
             />
           )}
         </Field>
-        <Field label="Modell (optional)" hint="z. B. gpt-4o-mini">
-          {(p) => <Input {...p} value={model} onChange={(e) => setModel(e.target.value)} />}
+        <Field label="Modell (optional)" hint={`z. B. ${MODEL_SUGGESTIONS[provider][0]} — leer = Standard des Anbieters`}>
+          {(p) => (
+            <>
+              <Input
+                {...p}
+                list="ai-model-suggestions"
+                autoComplete="off"
+                placeholder={MODEL_SUGGESTIONS[provider][0]}
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+              />
+              <datalist id="ai-model-suggestions">
+                {MODEL_SUGGESTIONS[provider].map((id) => (
+                  <option key={id} value={id} />
+                ))}
+              </datalist>
+            </>
+          )}
         </Field>
         <div className="flex gap-2">
           <Button

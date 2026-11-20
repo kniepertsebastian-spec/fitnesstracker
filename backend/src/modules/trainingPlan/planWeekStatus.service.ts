@@ -3,6 +3,7 @@ import type { ProgressionSuggestion, WeeklyPlanStatusDto } from "@fitnesstracker
 import { planExerciseInclude, toPlanExerciseDto } from "./planExercise.types.js";
 import { addOptionsFor, loadOptionPool, swapOptionsFor } from "./exerciseOptions.js";
 import { getUserTimeZone, localDayStart, localWeekStart } from "../../lib/userTime.js";
+import { pickDayRotation } from "./dayRotation.js";
 
 const DEFAULT_TARGET_REPS: Record<TrainingPhase, number> = {
   AUFBAU: 10,
@@ -116,7 +117,7 @@ export async function getWeeklyPlanStatus(
   });
 
   if (entries.length === 0) {
-    return { days: [], activeDayIndex: null };
+    return { days: [], activeDayIndex: null, nextDayIndex: null };
   }
 
   const groups = groupByDayLabel(entries);
@@ -161,6 +162,7 @@ export async function getWeeklyPlanStatus(
         addOptions: addOptions(g.entries),
       })),
       activeDayIndex: 0,
+      nextDayIndex: 0,
     };
   }
 
@@ -171,6 +173,20 @@ export async function getWeeklyPlanStatus(
     addOptions: addOptions(g.entries),
   }));
 
-  const firstIncomplete = days.findIndex((d) => !d.completed);
-  return { days, activeDayIndex: firstIncomplete === -1 ? null : firstIncomplete };
+  // Which day is due follows the cycle (the day after the last trained one), see dayRotation.ts.
+  const recentLogs = await prisma.workoutLog.findMany({
+    where: { userId, deletedAt: null, exerciseId: { in: distinctExerciseIds } },
+    orderBy: { performedAt: "desc" },
+    take: 60,
+    select: { exerciseId: true, performedAt: true },
+  });
+  const rotation = pickDayRotation(
+    days.map((d, i) => ({
+      dayLabel: d.dayLabel,
+      exerciseIds: groups[i].entries.map((e) => e.exerciseId),
+      completed: d.completed,
+    })),
+    recentLogs,
+  );
+  return { days, activeDayIndex: rotation.activeDayIndex, nextDayIndex: rotation.nextDayIndex };
 }

@@ -2,29 +2,38 @@ import { forwardRef, useId } from "react";
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { cn } from "./cn";
 
+// No width in here: `cn` just joins class names (no tailwind-merge), so a base `w-full` would fight a
+// caller's own `w-28` and — depending on the generated CSS order — win (the supplement form's time
+// field once swallowed the whole row). `controlClass` adds `w-full` only when the caller sets no width.
 const CONTROL =
-  "w-full rounded-md border border-border-strong bg-surface-inset px-3 text-body text-text placeholder:text-text-faint " +
+  "rounded-md border border-border-strong bg-surface-inset px-3 text-body text-text placeholder:text-text-faint " +
   "transition-colors duration-150 focus-visible:border-accent disabled:opacity-50";
+
+const HAS_WIDTH = /(^|\s)(!)?w-/;
+
+function controlClass(height: string, className: string | undefined): string {
+  return cn(CONTROL, height, !className || !HAS_WIDTH.test(className) ? "w-full" : null, className);
+}
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, ...rest },
   ref,
 ) {
-  return <input ref={ref} className={cn(CONTROL, "h-11", className)} {...rest} />;
+  return <input ref={ref} className={controlClass("h-11", className)} {...rest} />;
 });
 
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(function Select(
   { className, ...rest },
   ref,
 ) {
-  return <select ref={ref} className={cn(CONTROL, "h-11", className)} {...rest} />;
+  return <select ref={ref} className={controlClass("h-11", className)} {...rest} />;
 });
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(function Textarea(
   { className, ...rest },
   ref,
 ) {
-  return <textarea ref={ref} className={cn(CONTROL, "min-h-24 py-2", className)} {...rest} />;
+  return <textarea ref={ref} className={controlClass("min-h-24 py-2", className)} {...rest} />;
 });
 
 export interface FieldProps {

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { registerTestUser, fetchAnyExercise, login, goOffline, goOnline, openNav, syncPill, serverWorkoutLogs } from "./support";
+import { registerTestUser, fetchAnyExercise, login, goOffline, goOnline, openNav, skipPreStretchIfShown, syncPill, serverWorkoutLogs } from "./support";
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:3000/api";
 
@@ -26,6 +26,7 @@ test.describe("Training im Fokusmodus (F4)", () => {
     await openNav(page, "Dashboard");
     await page.getByRole("button", { name: /Training starten/ }).first().click();
     await page.waitForURL("/training");
+    await skipPreStretchIfShown(page);
     await expect(page.getByRole("heading", { name: exercise.name })).toBeVisible();
     // No shell navigation in focus mode.
     await expect(page.getByRole("navigation", { name: "Hauptmenü" })).toHaveCount(0);

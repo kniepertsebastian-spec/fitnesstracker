@@ -43,7 +43,7 @@ import {
   useStartWorkoutSession,
   useUpdateWorkoutSessionStatus,
 } from "../hooks/useWorkoutSession";
-import { cardioMinutes, matchDay, stretchMinutes } from "../lib/dayPlan";
+import { cardioMinutes, halveHold, matchDay, stretchMinutes } from "../lib/dayPlan";
 import { phaseLength, phaseWeek } from "../lib/phase";
 import { getPhaseDisplayName } from "../lib/phaseInfo";
 import {
@@ -51,6 +51,7 @@ import {
   defaultStage,
   emptyStageState,
   loadStageState,
+  preStretchStorageKey,
   saveStageState,
   stretchStorageKey,
   type SectionState,
@@ -58,6 +59,7 @@ import {
   type StageState,
 } from "../lib/trainingStages";
 import { loadStretchDone } from "../lib/stretchStorage";
+import { stepAfterPairedSet } from "../lib/superset";
 import { createCardioLogLocal } from "../offline/cardioLogSync";
 import { detectPRs, prLabels } from "../lib/prDetection";
 import { unlockAudio } from "../lib/timerSound";
@@ -107,7 +109,7 @@ export function TrainingPage() {
   const startSession = useStartWorkoutSession();
   const updateStatus = useUpdateWorkoutSessionStatus();
   const showPR = usePRToastStore((s) => s.showPR);
-  const { autoStartEnabled, autoStartSeconds, start: startRestTimer } = useTimerStore();
+  const { autoStartEnabled, autoStartSeconds, supersetRestSeconds, dropsetRestSeconds, start: startRestTimer } = useTimerStore();
 
   const [dayIndex, setDayIndex] = useState<number | null>(null);
   const [setCounts, setSetCounts] = useState<Record<string, number>>({});
@@ -115,9 +117,18 @@ export function TrainingPage() {
   const [busy, setBusy] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [techniqueOpen, setTechniqueOpen] = useState(false);
-  const [superset, setSuperset] = useState<{ active: boolean; groupId: string | null }>({
+  // A superset is exactly two exercises: `anchorId` is the one it was started on, `partnerId` the one
+  // that is done in between (plan-entry ids). A drop set belongs to one exercise (`entryId`).
+  const [superset, setSuperset] = useState<{
+    active: boolean;
+    groupId: string | null;
+    anchorId: string | null;
+    partnerId: string | null;
+  }>({ active: false, groupId: null, anchorId: null, partnerId: null });
+  const [dropset, setDropset] = useState<{ active: boolean; groupId: string | null; entryId: string | null }>({
     active: false,
     groupId: null,
+    entryId: null,
   });
   const [summary, setSummary] = useState<Summary | null>(null);
   const burnProfile = useBurnProfile();
@@ -131,6 +142,7 @@ export function TrainingPage() {
   const [manualStage, setManualStage] = useState<Stage | null>(null);
   const [stageState, setStageState] = useState<StageState>(emptyStageState);
   const [stretchDone, setStretchDone] = useState<string[]>([]);
+  const [preStretchDone, setPreStretchDone] = useState<string[]>([]);
   const [planEdits, setPlanEdits] = useState<PlanEdit[]>([]);
   const [editScope, setEditScope] = useState<EditScope>("today");
   const [editing, setEditing] = useState(false);
@@ -159,6 +171,7 @@ export function TrainingPage() {
     if (!sessionClientId) return;
     setStageState(loadStageState(sessionClientId));
     setStretchDone(loadStretchDone(stretchStorageKey(sessionClientId)));
+    setPreStretchDone(loadStretchDone(preStretchStorageKey(sessionClientId)));
   }, [sessionClientId]);
 
   const updateStageState = (update: (s: StageState) => StageState) =>
@@ -170,7 +183,7 @@ export function TrainingPage() {
 
   useEffect(() => {
     if (dayIndex === null && status && status.days.length > 0) {
-      setDayIndex(status.activeDayIndex ?? 0);
+      setDayIndex(status.activeDayIndex ?? status.nextDayIndex ?? 0);
     }
   }, [status, dayIndex]);
 
@@ -193,20 +206,32 @@ export function TrainingPage() {
   );
   const current = exercises[currentIndex];
   const allDone = exercises.length > 0 && firstIncomplete === -1;
+  const supersetAnchor = superset.active ? exercises.find((e) => e.id === superset.anchorId) : undefined;
+  const supersetPartner = superset.active ? exercises.find((e) => e.id === superset.partnerId) : undefined;
+  const supersetPair = supersetAnchor && supersetPartner ? { anchor: supersetAnchor, partner: supersetPartner } : null;
+  const currentInSuperset = !!supersetPair && !!current && (current.id === supersetPair.anchor.id || current.id === supersetPair.partner.id);
+  const dropsetActive = dropset.active && !!current && dropset.entryId === current.id;
   const { data: currentExercise } = useExercise(current?.exerciseId);
 
   const dayLabel = day?.dayLabel ?? null;
   const cardioDay = matchDay(cardioPlan?.days, dayLabel);
   const warmupItems = cardioDay?.items.filter((i) => i.slot === "WARMUP") ?? [];
   const afterItems = cardioDay?.items.filter((i) => i.slot === "AFTER") ?? [];
-  const stretchItems = matchDay(stretchPlan?.days, dayLabel)?.items ?? [];
+  // The plan's stretching is done twice, before and after the workout, at half the hold time each.
+  const stretchItems = useMemo(
+    () => halveHold(matchDay(stretchPlan?.days, dayLabel)?.items ?? []),
+    [stretchPlan, dayLabel],
+  );
   const stages: Stage[] = [
     ...(warmupItems.length > 0 ? (["warmup"] as const) : []),
+    ...(stretchItems.length > 0 ? (["prestretch"] as const) : []),
     "kraft" as const,
     ...(afterItems.length > 0 ? (["cardio"] as const) : []),
     ...(stretchItems.length > 0 ? (["stretch"] as const) : []),
   ];
-  const stage: Stage = manualStage && stages.includes(manualStage) ? manualStage : defaultStage(stages, stageState, allDone);
+  const kraftStarted = exercises.some((e) => doneFor(e).length > 0);
+  const stage: Stage =
+    manualStage && stages.includes(manualStage) ? manualStage : defaultStage(stages, stageState, allDone, kraftStarted);
   const nextStage = stages[stages.indexOf(stage) + 1] ?? null;
 
   const segments: SegmentState[] = exercises.map((e, i) =>
@@ -215,6 +240,7 @@ export function TrainingPage() {
   const setsTotal = exercises.reduce((sum, e) => sum + setCountFor(e), 0);
   const setsDone = exercises.reduce((sum, e) => sum + Math.min(doneFor(e).length, setCountFor(e)), 0);
   const stretchDoneCount = stretchItems.filter((i) => stretchDone.includes(i.exerciseId)).length;
+  const preStretchDoneCount = stretchItems.filter((i) => preStretchDone.includes(i.exerciseId)).length;
 
   const sectionProgress = (key: "warmup" | "cardio", items: unknown[]) =>
     stageState[key].status !== "open" ? 1 : items.length === 0 ? 0 : stageState[key].doneItems.length / items.length;
@@ -228,11 +254,11 @@ export function TrainingPage() {
           ? sectionProgress("warmup", warmupItems)
           : s === "cardio"
             ? sectionProgress("cardio", afterItems)
-            : stageState.stretch.status !== "open"
+            : stageState[s].status !== "open"
               ? 1
               : stretchItems.length === 0
                 ? 0
-                : stretchDoneCount / stretchItems.length,
+                : (s === "prestretch" ? preStretchDoneCount : stretchDoneCount) / stretchItems.length,
   }));
 
   const goToStage = (next: Stage | null) => {
@@ -240,7 +266,7 @@ export function TrainingPage() {
     window.scrollTo({ top: 0 });
   };
 
-  const skipSection = (key: "warmup" | "cardio" | "stretch") => {
+  const skipSection = (key: "warmup" | "prestretch" | "cardio" | "stretch") => {
     updateStageState((s) => {
       const section: SectionState = { ...s[key], status: s[key].status === "done" ? "done" : "skipped" };
       return { ...s, [key]: section };
@@ -349,6 +375,8 @@ export function TrainingPage() {
   const typicalReps = exercises[0]?.repRangeMax ?? exercises[0]?.targetReps ?? null;
 
   const logSet = async (entry: PlanDiaryExerciseDto, values: SetValues, setNumber: number) => {
+    const inPair = !!supersetPair && (entry.id === supersetPair.anchor.id || entry.id === supersetPair.partner.id);
+    const dropsetActiveFor = (e: PlanDiaryExerciseDto) => dropset.active && dropset.entryId === e.id;
     const tapKey = `${entry.id}:${setNumber}`;
     const nowMs = Date.now();
     const lastTap = lastLogTapRef.current;
@@ -369,7 +397,8 @@ export function TrainingPage() {
           weightKg: values.weightKg,
           rir: values.rir,
           note: values.note?.trim() || null,
-          supersetGroupId: superset.active ? superset.groupId : null,
+          // Supersets and drop sets share the log field: a group id marks sets that belong together.
+          supersetGroupId: inPair ? superset.groupId : dropsetActiveFor(entry) ? dropset.groupId : null,
         },
         exerciseName: entry.exerciseName,
       });
@@ -383,30 +412,42 @@ export function TrainingPage() {
       }
       unlockAudio();
 
-      const nextOpenPartnerIndex = superset.active
-        ? exercises.findIndex((e, i) => i > currentIndex && !isComplete(e) && doneFor(e).length < setNumber)
-        : -1;
-      const previousOpenPartnerIndex = superset.active
-        ? exercises.findIndex((e, i) => i < currentIndex && !isComplete(e) && doneFor(e).length === setNumber)
-        : -1;
+      const wasLastSet = doneFor(entry).length + 1 >= setCountFor(entry);
+      const startTimer = (seconds: number, label: string) => {
+        if (autoStartEnabled) startRestTimer(seconds, label);
+      };
+      const goTo = (index: number) => withViewTransition(() => setManualIndex(index));
 
-      if (nextOpenPartnerIndex !== -1) {
-        withViewTransition(() => setManualIndex(nextOpenPartnerIndex));
-        return;
+      // Superset: A → B without a pause, then back to A with the superset pause — never on to a third
+      // exercise. A partner that is already finished (fewer sets) just ends the pairing for the rest.
+      const pair = inPair ? supersetPair : null;
+      if (pair) {
+        const member = (e: PlanDiaryExerciseDto) => ({
+          id: e.id,
+          done: doneFor(e).length + (e.id === entry.id ? 1 : 0),
+          total: setCountFor(e),
+        });
+        const step = stepAfterPairedSet(entry.id, setNumber, member(pair.anchor), member(pair.partner));
+        if (step.kind === "switch") {
+          if (step.rest) startTimer(supersetRestSeconds, `Supersatz · Runde ${setNumber} fertig`);
+          goTo(exercises.findIndex((e) => e.id === step.id));
+          return;
+        }
+        startTimer(supersetRestSeconds, `Supersatz · Runde ${setNumber} fertig`);
+        setSuperset({ active: false, groupId: null, anchorId: null, partnerId: null });
+      } else {
+        // Drop set: short pause between the stages, the normal pause once its last set is done.
+        const dropStage = dropsetActiveFor(entry) && !wasLastSet;
+        startTimer(
+          dropStage ? dropsetRestSeconds : (entry.restSeconds ?? autoStartSeconds),
+          dropStage ? `${entry.exerciseName} · Drop ${setNumber} fertig` : `${entry.exerciseName} · Satz ${setNumber} fertig`,
+        );
       }
 
-      if (autoStartEnabled) {
-        startRestTimer(entry.restSeconds ?? autoStartSeconds, `${entry.exerciseName} · Satz ${setNumber} fertig`);
-      }
-
-      if (previousOpenPartnerIndex !== -1 && !isComplete(exercises[previousOpenPartnerIndex])) {
-        withViewTransition(() => setManualIndex(previousOpenPartnerIndex));
-        return;
-      }
-
-      if (doneFor(entry).length + 1 >= setCountFor(entry)) {
+      if (wasLastSet) {
+        if (dropsetActiveFor(entry)) setDropset({ active: false, groupId: null, entryId: null });
         const next = exercises.findIndex((e, i) => i !== currentIndex && !isComplete(e));
-        withViewTransition(() => setManualIndex(next === -1 ? currentIndex : next));
+        goTo(next === -1 ? currentIndex : next);
         if (next === -1) setManualStage("kraft");
       }
     } finally {
@@ -424,8 +465,31 @@ export function TrainingPage() {
     }
   };
 
-  const toggleSuperset = () =>
-    setSuperset((s) => (s.active ? { active: false, groupId: null } : { active: true, groupId: crypto.randomUUID() }));
+  const toggleSuperset = () => {
+    if (!current) return;
+    if (currentInSuperset) {
+      setSuperset({ active: false, groupId: null, anchorId: null, partnerId: null });
+      return;
+    }
+    // Partner: the next unfinished exercise after this one, else the first other unfinished one.
+    const open = exercises.filter((e) => e.id !== current.id && !isComplete(e));
+    const partner = open.find((e) => exercises.indexOf(e) > currentIndex) ?? open[0];
+    if (!partner) return;
+    setDropset({ active: false, groupId: null, entryId: null });
+    setSuperset({ active: true, groupId: crypto.randomUUID(), anchorId: current.id, partnerId: partner.id });
+  };
+
+  const changeSupersetPartner = (partnerId: string) => setSuperset((s) => (s.active ? { ...s, partnerId } : s));
+
+  const toggleDropset = () => {
+    if (!current) return;
+    if (dropsetActive) {
+      setDropset({ active: false, groupId: null, entryId: null });
+      return;
+    }
+    setSuperset({ active: false, groupId: null, anchorId: null, partnerId: null });
+    setDropset({ active: true, groupId: crypto.randomUUID(), entryId: current.id });
+  };
 
   const setStatus = (next: "ACTIVE" | "PAUSED" | "COMPLETED" | "ABORTED") =>
     session ? updateStatus.mutateAsync({ clientId: session.clientId, status: next }) : Promise.resolve();
@@ -440,8 +504,8 @@ export function TrainingPage() {
       kcal: burnProfile ? setsKcal(burnProfile, sessionLogs) : null,
       records: recordCount.current,
       cardioMinutes: stageState.warmup.minutesLogged + stageState.cardio.minutesLogged,
-      stretchDone: stretchDoneCount,
-      stretchTotal: stretchItems.length,
+      stretchDone: stretchDoneCount + preStretchDoneCount,
+      stretchTotal: stretchItems.length * 2,
       aborted,
     };
     setLeaveOpen(false);
@@ -606,8 +670,8 @@ export function TrainingPage() {
   const detailLeft =
     stage === "kraft"
       ? `Kraft · Übung ${currentIndex + 1} von ${exercises.length}`
-      : stage === "stretch"
-        ? `Dehnen · ${stretchDoneCount} von ${stretchItems.length}`
+      : stage === "stretch" || stage === "prestretch"
+        ? `${STAGE_LABELS[stage]} · ${stage === "stretch" ? stretchDoneCount : preStretchDoneCount} von ${stretchItems.length}`
         : STAGE_LABELS[stage];
   const nextLabel = nextStage ? `Weiter: ${STAGE_LABELS[nextStage]}` : null;
 
@@ -688,7 +752,17 @@ export function TrainingPage() {
               setCount={setCountFor(current)}
               disabled={paused}
               busy={busy}
-              supersetActive={superset.active}
+              supersetActive={currentInSuperset}
+              supersetWith={
+                supersetPair && currentInSuperset
+                  ? (current.id === supersetPair.anchor.id ? supersetPair.partner : supersetPair.anchor).exerciseName
+                  : null
+              }
+              supersetPartnerId={supersetPair && current.id === supersetPair.anchor.id ? supersetPair.partner.id : null}
+              supersetPartnerOptions={exercises.filter((e) => e.id !== current.id && !isComplete(e)).map((e) => ({ id: e.id, name: e.exerciseName }))}
+              onSupersetPartnerChange={changeSupersetPartner}
+              dropsetActive={dropsetActive}
+              onToggleDropset={toggleDropset}
               onSetCountChange={(count) => setSetCounts((c) => ({ ...c, [current.id]: count }))}
               onLogSet={(values, setNumber) => void logSet(current, values, setNumber)}
               onUndoSet={(log) => void undoSet(log)}
@@ -740,32 +814,39 @@ export function TrainingPage() {
           </>
         )}
 
-        {stage === "stretch" && (
+        {(stage === "prestretch" || stage === "stretch") && (
           <Card>
-            <Badge tone="magenta">Dehnplan {title}</Badge>
-            <h1 className="mt-2 text-h1-focus text-text">Dehnen</h1>
+            <Badge tone="magenta">{stage === "prestretch" ? "Vor dem Training" : "Nach dem Training"} · {title}</Badge>
+            <h1 className="mt-2 text-h1-focus text-text">{STAGE_LABELS[stage]}</h1>
             <p className="mt-1 text-small text-text-subtle">
-              Für die heute trainierten Muskeln. Ruhig atmen, nicht federn. „Halten“ startet den Timer.
+              {stage === "prestretch"
+                ? "Kurz und locker für die Muskeln, die gleich arbeiten. "
+                : "Für die heute trainierten Muskeln. "}
+              Ruhig atmen, nicht federn. „Halten“ startet den Timer.
             </p>
             <div className="mt-4">
-              <StretchList items={stretchItems} storageKey={stretchStorageKey(session.clientId)} onDoneChange={setStretchDone} />
+              <StretchList
+                key={stage}
+                items={stretchItems}
+                storageKey={stage === "prestretch" ? preStretchStorageKey(session.clientId) : stretchStorageKey(session.clientId)}
+                onDoneChange={stage === "prestretch" ? setPreStretchDone : setStretchDone}
+              />
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <Button variant="ghost" size="lg" onClick={() => skipSection("stretch")}>
+              <Button variant="ghost" size="lg" onClick={() => skipSection(stage)}>
                 Überspringen
               </Button>
               <Button
                 variant="secondary"
                 size="lg"
-                onClick={() =>
-                  updateStageState((s) => {
-                    const stretch: SectionState = { ...s.stretch, status: "done" };
-                    return { ...s, stretch };
-                  })
-                }
-                disabled={stageState.stretch.status === "done"}
+                onClick={() => {
+                  const key = stage;
+                  updateStageState((s) => ({ ...s, [key]: { ...s[key], status: "done" } as SectionState }));
+                  if (key === "prestretch") goToStage(nextStage);
+                }}
+                disabled={stageState[stage].status === "done"}
               >
-                {stageState.stretch.status === "done" ? "Dehnen erledigt" : "Dehnen abschließen"}
+                {stageState[stage].status === "done" ? "Dehnen erledigt" : "Dehnen abschließen"}
               </Button>
             </div>
           </Card>

@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
   generateStretchPlanRequestSchema,
-  stretchFocusMuscleSchema,
+  stretchChoiceSchema,
   trainingPhaseSchema,
 } from "@fitnesstracker/shared";
 import { HttpError } from "../../errors/httpErrors.js";
@@ -14,7 +14,10 @@ import {
 } from "./stretching.service.js";
 
 const planQuerySchema = z.object({ phase: trainingPhaseSchema.optional() });
-const dailyQuerySchema = z.object({ focus: stretchFocusMuscleSchema.optional() });
+const dailyQuerySchema = z.object({
+  focus: stretchChoiceSchema.optional(),
+  shuffle: z.coerce.number().int().min(0).max(1000).optional(),
+});
 
 export default async function stretchingRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
@@ -43,7 +46,7 @@ export default async function stretchingRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get("/stretching/daily", async (request, reply) => {
-    const { focus } = dailyQuerySchema.parse(request.query);
-    return reply.send(await getDailyStretch(fastify.prisma, request.user.sub, focus ?? null));
+    const { focus, shuffle } = dailyQuerySchema.parse(request.query);
+    return reply.send(await getDailyStretch(fastify.prisma, request.user.sub, focus ?? "all", shuffle ?? 0));
   });
 }

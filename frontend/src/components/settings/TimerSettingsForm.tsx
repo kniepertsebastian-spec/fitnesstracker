@@ -14,6 +14,10 @@ export function TimerSettingsForm() {
     autoStartEnabled,
     autoStartSeconds,
     setAutoStart,
+    supersetRestSeconds,
+    setSupersetRestSeconds,
+    dropsetRestSeconds,
+    setDropsetRestSeconds,
     soundEnabled,
     setSoundEnabled,
     soundId,
@@ -56,6 +60,35 @@ export function TimerSettingsForm() {
             inputMode="numeric"
             value={autoStartSeconds}
             onChange={(e) => setAutoStart(autoStartEnabled, Number(e.target.value))}
+            className="w-28"
+          />
+        )}
+      </Field>
+
+      <Field label="Supersatz-Pause (Sekunden)" hint="nach einer Runde mit beiden Übungen">
+        {(p) => (
+          <Input
+            {...p}
+            type="number"
+            min={5}
+            max={900}
+            inputMode="numeric"
+            value={supersetRestSeconds}
+            onChange={(e) => setSupersetRestSeconds(Number(e.target.value))}
+            className="w-28"
+          />
+        )}
+      </Field>
+      <Field label="Dropsatz-Pause (Sekunden)" hint="zwischen den Stufen, danach normale Satzpause">
+        {(p) => (
+          <Input
+            {...p}
+            type="number"
+            min={5}
+            max={300}
+            inputMode="numeric"
+            value={dropsetRestSeconds}
+            onChange={(e) => setDropsetRestSeconds(Number(e.target.value))}
             className="w-28"
           />
         )}

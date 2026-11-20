@@ -1,6 +1,6 @@
 import { muscleLabel } from "../../lib/exerciseLabels";
 import { useEffect, useState } from "react";
-import { BookOpen, ChevronDown, Link2, Plus, Repeat2 } from "lucide-react";
+import { BookOpen, ChevronDown, Link2, Plus, Repeat2, TrendingDown } from "lucide-react";
 import type { ExerciseDto, PlanDiaryExerciseDto, TrainingPhase } from "@fitnesstracker/shared";
 import type { LocalWorkoutLog } from "../../offline/db";
 import { formatKg, formatLastTime } from "../../lib/trainingSets";
@@ -8,7 +8,7 @@ import { DEFAULT_BAR_KG, platesPerSide } from "../../lib/plates";
 import { warmupSets } from "../../lib/warmup";
 import { KcalEstimate } from "../workoutLog/KcalEstimate";
 import { CalcInfoButton } from "../info/CalcInfoButton";
-import { Badge, Button, Card, Input, SegmentedControl, SetCheck, Stepper, cn } from "../ui";
+import { Badge, Button, Card, Input, Select, SegmentedControl, SetCheck, Stepper, cn } from "../ui";
 import type { SetCheckState } from "../ui";
 import { formatPrescription } from "../../lib/planPrescription";
 
@@ -41,6 +41,14 @@ interface Props {
   disabled: boolean;
   busy: boolean;
   supersetActive: boolean;
+  // Name of the other exercise of the active superset, null when none is active here.
+  supersetWith: string | null;
+  // Set on the exercise the superset was started on: the partner can be changed from there.
+  supersetPartnerId: string | null;
+  supersetPartnerOptions: { id: string; name: string }[];
+  onSupersetPartnerChange: (partnerId: string) => void;
+  dropsetActive: boolean;
+  onToggleDropset: () => void;
   onSetCountChange: (count: number) => void;
   onLogSet: (values: SetValues, setNumber: number) => void;
   onUndoSet: (log: LocalWorkoutLog) => void;
@@ -74,9 +82,23 @@ function loadStep(exerciseName: string): number {
   }
 }
 
-function initialValues(entry: PlanDiaryExerciseDto, done: LocalWorkoutLog[], previous: LocalWorkoutLog[]): SetValues {
+// A drop set continues with about 20 % less weight, rounded to the usual 2.5 kg steps.
+const DROP_FACTOR = 0.8;
+
+function droppedWeight(kg: number): number {
+  return Math.max(0, Math.round((kg * DROP_FACTOR) / 2.5) * 2.5);
+}
+
+function initialValues(
+  entry: PlanDiaryExerciseDto,
+  done: LocalWorkoutLog[],
+  previous: LocalWorkoutLog[],
+  dropset = false,
+): SetValues {
   const last = done.at(-1);
-  if (last) return { weightKg: last.weightKg, reps: last.reps, rir: null, note: null };
+  if (last) {
+    return { weightKg: dropset ? droppedWeight(last.weightKg) : last.weightKg, reps: last.reps, rir: null, note: null };
+  }
   const p = entry.progression;
   const prev = previous[0];
   return {
@@ -101,6 +123,12 @@ export function ExerciseCard({
   disabled,
   busy,
   supersetActive,
+  supersetWith,
+  supersetPartnerId,
+  supersetPartnerOptions,
+  onSupersetPartnerChange,
+  dropsetActive,
+  onToggleDropset,
   onSetCountChange,
   onLogSet,
   onUndoSet,
@@ -108,7 +136,7 @@ export function ExerciseCard({
   onOpenTechnique,
   onSwap,
 }: Props) {
-  const [values, setValues] = useState<SetValues>(() => initialValues(entry, done, previous));
+  const [values, setValues] = useState<SetValues>(() => initialValues(entry, done, previous, dropsetActive));
   const [weightStep, setWeightStep] = useState(() => loadStep(entry.exerciseName));
 
   useEffect(() => {
@@ -127,9 +155,9 @@ export function ExerciseCard({
 
   // After a set is logged (or undone) the next one starts from the last logged values.
   useEffect(() => {
-    setValues(initialValues(entry, done, previous));
+    setValues(initialValues(entry, done, previous, dropsetActive));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [done.length, entry.id]);
+  }, [done.length, entry.id, dropsetActive]);
 
   const [warmupOpen, setWarmupOpen] = useState(false);
   const [, rerender] = useState(0);
@@ -403,12 +431,54 @@ export function ExerciseCard({
         >
           {supersetActive ? "Supersatz aktiv" : "Supersatz"}
         </Button>
+        <Button
+          variant={dropsetActive ? "selected" : "dashed"}
+          iconLeft={<TrendingDown size={16} aria-hidden />}
+          aria-pressed={dropsetActive}
+          onClick={onToggleDropset}
+        >
+          {dropsetActive ? "Dropsatz aktiv" : "Dropsatz"}
+        </Button>
         {setCount > Math.max(1, done.length) && (
           <Button variant="ghost" size="sm" className="ml-auto" onClick={() => onSetCountChange(setCount - 1)}>
             Letzten Satz entfernen
           </Button>
         )}
       </div>
+
+      {supersetActive && supersetWith && (
+        <div className="mt-3 rounded-xl border border-border bg-surface-2 p-3 text-small text-text-2">
+          <p>
+            Supersatz mit <strong className="text-text">{supersetWith}</strong>: nach jedem Satz wechselst du die
+            Übung, die Pause kommt erst nach der Runde.
+          </p>
+          {supersetPartnerId !== null && (
+            <label className="mt-2 block text-xs text-text-subtle">
+              Partner
+              <Select
+                value={supersetPartnerId}
+                onChange={(e) => onSupersetPartnerChange(e.target.value)}
+                className="mt-1"
+              >
+                {!supersetPartnerOptions.some((o) => o.id === supersetPartnerId) && (
+                  <option value={supersetPartnerId}>{supersetWith}</option>
+                )}
+                {supersetPartnerOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          )}
+        </div>
+      )}
+      {dropsetActive && (
+        <p className="mt-3 rounded-xl border border-border bg-surface-2 p-3 text-small text-text-2">
+          Dropsatz: nach jedem Satz kurze Pause, das Gewicht wird mit etwa −20 % vorgeschlagen. Mit „Satz“ hängst du
+          eine weitere Stufe an.
+        </p>
+      )}
 
       {done.length > 0 && (
         <p className="mt-3 flex flex-wrap items-center gap-x-3 text-small">

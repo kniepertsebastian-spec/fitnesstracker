@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { fetchAnyExercise, goOffline, goOnline, login, openNav, registerTestUser, syncPill } from "./support";
+import { fetchAnyExercise, goOffline, goOnline, login, openNav, registerTestUser, skipPreStretchIfShown, syncPill } from "./support";
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:3000/api";
 
@@ -49,7 +49,8 @@ test.describe("Training mit Cardio (F9)", () => {
     await expect(syncPill(page)).toHaveText("Offline");
     await save.click();
     await expect(syncPill(page)).toHaveText("Offline · 1 ausstehend");
-    // Warm-up done → the view continues with the strength part.
+    // Warm-up done → the view continues with the strength part (after the stretching, if planned).
+    await skipPreStretchIfShown(page);
     await expect(page.getByRole("button", { name: "Satz 1 abhaken" }).first()).toBeVisible();
 
     await goOnline(page, context);

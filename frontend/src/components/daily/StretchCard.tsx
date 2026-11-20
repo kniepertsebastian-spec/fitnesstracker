@@ -1,19 +1,26 @@
 import { muscleLabel } from "../../lib/exerciseLabels";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Play, SkipForward, Square } from "lucide-react";
-import { STRETCH_FOCUS_LABELS, STRETCH_FOCUS_MUSCLES, type StretchFocusMuscle, type StretchItemDto } from "@fitnesstracker/shared";
+import { Check, Play, Shuffle, SkipForward, Square } from "lucide-react";
+import { STRETCH_FOCUS_LABELS, STRETCH_FOCUS_MUSCLES, type StretchChoice, type StretchItemDto } from "@fitnesstracker/shared";
 import { useDailyStretch } from "../../hooks/useStretching";
-import { loadStretchDone, loadStretchFocus, saveStretchFocus, stretchDoneKey } from "../../lib/stretchStorage";
+import {
+  loadStretchDone,
+  loadStretchFocus,
+  loadStretchShuffle,
+  saveStretchFocus,
+  saveStretchShuffle,
+  stretchDoneKey,
+} from "../../lib/stretchStorage";
 import { Button, Card, ProgressBar, SegmentedControl, Skeleton, cn } from "../ui";
 
-const FOCUS_OPTIONS = [
-  { value: "", label: "Ganzkörper" },
+const FOCUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "auto", label: "Passend zur Challenge" },
+  { value: "all", label: "Ganzkörper" },
   ...STRETCH_FOCUS_MUSCLES.map((m) => ({ value: m as string, label: STRETCH_FOCUS_LABELS[m] })),
 ];
 
-function Routine({ items, focus }: { items: StretchItemDto[]; focus: StretchFocusMuscle | null }) {
-  const storageKey = stretchDoneKey(focus);
+function Routine({ items, storageKey }: { items: StretchItemDto[]; storageKey: string }) {
   const [done, setDone] = useState<string[]>(() => loadStretchDone(storageKey));
   const [activeId, setActiveId] = useState<string | null>(null);
   const [remaining, setRemaining] = useState(0);
@@ -156,13 +163,20 @@ function Routine({ items, focus }: { items: StretchItemDto[]; focus: StretchFocu
 // Daily stretch routine: pick a focus (default: full body), get a short routine for it, tick it
 // off or run it through with per-exercise countdowns. Same routine all day.
 export function StretchCard() {
-  const [focus, setFocus] = useState<StretchFocusMuscle | null>(loadStretchFocus);
-  const { data, isLoading } = useDailyStretch(focus);
+  const [choice, setChoice] = useState<StretchChoice>(loadStretchFocus);
+  const [shuffle, setShuffle] = useState<number>(loadStretchShuffle);
+  const { data, isLoading } = useDailyStretch(choice, shuffle);
 
   const changeFocus = (value: string) => {
-    const next = STRETCH_FOCUS_MUSCLES.find((m) => m === value) ?? null;
-    setFocus(next);
+    const next = (FOCUS_OPTIONS.some((o) => o.value === value) ? value : "auto") as StretchChoice;
+    setChoice(next);
     saveStretchFocus(next);
+  };
+
+  const reshuffle = () => {
+    const next = shuffle + 1;
+    setShuffle(next);
+    saveStretchShuffle(next);
   };
 
   return (
@@ -175,7 +189,19 @@ export function StretchCard() {
       }
     >
       <div className="mb-4 max-w-full">
-        <SegmentedControl label="Fokus der Dehnroutine" value={focus ?? ""} onChange={changeFocus} options={FOCUS_OPTIONS} />
+        <SegmentedControl label="Fokus der Dehnroutine" value={choice} onChange={changeFocus} options={FOCUS_OPTIONS} />
+      </div>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="min-w-0 text-small text-text-subtle">
+          {choice === "auto"
+            ? data?.muscles && data.muscles.length > 0
+              ? `Passend zur Challenge: ${data.muscles.map((m) => STRETCH_FOCUS_LABELS[m as keyof typeof STRETCH_FOCUS_LABELS] ?? m).join(", ")}`
+              : "Ganzkörper — heute gibt es keine passende Challenge."
+            : "Zufällige Auswahl für heute."}
+        </p>
+        <Button size="sm" variant="ghost" iconLeft={<Shuffle size={14} aria-hidden />} onClick={reshuffle}>
+          Neu mischen
+        </Button>
       </div>
 
       {isLoading ? (
@@ -187,7 +213,7 @@ export function StretchCard() {
             : "Keine passenden Dehnübungen gefunden."}
         </p>
       ) : (
-        <Routine key={focus ?? "all"} items={data.items} focus={focus} />
+        <Routine key={`${choice}:${shuffle}`} items={data.items} storageKey={stretchDoneKey(choice, shuffle)} />
       )}
     </Card>
   );

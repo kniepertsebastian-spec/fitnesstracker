@@ -3,6 +3,10 @@ import { persist } from "zustand/middleware";
 import { clearCustomSound, dataUrlToBlob, playTimerEndSound, saveCustomSound, type TimerSoundId } from "../lib/timerSound";
 
 const DEFAULT_AUTO_START_SECONDS = 90;
+// Rest after a finished superset round (both exercises done), and between the stages of a drop set
+// (weight is reduced and the set continues right away, so the pause is short).
+const DEFAULT_SUPERSET_REST_SECONDS = 90;
+const DEFAULT_DROPSET_REST_SECONDS = 15;
 
 interface TimerState {
   remainingSeconds: number;
@@ -19,6 +23,8 @@ interface TimerState {
   // synced through the backend.
   autoStartEnabled: boolean;
   autoStartSeconds: number;
+  supersetRestSeconds: number;
+  dropsetRestSeconds: number;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
   soundId: TimerSoundId;
@@ -39,6 +45,8 @@ interface TimerState {
   resume: () => void;
   reset: () => void;
   setAutoStart: (enabled: boolean, seconds?: number) => void;
+  setSupersetRestSeconds: (seconds: number) => void;
+  setDropsetRestSeconds: (seconds: number) => void;
   setSoundEnabled: (enabled: boolean) => void;
   setVibrationEnabled: (enabled: boolean) => void;
   // Recomputes remainingSeconds from `endsAt` immediately instead of waiting for the next
@@ -90,6 +98,8 @@ export const useTimerStore = create<TimerState>()(
         endsAt: null,
         autoStartEnabled: true,
         autoStartSeconds: DEFAULT_AUTO_START_SECONDS,
+        supersetRestSeconds: DEFAULT_SUPERSET_REST_SECONDS,
+        dropsetRestSeconds: DEFAULT_DROPSET_REST_SECONDS,
         soundEnabled: true,
         vibrationEnabled: true,
         soundId: "mp3" as TimerSoundId,
@@ -147,6 +157,13 @@ export const useTimerStore = create<TimerState>()(
           });
         },
 
+        setSupersetRestSeconds: (seconds) => {
+          if (Number.isFinite(seconds) && seconds > 0) set({ supersetRestSeconds: Math.round(seconds) });
+        },
+        setDropsetRestSeconds: (seconds) => {
+          if (Number.isFinite(seconds) && seconds > 0) set({ dropsetRestSeconds: Math.round(seconds) });
+        },
+
         setSoundEnabled: (enabled) => set({ soundEnabled: enabled }),
         setVibrationEnabled: (enabled) => set({ vibrationEnabled: enabled }),
 
@@ -192,6 +209,8 @@ export const useTimerStore = create<TimerState>()(
       partialize: (state) => ({
         autoStartEnabled: state.autoStartEnabled,
         autoStartSeconds: state.autoStartSeconds,
+        supersetRestSeconds: state.supersetRestSeconds,
+        dropsetRestSeconds: state.dropsetRestSeconds,
         soundEnabled: state.soundEnabled,
         vibrationEnabled: state.vibrationEnabled,
         soundId: state.soundId,

@@ -14,6 +14,7 @@ import {
   useRestorePlanBackup,
 } from "../../hooks/useAiPlanGenerator";
 import { PROVIDER_OPTIONS } from "../settings/AiKeyCard";
+import { GeminiKeyHelp } from "../settings/GeminiKeyHelp";
 import { Badge, Button, Callout, Card, Skeleton, Toggle } from "../ui";
 import { ColdStartModal } from "./ColdStartModal";
 import { PlanDraftPreview } from "./PlanDraftPreview";
@@ -116,6 +117,7 @@ export function AiPlanGeneratorCard({ phase }: { phase: TrainingPhase }) {
           Schlüssel in den Einstellungen
         </Link>
       </p>
+      {!settings.hasApiKey && <GeminiKeyHelp compact />}
 
       {!draft && (
         <div className="mt-3 flex flex-col gap-2">

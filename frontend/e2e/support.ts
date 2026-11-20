@@ -141,3 +141,15 @@ export async function serverWorkoutLogs(
   const body = await res.json();
   return body.items;
 }
+
+// The focus mode now opens with "Dehnen davor" whenever the day has a stretch plan (the catalog the
+// E2E backend runs with may or may not have stretches for the test exercise). Skips it so the
+// scenario reaches the strength part either way.
+export async function skipPreStretchIfShown(page: Page) {
+  const preStretch = page.getByRole("heading", { name: "Dehnen davor" });
+  const strength = page.getByRole("button", { name: /Satz 1 abhaken/ }).first();
+  await preStretch.or(strength).first().waitFor();
+  if (await preStretch.isVisible()) {
+    await page.getByRole("button", { name: "Überspringen" }).click();
+  }
+}

@@ -86,6 +86,19 @@ export function pickStretchesForMuscles(
   return picked;
 }
 
+// Stretches that fit the day's challenge exercises: the muscles they load (most-loaded first, at most
+// four so a three-exercise challenge does not spread over the whole body) decide the picks.
+const CHALLENGE_MUSCLES = 4;
+
+export function pickStretchesForChallenge(
+  candidates: StretchCandidate[],
+  exercises: Array<{ primaryMuscles: string[]; secondaryMuscles: string[] }>,
+  seed: string,
+): { muscles: string[]; picked: StretchCandidate[] } {
+  const muscles = rankMuscles(exercises).slice(0, CHALLENGE_MUSCLES);
+  return { muscles, picked: pickStretchesForMuscles(candidates, muscles, seed) };
+}
+
 export function pickDailyStretches(
   candidates: StretchCandidate[],
   focus: string | null,

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { fetchAnyExercise, login, registerTestUser } from "./support";
+import { fetchAnyExercise, login, registerTestUser, skipPreStretchIfShown } from "./support";
 
 const API_URL = process.env.E2E_API_URL ?? "http://localhost:3000/api";
 
@@ -57,6 +57,7 @@ test.describe("Installierbarkeit", () => {
 
     // A cold launch from the home-screen icon: full page load, the session cookie signs in.
     await page.goto("/training?start=1");
+    await skipPreStretchIfShown(page);
     await expect(page.getByRole("heading", { name: exercise.name })).toBeVisible();
     await expect.poll(() => new URL(page.url()).search).toBe("");
     await expect.poll(async () => (await openSession())?.clientId ?? null).not.toBeNull();
