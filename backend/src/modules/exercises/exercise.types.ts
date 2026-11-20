@@ -6,7 +6,10 @@ export function toExerciseDto(exercise: Exercise): ExerciseDto {
   return {
     id: exercise.id,
     name: exercise.nameDe ?? exercise.name,
-    description: exercise.description,
+    nameEn: exercise.name,
+    // A German name goes with the German description when there is one; otherwise the stored text.
+    description: exercise.nameDe && exercise.descriptionDe ? exercise.descriptionDe : exercise.description,
+    descriptionLang: exercise.descriptionDe && exercise.nameDe ? "de" : exercise.description ? (exercise.nameDe ? "en" : null) : null,
     videoUrl: exercise.videoUrl,
     imageUrls: toLocalImageUrls(exercise.imageUrls),
     equipment: exercise.equipment,

@@ -8,6 +8,7 @@ import { useAuthBootstrap } from "./hooks/useAuth";
 import { flushPendingMutations, initWorkoutLogSync } from "./offline/workoutLogSync";
 import { flushPendingSessionMutations, initWorkoutSessionSync } from "./offline/workoutSessionSync";
 import { refreshSyncCounts } from "./offline/syncCounts";
+import { initExerciseCatalogSync, syncExerciseCatalog } from "./offline/exerciseCatalog";
 import { flushPendingCardioLogs, initCardioLogSync } from "./offline/cardioLogSync";
 import { flushPlanOps, initPlanEditSync } from "./offline/planEditSync";
 import { initRestTimerPush } from "./lib/restTimerPush";
@@ -87,6 +88,11 @@ export function App() {
   }, [authStatus]);
   useEffect(() => initWorkoutLogSync(), []);
   useEffect(() => initWorkoutSessionSync(), []);
+  useEffect(() => initExerciseCatalogSync(), []);
+  // The offline copy of the exercise catalog is fetched as soon as someone is signed in.
+  useEffect(() => {
+    if (authStatus === "authenticated") void syncExerciseCatalog(true);
+  }, [authStatus]);
   useEffect(() => initCardioLogSync(), []);
   useEffect(() => initPlanEditSync(), []);
   useEffect(() => initRestTimerPush(), []);

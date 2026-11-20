@@ -127,9 +127,13 @@ export default defineConfig({
             handler: "CacheFirst",
             options: {
               cacheName: "exercise-images-cache",
+              // The whole catalog (about 1750 small WebP files) must fit: the "Übungen offline" package
+              // fills this cache ahead of time. The old limit of 250 entries for 30 days is why pictures
+              // went missing offline.
               expiration: {
-                maxEntries: 250,
-                maxAgeSeconds: 60 * 60 * 24 * 30,
+                maxEntries: 3000,
+                maxAgeSeconds: 60 * 60 * 24 * 365,
+                purgeOnQuotaError: true,
               },
               cacheableResponse: {
                 statuses: [0, 200],

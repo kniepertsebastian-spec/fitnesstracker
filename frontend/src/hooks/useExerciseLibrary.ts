@@ -1,15 +1,24 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateExerciseInput, UpdateExerciseInput } from "@fitnesstracker/shared";
-import {
-  createExerciseRequest,
-  deleteExerciseRequest,
-  getExerciseByIdRequest,
-  getExerciseFacetsRequest,
-  listExercisesRequest,
-  updateExerciseRequest,
-} from "../api/exercise.api";
+import { useEffect, useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { CreateExerciseInput, ExerciseDto, UpdateExerciseInput } from "@fitnesstracker/shared";
+import { createExerciseRequest, deleteExerciseRequest, getExerciseByIdRequest, updateExerciseRequest } from "../api/exercise.api";
+import { loadExerciseCatalog, syncExerciseCatalog } from "../offline/exerciseCatalog";
+import { catalogFacets, filterCatalog, type CatalogFilters } from "../lib/exerciseSearch";
 
-const PAGE_SIZE = 30;
+export const EXERCISE_CATALOG_KEY = ["exercise-catalog"];
+
+// The whole catalog, from the copy on the device (kept current in the background, see
+// offline/exerciseCatalog.ts). Everything that lists, searches or looks up exercises reads this, so it
+// works without a connection and without a request per keystroke.
+export function useExerciseCatalog() {
+  return useQuery({
+    queryKey: EXERCISE_CATALOG_KEY,
+    queryFn: () => loadExerciseCatalog(),
+    // The queryFn reads the local database itself, so it must run offline too.
+    networkMode: "always",
+    staleTime: 60_000,
+  });
+}
 
 export interface ExerciseLibraryFilters {
   search: string;
@@ -19,51 +28,55 @@ export interface ExerciseLibraryFilters {
 }
 
 export function useExerciseLibrary(filters: ExerciseLibraryFilters) {
-  return useInfiniteQuery({
-    queryKey: ["exercise-library", filters],
-    queryFn: ({ pageParam }) =>
-      listExercisesRequest({
-        search: filters.search || undefined,
-        muscleGroup: filters.muscleGroup || undefined,
-        equipment: filters.equipment || undefined,
-        includeInactive: filters.includeInactive,
-        page: pageParam,
-        pageSize: PAGE_SIZE,
-      }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage, allPages) => {
-      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
-      return loaded < lastPage.total ? allPages.length + 1 : undefined;
-    },
-  });
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useExerciseCatalog();
+  // Opening the library asks the server whether the catalog changed (a tiny request; an exercise made on
+  // another device a moment ago shows up right away instead of after the next scheduled sync).
+  useEffect(() => {
+    void syncExerciseCatalog(true).then((changed) => {
+      if (changed) void queryClient.invalidateQueries({ queryKey: EXERCISE_CATALOG_KEY });
+    });
+  }, [queryClient]);
+  const { search, muscleGroup, equipment, includeInactive } = filters;
+  const items = useMemo(
+    () => filterCatalog(data ?? [], { search, muscleGroup, equipment, includeInactive } satisfies CatalogFilters),
+    [data, search, muscleGroup, equipment, includeInactive],
+  );
+  return { items, total: items.length, isLoading };
 }
 
 export function useExerciseFacets() {
-  return useQuery({
-    queryKey: ["exercise-facets"],
-    queryFn: getExerciseFacetsRequest,
-    staleTime: Infinity,
-  });
+  const { data } = useExerciseCatalog();
+  return useMemo(() => (data ? catalogFacets(data) : undefined), [data]);
 }
 
+// One exercise: from the local catalog if it is there, from the server otherwise (e.g. an exercise created
+// on another device a moment ago).
 export function useExercise(id: string | undefined) {
-  return useQuery({
+  const { data: catalog } = useExerciseCatalog();
+  const local = useMemo(() => (id && catalog ? catalog.find((e) => e.id === id) : undefined), [id, catalog]);
+  const remote = useQuery({
     queryKey: ["exercise", id],
     queryFn: () => getExerciseByIdRequest(id as string),
-    enabled: !!id,
+    enabled: !!id && catalog !== undefined && !local,
   });
+  const data: ExerciseDto | undefined = local ?? remote.data;
+  return {
+    data,
+    isLoading: !!id && !data && (catalog === undefined || remote.isLoading),
+    isError: !data && remote.isError,
+  };
 }
 
-// Shared by all three mutations: a create/update/deactivate/delete changes what shows up in the
-// library, the facets (new muscle/equipment values), the detail page, and every exercise picker
-// elsewhere in the app (`useExercises()` in useWorkoutLogs.ts uses the plain "exercises" key).
+// Shared by all three mutations: a create/update/deactivate/delete changes the catalog, so the local copy
+// is refreshed from the server first and everything that reads it follows.
 function useInvalidateExerciseQueries() {
   const queryClient = useQueryClient();
   return () => {
-    queryClient.invalidateQueries({ queryKey: ["exercise-library"] });
-    queryClient.invalidateQueries({ queryKey: ["exercise-facets"] });
-    queryClient.invalidateQueries({ queryKey: ["exercise"] });
-    queryClient.invalidateQueries({ queryKey: ["exercises"] });
+    void syncExerciseCatalog(true).finally(() => {
+      void queryClient.invalidateQueries({ queryKey: EXERCISE_CATALOG_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["exercise"] });
+    });
   };
 }
 
@@ -78,8 +91,7 @@ export function useCreateExercise() {
 export function useUpdateExercise() {
   const invalidate = useInvalidateExerciseQueries();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UpdateExerciseInput }) =>
-      updateExerciseRequest(id, input),
+    mutationFn: ({ id, input }: { id: string; input: UpdateExerciseInput }) => updateExerciseRequest(id, input),
     onSuccess: invalidate,
   });
 }

@@ -7,6 +7,8 @@ import { ExerciseFormDialog } from "../components/exerciseLibrary/ExerciseFormDi
 import { Button, Card, EmptyState, FilterPills, Input, Skeleton, Toggle } from "../components/ui";
 import { useExerciseFacets, useExerciseLibrary } from "../hooks/useExerciseLibrary";
 
+const PAGE_SIZE = 40;
+
 export function ExerciseLibraryPage() {
   const [search, setSearch] = useState("");
   const [muscleGroup, setMuscleGroup] = useState("");
@@ -14,16 +16,13 @@ export function ExerciseLibraryPage() {
   const [includeInactive, setIncludeInactive] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: facets } = useExerciseFacets();
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useExerciseLibrary({
-    search,
-    muscleGroup,
-    equipment,
-    includeInactive,
-  });
-
-  const exercises = data?.pages.flatMap((page) => page.items) ?? [];
-  const total = data?.pages[0]?.total ?? 0;
+  const facets = useExerciseFacets();
+  // The catalog is searched on the device, so the whole list is there at once; it is shown in pieces
+  // only to keep the page light.
+  const [shown, setShown] = useState(PAGE_SIZE);
+  const { items, total, isLoading } = useExerciseLibrary({ search, muscleGroup, equipment, includeInactive });
+  const exercises = items.slice(0, shown);
+  const hasMore = items.length > shown;
 
   return (
     <AppShell>
@@ -38,9 +37,12 @@ export function ExerciseLibraryPage() {
         <Input
           type="search"
           aria-label="Übung suchen"
-          placeholder="Übung suchen…"
+          placeholder="Übung suchen (deutsch oder englisch)…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setShown(PAGE_SIZE);
+          }}
         />
         <FilterPills label="Muskelgruppe" options={facets?.muscleGroups ?? []} value={muscleGroup} onChange={setMuscleGroup} allLabel="Alle Muskeln" formatOption={muscleLabel} />
         <FilterPills label="Equipment" options={facets?.equipment ?? []} value={equipment} onChange={setEquipment} allLabel="Alle Geräte" formatOption={equipmentLabel} />
@@ -67,9 +69,9 @@ export function ExerciseLibraryPage() {
               <ExerciseCard key={exercise.id} exercise={exercise} />
             ))}
           </div>
-          {hasNextPage && (
-            <Button variant="ghost" fullWidth className="mt-4" disabled={isFetchingNextPage} onClick={() => fetchNextPage()}>
-              {isFetchingNextPage ? "Lädt…" : "Mehr laden"}
+          {hasMore && (
+            <Button variant="ghost" fullWidth className="mt-4" onClick={() => setShown((n) => n + PAGE_SIZE)}>
+              Mehr anzeigen
             </Button>
           )}
         </>

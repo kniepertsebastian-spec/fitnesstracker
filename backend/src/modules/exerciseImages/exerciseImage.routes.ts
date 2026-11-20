@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { getExerciseImage, isValidImagePath, mimeTypeFor, prefetchExerciseImages } from "./exerciseImage.js";
+import { WEB_IMAGE_WIDTH, getExerciseImage, getExerciseImageWebp, isValidImagePath, mimeTypeFor, prefetchExerciseImages } from "./exerciseImage.js";
 
 // Public on purpose: <img> tags can't send the access token, and these are the same public-domain
 // pictures anyone can see on GitHub. Only whitelisted paths are served (see exerciseImage.ts).
@@ -7,6 +7,14 @@ export default async function exerciseImageRoutes(fastify: FastifyInstance) {
   fastify.get("/exercise-images/*", async (request, reply) => {
     const relative = (request.params as { "*": string })["*"];
     if (!isValidImagePath(relative)) return reply.code(404).send({ message: "Not found" });
+    // `?w=600`: the small WebP version; falls back to the original if it cannot be made.
+    const wantsWebp = (request.query as { w?: string }).w === String(WEB_IMAGE_WIDTH);
+    if (wantsWebp) {
+      const webp = await getExerciseImageWebp(relative);
+      if (webp) {
+        return reply.header("Content-Type", "image/webp").header("Cache-Control", "public, max-age=31536000, immutable").send(webp);
+      }
+    }
     const image = await getExerciseImage(relative);
     if (!image) return reply.code(404).send({ message: "Not found" });
     return reply

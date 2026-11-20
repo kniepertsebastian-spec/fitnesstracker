@@ -5,6 +5,7 @@ import {
   createExercise,
   deleteExercise,
   getExerciseById,
+  getExerciseCatalog,
   getExerciseFacets,
   importExercisesFromSource,
   listExercises,
@@ -13,6 +14,8 @@ import {
 import { toExerciseDto } from "./exercise.types.js";
 import { listSourceNames } from "./sources/index.js";
 import { HttpError } from "../../errors/httpErrors.js";
+import { HEAVY_RATE_LIMIT } from "../../lib/rateLimits.js";
+import { getTranslationState, startDescriptionTranslation } from "./exerciseTranslation.service.js";
 
 const idParamSchema = z.object({ id: z.string().uuid() });
 const listQuerySchema = z.object({
@@ -31,6 +34,31 @@ export default async function exerciseRoutes(fastify: FastifyInstance) {
     const filters = listQuerySchema.parse(request.query);
     const { items, total } = await listExercises(fastify.prisma, request.user.sub, filters);
     return reply.send({ items: items.map(toExerciseDto), total });
+  });
+
+  // Every exercise the user can see, in one response, for the offline copy on the device. Send the
+  // `version` from the last answer back to skip the list when nothing changed.
+  fastify.get("/exercises/catalog", async (request, reply) => {
+    const { version } = z.object({ version: z.string().max(100).optional() }).parse(request.query);
+    const catalog = await getExerciseCatalog(fastify.prisma, request.user.sub, version);
+    if ("unchanged" in catalog) return reply.send({ version: catalog.version, unchanged: true });
+    return reply.send({ version: catalog.version, items: catalog.items.map(toExerciseDto) });
+  });
+
+  // Operator only: translate the English descriptions into German with the operator's own AI key.
+  fastify.get("/exercises/translate-descriptions", async (request, reply) => {
+    return reply.send(await getTranslationState(fastify.prisma, request.user.sub));
+  });
+
+  fastify.post("/exercises/translate-descriptions", HEAVY_RATE_LIMIT, async (request, reply) => {
+    try {
+      return reply.send(await startDescriptionTranslation(fastify.prisma, request.user.sub));
+    } catch (error) {
+      if (error instanceof HttpError) {
+        return reply.code(error.statusCode).send({ message: error.message });
+      }
+      throw error;
+    }
   });
 
   fastify.get("/exercises/sources", async (_request, reply) => {

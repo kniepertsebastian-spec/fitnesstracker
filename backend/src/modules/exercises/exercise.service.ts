@@ -130,8 +130,28 @@ async function assertCanModify(prisma: PrismaClient, userId: string, id: string)
 }
 
 export async function updateExercise(prisma: PrismaClient, userId: string, id: string, input: UpdateExerciseInput) {
-  await assertCanModify(prisma, userId, id);
-  return prisma.exercise.update({ where: { id }, data: input });
+  const existing = await assertCanModify(prisma, userId, id);
+  const { description, ...rest } = input;
+  // What the user sees (and edits) is the German text where there is one; that is what gets changed.
+  const editsGerman = description !== undefined && !!existing.nameDe && !!existing.descriptionDe;
+  return prisma.exercise.update({
+    where: { id },
+    data: { ...rest, ...(description !== undefined ? (editsGerman ? { descriptionDe: description } : { description }) : {}) },
+  });
+}
+
+// The whole catalog visible to the user, for the offline copy. The version changes with every added,
+// changed or removed exercise; a client that already has it gets no list.
+export async function getExerciseCatalog(prisma: PrismaClient, userId: string, knownVersion?: string) {
+  const where = visibleToUser(userId);
+  const [count, latest] = await Promise.all([
+    prisma.exercise.count({ where }),
+    prisma.exercise.aggregate({ where, _max: { updatedAt: true } }),
+  ]);
+  const version = `${count}-${latest._max.updatedAt?.getTime() ?? 0}`;
+  if (knownVersion === version) return { version, unchanged: true as const };
+  const items = await prisma.exercise.findMany({ where, orderBy: [{ nameDe: "asc" }, { name: "asc" }] });
+  return { version, items };
 }
 
 export async function deleteExercise(prisma: PrismaClient, userId: string, id: string) {

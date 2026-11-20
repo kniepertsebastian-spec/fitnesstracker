@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { WorkoutLogDto, WorkoutSessionDto } from "@fitnesstracker/shared";
+import type { ExerciseDto, WorkoutLogDto, WorkoutSessionDto } from "@fitnesstracker/shared";
 
 // `id` is null until the row's create mutation has synced and the server assigned a real id —
 // a set logged offline is fully usable (editable, deletable) before that happens, so the app
@@ -61,6 +61,9 @@ export interface CustomSoundRow {
   name: string;
 }
 
+// One exercise of the offline copy of the catalog, kept per account (custom exercises belong to one).
+export type LocalExercise = ExerciseDto & { accountId: string };
+
 class OfflineDb extends Dexie {
   workoutLogs!: Table<LocalWorkoutLog, string>;
   pendingMutations!: Table<PendingMutation, number>;
@@ -70,6 +73,9 @@ class OfflineDb extends Dexie {
   pendingCardioLogs!: Table<PendingCardioLog, number>;
   queryCache!: Table<{ key: string; value: string }, string>;
   customSounds!: Table<CustomSoundRow, string>;
+  exerciseCatalog!: Table<LocalExercise, string>;
+  // Small key/value rows, e.g. which catalog version an account has stored.
+  catalogMeta!: Table<{ key: string; value: string }, string>;
 
   constructor() {
     super("fitnesstracker-offline");
@@ -132,6 +138,13 @@ class OfflineDb extends Dexie {
           await tx.table(name).toCollection().modify(claim);
         }
       });
+
+    // Offline copy of the exercise catalog (names, descriptions, image addresses), so search, the exercise
+    // pickers and the technique sheet work without a connection.
+    this.version(9).stores({
+      exerciseCatalog: "id, accountId",
+      catalogMeta: "key",
+    });
   }
 }
 
