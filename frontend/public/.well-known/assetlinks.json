@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "de.pwatree.fitness",
+      "sha256_cert_fingerprints": [
+        "75:F8:B9:27:7F:98:91:0C:B9:0D:46:2E:19:92:24:C5:9D:8F:94:35:7B:3A:EF:0B:FB:0E:13:4C:54:B1:57:F5"
+      ]
+    }
+  }
+]

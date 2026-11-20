@@ -107,6 +107,15 @@ node scripts/check-frontend-css.mjs frontend/dist    # schlägt fehl, wenn die A
 docker build -f backend/Dockerfile -t fitnesstracker-backend:check .
 ```
 
+## Android-App (Trusted Web Activity um die PWA)
+
+```bash
+android/build.sh        # baut android/out/fitnesstracker.apk (nur Docker nötig), Details in android/README.md
+```
+
+Der Signierschlüssel liegt in `~/.fitnesstracker-android` (nicht ins Repo, sichern). Damit die App ohne Adressleiste
+startet, muss `/.well-known/assetlinks.json` (aus `frontend/public/.well-known/`) live sein und zum Schlüssel passen.
+
 ## Lokale Entwicklung (Postgres + Backend via Docker)
 
 ```bash
