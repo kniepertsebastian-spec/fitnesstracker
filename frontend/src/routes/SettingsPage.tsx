@@ -5,6 +5,8 @@ import { AccountCard } from "../components/settings/AccountCard";
 import { AiKeyCard } from "../components/settings/AiKeyCard";
 import { CalculationsCard } from "../components/settings/CalculationsCard";
 import { DataExportCard } from "../components/settings/DataExportCard";
+import { DescriptionTranslationCard } from "../components/settings/DescriptionTranslationCard";
+import { OfflineCatalogCard } from "../components/settings/OfflineCatalogCard";
 import { HealthImportCard } from "../components/settings/HealthImportCard";
 import { HealthSyncCard } from "../components/settings/HealthSyncCard";
 import { TimerSettingsCard } from "../components/settings/TimerSettingsCard";
@@ -19,6 +21,8 @@ export function SettingsPage() {
         <TimerSettingsCard />
         <PushReminderCard />
         <AiKeyCard />
+        <OfflineCatalogCard />
+        <DescriptionTranslationCard />
         <ActivityReportCard />
         <HealthImportCard />
         <HealthSyncCard />

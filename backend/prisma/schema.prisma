@@ -205,6 +205,9 @@ model Exercise {
   // Execution technique description. For imported exercises this is the source's
   // instructions joined into one text; edit freely afterwards.
   description      String?
+  // German description for catalog exercises with a German name, written by the operator's translation
+  // run (see exerciseTranslation.service.ts). `description` stays the English upstream text.
+  descriptionDe    String?
   // No free/open source used so far ships actual video — left for manual curation or a
   // future source adapter that provides one.
   videoUrl         String?

@@ -51,7 +51,10 @@ export function TechniqueSheet({
             {exercise.equipment && <Badge>{equipmentLabel(exercise.equipment)}</Badge>}
           </div>
           {exercise.description ? (
-            <p className="whitespace-pre-line text-body text-text-2">{exercise.description}</p>
+            <>
+              <p className="whitespace-pre-line text-body text-text-2">{exercise.description}</p>
+              {exercise.descriptionLang === "en" && <p className="mt-1 text-xs text-text-faint">Beschreibung noch auf Englisch.</p>}
+            </>
           ) : (
             <p className="text-small text-text-subtle">Keine Beschreibung vorhanden.</p>
           )}

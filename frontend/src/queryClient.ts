@@ -28,8 +28,6 @@ const PERSISTED_PREFIXES = new Set([
   "plan-exercises",
   "cardio",
   "stretching",
-  "exercise",
-  "exercises",
   "daily-challenge",
   "goals",
   "profile",

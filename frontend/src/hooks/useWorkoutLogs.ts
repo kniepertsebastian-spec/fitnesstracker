@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type { CreateWorkoutLogInput, UpdateWorkoutLogInput } from "@fitnesstracker/shared";
-import { listExercisesRequest } from "../api/exercise.api";
+import { useExerciseCatalog } from "./useExerciseLibrary";
 import { useAuthStore } from "../stores/authStore";
 import {
   createWorkoutLogLocal,
@@ -9,8 +10,6 @@ import {
   updateWorkoutLogLocal,
   WORKOUT_LOGS_QUERY_KEY,
 } from "../offline/workoutLogSync";
-
-const EXERCISES_KEY = ["exercises"];
 
 export function useWorkoutLogs() {
   const userId = useAuthStore((state) => state.user?.id);
@@ -25,22 +24,11 @@ export function useWorkoutLogs() {
   });
 }
 
+// Every active exercise the user can pick, from the local copy of the catalog (works offline).
 export function useExercises() {
-  return useQuery({
-    queryKey: EXERCISES_KEY,
-    queryFn: async () => {
-      // The API caps a page at 200 exercises; the library is larger, so fetch every page —
-      // otherwise everything alphabetically after the cut-off is missing from the pickers.
-      const first = await listExercisesRequest({ page: 1 });
-      const items = [...first.items];
-      for (let page = 2; items.length < first.total && page <= 20; page++) {
-        const next = await listExercisesRequest({ page });
-        if (next.items.length === 0) break;
-        items.push(...next.items);
-      }
-      return items;
-    },
-  });
+  const query = useExerciseCatalog();
+  const data = useMemo(() => query.data?.filter((e) => e.isActive), [query.data]);
+  return { ...query, data };
 }
 
 // The mutation functions below already update the query cache themselves (from the local Dexie

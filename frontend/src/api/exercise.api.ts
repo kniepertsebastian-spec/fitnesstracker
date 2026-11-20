@@ -1,5 +1,7 @@
 import type {
   CreateExerciseInput,
+  DescriptionTranslationState,
+  ExerciseCatalogDto,
   ExerciseDto,
   ExerciseFacetsDto,
   UpdateExerciseInput,
@@ -26,6 +28,19 @@ export function listExercisesRequest(params: ListExercisesParams = {}) {
 
   const qs = query.toString();
   return apiFetch<{ items: ExerciseDto[]; total: number }>(`/exercises${qs ? `?${qs}` : ""}`);
+}
+
+// The whole catalog for the offline copy; with the last `version` the answer is just `unchanged`.
+export function getExerciseCatalogRequest(version?: string) {
+  return apiFetch<ExerciseCatalogDto>(`/exercises/catalog${version ? `?version=${encodeURIComponent(version)}` : ""}`);
+}
+
+export function getDescriptionTranslationRequest() {
+  return apiFetch<DescriptionTranslationState & { isOperator: boolean }>("/exercises/translate-descriptions");
+}
+
+export function startDescriptionTranslationRequest() {
+  return apiFetch<DescriptionTranslationState & { isOperator: boolean }>("/exercises/translate-descriptions", { method: "POST" });
 }
 
 export function getExerciseByIdRequest(id: string) {

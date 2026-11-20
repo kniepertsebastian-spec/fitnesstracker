@@ -34,6 +34,9 @@
 		-Server
 	}
 
+	# The exercise catalog for the offline copy is one JSON response of several hundred KB.
+	encode zstd gzip
+
 	handle /api/* {
 		reverse_proxy backend:3000
 	}

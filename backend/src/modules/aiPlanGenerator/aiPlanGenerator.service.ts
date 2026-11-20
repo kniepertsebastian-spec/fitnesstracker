@@ -136,7 +136,7 @@ export async function getPlanPreferences(prisma: PrismaClient, userId: string): 
   return parsed.success ? parsed.data : null;
 }
 
-async function callModel(
+export async function callModel(
   prisma: PrismaClient,
   userId: string,
   systemPrompt: string,

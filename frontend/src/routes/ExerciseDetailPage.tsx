@@ -99,7 +99,10 @@ export function ExerciseDetailPage() {
           <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">
             <Card title="Beschreibung">
               {exercise.description ? (
-                <p className="whitespace-pre-line text-body text-text-2">{exercise.description}</p>
+                <>
+                  <p className="whitespace-pre-line text-body text-text-2">{exercise.description}</p>
+                  {exercise.descriptionLang === "en" && <p className="mt-1 text-xs text-text-faint">Beschreibung noch auf Englisch.</p>}
+                </>
               ) : (
                 <p className="text-small text-text-faint">Keine Beschreibung vorhanden.</p>
               )}

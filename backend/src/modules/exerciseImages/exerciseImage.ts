@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { env } from "../../config/env.js";
 import { fetchWithTimeout } from "../../lib/fetchWithTimeout.js";
+import { loadSharp } from "../../lib/loadSharp.js";
 
 // Exercise images come from the public free-exercise-db repository. The app never hands that
 // address to the browser: images are fetched once, kept on the server's disk (the uploads volume)
@@ -25,7 +26,9 @@ export function isValidImagePath(relative: string): boolean {
 export function toLocalImageUrl(url: string): string {
   if (!url.startsWith(UPSTREAM_BASE)) return url;
   const relative = url.slice(UPSTREAM_BASE.length);
-  return isValidImagePath(relative) ? `${PUBLIC_PREFIX}${relative}` : url;
+  // The smaller WebP version: a few KB instead of 60, which is what makes keeping all of them on the
+  // phone for offline use reasonable.
+  return isValidImagePath(relative) ? `${PUBLIC_PREFIX}${relative}?w=${WEB_IMAGE_WIDTH}` : url;
 }
 
 export function toLocalImageUrls(urls: string[]): string[] {
@@ -35,6 +38,41 @@ export function toLocalImageUrls(urls: string[]): string[] {
 export function mimeTypeFor(relative: string): string {
   const ext = relative.slice(relative.lastIndexOf(".") + 1).toLowerCase();
   return ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+}
+
+// The one size the app asks for. Fixed on purpose: a free width in the query would let anyone fill the disk
+// with variants.
+export const WEB_IMAGE_WIDTH = 600;
+const VARIANT_DIR = path.join(IMAGES_DIR, `webp-${WEB_IMAGE_WIDTH}`);
+const variantInFlight = new Map<string, Promise<Buffer | null>>();
+
+// Returns the WebP version of an image, made on first use and kept on disk. Null if the original is not
+// available (or sharp cannot run); the caller then serves the original.
+export async function getExerciseImageWebp(relative: string): Promise<Buffer | null> {
+  if (!isValidImagePath(relative)) return null;
+  const file = path.join(VARIANT_DIR, `${relative}.webp`);
+  try {
+    return await readFile(file);
+  } catch {
+    // not made yet
+  }
+  const running = variantInFlight.get(relative);
+  if (running) return running;
+  const job = (async () => {
+    const original = await getExerciseImage(relative);
+    if (!original) return null;
+    const sharp = await loadSharp();
+    const bytes = await sharp(original).rotate().resize({ width: WEB_IMAGE_WIDTH, withoutEnlargement: true }).webp({ quality: 72 }).toBuffer();
+    await mkdir(path.dirname(file), { recursive: true });
+    const tmp = `${file}.${process.pid}.tmp`;
+    await writeFile(tmp, bytes);
+    await rename(tmp, file);
+    return bytes;
+  })()
+    .catch(() => null)
+    .finally(() => variantInFlight.delete(relative));
+  variantInFlight.set(relative, job);
+  return job;
 }
 
 const inFlight = new Map<string, Promise<Buffer | null>>();
