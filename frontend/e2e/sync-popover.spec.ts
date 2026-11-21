@@ -16,7 +16,8 @@ test.describe("Sync-Popover", () => {
     const exercise = await fetchAnyExercise(request, accessToken);
     await expect(syncPill(page)).toHaveText("Synchronisiert");
 
-    // Two rejected sets: each gets its own retry/discard row, plus "Alle erneut versuchen".
+    // Two rejected sets: each gets its own "Erneut versuchen", plus "Alle erneut versuchen". (Only
+    // a rejected plan change can also be dropped — see canDiscardFailedMutation in offline/retry.ts.)
     await context.route("**/api/workout-logs", async (route) => {
       if (route.request().method() === "POST") {
         await route.fulfill({
@@ -55,7 +56,7 @@ test.describe("Sync-Popover", () => {
     expect(panelBox.x + panelBox.width, "Popover rechts im Viewport").toBeLessThanOrEqual(VIEWPORT.width);
 
     const buttons = panel.getByRole("button");
-    await expect(buttons).toHaveCount(5);
+    await expect(buttons).toHaveCount(3);
     const undersized: string[] = [];
     for (const button of await buttons.all()) {
       const box = (await button.boundingBox())!;
