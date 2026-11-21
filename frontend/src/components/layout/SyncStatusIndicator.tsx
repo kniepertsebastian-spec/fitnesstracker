@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useSyncStore } from "../../stores/syncStore";
 import {
   canDiscardFailedMutation,
@@ -6,8 +6,8 @@ import {
   retryAllFailedMutations,
   retryFailedMutation,
 } from "../../offline/retry";
-import type { MutationOp } from "../../offline/db";
-import { StatusPill } from "../ui";
+import type { FailedMutation, MutationOp } from "../../offline/db";
+import { Button, StatusPill } from "../ui";
 import type { StatusPillTone } from "../ui";
 
 const OP_LABELS: Record<MutationOp, string> = {
@@ -16,28 +16,52 @@ const OP_LABELS: Record<MutationOp, string> = {
   delete: "Löschen",
 };
 
+// A plan change's label already names what happened ("Plan: Übung entfernt", see
+// planOpLabel in offline/planEditSync.ts) — the generic create/update/delete suffix would only
+// repeat it less precisely.
+function failedMutationTitle(mutation: FailedMutation) {
+  return mutation.kind === "planEdit" ? mutation.label : `${mutation.label} · ${OP_LABELS[mutation.op]}`;
+}
+
 // Always visible, not just when something's wrong — "Der Nutzer soll jederzeit verstehen, ob
 // seine Daten sicher gespeichert und synchronisiert sind" means an all-clear state needs its own
 // affirmative signal too, not just the absence of a warning badge. Priority for the compact pill
 // when multiple things are true at once: a failure needs attention before "syncing" or "offline"
 // are worth mentioning, and being offline explains why something is still pending better than
 // just showing the pending count on its own.
+//
+// The panel is a non-modal disclosure: the pill toggles it (Enter/Space, native button), focus
+// stays where it is and Tab walks on into the panel. Escape closes it and puts focus back on the
+// pill; a tap or click anywhere outside closes it too.
 export function SyncStatusIndicator() {
   const { isOnline, isSyncing, pendingCount, failedCount, failedMutations } = useSyncStore();
   const [open, setOpen] = useState(false);
   const [retryingAll, setRetryingAll] = useState(false);
   const [retryingId, setRetryingId] = useState<number | null>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
 
   useEffect(() => {
     if (!open) return;
-    const handlePointerDown = (event: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+    // pointerdown instead of mousedown: fires for touch as well, without waiting for the
+    // compatibility mouse events a touch screen may send late or not at all.
+    const handlePointerDown = (event: PointerEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setOpen(false);
       }
     };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open]);
 
   // Pending count rides along with whichever state is otherwise shown (rather than only
@@ -83,13 +107,25 @@ export function SyncStatusIndicator() {
   };
 
   return (
-    <div ref={panelRef} className="relative min-w-0">
-      <StatusPill tone={pill.tone} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+    <div ref={containerRef} className="relative min-w-0">
+      <StatusPill
+        ref={triggerRef}
+        tone={pill.tone}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
+        aria-haspopup="dialog"
+      >
         {pill.text}
       </StatusPill>
 
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl border border-border bg-surface p-3 shadow-overlay">
+        <div
+          id={panelId}
+          role="dialog"
+          aria-label="Synchronisierung"
+          className="absolute right-0 top-full z-20 mt-2 w-72 rounded-xl border border-border bg-surface p-3 shadow-overlay"
+        >
           <p className="text-xs text-text-subtle">
             {failedCount > 0
               ? "Einige Änderungen konnten nicht synchronisiert werden — deine Daten sind aber lokal gespeichert."
@@ -104,43 +140,43 @@ export function SyncStatusIndicator() {
 
           {failedMutations.length > 0 && (
             <div className="mt-3 flex flex-col gap-2 border-t border-border-subtle pt-3">
-              {failedMutations.map((mutation) => (
-                <div key={mutation.id} data-testid="failed-mutation" className="rounded-lg bg-surface-2 p-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-xs font-medium text-text-2">
-                      {mutation.label} · {OP_LABELS[mutation.op]}
-                    </p>
-                    <div className="flex shrink-0 gap-1">
-                      <button
+              {failedMutations.map((mutation) => {
+                const busy = retryingId === mutation.id || retryingAll;
+                return (
+                  <div key={mutation.id} data-testid="failed-mutation" className="rounded-lg bg-surface-2 p-2">
+                    <p className="truncate text-xs font-medium text-text-2">{failedMutationTitle(mutation)}</p>
+                    <p className="mt-1 text-xs text-danger-text">{mutation.reason}</p>
+                    {/* Full 44 px touch targets — these are the only way out of a failed sync. */}
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1"
                         onClick={() => handleRetry(mutation.id as number, mutation)}
-                        disabled={retryingId === mutation.id || retryingAll}
-                        className="rounded-md bg-control px-2 py-1 text-xs text-text-2 hover:bg-track disabled:opacity-50"
+                        disabled={busy}
+                        aria-busy={retryingId === mutation.id}
                       >
                         {retryingId === mutation.id ? "…" : "Erneut versuchen"}
-                      </button>
+                      </Button>
                       {canDiscardFailedMutation(mutation) && (
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1"
                           onClick={() => handleDiscard(mutation.id as number, mutation)}
-                          disabled={retryingId === mutation.id || retryingAll}
-                          className="rounded-md px-2 py-1 text-xs text-text-subtle hover:bg-track disabled:opacity-50"
+                          disabled={busy}
                         >
                           Verwerfen
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
-                  <p className="mt-1 text-xs text-danger-text">{mutation.reason}</p>
-                </div>
-              ))}
+                );
+              })}
 
               {failedMutations.length > 1 && (
-                <button
-                  onClick={handleRetryAll}
-                  disabled={retryingAll}
-                  className="rounded-md bg-accent py-2 text-xs font-semibold text-on-accent hover:bg-accent-hover disabled:opacity-50"
-                >
+                <Button variant="primary" size="sm" fullWidth onClick={handleRetryAll} disabled={retryingAll}>
                   {retryingAll ? "Wird erneut versucht…" : "Alle erneut versuchen"}
-                </button>
+                </Button>
               )}
             </div>
           )}

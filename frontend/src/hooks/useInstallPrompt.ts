@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { detectIOSBrowser, isRunningStandalone } from "../lib/iosPlatform";
 
 // Not a standard DOM type — Chromium-only event, no official TS lib definition.
 interface BeforeInstallPromptEvent extends Event {
@@ -6,23 +7,12 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-function isStandalone() {
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    // iOS Safari has no display-mode media query support; this is its own legacy flag.
-    (window.navigator as unknown as { standalone?: boolean }).standalone === true
-  );
-}
-
-function isIOSSafari() {
-  const { userAgent, platform, maxTouchPoints } = window.navigator;
-  // iPadOS 13+ reports as "MacIntel" with touch support, not "iPad" in the UA string.
-  return /iPad|iPhone|iPod/.test(userAgent) || (platform === "MacIntel" && maxTouchPoints > 1);
-}
-
 export function useInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState(isStandalone());
+  const [installed, setInstalled] = useState(isRunningStandalone());
+  // iOS has no install prompt event at all: Safari and the third-party browsers each get their
+  // own manual hint (InstallButton), since their share menus sit in different places.
+  const [iosBrowser] = useState(() => detectIOSBrowser(window.navigator));
 
   useEffect(() => {
     if (installed) return;
@@ -54,7 +44,8 @@ export function useInstallPrompt() {
   return {
     installed,
     canPromptInstall: deferredPrompt !== null,
-    isIOS: isIOSSafari(),
+    isIOS: iosBrowser !== null,
+    iosBrowser,
     promptInstall,
   };
 }

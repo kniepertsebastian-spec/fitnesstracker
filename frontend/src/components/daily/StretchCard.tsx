@@ -129,7 +129,7 @@ function Routine({ items, storageKey }: { items: StretchItemDto[]; storageKey: s
               )}
             >
               {item.imageUrls[0] ? (
-                <img src={item.imageUrls[0]} alt="" loading="lazy" className="h-11 w-11 shrink-0 rounded-md bg-track object-cover" />
+                <img src={item.imageUrls[0]} alt="" width={44} height={44} loading="lazy" decoding="async" className="h-11 w-11 shrink-0 rounded-md bg-track object-cover" />
               ) : (
                 <span className="h-11 w-11 shrink-0 rounded-md bg-track" aria-hidden />
               )}

@@ -1,4 +1,5 @@
-import { equipmentLabel, muscleLabel } from "../../lib/exerciseLabels";
+import { equipmentLabel, imageAlt, muscleLabel } from "../../lib/exerciseLabels";
+import { safeExternalUrl } from "../../lib/safeUrl";
 import { X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useExercise } from "../../hooks/useExerciseLibrary";
@@ -16,6 +17,7 @@ export function TechniqueSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   const { data: exercise, isLoading } = useExercise(exerciseId ?? undefined);
+  const videoUrl = safeExternalUrl(exercise?.videoUrl);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title="Technik" className="gap-4 overflow-y-auto p-4">
@@ -32,11 +34,15 @@ export function TechniqueSheet({
         <>
           {exercise.imageUrls.length > 0 && (
             <div className="flex gap-2 overflow-x-auto">
-              {exercise.imageUrls.map((url) => (
+              {exercise.imageUrls.map((url, index) => (
                 <img
                   key={url}
                   src={url}
-                  alt={exercise.name}
+                  alt={imageAlt(exercise.name, index, exercise.imageUrls.length)}
+                  width={160}
+                  height={160}
+                  loading="lazy"
+                  decoding="async"
                   className="h-40 w-40 shrink-0 rounded-lg object-cover"
                 />
               ))}
@@ -59,11 +65,11 @@ export function TechniqueSheet({
             <p className="text-small text-text-subtle">Keine Beschreibung vorhanden.</p>
           )}
           <div className="flex flex-wrap gap-2">
-            {exercise.videoUrl && (
+            {videoUrl && (
               <a
-                href={exercise.videoUrl}
+                href={videoUrl}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="inline-flex h-11 items-center rounded-md border border-border-strong px-4 text-body text-text-muted hover:bg-surface-2"
               >
                 Video ansehen

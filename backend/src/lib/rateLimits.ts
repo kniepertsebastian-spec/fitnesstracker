@@ -9,3 +9,8 @@ import { env } from "../config/env.js";
 export const HEAVY_RATE_LIMIT = {
   config: { rateLimit: { max: env.HEAVY_RATE_LIMIT_PER_MINUTE, timeWindow: "1 minute" } },
 };
+
+/** Token refresh: moderate per-IP limit, see REFRESH_RATE_LIMIT_PER_MINUTE in config/env.ts. */
+export const REFRESH_RATE_LIMIT = {
+  config: { rateLimit: { max: env.REFRESH_RATE_LIMIT_PER_MINUTE, timeWindow: "1 minute" } },
+};

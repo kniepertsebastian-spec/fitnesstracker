@@ -24,6 +24,7 @@ import { toUserDto } from "./auth.types.js";
 import { HttpError } from "../../errors/httpErrors.js";
 import { REFRESH_COOKIE_NAME, REFRESH_TOKEN_TTL_MS } from "../../lib/tokens.js";
 import { env } from "../../config/env.js";
+import { REFRESH_RATE_LIMIT } from "../../lib/rateLimits.js";
 
 function setRefreshCookie(reply: import("fastify").FastifyReply, token: string) {
   reply.setCookie(REFRESH_COOKIE_NAME, token, {
@@ -70,7 +71,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.post("/refresh", async (request, reply) => {
+  fastify.post("/refresh", REFRESH_RATE_LIMIT, async (request, reply) => {
     const rawToken = request.cookies[REFRESH_COOKIE_NAME];
     if (!rawToken) {
       return reply.code(401).send({ message: "Missing refresh token" });

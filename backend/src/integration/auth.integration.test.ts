@@ -68,6 +68,14 @@ describe.skipIf(!hasTestDb)("auth (integration)", () => {
   });
 
   describe("refresh tokens", () => {
+    it("rate-limits /refresh per IP with 429, without affecting other clients", async () => {
+      const max = env.REFRESH_RATE_LIMIT_PER_MINUTE;
+      const from = (remoteAddress: string) => app.inject({ method: "POST", url: "/api/auth/refresh", remoteAddress });
+      for (let i = 0; i < max; i++) expect((await from("203.0.113.50")).statusCode).toBe(401);
+      expect((await from("203.0.113.50")).statusCode).toBe(429);
+      expect((await from("203.0.113.51")).statusCode).toBe(401);
+    });
+
     it("rotates the token on every refresh", async () => {
       const session = await signUp(app, "rotate");
       const res = await refresh(app, session.refreshToken);

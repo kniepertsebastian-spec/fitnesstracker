@@ -12,7 +12,7 @@ export function ExerciseCard({ exercise }: { exercise: ExerciseDto }) {
       className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3 transition-colors duration-150 hover:bg-surface-2"
     >
       {thumbnail ? (
-        <img src={thumbnail} alt="" loading="lazy" className="h-14 w-14 shrink-0 rounded-lg bg-track object-cover" />
+        <img src={thumbnail} alt="" width={56} height={56} loading="lazy" decoding="async" className="h-14 w-14 shrink-0 rounded-lg bg-track object-cover" />
       ) : (
         <div className="h-14 w-14 shrink-0 rounded-lg bg-track" aria-hidden />
       )}

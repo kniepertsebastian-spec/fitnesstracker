@@ -4,6 +4,7 @@ import {
   subscribeToPushRequest,
   unsubscribeFromPushRequest,
 } from "../api/push.api";
+import { isIOSDevice, isRunningStandalone, pushAvailability } from "../lib/iosPlatform";
 
 export const isPushSupported = "serviceWorker" in navigator && "PushManager" in window;
 
@@ -16,15 +17,28 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return Uint8Array.from([...raw].map((char) => char.charCodeAt(0)));
 }
 
-type Status = "loading" | "unsupported" | "unconfigured" | "subscribed" | "unsubscribed";
+// "ios-install-required": an iPhone/iPad in a browser tab. Push works there only once the app is
+// opened from the home screen, so settings can say exactly that instead of "not supported".
+export type PushSubscriptionStatus =
+  | "loading"
+  | "unsupported"
+  | "ios-install-required"
+  | "unconfigured"
+  | "subscribed"
+  | "unsubscribed";
 
 export function usePushSubscription() {
-  const [status, setStatus] = useState<Status>("loading");
+  const [status, setStatus] = useState<PushSubscriptionStatus>("loading");
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!isPushSupported) {
-      setStatus("unsupported");
+    const availability = pushAvailability({
+      pushSupported: isPushSupported,
+      isIOS: isIOSDevice(window.navigator),
+      standalone: isRunningStandalone(),
+    });
+    if (availability !== "supported") {
+      setStatus(availability);
       return;
     }
     const registration = await navigator.serviceWorker.ready;
