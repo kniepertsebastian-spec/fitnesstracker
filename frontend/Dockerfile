@@ -1,6 +1,6 @@
 # Build-only image: the output (dist/) is bind-mounted/copied for Caddy to serve as static
 # files. There is no frontend "runtime" container in production.
-FROM node:22-alpine AS base
+FROM node:22.23-alpine AS base
 WORKDIR /app
 RUN corepack enable
 

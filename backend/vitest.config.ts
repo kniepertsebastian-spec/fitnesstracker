@@ -31,6 +31,7 @@ export default defineConfig({
         ? {
             AUTH_RATE_LIMIT_PER_MINUTE: "1000",
             HEAVY_RATE_LIMIT_PER_MINUTE: "1000",
+            REFRESH_RATE_LIMIT_PER_MINUTE: "100",
             UPLOADS_DIR: mkdtempSync(path.join(tmpdir(), "fitnesstracker-test-uploads-")),
           }
         : {}),

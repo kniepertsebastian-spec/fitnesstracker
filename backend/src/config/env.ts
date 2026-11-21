@@ -59,6 +59,9 @@ const envSchema = z
     // Requests per minute and IP on the routes that are expensive (AI calls, video/photo upload,
     // full data export).
     HEAVY_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1000).default(10),
+    // Requests per minute and IP on /auth/refresh. Every app start (each tab) refreshes once, so 30
+    // leaves room for several tabs while stopping a burst; the CI raises it for the E2E suite.
+    REFRESH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(1000).default(30),
     // Which proxies in front of the backend may set X-Forwarded-For (see parseTrustProxy). Without
     // it every request appears to come from the proxy's IP, and the per-IP rate limits above become
     // one shared bucket for all visitors.

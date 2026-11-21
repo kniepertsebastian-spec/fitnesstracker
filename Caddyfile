@@ -68,6 +68,4 @@
 		header Cache-Control "no-store"
 		respond "{err.status_code} {err.status_text}"
 	}
-
-	encode gzip
 }

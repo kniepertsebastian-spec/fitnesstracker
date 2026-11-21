@@ -1,13 +1,13 @@
 # Mini-PC deployment behind a shared Cloudflare Tunnel (this box runs several PWAs, so no
-# single app owns host ports 80/443 — see context.md). Build the frontend once
+# single app owns host ports 80/443 — see README.md). Build the frontend once
 # (`docker build --target export -f frontend/Dockerfile --output frontend/dist .`) before
 # `docker compose -f docker-compose.prod.yml up -d --build`. Caddy publishes nothing to the
 # host; it's only reachable from the shared `edge` network, where the `cloudflared` container
-# (managed separately, outside this repo — see context.md) routes
+# (managed separately, outside this repo — see README.md) routes
 # `${DOMAIN}` to it by container name.
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?}
@@ -63,7 +63,7 @@ services:
         condition: service_healthy
 
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.11-alpine
     container_name: fitnesstracker-caddy
     restart: unless-stopped
     # No `ports:` — not published to the host. Reached only via the `edge` network by

@@ -19,6 +19,8 @@ env:
   # Each E2E scenario registers and logs in its own account from the same IP; production keeps
   # the default of 5 per minute (backend/src/config/env.ts).
   AUTH_RATE_LIMIT_PER_MINUTE: "100"
+  # Every page load of the E2E suite refreshes the session from the same IP.
+  REFRESH_RATE_LIMIT_PER_MINUTE: "300"
 
 jobs:
   # Runs on every push (any branch) and every PR — Lint, Typecheck, Unit Tests, Build.
@@ -76,7 +78,7 @@ jobs:
       # The production Caddyfile carries the cache and security headers (CSP, immutable assets).
       # A typo there would only show up at deploy time — validate it with the image prod runs.
       - name: Validate Caddyfile
-        run: docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+        run: docker run --rm -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.11-alpine caddy validate --config /etc/caddy/Caddyfile
 
   # Builds the two images production actually runs, the way deploy does. `checks` builds with the
   # workspace's own files, so a file the Dockerfile forgets to COPY (postcss.config.js once) only
@@ -104,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16.15-alpine
         env:
           POSTGRES_USER: fitnesstracker
           POSTGRES_PASSWORD: ci-password
@@ -155,7 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16.15-alpine
         env:
           POSTGRES_USER: fitnesstracker
           POSTGRES_PASSWORD: ci-password
