@@ -76,7 +76,12 @@ test.describe("Sync-Popover", () => {
     // Keyboard reopens it; a tap outside closes it again.
     await page.keyboard.press("Enter");
     await expect(panel).toBeVisible();
-    await page.mouse.click(VIEWPORT.width / 2, VIEWPORT.height / 2);
+    // The app title is non-interactive and left of the panel, so the tap only closes it.
+    const title = (await page.getByRole("banner").getByText("Fitnesstracker", { exact: true }).boundingBox())!;
+    const box = (await panel.boundingBox())!;
+    const tap = { x: title.x + 4, y: title.y + title.height / 2 };
+    expect(tap.x < box.x || tap.y < box.y, "Tap-Punkt liegt außerhalb des Popovers").toBe(true);
+    await page.mouse.click(tap.x, tap.y);
     await expect(panel).toBeHidden();
   });
 });
