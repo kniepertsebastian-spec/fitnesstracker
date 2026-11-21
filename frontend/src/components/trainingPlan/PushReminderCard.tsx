@@ -64,7 +64,14 @@ export function PushReminderCard() {
         Erinnerungen direkt aufs Gerät, auch wenn die App gerade nicht offen ist.
       </p>
 
-      {status === "unconfigured" ? (
+      {status === "ios-install-required" ? (
+        <Callout tone="info" className="mt-3">
+          Auf iPhone und iPad gibt es Benachrichtigungen nur in der installierten App: Tippe auf{" "}
+          <span className="font-medium text-text">Teilen</span> und dann auf{" "}
+          <span className="font-medium text-text">„Zum Home-Bildschirm“</span>, öffne die App von dort und aktiviere
+          die Benachrichtigungen hier.
+        </Callout>
+      ) : status === "unconfigured" ? (
         <p className="mt-2 text-small text-text-faint">Server hat noch keinen VAPID-Schlüssel konfiguriert.</p>
       ) : (
         <>

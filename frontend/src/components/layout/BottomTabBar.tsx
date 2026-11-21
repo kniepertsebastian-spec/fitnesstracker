@@ -28,7 +28,7 @@ function Tab({ to, label, icon, end }: { to: string; label: string; icon: ReactN
 
 // Mobile-only (< 1024 px) thumb-reach navigation: Heute · Training · Fortschritt · Plan · Mehr.
 // "Mehr" opens the full menu sheet; "Training" starts or resumes a session like StartTrainingButton.
-export function BottomTabBar({ onOpenMenu }: { onOpenMenu: () => void }) {
+export function BottomTabBar({ menuOpen, onOpenMenu }: { menuOpen: boolean; onOpenMenu: () => void }) {
   const navigate = useNavigate();
   const { data: session } = useOpenWorkoutSession();
   const start = useStartWorkoutSession();
@@ -46,7 +46,7 @@ export function BottomTabBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   return (
     <nav
       aria-label="Schnellzugriff"
-      className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-bg-sidebar/95 pb-[env(safe-area-inset-bottom)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-bg-sidebar/95 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] lg:hidden"
     >
       <Tab to="/" end label="Heute" icon={<Sun size={20} aria-hidden />} />
       <button
@@ -65,7 +65,13 @@ export function BottomTabBar({ onOpenMenu }: { onOpenMenu: () => void }) {
       </button>
       <Tab to="/progress" label="Fortschritt" icon={<LineChart size={20} aria-hidden />} />
       <Tab to="/plan" label="Plan" icon={<CalendarDays size={20} aria-hidden />} />
-      <button type="button" className={cn(ITEM, "text-text-muted hover:text-text")} onClick={onOpenMenu}>
+      <button
+        type="button"
+        className={cn(ITEM, "text-text-muted hover:text-text")}
+        aria-haspopup="dialog"
+        aria-expanded={menuOpen}
+        onClick={onOpenMenu}
+      >
         <Menu size={20} aria-hidden />
         <span>Mehr</span>
       </button>

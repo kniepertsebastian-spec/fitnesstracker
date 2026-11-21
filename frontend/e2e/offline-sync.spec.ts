@@ -268,6 +268,16 @@ test.describe("Sync-Fehler", () => {
     const failedItemCard = page.getByTestId("failed-mutation").last();
     await expect(failedItemCard).toContainText("Simulierter Server-Fehler (E2E)");
 
+    // Paket C [M7]: every action in the open panel is a full 44×44 px touch target.
+    const panelButtons = page.getByRole("dialog", { name: "Synchronisierung" }).getByRole("button");
+    expect(await panelButtons.count()).toBeGreaterThan(0);
+    for (const button of await panelButtons.all()) {
+      const box = await button.boundingBox();
+      expect(box, await button.textContent()).not.toBeNull();
+      expect(box!.width, await button.textContent()).toBeGreaterThanOrEqual(43.5);
+      expect(box!.height, await button.textContent()).toBeGreaterThanOrEqual(43.5);
+    }
+
     block = false;
     await page.locator("button", { hasText: "Erneut versuchen" }).first().click();
     await expect(syncPill(page)).toHaveText("Synchronisiert", { timeout: 10_000 });

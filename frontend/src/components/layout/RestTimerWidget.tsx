@@ -14,6 +14,21 @@ function formatTime(totalSeconds: number) {
 }
 
 export function RestTimerWidget() {
+  const finished = useTimerStore((s) => s.totalSeconds > 0 && s.remainingSeconds === 0);
+  return (
+    <>
+      <RestTimer />
+      {/* Mounted for good, next to every timer state: screen readers only announce changes to a
+          live region that already existed. The visible countdown (role="timer") stays silent on
+          purpose — a reading every second would drown everything else out. */}
+      <div aria-live="assertive" aria-atomic="true" className="sr-only">
+        {finished ? "Pause vorbei – nächster Satz!" : ""}
+      </div>
+    </>
+  );
+}
+
+function RestTimer() {
   const {
     remainingSeconds,
     totalSeconds,
@@ -64,7 +79,7 @@ export function RestTimerWidget() {
       <button
         onClick={() => setExpanded(true)}
         aria-label="Pausen-Timer öffnen"
-        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent shadow-overlay transition-colors hover:bg-accent-hover"
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] z-30 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-on-accent shadow-overlay transition-colors hover:bg-accent-hover"
       >
         <Timer size={22} strokeWidth={2} aria-hidden />
       </button>
@@ -73,7 +88,7 @@ export function RestTimerWidget() {
 
   if (idle && expanded) {
     return (
-      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-30 w-72 rounded-2xl border border-border bg-surface p-3 shadow-overlay">
+      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] z-30 w-72 rounded-2xl border border-border bg-surface p-3 shadow-overlay">
         <div className="mb-2 flex items-center justify-between">
           <p className="text-small font-medium text-text-2">Pausen-Timer</p>
           <IconButton aria-label="Schließen" onClick={() => setExpanded(false)} className="border-transparent bg-transparent">
@@ -114,7 +129,7 @@ export function RestTimerWidget() {
     <div
       role="timer"
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t-2 bg-bg-sidebar pb-[env(safe-area-inset-bottom)] shadow-overlay",
+        "fixed inset-x-0 bottom-0 z-40 border-t-2 bg-bg-sidebar pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] shadow-overlay",
         finished ? "animate-pulse border-accent" : "border-accent-border",
       )}
     >
