@@ -22,9 +22,11 @@ export default defineConfig({
       // no update hook — disabled here so `useRegisterSW` (the `virtual:pwa-register/react`
       // hook used by UpdatePrompt) is the only thing registering the service worker.
       injectRegister: false,
-      // No `includeAssets`: everything the app shell needs from public/ (icon-192,
-      // apple-touch-icon, badge, timer sound) is already matched by `workbox.globPatterns`, and an
-      // entry here would bypass `globIgnores` (it once kept the 512 px icons in the precache).
+      // What the app shell needs from public/ (icon-192, apple-touch-icon, badge, timer sound) is
+      // matched by `workbox.globPatterns`, so no `includeAssets` list. `includeManifestIcons` would
+      // add every manifest icon on top — past `globIgnores` — which put the two 512 px icons
+      // (~210 KB, read only by the OS at install time) into every precache.
+      includeManifestIcons: false,
       manifest: {
         // The app's identity for the OS. Spelled out as "/" — the same value Chrome derives from
         // start_url when `id` is missing — so apps already installed keep their identity.
