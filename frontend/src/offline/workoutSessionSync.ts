@@ -11,6 +11,7 @@ import { queryClient } from "../queryClient";
 import { offlineDb, type LocalWorkoutSession, type MutationOp } from "./db";
 import { refreshSyncCounts } from "./syncCounts";
 import { currentAccountId, isTransientFailure } from "./account";
+import { writeWithQuotaRecovery } from "./storageQuota";
 
 // One open session per kind: the regular workout and the Daily session exist side by side.
 export const workoutSessionQueryKey = (kind: WorkoutSessionKind) => ["workout-session", "open", kind] as const;
@@ -20,28 +21,39 @@ const kindOf = (s: { kind?: WorkoutSessionKind }): WorkoutSessionKind => s.kind 
 
 const OPEN_STATUSES: WorkoutSessionStatus[] = ["ACTIVE", "PAUSED"];
 
-// Same collapsing behaviour as workoutLogSync's enqueueMutation, on its own queue table — a
+// Same collapsing behaviour as workoutLogSync's queueMutation, on its own queue table — a
 // Start followed by a Pause before either ever synced collapses into one "create" carrying the
 // latest status, no delete op needed since a session is never removed, only ended.
-async function enqueueSessionMutation(accountId: string, clientId: string, op: MutationOp, payload: Record<string, unknown>) {
-  await offlineDb.transaction("rw", offlineDb.pendingSessionMutations, async () => {
-    const existing = await offlineDb.pendingSessionMutations
-      .where("accountId")
-      .equals(accountId)
-      .filter((m) => m.clientId === clientId)
-      .first();
-    const queuedAt = new Date().toISOString();
+// The local row change (if any) is written in the same transaction, so a full device can't leave
+// a session that looks started/ended here but never reaches the server; see storageQuota.ts.
+async function enqueueSessionMutation(
+  accountId: string,
+  clientId: string,
+  op: MutationOp,
+  payload: Record<string, unknown>,
+  change?: () => Promise<unknown>,
+) {
+  await writeWithQuotaRecovery(() =>
+    offlineDb.transaction("rw", offlineDb.workoutSessions, offlineDb.pendingSessionMutations, async () => {
+      if (change) await change();
+      const existing = await offlineDb.pendingSessionMutations
+        .where("accountId")
+        .equals(accountId)
+        .filter((m) => m.clientId === clientId)
+        .first();
+      const queuedAt = new Date().toISOString();
 
-    if (existing) {
-      await offlineDb.pendingSessionMutations.update(existing.id as number, {
-        payload: { ...existing.payload, ...payload },
-        queuedAt,
-      });
-      return;
-    }
+      if (existing) {
+        await offlineDb.pendingSessionMutations.update(existing.id as number, {
+          payload: { ...existing.payload, ...payload },
+          queuedAt,
+        });
+        return;
+      }
 
-    await offlineDb.pendingSessionMutations.add({ accountId, clientId, op, payload, queuedAt });
-  });
+      await offlineDb.pendingSessionMutations.add({ accountId, clientId, op, payload, queuedAt });
+    }),
+  );
 
   await refreshSyncCounts();
 }
@@ -116,9 +128,8 @@ export async function startWorkoutSessionLocal(clientId: string, kind: WorkoutSe
     createdAt: now,
     updatedAt: now,
   };
-  await offlineDb.workoutSessions.put(local);
   const input: CreateWorkoutSessionInput = { clientId, kind };
-  await enqueueSessionMutation(accountId, clientId, "create", input);
+  await enqueueSessionMutation(accountId, clientId, "create", input, () => offlineDb.workoutSessions.put(local));
   await syncSessionQueryCache();
   void flushPendingSessionMutations();
 }
@@ -129,15 +140,16 @@ export async function updateWorkoutSessionStatusLocal(clientId: string, status: 
   const found = await offlineDb.workoutSessions.get(clientId);
   const existing = found?.accountId === accountId ? found : undefined;
   const now = new Date().toISOString();
-  if (existing) {
-    await offlineDb.workoutSessions.put({
-      ...existing,
-      status,
-      endedAt: status === "COMPLETED" || status === "ABORTED" ? now : existing.endedAt,
-      updatedAt: now,
-    });
-  }
-  await enqueueSessionMutation(accountId, clientId, "update", { status });
+  const change = existing
+    ? () =>
+        offlineDb.workoutSessions.put({
+          ...existing,
+          status,
+          endedAt: status === "COMPLETED" || status === "ABORTED" ? now : existing.endedAt,
+          updatedAt: now,
+        })
+    : undefined;
+  await enqueueSessionMutation(accountId, clientId, "update", { status }, change);
   await syncSessionQueryCache();
   void flushPendingSessionMutations();
 }

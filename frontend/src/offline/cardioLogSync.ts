@@ -6,6 +6,7 @@ import { beginSync, endSync } from "../stores/syncStore";
 import { offlineDb } from "./db";
 import { refreshSyncCounts } from "./syncCounts";
 import { currentAccountId, isTransientFailure } from "./account";
+import { writeWithQuotaRecovery } from "./storageQuota";
 
 // F9: cardio entries go through a small create-only queue, like sets and sessions — a cardio
 // block finished in the gym without signal must not be lost. The server create is idempotent per
@@ -18,13 +19,10 @@ export type QueuedCardioLogInput = CreateCardioLogInput & { clientId: string; pe
 export async function createCardioLogLocal(input: QueuedCardioLogInput, label: string) {
   const accountId = currentAccountId();
   if (!accountId) throw new Error("Zum Speichern muss ein Account angemeldet sein.");
-  await offlineDb.pendingCardioLogs.add({
-    accountId,
-    clientId: input.clientId,
-    payload: input,
-    label,
-    queuedAt: new Date().toISOString(),
-  });
+  const queuedAt = new Date().toISOString();
+  await writeWithQuotaRecovery(() =>
+    offlineDb.pendingCardioLogs.add({ accountId, clientId: input.clientId, payload: input, label, queuedAt }),
+  );
   await refreshSyncCounts();
   void flushPendingCardioLogs();
 }

@@ -5,6 +5,7 @@ import { ActivityWeekCard } from "../components/progress/ActivityWeekCard";
 import { BodyDataCard } from "../components/progress/BodyDataCard";
 import { CardioCard } from "../components/progress/CardioCard";
 import { MuscleVolumeCard } from "../components/progress/MuscleVolumeCard";
+import { ProgressChartCard } from "../components/progress/ProgressChartCard";
 import { StrengthCard } from "../components/progress/StrengthCard";
 import { WeeklyDaysCard } from "../components/progress/WeeklyDaysCard";
 import { SegmentedControl, StatTile } from "../components/ui";
@@ -77,6 +78,10 @@ export function ProgressPage() {
         />
         <StatTile label="Neue Rekorde" value={records} info={<CalcInfoButton id="records" />} />
         <StatTile label="Serie (längste)" info={<CalcInfoButton id="streak" />} value={streak} unit={streak === 1 ? "Woche" : "Wochen"} />
+      </div>
+
+      <div className="mb-4">
+        <ProgressChartCard range={range} />
       </div>
 
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">

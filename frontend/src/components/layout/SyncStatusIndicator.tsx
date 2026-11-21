@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useSyncStore } from "../../stores/syncStore";
-import { retryAllFailedMutations, retryFailedMutation } from "../../offline/retry";
+import {
+  canDiscardFailedMutation,
+  discardFailedMutation,
+  retryAllFailedMutations,
+  retryFailedMutation,
+} from "../../offline/retry";
 import type { MutationOp } from "../../offline/db";
 import { StatusPill } from "../ui";
 import type { StatusPillTone } from "../ui";
@@ -59,6 +64,15 @@ export function SyncStatusIndicator() {
     }
   };
 
+  const handleDiscard = async (id: number, mutation: Parameters<typeof discardFailedMutation>[0]) => {
+    setRetryingId(id);
+    try {
+      await discardFailedMutation(mutation);
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
   const handleRetryAll = async () => {
     setRetryingAll(true);
     try {
@@ -96,13 +110,24 @@ export function SyncStatusIndicator() {
                     <p className="truncate text-xs font-medium text-text-2">
                       {mutation.label} · {OP_LABELS[mutation.op]}
                     </p>
-                    <button
-                      onClick={() => handleRetry(mutation.id as number, mutation)}
-                      disabled={retryingId === mutation.id || retryingAll}
-                      className="shrink-0 rounded-md bg-control px-2 py-1 text-xs text-text-2 hover:bg-track disabled:opacity-50"
-                    >
-                      {retryingId === mutation.id ? "…" : "Erneut versuchen"}
-                    </button>
+                    <div className="flex shrink-0 gap-1">
+                      <button
+                        onClick={() => handleRetry(mutation.id as number, mutation)}
+                        disabled={retryingId === mutation.id || retryingAll}
+                        className="rounded-md bg-control px-2 py-1 text-xs text-text-2 hover:bg-track disabled:opacity-50"
+                      >
+                        {retryingId === mutation.id ? "…" : "Erneut versuchen"}
+                      </button>
+                      {canDiscardFailedMutation(mutation) && (
+                        <button
+                          onClick={() => handleDiscard(mutation.id as number, mutation)}
+                          disabled={retryingId === mutation.id || retryingAll}
+                          className="rounded-md px-2 py-1 text-xs text-text-subtle hover:bg-track disabled:opacity-50"
+                        >
+                          Verwerfen
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <p className="mt-1 text-xs text-danger-text">{mutation.reason}</p>
                 </div>

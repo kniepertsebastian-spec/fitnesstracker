@@ -12,13 +12,14 @@ import { useAuthStore } from "../stores/authStore";
 import { offlineDb, type LocalWorkoutLog, type MutationOp } from "./db";
 import { refreshSyncCounts } from "./syncCounts";
 import { isTransientFailure } from "./account";
+import { writeWithQuotaRecovery } from "./storageQuota";
 
 export const WORKOUT_LOGS_QUERY_KEY = ["workout-logs"] as const;
 
 // Keeps at most one queued mutation per row: a create followed by edits before it ever syncs
 // stays a single "create" carrying the latest values, rather than replaying every intermediate
 // step once back online.
-async function enqueueMutation(accountId: string, clientId: string, op: MutationOp, payload: Record<string, unknown>) {
+async function queueMutation(accountId: string, clientId: string, op: MutationOp, payload: Record<string, unknown>) {
   await offlineDb.transaction("rw", offlineDb.pendingMutations, async () => {
     const existing = await offlineDb.pendingMutations.where("accountId").equals(accountId).filter((m) => m.clientId === clientId).first();
     const queuedAt = new Date().toISOString();
@@ -45,7 +46,24 @@ async function enqueueMutation(accountId: string, clientId: string, op: Mutation
 
     await offlineDb.pendingMutations.add({ accountId, clientId, op, payload, queuedAt });
   });
+}
 
+// Applies the local change and queues its mutation in one transaction: a full device must not
+// leave a set that shows as logged but never syncs (or vanishes here but stays on the server).
+// writeWithQuotaRecovery frees cached copies and tries once more before giving up with a message.
+async function writeLocalChange(
+  accountId: string,
+  clientId: string,
+  op: MutationOp,
+  payload: Record<string, unknown>,
+  change: () => Promise<unknown>,
+) {
+  await writeWithQuotaRecovery(() =>
+    offlineDb.transaction("rw", offlineDb.workoutLogs, offlineDb.pendingMutations, async () => {
+      await change();
+      await queueMutation(accountId, clientId, op, payload);
+    }),
+  );
   await refreshSyncCounts();
 }
 
@@ -186,8 +204,7 @@ export async function createWorkoutLogLocal(input: CreateWorkoutLogInput, exerci
     createdAt: now,
     updatedAt: now,
   };
-  await offlineDb.workoutLogs.put(local);
-  await enqueueMutation(accountId, input.clientId, "create", input);
+  await writeLocalChange(accountId, input.clientId, "create", input, () => offlineDb.workoutLogs.put(local));
   await syncQueryCache(accountId);
   void flushPendingMutations(accountId);
 }
@@ -201,15 +218,13 @@ export async function updateWorkoutLogLocal(
   if (!accountId) throw new Error("Zum Bearbeiten muss ein Account angemeldet sein.");
   const existing = await offlineDb.workoutLogs.get(clientId);
   if (!existing || existing.accountId !== accountId) return;
-  if (existing) {
-    await offlineDb.workoutLogs.put({
-      ...existing,
-      ...input,
-      exerciseName: exerciseName ?? existing.exerciseName,
-      updatedAt: new Date().toISOString(),
-    });
-  }
-  await enqueueMutation(accountId, clientId, "update", input);
+  const updated: LocalWorkoutLog = {
+    ...existing,
+    ...input,
+    exerciseName: exerciseName ?? existing.exerciseName,
+    updatedAt: new Date().toISOString(),
+  };
+  await writeLocalChange(accountId, clientId, "update", input, () => offlineDb.workoutLogs.put(updated));
   await syncQueryCache(accountId);
   void flushPendingMutations(accountId);
 }
@@ -219,8 +234,7 @@ export async function deleteWorkoutLogLocal(clientId: string) {
   if (!accountId) throw new Error("Zum Löschen muss ein Account angemeldet sein.");
   const existing = await offlineDb.workoutLogs.get(clientId);
   if (!existing || existing.accountId !== accountId) return;
-  await offlineDb.workoutLogs.delete(clientId);
-  await enqueueMutation(accountId, clientId, "delete", {});
+  await writeLocalChange(accountId, clientId, "delete", {}, () => offlineDb.workoutLogs.delete(clientId));
   await syncQueryCache(accountId);
   void flushPendingMutations(accountId);
 }

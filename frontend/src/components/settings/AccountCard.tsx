@@ -2,6 +2,7 @@ import { useState } from "react";
 import { changePasswordRequest, deleteAccountRequest } from "../../api/auth.api";
 import { ApiError } from "../../api/client";
 import { useAuth } from "../../hooks/useAuth";
+import { purgeAccountLocalData } from "../../offline/purgeAccountLocalData";
 import { Button, Callout, Card, Field, Input } from "../ui";
 
 // Password change and account deletion for the signed-in account. Each account has its own,
@@ -41,6 +42,13 @@ export function AccountCard() {
     setDeleting(true);
     try {
       await deleteAccountRequest({ password: deletePassword });
+      // The account is gone on the server; now remove everything of it on this device too, before
+      // logging out (which only clears the session and the query cache).
+      if (user) {
+        await purgeAccountLocalData(user.id).catch((error: unknown) =>
+          console.error("Could not remove the deleted account's data from this device", error),
+        );
+      }
       await logout();
     } catch (err) {
       setDeleteError(err instanceof ApiError ? err.message : "Konto konnte nicht gelöscht werden.");
@@ -92,8 +100,8 @@ export function AccountCard() {
         ) : (
           <div className="flex flex-col gap-3">
             <Callout tone="danger">
-              Löscht dieses Konto mit allen Trainings, Plänen, Messwerten und Fotos auf dem Server. Das lässt sich
-              nicht rückgängig machen.
+              Löscht dieses Konto mit allen Trainings, Plänen, Messwerten und Fotos auf dem Server und auf diesem
+              Gerät. Das lässt sich nicht rückgängig machen.
             </Callout>
             <Field label="Passwort zur Bestätigung">
               {(p) => (

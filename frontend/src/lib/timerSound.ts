@@ -1,4 +1,5 @@
 import { offlineDb } from "../offline/db";
+import { writeWithQuotaRecovery } from "../offline/storageQuota";
 
 const CUSTOM_SOUND_KEY = "timer";
 let customSoundUrl: string | null = null;
@@ -8,8 +9,12 @@ function revokeCustomSoundUrl() {
   customSoundUrl = null;
 }
 
+// A full device frees the cached query data and tries once more; the downloaded exercise pictures
+// are not given up for a sound file. Still full: a StorageQuotaError with a message for the user.
 export async function saveCustomSound(blob: Blob, name: string): Promise<void> {
-  await offlineDb.customSounds.put({ key: CUSTOM_SOUND_KEY, blob, name });
+  await writeWithQuotaRecovery(() => offlineDb.customSounds.put({ key: CUSTOM_SOUND_KEY, blob, name }), {
+    clearImageCache: false,
+  });
   revokeCustomSoundUrl();
 }
 

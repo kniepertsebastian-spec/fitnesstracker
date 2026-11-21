@@ -229,6 +229,13 @@
   /* Category "Technik" and AI features — magenta, so it never reads as the violet brand color. */
   --magenta: #f472b6;
   --magenta-soft: rgba(244, 114, 182, 0.13);
+  /* Chart series, in this fixed order (never cycled, never re-assigned by rank): violet is the brand accent,
+     then a blue and a rose. Checked on the surface above with the data-viz palette validator (lightness
+     band, chroma, colour-blind separation, contrast): all pass; blue and violet are the closest pair
+     (colour-blind ΔE 8.7), so the legend and tooltip always name the series. */
+  --chart-1: #8b5cf6;
+  --chart-2: #0a98da;
+  --chart-3: #e11d74;
   color-scheme: dark;
 }
 

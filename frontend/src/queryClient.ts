@@ -2,6 +2,7 @@ import { QueryClient, type Query } from "@tanstack/react-query";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import type { PersistQueryClientOptions } from "@tanstack/react-query-persist-client";
 import { offlineDb } from "./offline/db";
+import { isQuotaExceededError } from "./offline/storageQuota";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PERSIST_MAX_AGE_MS = 14 * DAY_MS;
@@ -45,7 +46,13 @@ const persister = createAsyncStoragePersister({
   storage: {
     getItem: async (key) => (await offlineDb.queryCache.get(key))?.value ?? null,
     setItem: async (key, value) => {
-      await offlineDb.queryCache.put({ key, value });
+      try {
+        await offlineDb.queryCache.put({ key, value });
+      } catch (error) {
+        // Storage full: skip persisting this round. The in-memory cache keeps working, and the
+        // space is left to the entries that matter more (offline/storageQuota.ts).
+        if (!isQuotaExceededError(error)) throw error;
+      }
     },
     removeItem: async (key) => {
       await offlineDb.queryCache.delete(key);
