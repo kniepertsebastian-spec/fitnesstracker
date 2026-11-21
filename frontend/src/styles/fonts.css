@@ -1,4 +1,8 @@
 /* Geist, Geist Mono and Archivo, self-hosted (latin + latin-ext only). From @fontsource-variable. */
+/* Offline: only the `latin` files of Geist and Archivo are in the service-worker precache — they
+   cover all German text and every number. `latin-ext` and Geist Mono are fetched on first use
+   (unicode-range / the info dialogs) and kept in the runtime "fonts-cache" (vite.config.ts,
+   workbox.globIgnores). A new face or subset here needs a decision there as well. */
 /* geist-latin-ext-wght-normal */
 @font-face {
   font-family: 'Geist Variable';

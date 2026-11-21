@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "../ui";
 
@@ -30,25 +31,41 @@ function watchForUpdates(registration: ServiceWorkerRegistration): () => void {
 // once the user asks for it. `suppressed` hides it during a workout (focus mode): the hook keeps
 // running, so the prompt appears right after the training instead of reloading mid-set.
 export function UpdatePrompt({ suppressed = false }: { suppressed?: boolean }) {
+  // Teardown of the current update watcher. React StrictMode mounts twice in development and
+  // `onRegisteredSW` can fire again for a fresh registration: without this, every call stacked
+  // another visibilitychange listener and another hourly interval on top of the previous ones.
+  const stopWatchingRef = useRef<(() => void) | null>(null);
+
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(_swUrl, registration) {
-      // Mounted once for the whole app lifetime, so the listeners are never torn down.
-      if (registration) watchForUpdates(registration);
+      stopWatchingRef.current?.();
+      stopWatchingRef.current = registration ? watchForUpdates(registration) : null;
     },
     onRegisterError(error) {
       console.error("Service worker registration failed", error);
     },
   });
 
+  useEffect(
+    () => () => {
+      stopWatchingRef.current?.();
+      stopWatchingRef.current = null;
+    },
+    [],
+  );
+
   if (!needRefresh || suppressed) return null;
 
+  // Phones/tablets (< lg): above the BottomTabBar (z-30, ≥ 56 px plus the home-indicator inset),
+  // at the same height as the RestTimerWidget, and stacked over both so "Später"/"Aktualisieren"
+  // are never covered. Desktop has no tab bar: bottom right, like the timer.
   return (
     <div
       role="status"
-      className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 right-20 z-30 flex flex-col gap-2 rounded-2xl border border-accent-border bg-surface p-3 shadow-overlay lg:left-auto lg:right-6 lg:w-80"
+      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-4 right-4 z-50 flex flex-col gap-2 rounded-2xl border border-accent-border bg-surface p-3 shadow-overlay lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] lg:left-auto lg:right-6 lg:w-80"
     >
       <p className="text-small text-text-2">Neue Version verfügbar</p>
       <div className="flex items-center justify-end gap-2">

@@ -22,19 +22,19 @@ export default defineConfig({
       // no update hook — disabled here so `useRegisterSW` (the `virtual:pwa-register/react`
       // hook used by UpdatePrompt) is the only thing registering the service worker.
       injectRegister: false,
-      includeAssets: [
-        "icons/icon-192.png",
-        "icons/icon-512.png",
-        "icons/apple-touch-icon.png",
-        "sounds/timer-end.mp3",
-      ],
+      // What the app shell needs from public/ (icon-192, apple-touch-icon, badge, timer sound) is
+      // matched by `workbox.globPatterns`, so no `includeAssets` list. `includeManifestIcons` would
+      // add every manifest icon on top — past `globIgnores` — which put the two 512 px icons
+      // (~210 KB, read only by the OS at install time) into every precache.
+      includeManifestIcons: false,
       manifest: {
         // The app's identity for the OS. Spelled out as "/" — the same value Chrome derives from
         // start_url when `id` is missing — so apps already installed keep their identity.
         id: "/",
         name: "Fitnesstracker",
         short_name: "Fitness",
-        description: "Persönlicher Fitnesstracker ohne Werbung. 🏋️",
+        // Plain text: install dialogs and store listings render emoji inconsistently.
+        description: "Persönlicher Fitnesstracker ohne Werbung.",
         // The plugin would otherwise emit "en" for a German-language app.
         lang: "de",
         categories: ["health", "fitness", "sports"],
@@ -116,8 +116,21 @@ export default defineConfig({
       workbox: {
         // Fonts and timer MP3 are part of the shell: the offline reload must render with Geist and audio.
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,mp3}"],
-        // Store screenshots are only fetched by the browser's install dialog — not app content.
-        globIgnores: ["**/screenshots/**"],
+        globIgnores: [
+          // Store screenshots are only fetched by the browser's install dialog — not app content.
+          "**/screenshots/**",
+          // Loaded by the generated sw.js through `importScripts` (below); the browser keeps
+          // imported scripts with the worker itself, a precache copy is never read.
+          "push-sw.js",
+          // Only the OS reads these (install, splash screen) — fetched once from the network.
+          "**/icons/icon-512*.png",
+          // Secondary font files (see src/styles/fonts.css): German text only needs the `latin`
+          // subset of Geist and Archivo. `latin-ext` (characters such as ł, ő, ș) and Geist Mono
+          // (calculation details only) are loaded on demand and kept by the "fonts-cache" route
+          // below. Saves ~140 KB on every service-worker install.
+          "**/assets/*-latin-ext-*.woff2",
+          "**/assets/geist-mono-*.woff2",
+        ],
         // Never let the service worker serve cached API responses — a stale workout log
         // after a deploy is a much worse bug than a network round-trip.
         navigateFallbackDenylist: [/^\/api/],
@@ -135,9 +148,22 @@ export default defineConfig({
                 maxAgeSeconds: 60 * 60 * 24 * 365,
                 purgeOnQuotaError: true,
               },
+              // Same-origin route: a real response always has a status. An opaque (status 0)
+              // response could only be a failure in disguise and must not be pinned for a year.
               cacheableResponse: {
-                statuses: [0, 200],
+                statuses: [200],
               },
+            },
+          },
+          {
+            // The font files left out of the precache (globIgnores above). Hashed names never
+            // change content, so the first copy is kept; a new build brings new names.
+            urlPattern: /\/assets\/[^/]+\.woff2$/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "fonts-cache",
+              expiration: { maxEntries: 12, purgeOnQuotaError: true },
+              cacheableResponse: { statuses: [200] },
             },
           },
           {
@@ -160,6 +186,9 @@ export default defineConfig({
           // Fold the many tiny shared chunks the lazy routes would otherwise produce (single
           // icons, small hooks) into the chunks that use them: each file is a request on the
           // service worker's first precache. Duplicates a few kilobytes of code on purpose.
+          // Experimental Rolldown option (Vite 8): on a Vite/Rolldown upgrade check that it still
+          // exists under this name — an unknown key is ignored silently, and the only symptom is
+          // many more tiny chunks in `dist/assets` (and in the precache list of sw.js).
           experimentalInlineCommonChunks: { maxSize: 12_000 },
           // Vendor code in a few stable chunks. App code changes with every deploy, library code
           // rarely: the service worker re-downloads only chunks whose hash changed, so an update
