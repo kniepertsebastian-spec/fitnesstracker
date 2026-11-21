@@ -8,7 +8,8 @@ import { offlineDb, type LocalExercise } from "./db";
 // tiny request, and everything that needs exercises — the library, the pickers, the technique sheet in the
 // focus mode — reads it from here and works without a connection.
 
-const versionKey = (accountId: string) => `catalog-version:${accountId}`;
+export const catalogVersionKey = (accountId: string) => `catalog-version:${accountId}`;
+const versionKey = catalogVersionKey;
 // A sync more often than this is pointless: the question is cheap but the answer rarely changes.
 const MIN_SYNC_INTERVAL_MS = 60_000;
 let lastSyncAt = 0;

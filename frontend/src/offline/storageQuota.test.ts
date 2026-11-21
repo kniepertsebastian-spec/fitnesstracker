@@ -1,0 +1,90 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { FakeOfflineDb } from "./testing/fakes";
+
+vi.mock("./db", async () => {
+  const { createFakeOfflineDb } = await import("./testing/fakes");
+  return { offlineDb: createFakeOfflineDb() };
+});
+vi.mock("./exerciseImagePack", () => ({ clearPack: vi.fn().mockResolvedValue(undefined) }));
+
+const { offlineDb } = await import("./db");
+const db = offlineDb as unknown as FakeOfflineDb;
+const { clearPack } = await import("./exerciseImagePack");
+const { STORAGE_FULL_MESSAGE, StorageQuotaError, isQuotaExceededError, writeWithQuotaRecovery } = await import(
+  "./storageQuota"
+);
+
+const quotaError = () => new DOMException("The quota has been exceeded.", "QuotaExceededError");
+const alert = vi.fn();
+
+beforeEach(async () => {
+  db.reset();
+  await db.queryCache.put({ key: "react-query", value: "{}" });
+  vi.mocked(clearPack).mockClear();
+  alert.mockClear();
+  vi.stubGlobal("window", { alert });
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+});
+afterEach(() => vi.unstubAllGlobals());
+
+describe("isQuotaExceededError", () => {
+  it("recognises the browser's error, Dexie's wrapped form and the legacy code", () => {
+    expect(isQuotaExceededError(quotaError())).toBe(true);
+    expect(isQuotaExceededError({ name: "AbortError", inner: { name: "QuotaExceededError" } })).toBe(true);
+    expect(isQuotaExceededError({ name: "NS_ERROR_DOM_QUOTA_REACHED" })).toBe(true);
+    expect(isQuotaExceededError(new DOMException("legacy", "SomethingElse"))).toBe(false);
+    expect(isQuotaExceededError(new Error("network"))).toBe(false);
+    expect(isQuotaExceededError(undefined)).toBe(false);
+  });
+});
+
+describe("writeWithQuotaRecovery", () => {
+  it("passes a successful write straight through", async () => {
+    const operation = vi.fn().mockResolvedValue("ok");
+    await expect(writeWithQuotaRecovery(operation)).resolves.toBe("ok");
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(await db.queryCache.count()).toBe(1);
+    expect(clearPack).not.toHaveBeenCalled();
+  });
+
+  it("frees the caches and retries once when storage is full", async () => {
+    const operation = vi.fn().mockRejectedValueOnce(quotaError()).mockResolvedValueOnce("saved");
+
+    await expect(writeWithQuotaRecovery(operation)).resolves.toBe("saved");
+
+    expect(operation).toHaveBeenCalledTimes(2);
+    expect(await db.queryCache.count()).toBe(0);
+    expect(clearPack).toHaveBeenCalledTimes(1);
+    expect(alert).not.toHaveBeenCalled();
+  });
+
+  it("keeps the exercise pictures when asked to", async () => {
+    const operation = vi.fn().mockRejectedValueOnce(quotaError()).mockResolvedValueOnce(undefined);
+    await writeWithQuotaRecovery(operation, { clearImageCache: false });
+    expect(await db.queryCache.count()).toBe(0);
+    expect(clearPack).not.toHaveBeenCalled();
+  });
+
+  it("gives up after the second attempt with a typed error and a message for the user", async () => {
+    const operation = vi.fn().mockRejectedValue(quotaError());
+
+    const error = await writeWithQuotaRecovery(operation).catch((e: unknown) => e);
+
+    expect(operation).toHaveBeenCalledTimes(2);
+    expect(error).toBeInstanceOf(StorageQuotaError);
+    expect((error as Error).message).toBe(STORAGE_FULL_MESSAGE);
+    expect((error as Error).message).toContain("Speicher auf diesem Gerät ist voll");
+    expect(alert).toHaveBeenCalledWith(STORAGE_FULL_MESSAGE);
+  });
+
+  it("does not touch anything for other errors", async () => {
+    const failure = new Error("constraint");
+    const operation = vi.fn().mockRejectedValue(failure);
+
+    await expect(writeWithQuotaRecovery(operation)).rejects.toBe(failure);
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(await db.queryCache.count()).toBe(1);
+    expect(clearPack).not.toHaveBeenCalled();
+  });
+});

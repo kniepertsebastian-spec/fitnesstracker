@@ -28,7 +28,9 @@ export interface PendingMutation {
 export interface FailedMutation {
   id?: number;
   accountId?: string;
-  kind: "workoutLog" | "workoutSession" | "cardioLog";
+  // "planEdit": a permanent plan change from focus mode (offline/planEditSync.ts); its payload is
+  // the whole queue entry and `clientId` the id of the edit it belongs to.
+  kind: "workoutLog" | "workoutSession" | "cardioLog" | "planEdit";
   clientId: string;
   op: MutationOp;
   // The original mutation's payload, kept so a manual retry (offline/retry.ts) can re-queue the
