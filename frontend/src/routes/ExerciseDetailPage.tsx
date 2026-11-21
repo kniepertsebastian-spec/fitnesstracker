@@ -1,4 +1,5 @@
-import { categoryLabel, equipmentLabel, muscleLabel } from "../lib/exerciseLabels";
+import { categoryLabel, equipmentLabel, imageAlt, muscleLabel } from "../lib/exerciseLabels";
+import { safeExternalUrl } from "../lib/safeUrl";
 import { useState } from "react";
 import { ArrowLeft, ExternalLink, Pencil } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -21,6 +22,8 @@ export function ExerciseDetailPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const images = exercise?.imageUrls.slice(0, 2) ?? [];
+  const videoUrl = safeExternalUrl(exercise?.videoUrl);
 
   const toggleActive = () => {
     if (!exercise) return;
@@ -75,10 +78,18 @@ export function ExerciseDetailPage() {
             </Button>
           </div>
 
-          {exercise.imageUrls.length > 0 && (
+          {images.length > 0 && (
             <div className="grid grid-cols-2 gap-3 lg:max-w-2xl">
-              {exercise.imageUrls.slice(0, 2).map((url) => (
-                <img key={url} src={url} alt={exercise.name} className="aspect-4/3 w-full rounded-xl bg-track object-contain" />
+              {images.map((url, index) => (
+                <img
+                  key={url}
+                  src={url}
+                  alt={imageAlt(exercise.name, index, images.length)}
+                  width={640}
+                  height={480}
+                  decoding="async"
+                  className="aspect-4/3 w-full rounded-xl bg-track object-contain"
+                />
               ))}
             </div>
           )}
@@ -106,11 +117,11 @@ export function ExerciseDetailPage() {
               ) : (
                 <p className="text-small text-text-faint">Keine Beschreibung vorhanden.</p>
               )}
-              {exercise.videoUrl ? (
+              {videoUrl ? (
                 <a
-                  href={exercise.videoUrl}
+                  href={videoUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-body text-accent-text hover:text-accent-text-hover"
                 >
                   Video ansehen <ExternalLink size={14} aria-hidden />

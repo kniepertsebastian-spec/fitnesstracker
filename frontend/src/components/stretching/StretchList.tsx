@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, ChevronDown, Play, Square } from "lucide-react";
 import type { StretchItemDto } from "@fitnesstracker/shared";
+import { imageAlt } from "../../lib/exerciseLabels";
 import { loadStretchDone } from "../../lib/stretchStorage";
 import { Button, ProgressBar, cn } from "../ui";
 
@@ -119,12 +120,15 @@ export function StretchList({ items, storageKey, onDoneChange }: Props) {
                   // Start/end position side by side, each at its natural aspect ratio — a
                   // full-width stretch distorts the source photos.
                   <div className="flex gap-2">
-                    {item.imageUrls.slice(0, 2).map((url) => (
+                    {item.imageUrls.slice(0, 2).map((url, index, shown) => (
                       <img
                         key={url}
                         src={url}
-                        alt={item.name}
+                        alt={imageAlt(item.name, index, shown.length)}
+                        width={256}
+                        height={192}
                         loading="lazy"
+                        decoding="async"
                         className="aspect-4/3 min-w-0 flex-1 rounded-lg bg-track object-contain sm:max-w-[16rem]"
                       />
                     ))}

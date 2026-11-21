@@ -52,3 +52,8 @@ function label(table: Record<string, string>, value: string): string {
 export const muscleLabel = (value: string) => label(MUSCLES, value);
 export const equipmentLabel = (value: string) => label(EQUIPMENT, value);
 export const categoryLabel = (value: string) => label(CATEGORIES, value);
+
+// Alt text for one of an exercise's images: a lone image is just the exercise, several get
+// numbered so a screen reader doesn't announce the same text twice in a row.
+export const imageAlt = (name: string, index: number, total: number) =>
+  total > 1 ? `${name} – Ansicht ${index + 1}` : name;
