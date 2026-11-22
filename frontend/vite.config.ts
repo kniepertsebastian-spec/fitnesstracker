@@ -30,12 +30,49 @@ function preloadBodyFont(): Plugin {
   };
 }
 
+// The login page is a lazy route chunk, so without a hint the browser finds it (and the schema/zod
+// chunks it imports) only after the entry has run: one more round trip before the heading — the
+// LCP element of a fresh install — can render. A modulepreload for that chunk and its static
+// imports lets it download alongside the entry. Preloading doesn't execute anything, so signed-in
+// screens pay only the download (~40 KB gzip, precached by the service worker afterwards anyway).
+function preloadLoginRoute(): Plugin {
+  return {
+    name: "preload-login-route",
+    apply: "build",
+    transformIndexHtml: {
+      order: "post",
+      handler(html, ctx) {
+        const bundle = ctx.bundle ?? {};
+        const chunks = Object.values(bundle).filter((output) => output.type === "chunk");
+        const login = chunks.find((chunk) => /[\\/]src[\\/]routes[\\/]LoginPage\.tsx$/.test(chunk.facadeModuleId ?? ""));
+        if (!login) return;
+        const files = new Set<string>();
+        const visit = (fileName: string) => {
+          if (files.has(fileName)) return;
+          files.add(fileName);
+          const chunk = bundle[fileName];
+          if (chunk?.type === "chunk") chunk.imports.forEach(visit);
+        };
+        visit(login.fileName);
+        return [...files]
+          .filter((fileName) => !html.includes(`/${fileName}"`))
+          .map((fileName) => ({
+            tag: "link",
+            attrs: { rel: "modulepreload", crossorigin: true, href: `/${fileName}` },
+            injectTo: "head" as const,
+          }));
+      },
+    },
+  };
+}
+
 export default defineConfig({
   // Busts the persisted query cache (src/queryClient.ts) on every new build.
   define: { __BUILD_ID__: JSON.stringify(new Date().toISOString()) },
   plugins: [
     react(),
     preloadBodyFont(),
+    preloadLoginRoute(),
     VitePWA({
       // "autoUpdate" swaps in a new service worker and its cached assets the moment one is
       // found, with no user-visible signal — mid-workout, that can mean the app silently starts
