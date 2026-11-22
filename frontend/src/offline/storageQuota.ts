@@ -1,5 +1,6 @@
 import { offlineDb } from "./db";
 import { clearPack } from "./exerciseImagePack";
+import { isQuotaExceededError } from "./quotaError";
 
 // A full device (or a browser that hands this site only a small share of it) makes IndexedDB
 // writes fail with QuotaExceededError. Losing a logged set to that is the worst case, so writes
@@ -17,20 +18,7 @@ export class StorageQuotaError extends Error {
   }
 }
 
-const QUOTA_NAMES = new Set(["QuotaExceededError", "NS_ERROR_DOM_QUOTA_REACHED"]);
-
-// Dexie passes the browser's DOMException on under the same name, or wraps it (`inner`) when it
-// aborted a whole transaction; legacy browsers only set the numeric code 22.
-export function isQuotaExceededError(error: unknown): boolean {
-  let current: unknown = error;
-  for (let depth = 0; depth < 5 && current; depth++) {
-    const e = current as { name?: unknown; code?: unknown; inner?: unknown; cause?: unknown };
-    if (typeof e.name === "string" && QUOTA_NAMES.has(e.name)) return true;
-    if (typeof DOMException !== "undefined" && current instanceof DOMException && e.code === 22) return true;
-    current = e.inner ?? e.cause;
-  }
-  return false;
-}
+export { isQuotaExceededError };
 
 export interface QuotaRecoveryOptions {
   // Also drop the downloaded exercise pictures (re-downloadable from Settings). Worth it for a

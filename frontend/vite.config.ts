@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -6,11 +6,36 @@ import { VitePWA } from "vite-plugin-pwa";
 // that port is taken (e.g. to run the E2E suite against a backend on another port).
 const API_PROXY_TARGET = process.env.API_PROXY_TARGET ?? "http://localhost:3000";
 
+// The body text font (Geist, latin subset) is otherwise discovered only after the CSS has been
+// downloaded and parsed — on a slow phone that late swap is part of the login page's LCP. The file
+// name carries a content hash, so the link is added once the bundle is known.
+function preloadBodyFont(): Plugin {
+  return {
+    name: "preload-body-font",
+    apply: "build",
+    transformIndexHtml: {
+      order: "post",
+      handler(_html, ctx) {
+        const font = Object.keys(ctx.bundle ?? {}).find((name) => /geist-latin-wght-normal-[^/]*\.woff2$/.test(name));
+        if (!font) return;
+        return [
+          {
+            tag: "link",
+            attrs: { rel: "preload", href: `/${font}`, as: "font", type: "font/woff2", crossorigin: true },
+            injectTo: "head-prepend",
+          },
+        ];
+      },
+    },
+  };
+}
+
 export default defineConfig({
   // Busts the persisted query cache (src/queryClient.ts) on every new build.
   define: { __BUILD_ID__: JSON.stringify(new Date().toISOString()) },
   plugins: [
     react(),
+    preloadBodyFont(),
     VitePWA({
       // "autoUpdate" swaps in a new service worker and its cached assets the moment one is
       // found, with no user-visible signal — mid-workout, that can mean the app silently starts
@@ -132,8 +157,10 @@ export default defineConfig({
           "**/assets/geist-mono-*.woff2",
         ],
         // Never let the service worker serve cached API responses — a stale workout log
-        // after a deploy is a much worse bug than a network round-trip.
-        navigateFallbackDenylist: [/^\/api/],
+        // after a deploy is a much worse bug than a network round-trip. `/.well-known/` (the
+        // Android app link file assetlinks.json among them) must come from the server as well,
+        // never as the app shell's index.html.
+        navigateFallbackDenylist: [/^\/api/, /^\/\.well-known\//],
         runtimeCaching: [
           {
             urlPattern: /\/api\/exercise-images\/.*/i,

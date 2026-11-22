@@ -1,22 +1,10 @@
-import { lazy, Suspense, useEffect, type ComponentType, type ReactNode } from "react";
+import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { RouteErrorBoundary } from "./components/layout/RouteErrorBoundary";
-import { ForgottenSessionPrompt } from "./components/workoutLog/ForgottenSessionPrompt";
 import { UpdatePrompt } from "./components/layout/UpdatePrompt";
 import { useAuthBootstrap } from "./hooks/useAuth";
-import { flushPendingMutations, initWorkoutLogSync } from "./offline/workoutLogSync";
-import { flushPendingSessionMutations, initWorkoutSessionSync } from "./offline/workoutSessionSync";
-import { refreshSyncCounts } from "./offline/syncCounts";
-import { initExerciseCatalogSync, syncExerciseCatalog } from "./offline/exerciseCatalog";
-import { flushPendingCardioLogs, initCardioLogSync } from "./offline/cardioLogSync";
-import { flushPlanOps, initPlanEditSync } from "./offline/planEditSync";
-import { initRestTimerPush } from "./lib/restTimerPush";
-import { requestPersistentStorage } from "./lib/persistentStorage";
 import { useAuthStore } from "./stores/authStore";
-import { useSyncStore } from "./stores/syncStore";
-import { useOpenWorkoutSession } from "./hooks/useWorkoutSession";
-import { updateAppBadge } from "./lib/appBadge";
 
 // Every screen is its own chunk, so a signed-in cold start doesn't download (or parse) the code
 // of the other fifteen — the JS of the whole app used to arrive as one 800 KB file, even for the
@@ -46,6 +34,20 @@ const TrainingPage = lazyPage(() => import("./routes/TrainingPage"), "TrainingPa
 // Dev-only: the ternary is folded away in production builds, so the chunk isn't emitted.
 const UiKitPage = import.meta.env.DEV ? lazyPage(() => import("./routes/UiKitPage"), "UiKitPage") : null;
 
+// The offline queues, their sync and the signed-in-only prompts, in a chunk of their own: the login
+// page's cold start (mobile Lighthouse) doesn't download, parse or run any of it. Should the chunk
+// fail to load, the app keeps working without it: queued entries stay in IndexedDB until the next
+// start sends them.
+const AuthenticatedRuntime = lazy(() =>
+  import("./components/layout/AuthenticatedRuntime").then(
+    (m) => ({ default: m.AuthenticatedRuntime }),
+    (error: unknown) => {
+      console.error("Loading the signed-in runtime failed", error);
+      return { default: () => null };
+    },
+  ),
+);
+
 // Shown while the first chunk of a screen loads (cold start); same look as ProtectedRoute's wait.
 function RouteFallback() {
   return <div className="min-h-screen bg-bg p-4 text-text-subtle">Lädt…</div>;
@@ -68,49 +70,9 @@ function GlobalUpdatePrompt() {
   return <UpdatePrompt suppressed={pathname.startsWith("/training")} />;
 }
 
-// Mirrors unsynced changes / an open session onto the installed app's icon badge.
-function AppBadge() {
-  const authenticated = useAuthStore((s) => s.status === "authenticated");
-  const pending = useSyncStore((s) => s.pendingCount + s.failedCount);
-  const { data: session } = useOpenWorkoutSession();
-  useEffect(() => {
-    updateAppBadge(authenticated ? pending : 0, authenticated && !!session);
-  }, [authenticated, pending, session]);
-  return null;
-}
-
 export function App() {
   useAuthBootstrap();
-  const authStatus = useAuthStore((s) => s.status);
-  // Once someone is signed in there is data worth protecting from browser eviction.
-  useEffect(() => {
-    if (authStatus === "authenticated") void requestPersistentStorage();
-  }, [authStatus]);
-  useEffect(() => initWorkoutLogSync(), []);
-  useEffect(() => initWorkoutSessionSync(), []);
-  useEffect(() => initExerciseCatalogSync(), []);
-  // The offline copy of the exercise catalog is fetched as soon as someone is signed in.
-  useEffect(() => {
-    if (authStatus === "authenticated") void syncExerciseCatalog(true);
-  }, [authStatus]);
-  useEffect(() => initCardioLogSync(), []);
-  useEffect(() => initPlanEditSync(), []);
-  useEffect(() => initRestTimerPush(), []);
-  // Queued entries belong to an account: whenever one signs in (or the user switches), show that
-  // account's counts and send whatever it left unsynced earlier, without waiting for the timers.
-  useEffect(
-    () =>
-      useAuthStore.subscribe((state, previous) => {
-        if (state.user?.id === previous.user?.id) return;
-        void refreshSyncCounts();
-        if (!state.user) return;
-        void flushPendingMutations();
-        void flushPendingSessionMutations();
-        void flushPendingCardioLogs();
-        void flushPlanOps();
-      }),
-    [],
-  );
+  const authenticated = useAuthStore((s) => s.status === "authenticated");
 
   return (
     // React Router 7 wraps navigations in startTransition by default: a navigation to a page whose
@@ -118,8 +80,11 @@ export function App() {
     // blanking it with the Suspense fallback.
     <BrowserRouter>
       <GlobalUpdatePrompt />
-      <AppBadge />
-      <ForgottenSessionPrompt />
+      {authenticated && (
+        <Suspense fallback={null}>
+          <AuthenticatedRuntime />
+        </Suspense>
+      )}
       <RoutedScreens>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
