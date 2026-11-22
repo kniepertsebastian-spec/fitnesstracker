@@ -243,14 +243,6 @@ export default defineConfig({
               test: /[\\/]node_modules[\\/](@radix-ui|@floating-ui|react-remove-scroll[\w-]*|aria-hidden|use-sidecar|use-callback-ref)[\\/]/,
               priority: 2,
             },
-            // The two UI components built on Radix, kept apart from the shared `ui` chunk: the entry
-            // and the login page import that chunk statically, and with a dialog in it they pulled
-            // the whole vendor-radix chunk (~90 KB) into the login page's cold start.
-            {
-              name: "ui-overlays",
-              test: /[\\/]src[\\/]components[\\/]ui[\\/](Dialog|DropdownMenu)\.tsx$/,
-              priority: 2,
-            },
           ],
         },
       },
