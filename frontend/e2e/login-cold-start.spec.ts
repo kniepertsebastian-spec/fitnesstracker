@@ -33,10 +33,11 @@ test.describe("Login-Kaltstart", () => {
     expect(failedResponses).toEqual([]);
     expect(consoleErrors).toEqual([]);
     expect(runtimeChunks).toEqual([]);
-    const preloaded = await page.locator('link[rel="modulepreload"]').evaluateAll((links) =>
-      links.map((link) => link.getAttribute("href") ?? ""),
-    );
-    expect(preloaded.filter((href) => /\/(AuthenticatedRuntime|db|vendor-radix)-/.test(href))).toEqual([]);
+    // The HTML as served (the live DOM also gets the preload links Vite adds for a lazy import).
+    const html = await (await page.request.get("/login")).text();
+    const preloaded = [...html.matchAll(/<link[^>]+rel="?modulepreload"?[^>]*>/g)].map(([tag]) => tag);
+    expect(preloaded.length).toBeGreaterThan(0);
+    expect(preloaded.filter((tag) => /\/(AuthenticatedRuntime|db|vendor-radix)-/.test(tag))).toEqual([]);
   });
 
   test("mit Sitzung: ein Neuladen meldet über den Boot-Check wieder an", async ({ page, request }) => {
