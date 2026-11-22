@@ -208,6 +208,15 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       preserveEntrySignatures: false,
+      treeshake: {
+        // Both are imported through barrels (`components/ui/index.ts`, the shared package's index)
+        // and hold nothing but components, schemas and constants. Marked free of side effects, an
+        // import of `Button` or `loginSchema` reaches only that module — before, the login page
+        // reached every dialog (and with them vendor-radix) and every schema of the shared package.
+        // Anything else keeps the default (package.json `sideEffects`, else true).
+        moduleSideEffects: (id) =>
+          /[\\/](src[\\/]components[\\/]ui|packages[\\/]shared[\\/]dist)[\\/]/.test(id) ? false : undefined,
+      },
       output: {
         codeSplitting: {
           // Fold the many tiny shared chunks the lazy routes would otherwise produce (single
