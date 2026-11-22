@@ -92,7 +92,13 @@ export function OfflineCatalogCard() {
       {(downloading || (status && status.total > 0 && !complete)) && (
         <ProgressBar className="mt-3" value={percent} size={6} label="Bilder offline" />
       )}
-      {progress && !downloading && progress.failed > 0 && (
+      {progress?.quotaExceeded && !downloading && (
+        <Callout tone="warning" className="mt-3">
+          Der Speicher auf diesem Gerät ist voll, deshalb wurde der Download angehalten. Die bisher geladenen Bilder
+          bleiben erhalten. Gib Speicherplatz frei und tippe dann auf „Fehlende Bilder laden“.
+        </Callout>
+      )}
+      {progress && !downloading && !progress.quotaExceeded && progress.failed > 0 && (
         <Callout tone="warning" className="mt-3">
           {progress.failed} Bilder konnten nicht geladen werden — bitte mit Netz noch einmal versuchen.
         </Callout>

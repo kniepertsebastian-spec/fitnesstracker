@@ -1,3 +1,4 @@
+import { useStorageNoticeStore } from "../stores/storageNoticeStore";
 import { offlineDb } from "./db";
 import { clearPack } from "./exerciseImagePack";
 import { isQuotaExceededError } from "./quotaError";
@@ -37,7 +38,8 @@ export async function freeNonCriticalStorage({ clearImageCache = true }: QuotaRe
 }
 
 // Most callers fire their write from a tap without an error slot in the UI (logging a set, saving
-// cardio), so the message is shown here directly — at most once per half minute, not per write.
+// cardio), so the message is shown here directly — at most once per half minute, not per write —
+// as a toast (StorageFullToastHost) that doesn't block the page the way window.alert did.
 const NOTIFY_INTERVAL_MS = 30_000;
 let lastNotifiedAt = 0;
 
@@ -45,7 +47,7 @@ function notifyStorageFull() {
   const now = Date.now();
   if (now - lastNotifiedAt < NOTIFY_INTERVAL_MS) return;
   lastNotifiedAt = now;
-  if (typeof window !== "undefined" && typeof window.alert === "function") window.alert(STORAGE_FULL_MESSAGE);
+  useStorageNoticeStore.getState().show(STORAGE_FULL_MESSAGE);
 }
 
 export async function writeWithQuotaRecovery<T>(operation: () => Promise<T>, options: QuotaRecoveryOptions = {}): Promise<T> {

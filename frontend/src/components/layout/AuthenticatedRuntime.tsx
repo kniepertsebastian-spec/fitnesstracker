@@ -12,6 +12,7 @@ import { flushPendingMutations, initWorkoutLogSync } from "../../offline/workout
 import { flushPendingSessionMutations, initWorkoutSessionSync } from "../../offline/workoutSessionSync";
 import { useAuthStore } from "../../stores/authStore";
 import { useSyncStore } from "../../stores/syncStore";
+import { StorageFullToastHost } from "./StorageFullToastHost";
 
 function flushAll() {
   void refreshSyncCounts();
@@ -34,8 +35,8 @@ function AppBadge() {
 }
 
 // Everything that only matters while someone is signed in: the offline queues and their sync, the
-// exercise catalog copy, persistent storage, the rest-timer push, the icon badge and the
-// "Training noch aktiv?" prompt. App.tsx loads this as its own chunk and renders it only for an
+// exercise catalog copy, persistent storage, the rest-timer push, the icon badge, the
+// "Training noch aktiv?" prompt and the "Speicher voll" toast. App.tsx loads this as its own chunk and renders it only for an
 // authenticated user, so the login page's first download carries none of it (Dexie included).
 //
 // The init* functions are idempotent and keep their listeners for the page's lifetime; after a
@@ -66,6 +67,7 @@ export function AuthenticatedRuntime() {
     <>
       <AppBadge />
       <ForgottenSessionPrompt />
+      <StorageFullToastHost />
     </>
   );
 }
