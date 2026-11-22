@@ -2,8 +2,8 @@
 
 Stand: 22.11.2026 · Branch `feature/paket-f-qa-verifikation` (auf Paket E) · Produktion `https://fitness.pwa-tree.de`
 
-**Status: noch nicht `READY`.** Automatisierte Prüfungen und Header-Checks sind grün. Offen sind
-die Gerätetests (Abschnitt 3c–f) und eine Cloudflare-Einstellung (Befund F-1).
+**Status: noch nicht `READY`.** Automatisierte Prüfungen und Header-Checks sind grün, Befund F-1
+ist behoben. Offen sind nur noch die Gerätetests (Abschnitt 3c–f).
 
 ## 1. E2E-Tests (`frontend/e2e/`)
 
@@ -35,8 +35,8 @@ Lauf im Container `mcr.microsoft.com/playwright:v1.62.1-noble` mit einer Wegwerf
 | Pfad | Cache-Control | Content-Type | Encoding | CSP / HSTS / nosniff / Permissions-Policy |
 |---|---|---|---|---|
 | `/` | `no-cache` ✅ | `text/html` | `zstd` ✅ | ✅ |
-| `/sw.js` | `max-age=14400` ⚠️ F-1 | `text/javascript` | `gzip` ✅ | ✅ |
-| `/push-sw.js` | `max-age=14400` ⚠️ F-1 | `text/javascript` | `gzip` ✅ | ✅ |
+| `/sw.js` | `no-cache` ✅ (vorher `max-age=14400`, F-1) | `text/javascript` | `gzip` ✅ | ✅ |
+| `/push-sw.js` | `no-cache` ✅ (vorher `max-age=14400`, F-1) | `text/javascript` | `gzip` ✅ | ✅ |
 | `/manifest.webmanifest` | `no-cache` ✅ | `application/manifest+json` ✅ | `gzip` ✅ | ✅ |
 
 Außerdem: ein fehlendes `/assets/*.js` liefert 404 (kein SPA-Fallback), `/api/health` 200.
@@ -47,8 +47,9 @@ die eingestellte „Browser Cache TTL“ von 4 h (`cf-cache-status: REVALIDATED`
 selbst revalidiert also). `sw.js` ist trotzdem unkritisch, weil Browser das Haupt-Skript beim
 Update-Check am HTTP-Cache vorbei laden. `push-sw.js` wird aber per `importScripts` geladen und
 kann bis zu 4 h veraltet sein.
-Behebung im Cloudflare-Dashboard: *Caching → Configuration → Browser Cache TTL → „Respect Existing
-Headers“* oder eine Cache Rule für `/sw.js` und `/push-sw.js` („Browser TTL: Respect origin“).
+**Behoben am 22.11.2026:** Im Cloudflare-Dashboard steht *Caching → Configuration → Browser Cache
+TTL* jetzt auf „Respect Existing Headers“. Nachgeprüft: `sw.js`, `push-sw.js`, `/` und das Manifest
+liefern `no-cache`, gehashte `/assets/*.js` weiter `public, max-age=31536000, immutable`.
 
 ### b) Lighthouse 12.8 (Inkognito, `/login`, gemessen vom Server aus)
 
@@ -81,7 +82,7 @@ Headers“* oder eine Cache Rule für `/sw.js` und `/push-sw.js` („Browser TTL
 
 | ID | Schwere | Befund | Status |
 |---|---|---|---|
-| F-1 | Minor | Cloudflare setzt `Cache-Control: max-age=14400` auf `sw.js`/`push-sw.js` | offen – Cloudflare-Einstellung |
+| F-1 | Minor | Cloudflare setzte `Cache-Control: max-age=14400` auf `sw.js`/`push-sw.js` | ✅ behoben (Browser Cache TTL: „Respect Existing Headers“) |
 | F-2 | Info | Mobile Performance 65 (LCP 4,2 s) auf `/login` | beobachten |
 
 Keine Blocker und keine Major-Befunde aus den automatisierten Prüfungen. `READY` folgt, sobald
