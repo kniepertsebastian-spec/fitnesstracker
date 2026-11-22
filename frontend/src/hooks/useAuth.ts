@@ -1,13 +1,13 @@
 import { useCallback, useEffect } from "react";
 import type { LoginInput, RegisterInput } from "@fitnesstracker/shared";
-import { loginRequest, logoutRequest, meRequest, registerRequest } from "../api/auth.api";
-import { ApiError, apiFetch } from "../api/client";
+import { loginRequest, logoutRequest, registerRequest, sessionRequest } from "../api/auth.api";
+import { ApiError } from "../api/client";
 import { clearPendingLogout, flushPendingLogout, hasPendingLogout, markPendingLogout } from "../lib/pendingLogout";
 import { unsubscribePushOnLogout } from "../lib/pushLogout";
 import { readCachedUser, useAuthStore } from "../stores/authStore";
 
-// On app boot there's no access token in memory yet (it's never persisted), so we try a
-// silent refresh against the httpOnly cookie first; only if that fails is the user logged out.
+// On app boot there's no access token in memory yet (it's never persisted), so we ask the server
+// whether the httpOnly refresh cookie still holds a session; only if it doesn't is the user logged out.
 export function useAuthBootstrap() {
   const setSession = useAuthStore((s) => s.setSession);
   const setStatus = useAuthStore((s) => s.setStatus);
@@ -24,16 +24,17 @@ export function useAuthBootstrap() {
       return;
     }
 
-    apiFetch<{ accessToken: string }>("/auth/refresh", { method: "POST", skipAuthRetry: true })
-      .then(async (data) => {
-        useAuthStore.getState().setAccessToken(data.accessToken);
-        const user = await meRequest();
-        setSession(user, data.accessToken);
+    // One request: rotates the refresh cookie and returns the user with a new access token, or
+    // says there is no session (200, so the login page's console stays clean).
+    sessionRequest()
+      .then((data) => {
+        if (data.authenticated) setSession(data.user, data.accessToken);
+        else useAuthStore.getState().clearSession();
       })
       .catch((error) => {
-        // ApiError means the server was reached and said the refresh token is invalid/expired —
-        // that's a genuine logout. Anything else (fetch itself rejecting) means the request
-        // never reached the server at all — most commonly a reload while offline — which says
+        // ApiError means the server was reached and turned the request down (rate limit, a
+        // malformed request) — treated as a logout, as before. Anything else (fetch itself
+        // rejecting) means the request never reached the server at all — most commonly a reload while offline — which says
         // nothing about whether the session is still valid. Falling back to the last-known user
         // instead of logging out is what lets "App neu laden" while offline keep showing the
         // app (backed by the locally cached IndexedDB data) instead of bouncing to /login; a

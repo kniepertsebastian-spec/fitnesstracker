@@ -116,6 +116,45 @@ describe.skipIf(!hasTestDb)("auth (integration)", () => {
       expect((await app.inject({ method: "POST", url: "/api/auth/refresh" })).statusCode).toBe(401);
     });
 
+    it("answers the boot check with 200 and authenticated: false when there is no session", async () => {
+      const none = await app.inject({ method: "POST", url: "/api/auth/session" });
+      expect(none.statusCode).toBe(200);
+      expect(none.json()).toEqual({ authenticated: false });
+
+      const unknown = await app.inject({ method: "POST", url: "/api/auth/session", cookies: { refreshToken: "not-a-token" } });
+      expect(unknown.statusCode).toBe(200);
+      expect(unknown.json()).toEqual({ authenticated: false });
+      // An invalid cookie is cleared, like /refresh does.
+      expect(unknown.cookies.find((c) => c.name === "refreshToken")?.value).toBe("");
+    });
+
+    it("answers the boot check with user and access token, rotating the cookie like /refresh", async () => {
+      const session = await signUp(app, "session");
+      const res = await app.inject({ method: "POST", url: "/api/auth/session", cookies: { refreshToken: session.refreshToken } });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body).toMatchObject({ authenticated: true, accessToken: expect.any(String), user: { id: session.id, email: session.email } });
+      expect(res.body).not.toContain("passwordHash");
+
+      const next = refreshCookieOf(res);
+      expect(next).toBeTruthy();
+      expect(next).not.toBe(session.refreshToken);
+      const me = await app.inject({ method: "GET", url: "/api/auth/me", headers: { authorization: `Bearer ${body.accessToken}` } });
+      expect(me.statusCode).toBe(200);
+      expect((await refresh(app, next!)).statusCode).toBe(200);
+    });
+
+    it("treats an expired or logged-out session as signed out in the boot check", async () => {
+      const session = await signUp(app, "session-ttl");
+      await app.prisma.refreshToken.update({
+        where: { tokenHash: hashRefreshToken(session.refreshToken) },
+        data: { expiresAt: new Date(Date.now() - 1000) },
+      });
+      const res = await app.inject({ method: "POST", url: "/api/auth/session", cookies: { refreshToken: session.refreshToken } });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ authenticated: false });
+    });
+
     it("logout ends the session for good — no grace period for a deliberately revoked token", async () => {
       const session = await signUp(app, "logout");
       const out = await app.inject({

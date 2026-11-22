@@ -12,6 +12,14 @@ export function loginRequest(input: LoginInput) {
   });
 }
 
+export type SessionResponse = { authenticated: false } | { authenticated: true; accessToken: string; user: UserDto };
+
+// The boot check (hooks/useAuth.ts): rotates the refresh cookie like /auth/refresh, but answers
+// "not signed in" with 200 instead of a 401, so opening /login logs no error in the console.
+export function sessionRequest() {
+  return apiFetch<SessionResponse>("/auth/session", { method: "POST", skipAuthRetry: true });
+}
+
 export function logoutRequest() {
   return apiFetch<void>("/auth/logout", { method: "POST" });
 }
