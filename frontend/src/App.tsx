@@ -38,7 +38,7 @@ const UiKitPage = import.meta.env.DEV ? lazyPage(() => import("./routes/UiKitPag
 // page's cold start (mobile Lighthouse) doesn't download, parse or run any of it. Should the chunk
 // fail to load, the app keeps working without it: queued entries stay in IndexedDB until the next
 // start sends them.
-const AuthenticatedRuntime = lazy(() =>
+const AuthenticatedRuntime = lazy<ComponentType>(() =>
   import("./components/layout/AuthenticatedRuntime").then(
     (m) => ({ default: m.AuthenticatedRuntime }),
     (error: unknown) => {
