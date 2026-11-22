@@ -18,7 +18,7 @@ export function ForgottenSessionPrompt() {
   const time = deadline.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <div className="fixed inset-x-0 top-0 z-50 p-3">
+    <div className="fixed inset-x-0 top-0 z-50 pb-3 pl-[calc(0.75rem+env(safe-area-inset-left))] pr-[calc(0.75rem+env(safe-area-inset-right))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
       <Callout tone="warning" className="mx-auto max-w-xl bg-surface shadow-lg">
         <p className="font-medium text-text">Training noch aktiv?</p>
         <p className="mt-1">Dein Training läuft seit über 2 Stunden. Ohne Antwort schließe ich es um {time} Uhr automatisch ab.</p>

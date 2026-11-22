@@ -2,16 +2,27 @@
 # JDK 17, the Android SDK command-line tools with the platform and build tools, Node and Bubblewrap.
 # Everything is installed here so nothing has to be set up on the host and Bubblewrap never asks to
 # download a JDK or SDK interactively. See README.md.
-FROM eclipse-temurin:17-jdk-jammy
+#
+# Both base images are pinned to exact versions so a rebuild gives the same toolchain; bump them on
+# purpose (and check that build.sh still runs). Node comes from the official image rather than from a
+# setup script piped into bash: nothing from the network runs as root during the build.
+FROM node:22.23.5-bookworm-slim AS node
+
+FROM eclipse-temurin:17.0.21.1_2-jdk-jammy
 
 ENV ANDROID_HOME=/opt/android-sdk
 ENV PATH="${PATH}:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools"
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl unzip ca-certificates gnupg \
- && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
- && apt-get install -y --no-install-recommends nodejs \
+ && apt-get install -y --no-install-recommends curl unzip ca-certificates \
  && rm -rf /var/lib/apt/lists/*
+
+# The official Node binaries need glibc 2.28 or newer; jammy has 2.35.
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+ && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+ && node --version && npm --version
 
 ARG CMDLINE_TOOLS=11076708
 RUN mkdir -p ${ANDROID_HOME}/cmdline-tools \

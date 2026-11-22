@@ -1,5 +1,7 @@
+import { useStorageNoticeStore } from "../stores/storageNoticeStore";
 import { offlineDb } from "./db";
 import { clearPack } from "./exerciseImagePack";
+import { isQuotaExceededError } from "./quotaError";
 
 // A full device (or a browser that hands this site only a small share of it) makes IndexedDB
 // writes fail with QuotaExceededError. Losing a logged set to that is the worst case, so writes
@@ -17,20 +19,7 @@ export class StorageQuotaError extends Error {
   }
 }
 
-const QUOTA_NAMES = new Set(["QuotaExceededError", "NS_ERROR_DOM_QUOTA_REACHED"]);
-
-// Dexie passes the browser's DOMException on under the same name, or wraps it (`inner`) when it
-// aborted a whole transaction; legacy browsers only set the numeric code 22.
-export function isQuotaExceededError(error: unknown): boolean {
-  let current: unknown = error;
-  for (let depth = 0; depth < 5 && current; depth++) {
-    const e = current as { name?: unknown; code?: unknown; inner?: unknown; cause?: unknown };
-    if (typeof e.name === "string" && QUOTA_NAMES.has(e.name)) return true;
-    if (typeof DOMException !== "undefined" && current instanceof DOMException && e.code === 22) return true;
-    current = e.inner ?? e.cause;
-  }
-  return false;
-}
+export { isQuotaExceededError };
 
 export interface QuotaRecoveryOptions {
   // Also drop the downloaded exercise pictures (re-downloadable from Settings). Worth it for a
@@ -49,7 +38,8 @@ export async function freeNonCriticalStorage({ clearImageCache = true }: QuotaRe
 }
 
 // Most callers fire their write from a tap without an error slot in the UI (logging a set, saving
-// cardio), so the message is shown here directly — at most once per half minute, not per write.
+// cardio), so the message is shown here directly — at most once per half minute, not per write —
+// as a toast (StorageFullToastHost) that doesn't block the page the way window.alert did.
 const NOTIFY_INTERVAL_MS = 30_000;
 let lastNotifiedAt = 0;
 
@@ -57,7 +47,7 @@ function notifyStorageFull() {
   const now = Date.now();
   if (now - lastNotifiedAt < NOTIFY_INTERVAL_MS) return;
   lastNotifiedAt = now;
-  if (typeof window !== "undefined" && typeof window.alert === "function") window.alert(STORAGE_FULL_MESSAGE);
+  useStorageNoticeStore.getState().show(STORAGE_FULL_MESSAGE);
 }
 
 export async function writeWithQuotaRecovery<T>(operation: () => Promise<T>, options: QuotaRecoveryOptions = {}): Promise<T> {

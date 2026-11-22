@@ -90,6 +90,32 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // The app's boot check: "is someone signed in on this device?" Same rotation as /refresh, plus the
+  // user, but "no" is an ordinary answer here (200, `authenticated: false`) rather than a 401 —
+  // opening the login page without a session is the normal case, not an error the browser should
+  // log. /refresh keeps its 401 for the retry of a request whose access token expired.
+  fastify.post("/session", REFRESH_RATE_LIMIT, async (request, reply) => {
+    const rawToken = request.cookies[REFRESH_COOKIE_NAME];
+    if (!rawToken) return reply.send({ authenticated: false });
+    try {
+      const { userId, newRawToken } = await rotateRefreshToken(fastify.prisma, rawToken);
+      const user = await fastify.prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        reply.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+        return reply.send({ authenticated: false });
+      }
+      const accessToken = await reply.jwtSign({ sub: userId });
+      setRefreshCookie(reply, newRawToken);
+      return reply.send({ authenticated: true, accessToken, user: toUserDto(user) });
+    } catch (error) {
+      if (error instanceof HttpError) {
+        reply.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+        return reply.send({ authenticated: false });
+      }
+      throw error;
+    }
+  });
+
   fastify.post("/logout", async (request, reply) => {
     const rawToken = request.cookies[REFRESH_COOKIE_NAME];
     if (rawToken) {

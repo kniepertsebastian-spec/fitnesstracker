@@ -1,4 +1,5 @@
 import type { ExerciseDto } from "@fitnesstracker/shared";
+import { isQuotaExceededError } from "./quotaError";
 
 // The exercise pictures on the device. The service worker keeps pictures it has seen in this cache
 // (vite.config.ts); the "offline package" fills it ahead of time with every picture of the catalog, so the
@@ -44,10 +45,14 @@ export interface PackProgress {
   done: number;
   total: number;
   failed: number;
+  // The device ran out of storage: the download stopped there, what was saved before stays.
+  quotaExceeded: boolean;
 }
 
 // Downloads what is missing, a few at a time. Stops early when `signal` aborts; a picture that fails (no
-// connection, 404) is counted and skipped, a second run picks it up again.
+// connection, 404) is counted and skipped, a second run picks it up again. A full device stops the whole
+// run at once (`quotaExceeded`): every further picture would fail the same way, and trying on would only
+// push the user's own entries (sets, sessions) closer to the limit.
 export async function downloadPack(
   catalog: ExerciseDto[],
   onProgress: (progress: PackProgress) => void,
@@ -55,30 +60,48 @@ export async function downloadPack(
   concurrency = 4,
 ): Promise<PackProgress> {
   const cache = await openCache();
-  const progress: PackProgress = { done: 0, total: 0, failed: 0 };
+  const progress: PackProgress = { done: 0, total: 0, failed: 0, quotaExceeded: false };
   if (!cache) return progress;
   const have = new Set((await cache.keys()).map((r) => r.url));
   const missing = packUrls(catalog).filter((u) => !have.has(u));
   progress.total = missing.length;
   onProgress({ ...progress });
 
+  // Cancels the downloads still in flight, whether the caller aborts or the storage is full.
+  const stop = new AbortController();
+  const onAbort = () => stop.abort();
+  if (signal?.aborted) stop.abort();
+  else signal?.addEventListener("abort", onAbort, { once: true });
+
   const queue = [...missing];
   const worker = async () => {
     for (let url = queue.pop(); url; url = queue.pop()) {
-      if (signal?.aborted) return;
+      if (stop.signal.aborted) return;
       try {
-        const response = await fetch(url, { signal });
+        const response = await fetch(url, { signal: stop.signal });
         if (response.ok) await cache.put(url, response);
         else progress.failed += 1;
-      } catch {
-        if (signal?.aborted) return;
+      } catch (error) {
+        if (isQuotaExceededError(error)) {
+          if (!progress.quotaExceeded) {
+            progress.quotaExceeded = true;
+            stop.abort();
+            onProgress({ ...progress });
+          }
+          return;
+        }
+        if (stop.signal.aborted) return;
         progress.failed += 1;
       }
       progress.done += 1;
       onProgress({ ...progress });
     }
   };
-  await Promise.all(Array.from({ length: concurrency }, worker));
+  try {
+    await Promise.all(Array.from({ length: concurrency }, worker));
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+  }
   return progress;
 }
 

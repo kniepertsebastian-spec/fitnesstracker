@@ -65,7 +65,7 @@ export function UpdatePrompt({ suppressed = false }: { suppressed?: boolean }) {
   return (
     <div
       role="status"
-      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-4 right-4 z-50 flex flex-col gap-2 rounded-2xl border border-accent-border bg-surface p-3 shadow-overlay lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] lg:left-auto lg:right-6 lg:w-80"
+      className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-[calc(1rem+env(safe-area-inset-left))] right-[calc(1rem+env(safe-area-inset-right))] z-50 flex flex-col gap-2 rounded-2xl border border-accent-border bg-surface p-3 shadow-overlay lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] lg:left-auto lg:right-[calc(1.5rem+env(safe-area-inset-right))] lg:w-80"
     >
       <p className="text-small text-text-2">Neue Version verfügbar</p>
       <div className="flex items-center justify-end gap-2">

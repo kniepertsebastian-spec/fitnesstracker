@@ -4,10 +4,13 @@ import { flushPendingMutations } from "./workoutLogSync";
 import { flushPendingSessionMutations } from "./workoutSessionSync";
 import { flushPendingCardioLogs } from "./cardioLogSync";
 import { requeueFailedPlanOp } from "./planEditSync";
+import { writeWithQuotaRecovery } from "./storageQuota";
 
 // Re-queues a dropped mutation using its saved payload — the user never has to redo the
 // original action. A retry can still fail again (e.g. the same validation issue), in which case
-// it lands right back in failedMutations with a fresh reason.
+// it lands right back in failedMutations with a fresh reason. The re-queue is a write of the user's
+// own entry like the original one, so a full device gets the same recovery (free cached copies, try
+// once more) and the same "Speicher voll" notice; the failed entry is only removed once re-queued.
 export async function retryFailedMutation(failed: FailedMutation) {
   if (failed.kind === "workoutLog" && !failed.accountId) {
     throw new Error("Diese ältere Offline-Änderung hat keine Account-Zuordnung und kann nicht sicher erneut synchronisiert werden.");
@@ -17,26 +20,30 @@ export async function retryFailedMutation(failed: FailedMutation) {
     return;
   }
   if (failed.kind === "cardioLog") {
-    await offlineDb.pendingCardioLogs.add({
-      ...(failed.accountId ? { accountId: failed.accountId } : {}),
-      clientId: failed.clientId,
-      payload: failed.payload,
-      label: failed.label,
-      queuedAt: new Date().toISOString(),
-    });
+    await writeWithQuotaRecovery(() =>
+      offlineDb.pendingCardioLogs.add({
+        ...(failed.accountId ? { accountId: failed.accountId } : {}),
+        clientId: failed.clientId,
+        payload: failed.payload,
+        label: failed.label,
+        queuedAt: new Date().toISOString(),
+      }),
+    );
     await offlineDb.failedMutations.delete(failed.id as number);
     await refreshSyncCounts();
     void flushPendingCardioLogs();
     return;
   }
   const table = failed.kind === "workoutLog" ? offlineDb.pendingMutations : offlineDb.pendingSessionMutations;
-  await table.add({
-    ...(failed.accountId ? { accountId: failed.accountId } : {}),
-    clientId: failed.clientId,
-    op: failed.op,
-    payload: failed.payload,
-    queuedAt: new Date().toISOString(),
-  });
+  await writeWithQuotaRecovery(() =>
+    table.add({
+      ...(failed.accountId ? { accountId: failed.accountId } : {}),
+      clientId: failed.clientId,
+      op: failed.op,
+      payload: failed.payload,
+      queuedAt: new Date().toISOString(),
+    }),
+  );
   await offlineDb.failedMutations.delete(failed.id as number);
   await refreshSyncCounts();
 

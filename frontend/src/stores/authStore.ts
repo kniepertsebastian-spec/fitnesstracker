@@ -41,7 +41,7 @@ function writeCachedUser(user: UserDto | null) {
 
 // Access token lives only in memory (this store), never localStorage — keeps it out of
 // reach of any XSS payload that could read localStorage. Persistence across reloads comes
-// from the httpOnly refresh cookie via a silent /auth/refresh call on app boot; see
+// from the httpOnly refresh cookie via a silent /auth/session call on app boot; see
 // useAuthBootstrap in hooks/useAuth.ts for what happens when that call fails offline rather
 // than because the session is genuinely invalid.
 export const useAuthStore = create<AuthState>((set) => ({
