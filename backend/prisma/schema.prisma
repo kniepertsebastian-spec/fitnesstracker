@@ -173,6 +173,7 @@ model User {
   mealEntries            MealEntry[]
   nutritionRatings       DailyNutritionRating[]
   nutritionSettings      NutritionSettings?
+  recipeImports          RecipeImport[]
 }
 
 // One active BYOK provider config per user — "flexible Auswahl und Hinterlegung eines API-Keys"
@@ -978,4 +979,69 @@ model NutritionSettings {
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   fatPercentOfRemaining Int      @default(40)
   updatedAt             DateTime @updatedAt
+}
+
+enum RecipeImportStatus {
+  PREVIEW_PENDING
+  PREVIEW_READY
+  EXTRACT_PENDING
+  EXTRACTING
+  READY
+  FAILED
+}
+
+enum RecipeImportSource {
+  URL
+  PHOTO
+  TEXT
+  VIDEO
+}
+
+// A recipe import (Kalorientracker Roadmap 04). A link goes preview (free: platform and title,
+// fetched by the worker) -> confirmed extraction (worker collects the page or video text, the
+// backend asks the AI); photo, text and video uploads are extracted right away. The draft holds
+// what was read plus matching suggestions, never nutrients: those are only calculated from the
+// foods the user confirms when the recipe is saved.
+model RecipeImport {
+  id         String             @id @default(uuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source     RecipeImportSource
+  status     RecipeImportStatus
+  url        String?
+  platform   String?
+  title      String?
+  // What the worker collected (JSON-LD recipe, description, subtitles): input of the extraction.
+  sourceData Json?
+  draft      Json?
+  error      String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+// The weekly high-protein ideas: one set for everybody per week, picked from a fixed catalog
+// (no AI), nutrients calculated from BLS foods when the set is made. weekStart + catalogKey give
+// the repeat lock (an idea does not come back for several weeks).
+model NutritionWeeklyDrop {
+  id              String   @id @default(uuid())
+  weekStart       DateTime @db.Date
+  position        Int
+  catalogKey      String
+  name            String
+  servings        Float
+  // [{ foodId, bls, name, grams }]: raw weights of one serving
+  ingredients     Json
+  steps           String[] @default([])
+  tags            String[] @default([])
+  // Per serving, calculated from the matched foods.
+  kcal            Float?
+  proteinG        Float?
+  perServing      Json
+  estimatedFields String[] @default([])
+  createdAt       DateTime @default(now())
+
+  @@unique([weekStart, position])
+  @@index([catalogKey, weekStart])
 }

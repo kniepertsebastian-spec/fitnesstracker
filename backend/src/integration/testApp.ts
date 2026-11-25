@@ -9,8 +9,8 @@ export const hasTestDb = Boolean(process.env.TEST_DATABASE_URL);
 
 export const PASSWORD = "correct-horse-battery";
 
-export async function startApp(): Promise<FastifyInstance> {
-  const app = buildApp({ logger: false });
+export async function startApp(options: Omit<Parameters<typeof buildApp>[0] & object, "logger"> = {}): Promise<FastifyInstance> {
+  const app = buildApp({ ...options, logger: false });
   await app.ready();
   return app;
 }

@@ -27,3 +27,4 @@ export * from "./phaseTemplates.js";
 export * from "./trainingTechniques.js";
 export * from "./bodyFat.js";
 export * from "./schemas/nutrition.schema.js";
+export * from "./schemas/nutritionCapture.schema.js";
