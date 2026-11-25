@@ -47,6 +47,8 @@ import mealRoutes from "./modules/meals/meal.routes.js";
 import nutritionTargetRoutes from "./modules/nutritionTargets/nutritionTargets.routes.js";
 import nutritionSyncRoutes from "./modules/nutritionSync/nutritionSync.routes.js";
 import nutritionExportRoutes from "./modules/nutritionExport/nutritionExport.routes.js";
+import captureRoutes, { type CaptureRouteOptions } from "./modules/nutritionCapture/capture.routes.js";
+import weeklyDropsScheduler from "./modules/nutritionCapture/weeklyDrops.scheduler.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -57,7 +59,8 @@ declare module "fastify" {
   }
 }
 
-export function buildApp(options: { logger?: boolean } = {}) {
+// `capture` lets tests swap the AI provider and the import queue for stubs.
+export function buildApp(options: { logger?: boolean; capture?: CaptureRouteOptions } = {}) {
   const app = Fastify({
     logger: options.logger ?? (env.NODE_ENV === "development" ? { transport: { target: "pino-pretty" } } : true),
     // Behind Caddy/Cloudflare `request.ip` is only the real visitor when the proxy chain is trusted
@@ -94,6 +97,7 @@ export function buildApp(options: { logger?: boolean } = {}) {
   app.register(workoutReminderScheduler);
   app.register(dailyChallengeScheduler);
   app.register(forgottenSessionScheduler);
+  app.register(weeklyDropsScheduler);
 
   // Reports ready only when the database answers too, so the container healthcheck (and the CI
   // wait loop) notice a backend that is up but cut off from Postgres.
@@ -136,6 +140,7 @@ export function buildApp(options: { logger?: boolean } = {}) {
   app.register(nutritionTargetRoutes, { prefix: "/api" });
   app.register(nutritionSyncRoutes, { prefix: "/api" });
   app.register(nutritionExportRoutes, { prefix: "/api" });
+  app.register(captureRoutes, { prefix: "/api", ...options.capture });
   app.register(activityRoutes, { prefix: "/api" });
   app.register(healthSyncRoutes, { prefix: "/api" });
   app.register(healthSyncWebhookRoutes, { prefix: "/api" });

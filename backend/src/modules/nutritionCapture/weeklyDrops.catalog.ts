@@ -1,0 +1,307 @@
+// Weekly drops: a fixed, hand-written catalog of high-protein dishes. Amounts are raw weights in
+// grams for ONE serving; every ingredient points at a BLS 4.0 code. The nutrients are never
+// written here: the drop job calculates them from the BLS foods in the database and only offers
+// a dish whose ingredients were all found and that lands at >= 30 g protein and <= 600 kcal.
+
+export interface CatalogIngredient {
+  /** BLS 4.0 code (Food.sourceRef with source BLS). */
+  bls: string;
+  name: string;
+  grams: number;
+}
+
+export interface CatalogRecipe {
+  key: string;
+  name: string;
+  tags: string[];
+  ingredients: CatalogIngredient[];
+  steps: string[];
+}
+
+const I = (bls: string, name: string, grams: number): CatalogIngredient => ({ bls, name, grams });
+
+// The foods, so a typo in a code is one place to fix.
+const F = {
+  haehnchen: (g: number) => I("V416100", "Hähnchenbrustfilet, roh", g),
+  pute: (g: number) => I("V486100", "Putenbrust, roh", g),
+  rind: (g: number) => I("U284100", "Rinderhüfte, roh", g),
+  magerquark: (g: number) => I("M713100", "Magerquark", g),
+  skyr: (g: number) => I("M710100", "Skyr", g),
+  koerniger: (g: number) => I("M711100", "Körniger Frischkäse", g),
+  joghurt: (g: number) => I("M141200", "Joghurt 1,5 %", g),
+  frischkaese: (g: number) => I("M820100", "Frischkäse, mager", g),
+  feta: (g: number) => I("M012200", "Feta", g),
+  mozzarella: (g: number) => I("M0A1000", "Mozzarella, light", g),
+  parmesan: (g: number) => I("M306400", "Parmesan", g),
+  ei: (g: number) => I("E111100", "Hühnerei", g),
+  eiklar: (g: number) => I("E113100", "Eiklar", g),
+  lachs: (g: number) => I("T410100", "Lachs, roh", g),
+  raeucherlachs: (g: number) => I("T410600", "Räucherlachs", g),
+  garnele: (g: number) => I("T753100", "Garnelen, roh", g),
+  linsen: (g: number) => I("H730902", "Linsen (Dose), abgetropft", g),
+  kichererbsen: (g: number) => I("H720902", "Kichererbsen (Dose), abgetropft", g),
+  kidney: (g: number) => I("H742902", "Kidneybohnen (Dose), abgetropft", g),
+  tofu: (g: number) => I("H861000", "Tofu", g),
+  edamame: (g: number) => I("G750100", "Edamame", g),
+  hafer: (g: number) => I("C133000", "Haferflocken", g),
+  reis: (g: number) => I("C352000", "Reis, roh", g),
+  vollkornnudeln: (g: number) => I("E530000", "Vollkornnudeln, roh", g),
+  quinoa: (g: number) => I("C118000", "Quinoa, roh", g),
+  bulgur: (g: number) => I("C119100", "Bulgur, roh", g),
+  kartoffel: (g: number) => I("K110100", "Kartoffeln, roh", g),
+  suesskartoffel: (g: number) => I("K420100", "Süßkartoffel, roh", g),
+  vollkornbrot: (g: number) => I("B101000", "Vollkornbrot", g),
+  tortilla: (g: number) => I("B783012", "Weizentortilla", g),
+  broccoli: (g: number) => I("G312100", "Brokkoli", g),
+  paprika: (g: number) => I("G543100", "Paprika, rot", g),
+  tomate: (g: number) => I("G561100", "Tomaten", g),
+  tomatenmark: (g: number) => I("R160000", "Tomatenmark", g),
+  zucchini: (g: number) => I("G582100", "Zucchini", g),
+  spinat: (g: number) => I("G211100", "Spinat", g),
+  zwiebel: (g: number) => I("G480100", "Zwiebel", g),
+  fruehlingszwiebel: (g: number) => I("G482100", "Frühlingszwiebel", g),
+  knoblauch: (g: number) => I("G490100", "Knoblauch", g),
+  moehre: (g: number) => I("G620100", "Möhre", g),
+  champignon: (g: number) => I("K701100", "Champignons", g),
+  gurke: (g: number) => I("G520100", "Gurke", g),
+  weisskohl: (g: number) => I("G342100", "Weißkohl", g),
+  mais: (g: number) => I("G570902", "Mais (Dose)", g),
+  banane: (g: number) => I("F503100", "Banane", g),
+  heidelbeere: (g: number) => I("F304100", "Heidelbeeren", g),
+  himbeere: (g: number) => I("F302100", "Himbeeren", g),
+  erdbeere: (g: number) => I("F301100", "Erdbeeren", g),
+  apfel: (g: number) => I("F110100", "Apfel", g),
+  zitrone: (g: number) => I("F601100", "Zitrone", g),
+  olivenoel: (g: number) => I("Q120000", "Olivenöl", g),
+  walnuss: (g: number) => I("H120100", "Walnüsse", g),
+  erdnussmus: (g: number) => I("H110800", "Erdnussmus", g),
+  mandel: (g: number) => I("H210100", "Mandeln", g),
+  sojasauce: (g: number) => I("R143000", "Sojasauce", g),
+};
+
+export const WEEKLY_DROP_CATALOG: CatalogRecipe[] = [
+  {
+    key: "protein-porridge",
+    name: "Protein-Porridge mit Heidelbeeren",
+    tags: ["Frühstück", "vegetarisch"],
+    ingredients: [F.hafer(60), F.magerquark(200), F.heidelbeere(100)],
+    steps: ["Haferflocken mit 150 ml Wasser 3 Minuten köcheln.", "Vom Herd nehmen, Magerquark unterrühren.", "Heidelbeeren darauf."],
+  },
+  {
+    key: "skyr-bowl",
+    name: "Skyr-Bowl mit Himbeeren und Walnuss",
+    tags: ["Frühstück", "vegetarisch", "ohne Kochen"],
+    ingredients: [F.skyr(300), F.himbeere(100), F.hafer(30), F.walnuss(10)],
+    steps: ["Skyr glatt rühren.", "Himbeeren, Haferflocken und gehackte Walnüsse darüber."],
+  },
+  {
+    key: "ruehrei-wrap",
+    name: "Rührei-Wrap mit Spinat",
+    tags: ["Frühstück", "vegetarisch"],
+    ingredients: [F.tortilla(60), F.ei(120), F.eiklar(100), F.spinat(50), F.mozzarella(30)],
+    steps: ["Eier und Eiklar verquirlen, mit dem Spinat in einer beschichteten Pfanne stocken lassen.", "Mozzarella darüber zupfen, alles in die warme Tortilla rollen."],
+  },
+  {
+    key: "haehnchen-reis-bowl",
+    name: "Hähnchen-Reis-Bowl mit Brokkoli",
+    tags: ["Mittag/Abend", "Meal-Prep"],
+    ingredients: [F.haehnchen(180), F.reis(70), F.broccoli(150), F.olivenoel(5), F.sojasauce(10)],
+    steps: ["Reis kochen, Brokkoli die letzten 5 Minuten mitdämpfen.", "Hähnchen in Streifen im Öl braten, mit Sojasauce ablöschen.", "Alles in die Schüssel."],
+  },
+  {
+    key: "puten-paprika-pfanne",
+    name: "Puten-Paprika-Pfanne mit Kartoffeln",
+    tags: ["Mittag/Abend"],
+    ingredients: [F.pute(180), F.kartoffel(250), F.paprika(150), F.zwiebel(50), F.olivenoel(8)],
+    steps: ["Kartoffeln würfeln und 15 Minuten im Öl braten.", "Pute, Paprika und Zwiebel dazu, 8 Minuten weiterbraten, würzen."],
+  },
+  {
+    key: "lachs-ofenkartoffeln",
+    name: "Lachs mit Ofenkartoffeln und Brokkoli",
+    tags: ["Mittag/Abend"],
+    ingredients: [F.lachs(130), F.kartoffel(200), F.broccoli(150), F.zitrone(20)],
+    steps: ["Kartoffelspalten bei 200 °C 20 Minuten backen.", "Lachs und Brokkoli aufs Blech, weitere 12 Minuten.", "Mit Zitronensaft beträufeln."],
+  },
+  {
+    key: "linsen-bolognese",
+    name: "Linsen-Bolognese mit Vollkornnudeln",
+    tags: ["Mittag/Abend", "vegetarisch", "Meal-Prep"],
+    ingredients: [F.vollkornnudeln(70), F.linsen(180), F.tomate(200), F.tomatenmark(20), F.zwiebel(50), F.parmesan(10)],
+    steps: ["Zwiebel anschwitzen, Tomatenmark kurz mitrösten.", "Tomaten und Linsen dazu, 10 Minuten köcheln.", "Über die Nudeln, Parmesan darüber."],
+  },
+  {
+    key: "tofu-gemuese-reis",
+    name: "Knuspertofu mit Gemüse und Reis",
+    tags: ["Mittag/Abend", "vegan"],
+    ingredients: [F.tofu(200), F.reis(60), F.paprika(100), F.zucchini(100), F.sojasauce(15), F.olivenoel(5)],
+    steps: ["Tofu gut ausdrücken, würfeln und im Öl rundum knusprig braten.", "Gemüse dazu, mit Sojasauce ablöschen.", "Mit dem gekochten Reis servieren."],
+  },
+  {
+    key: "garnelen-zucchini-nudeln",
+    name: "Garnelen-Nudeln mit Zucchini",
+    tags: ["Mittag/Abend"],
+    ingredients: [F.garnele(200), F.vollkornnudeln(60), F.zucchini(200), F.knoblauch(5), F.olivenoel(8), F.tomate(100)],
+    steps: ["Nudeln kochen.", "Knoblauch im Öl anschwitzen, Garnelen 3 Minuten braten.", "Zucchini und Tomaten dazu, mit den Nudeln mischen."],
+  },
+  {
+    key: "huettenkaese-brot",
+    name: "Hüttenkäse-Brot mit Ei und Gurke",
+    tags: ["Frühstück", "vegetarisch", "ohne Kochen"],
+    ingredients: [F.vollkornbrot(100), F.koerniger(200), F.ei(60), F.gurke(100)],
+    steps: ["Ei 9 Minuten kochen.", "Brot mit körnigem Frischkäse bestreichen, Gurke und Eischeiben darauf."],
+  },
+  {
+    key: "rinderhuefte-bulgur",
+    name: "Rinderhüfte mit Paprika-Bulgur",
+    tags: ["Mittag/Abend"],
+    ingredients: [F.rind(160), F.bulgur(70), F.paprika(150), F.zwiebel(50), F.olivenoel(5)],
+    steps: ["Bulgur mit der doppelten Menge Wasser 10 Minuten quellen lassen.", "Rind in Streifen scharf anbraten, Zwiebel und Paprika kurz mitbraten.", "Mit dem Bulgur mischen."],
+  },
+  {
+    key: "chili-con-pute",
+    name: "Chili con Pute",
+    tags: ["Mittag/Abend", "Meal-Prep"],
+    ingredients: [F.pute(150), F.kidney(120), F.mais(50), F.tomate(200), F.zwiebel(50), F.tomatenmark(20)],
+    steps: ["Pute klein schneiden und mit der Zwiebel anbraten.", "Tomatenmark, Tomaten, Bohnen und Mais dazu.", "15 Minuten köcheln, mit Chili und Kreuzkümmel würzen."],
+  },
+  {
+    key: "kichererbsen-feta-salat",
+    name: "Kichererbsen-Feta-Salat mit Hähnchen",
+    tags: ["Mittag/Abend", "Meal-Prep"],
+    ingredients: [F.haehnchen(120), F.kichererbsen(120), F.gurke(100), F.tomate(100), F.feta(30), F.olivenoel(5)],
+    steps: ["Hähnchen braten und in Streifen schneiden.", "Kichererbsen, Gurke, Tomate und Feta mischen.", "Mit Öl, Zitrone und Salz anmachen, Hähnchen darauf."],
+  },
+  {
+    key: "quark-pfannkuchen",
+    name: "Quark-Pfannkuchen mit Banane",
+    tags: ["Frühstück", "vegetarisch"],
+    ingredients: [F.magerquark(150), F.ei(120), F.hafer(40), F.banane(60)],
+    steps: ["Quark, Eier und Haferflocken glatt mixen.", "In einer beschichteten Pfanne kleine Pfannkuchen ausbacken.", "Mit Bananenscheiben servieren."],
+  },
+  {
+    key: "edamame-quinoa-bowl",
+    name: "Edamame-Quinoa-Bowl mit Ei",
+    tags: ["Mittag/Abend", "vegetarisch"],
+    ingredients: [F.quinoa(60), F.edamame(100), F.ei(120), F.gurke(80), F.sojasauce(10)],
+    steps: ["Quinoa 15 Minuten kochen, Edamame die letzten 4 Minuten mitgaren.", "Eier wachsweich kochen.", "Mit Gurke und Sojasauce anrichten."],
+  },
+  {
+    key: "shakshuka",
+    name: "Shakshuka mit Feta",
+    tags: ["Frühstück", "Mittag/Abend", "vegetarisch"],
+    ingredients: [F.ei(120), F.eiklar(150), F.tomate(300), F.paprika(100), F.zwiebel(50), F.feta(30), F.vollkornbrot(50)],
+    steps: ["Zwiebel und Paprika weich dünsten, Tomaten dazu, 10 Minuten einkochen.", "Mulden machen, Eier und Eiklar hineingeben, zugedeckt stocken lassen.", "Feta darüber, mit Brot servieren."],
+  },
+  {
+    key: "raeucherlachs-brot",
+    name: "Räucherlachs-Brot mit Frischkäse",
+    tags: ["Frühstück", "ohne Kochen"],
+    ingredients: [F.vollkornbrot(100), F.frischkaese(100), F.raeucherlachs(80), F.gurke(60)],
+    steps: ["Brot mit Frischkäse bestreichen.", "Räucherlachs und Gurkenscheiben darauf, mit Pfeffer und Dill."],
+  },
+  {
+    key: "haehnchen-suesskartoffel-blech",
+    name: "Hähnchen-Süßkartoffel-Blech",
+    tags: ["Mittag/Abend", "Meal-Prep"],
+    ingredients: [F.haehnchen(170), F.suesskartoffel(200), F.paprika(100), F.olivenoel(8)],
+    steps: ["Süßkartoffel würfeln, mit Öl und Paprikapulver 15 Minuten bei 200 °C backen.", "Hähnchen und Paprika aufs Blech, weitere 18 Minuten."],
+  },
+  {
+    key: "overnight-oats",
+    name: "Overnight Oats mit Erdbeeren",
+    tags: ["Frühstück", "vegetarisch", "Meal-Prep"],
+    ingredients: [F.hafer(50), F.skyr(250), F.erdbeere(150), F.mandel(10)],
+    steps: ["Haferflocken mit Skyr und 50 ml Wasser verrühren, über Nacht kühlen.", "Morgens Erdbeeren und gehackte Mandeln darauf."],
+  },
+  {
+    key: "quark-kartoffeln",
+    name: "Pellkartoffeln mit Kräuterquark",
+    tags: ["Mittag/Abend", "vegetarisch"],
+    ingredients: [F.kartoffel(300), F.magerquark(250), F.gurke(100), F.fruehlingszwiebel(20)],
+    steps: ["Kartoffeln 20 Minuten kochen.", "Quark mit etwas Wasser, Frühlingszwiebel, Salz und Kräutern glatt rühren.", "Gurke dazu."],
+  },
+  {
+    key: "tofu-scramble",
+    name: "Tofu-Scramble mit Spinat",
+    tags: ["Frühstück", "vegan"],
+    ingredients: [F.tofu(250), F.spinat(100), F.tomate(100), F.vollkornbrot(60), F.olivenoel(5)],
+    steps: ["Tofu mit der Gabel zerdrücken und im Öl mit Kurkuma braten.", "Spinat und Tomaten kurz mitgaren.", "Mit Brot servieren."],
+  },
+  {
+    key: "garnelen-reis-pfanne",
+    name: "Garnelen-Reis-Pfanne mit Edamame",
+    tags: ["Mittag/Abend"],
+    ingredients: [F.garnele(180), F.reis(70), F.edamame(60), F.moehre(80), F.sojasauce(15), F.olivenoel(5)],
+    steps: ["Reis kochen (gern vom Vortag).", "Möhre und Edamame im Öl anbraten, Garnelen 3 Minuten mitbraten.", "Reis und Sojasauce dazu, kurz durchschwenken."],
+  },
+  {
+    key: "haehnchen-wrap",
+    name: "Hähnchen-Wrap mit Joghurtsoße",
+    tags: ["Mittag/Abend"],
+    ingredients: [F.tortilla(60), F.haehnchen(130), F.joghurt(50), F.tomate(60), F.gurke(50), F.mais(30)],
+    steps: ["Hähnchen braten und in Streifen schneiden.", "Tortilla mit Joghurt bestreichen, Hähnchen und Gemüse darauf, einrollen."],
+  },
+  {
+    key: "linsen-spinat-dal",
+    name: "Linsen-Spinat-Dal mit Skyr",
+    tags: ["Mittag/Abend", "vegetarisch", "Meal-Prep"],
+    ingredients: [F.linsen(250), F.spinat(150), F.tomate(150), F.zwiebel(50), F.skyr(100), F.reis(40)],
+    steps: ["Zwiebel mit Currypulver anschwitzen, Tomaten und Linsen dazu, 10 Minuten köcheln.", "Spinat unterheben.", "Mit Reis und einem Klecks Skyr servieren."],
+  },
+  {
+    key: "puten-gyros",
+    name: "Puten-Gyros mit Tzatziki",
+    tags: ["Mittag/Abend"],
+    ingredients: [F.pute(180), F.joghurt(100), F.gurke(80), F.knoblauch(5), F.tortilla(60), F.zwiebel(40), F.olivenoel(5)],
+    steps: ["Pute in Streifen mit Gyrosgewürz im Öl braten, Zwiebel mitbraten.", "Joghurt mit geraspelter Gurke und Knoblauch zu Tzatziki verrühren.", "Mit der Tortilla servieren."],
+  },
+  {
+    key: "lachs-quinoa-salat",
+    name: "Lachs-Quinoa-Salat",
+    tags: ["Mittag/Abend"],
+    ingredients: [F.lachs(120), F.quinoa(50), F.spinat(50), F.gurke(80), F.skyr(80), F.zitrone(20)],
+    steps: ["Quinoa kochen und abkühlen lassen.", "Lachs braten und zerpflücken.", "Mit Spinat und Gurke mischen, Skyr mit Zitrone als Dressing."],
+  },
+  {
+    key: "champignon-rind-pfanne",
+    name: "Rind-Champignon-Pfanne mit Kartoffeln",
+    tags: ["Mittag/Abend"],
+    ingredients: [F.rind(170), F.champignon(200), F.kartoffel(200), F.zwiebel(50), F.olivenoel(8)],
+    steps: ["Kartoffeln würfeln und im Öl 15 Minuten braten.", "Rind in Streifen, Champignons und Zwiebel dazu, 6 Minuten scharf braten."],
+  },
+  {
+    key: "eiweiss-omelett",
+    name: "Eiweiß-Omelett mit Gemüse",
+    tags: ["Frühstück", "vegetarisch"],
+    ingredients: [F.ei(120), F.eiklar(200), F.paprika(100), F.champignon(100), F.mozzarella(40), F.vollkornbrot(60)],
+    steps: ["Paprika und Champignons anbraten.", "Eier und Eiklar verquirlt darübergießen, Mozzarella darauf, zugedeckt stocken lassen.", "Mit Brot servieren."],
+  },
+  {
+    key: "kichererbsen-haehnchen-curry",
+    name: "Kichererbsen-Hähnchen-Curry",
+    tags: ["Mittag/Abend", "Meal-Prep"],
+    ingredients: [F.haehnchen(140), F.kichererbsen(100), F.joghurt(100), F.tomate(150), F.zwiebel(50), F.reis(50)],
+    steps: ["Zwiebel mit Currypaste anschwitzen, Hähnchen anbraten.", "Tomaten und Kichererbsen dazu, 10 Minuten köcheln.", "Vom Herd nehmen, Joghurt unterrühren, mit Reis servieren."],
+  },
+  {
+    key: "erdnuss-haehnchen",
+    name: "Erdnuss-Hähnchen mit Brokkoli",
+    tags: ["Mittag/Abend"],
+    ingredients: [F.haehnchen(150), F.erdnussmus(15), F.broccoli(150), F.reis(50), F.sojasauce(10)],
+    steps: ["Reis kochen, Brokkoli dämpfen.", "Hähnchen braten.", "Erdnussmus mit Sojasauce und 3 EL heißem Wasser verrühren, alles mischen."],
+  },
+  {
+    key: "huettenkaese-apfel-bowl",
+    name: "Hüttenkäse-Apfel-Bowl mit Zimt",
+    tags: ["Frühstück", "vegetarisch", "ohne Kochen"],
+    ingredients: [F.koerniger(250), F.apfel(150), F.hafer(30), F.walnuss(10)],
+    steps: ["Apfel würfeln, mit Zimt bestreuen.", "Auf den körnigen Frischkäse, Haferflocken und Walnüsse darüber."],
+  },
+  {
+    key: "weisskohl-rind-pfanne",
+    name: "Weißkohl-Rind-Pfanne",
+    tags: ["Mittag/Abend", "Meal-Prep"],
+    ingredients: [F.rind(160), F.weisskohl(300), F.moehre(100), F.kartoffel(150), F.olivenoel(8)],
+    steps: ["Kartoffeln und Möhre würfeln, im Öl 10 Minuten braten.", "Rind in Streifen anbraten, Weißkohl in Streifen dazu.", "10 Minuten schmoren, mit Kümmel würzen."],
+  },
+];
