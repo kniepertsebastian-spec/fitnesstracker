@@ -22,19 +22,10 @@ import {
 } from "./auth.service.js";
 import { toUserDto } from "./auth.types.js";
 import { HttpError } from "../../errors/httpErrors.js";
-import { REFRESH_COOKIE_NAME, REFRESH_TOKEN_TTL_MS } from "../../lib/tokens.js";
+import { REFRESH_COOKIE_NAME } from "../../lib/tokens.js";
+import { clearRefreshCookie, setRefreshCookie } from "../../lib/refreshCookie.js";
 import { env } from "../../config/env.js";
 import { REFRESH_RATE_LIMIT } from "../../lib/rateLimits.js";
-
-function setRefreshCookie(reply: import("fastify").FastifyReply, token: string) {
-  reply.setCookie(REFRESH_COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: env.COOKIE_SECURE,
-    sameSite: "strict",
-    path: "/api/auth",
-    maxAge: REFRESH_TOKEN_TTL_MS / 1000,
-  });
-}
 
 // Brute-force protection for the two credential-guessing-prone routes — 5 requests/minute per
 // IP (default of AUTH_RATE_LIMIT_PER_MINUTE) is generous for a legitimate login/registration
@@ -61,7 +52,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const user = await verifyCredentials(fastify.prisma, input.email, input.password);
       const accessToken = await reply.jwtSign({ sub: user.id });
       const refreshToken = await issueRefreshToken(fastify.prisma, user.id);
-      setRefreshCookie(reply, refreshToken);
+      setRefreshCookie(request, reply, refreshToken);
       return reply.send({ user: toUserDto(user), accessToken });
     } catch (error) {
       if (error instanceof HttpError) {
@@ -79,11 +70,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
     try {
       const { userId, newRawToken } = await rotateRefreshToken(fastify.prisma, rawToken);
       const accessToken = await reply.jwtSign({ sub: userId });
-      setRefreshCookie(reply, newRawToken);
+      setRefreshCookie(request, reply, newRawToken);
       return reply.send({ accessToken });
     } catch (error) {
       if (error instanceof HttpError) {
-        reply.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+        clearRefreshCookie(request, reply);
         return reply.code(error.statusCode).send({ message: error.message });
       }
       throw error;
@@ -101,15 +92,15 @@ export default async function authRoutes(fastify: FastifyInstance) {
       const { userId, newRawToken } = await rotateRefreshToken(fastify.prisma, rawToken);
       const user = await fastify.prisma.user.findUnique({ where: { id: userId } });
       if (!user) {
-        reply.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+        clearRefreshCookie(request, reply);
         return reply.send({ authenticated: false });
       }
       const accessToken = await reply.jwtSign({ sub: userId });
-      setRefreshCookie(reply, newRawToken);
+      setRefreshCookie(request, reply, newRawToken);
       return reply.send({ authenticated: true, accessToken, user: toUserDto(user) });
     } catch (error) {
       if (error instanceof HttpError) {
-        reply.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+        clearRefreshCookie(request, reply);
         return reply.send({ authenticated: false });
       }
       throw error;
@@ -121,7 +112,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     if (rawToken) {
       await revokeRefreshToken(fastify.prisma, rawToken);
     }
-    reply.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+    clearRefreshCookie(request, reply);
     return reply.code(204).send();
   });
 
@@ -179,7 +170,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     try {
       const filenames = await deleteAccount(fastify.prisma, request.user.sub, input.password);
       await Promise.all(filenames.map((name) => unlink(path.join(path.resolve(env.UPLOADS_DIR), name)).catch(() => undefined)));
-      reply.clearCookie(REFRESH_COOKIE_NAME, { path: "/api/auth" });
+      clearRefreshCookie(request, reply);
       return reply.code(204).send();
     } catch (error) {
       if (error instanceof HttpError) return reply.code(error.statusCode).send({ message: error.message });

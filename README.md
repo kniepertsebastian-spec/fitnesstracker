@@ -109,10 +109,33 @@ Voraussetzung: ein separat laufender `cloudflared`-Container (nicht Teil dieses 
 Ebene darüber für alle PWAs gemeinsam) mit einer Public-Hostname-Route von `DOMAIN` auf
 `http://fitnesstracker-caddy:80`. Kein DNS-A-Record, kein offener Port am Router nötig.
 
+### Kalorientracker (zweite PWA, gleiches Backend)
+
+Der [Kalorientracker](https://github.com/kniepertsebastian-spec/kalorientracker) nutzt dieses
+Backend, die Datenbank und das Login mit. Der Stack hier startet dafür zusätzlich `redis`
+(BullMQ-Queues, Rate-Limit-Speicher, KI-Tagesbudgets), den `worker` und `nutrition-frontend`; die
+beiden letzten werden aus dem Kalorientracker-Repo gebaut, das neben diesem liegen muss
+(`KALORIENTRACKER_DIR`, Standard `../kalorientracker`).
+
+- **Routing:** Caddy bedient den Kalorientracker auf einem eigenen Port, `:8080`, mit `/api` zum
+  selben Backend. Im Cloudflare-Dashboard braucht es eine zweite Public-Hostname-Route von
+  `NUTRITION_DOMAIN` (z. B. `kcal.pwa-tree.de`) auf `http://fitnesstracker-caddy:8080`.
+- **Single Sign-on:** Mit `COOKIE_DOMAIN=pwa-tree.de` gilt das Refresh-Cookie für alle
+  Subdomains: Wer im Fitnesstracker angemeldet ist, ist es auch im Kalorientracker. Das Cookie
+  bleibt `HttpOnly`, `Secure`, `SameSite=Strict` und auf `/api/auth` beschränkt. Es geht aber an
+  jede App unter `*.pwa-tree.de`, die dort `/api/auth` bedient. Nur setzen, wenn alle Apps unter der
+  Domain vertrauenswürdig sind. Auf iOS haben installierte PWAs getrennte Cookie-Speicher, dort
+  meldet man sich in jeder App einmal selbst an.
+- **Medien:** Fotos und Kochbuchseiten liegen im Volume `media` (WebP, verkleinert, ohne
+  Metadaten); der Worker löscht `media/tmp` nach `MEDIA_TMP_TTL_HOURS` (Standard 24 h).
+- **KI-Budget:** `AI_DAILY_BUDGET_PER_USER` / `AI_DAILY_BUDGET_GLOBAL` begrenzen die KI-Aufrufe pro
+  Tag (Europe/Berlin); ist Redis nicht erreichbar, wird kein KI-Aufruf freigegeben.
+
 ### Backup und Restore
 
-Nicht aus Git wiederherstellbar sind die Datenbank (Volume `pgdata`) und die Fotos (Volume
-`uploads`). `scripts/backup.sh` sichert beides in einen Ordner mit Zeitstempel, löscht
+Nicht aus Git wiederherstellbar sind die Datenbank (Volume `pgdata`, gemeinsam mit dem
+Kalorientracker), die Fotos (Volume `uploads`) und die Ernährungs-Medien (Volume `media`, ohne
+`tmp/`). `scripts/backup.sh` sichert alles in einen Ordner mit Zeitstempel, löscht
 Sicherungen nach 14 Tagen (`BACKUP_KEEP_DAYS`) und kopiert auf Wunsch auf ein zweites Gerät
 (`BACKUP_REMOTE`, per rsync). Ein Backup, das nur auf dem Mini-PC liegt, schützt nicht vor einem
 Ausfall des Mini-PCs.
@@ -122,7 +145,8 @@ Ausfall des Mini-PCs.
 BACKUP_REMOTE=user@anderer-rechner:/backups/fitness/ scripts/backup.sh
 ```
 
-Nächtlich per Cron (`crontab -e` auf dem Mini-PC, 03:30 Uhr):
+Nächtlich per Cron (`crontab -e` auf dem Mini-PC, 03:30 Uhr). Liegt der Checkout in einem
+Ordner, der nicht `fitnesstracker` heißt, zusätzlich `COMPOSE_PROJECT_NAME=fitnesstracker` setzen:
 
 ```bash
 30 3 * * * cd /pfad/zu/fitnesstracker && BACKUP_REMOTE=user@anderer-rechner:/backups/fitness/ scripts/backup.sh >> ~/fitnesstracker-backups/backup.log 2>&1

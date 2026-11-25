@@ -38,12 +38,13 @@ COPY --chown=node:node --from=build /app/backend/dist backend/dist
 COPY --chown=node:node --from=build /app/backend/prisma backend/prisma
 RUN pnpm install --frozen-lockfile --prod
 WORKDIR /app/backend
-# Uploads (progress photos, cached exercise images) live in this folder, a volume in production.
-RUN mkdir -p uploads
+# Uploads (progress photos, cached exercise images) and media (nutrition photos, cookbook pages,
+# temporary videos) live in these folders, volumes in production.
+RUN mkdir -p uploads media
 USER root
 COPY backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 EXPOSE 3000
-# Root only for the first moments: the entrypoint fixes the ownership of the uploads volume and
+# Root only for the first moments: the entrypoint fixes the ownership of the volumes and
 # then runs the command below as `node`.
 ENTRYPOINT ["docker-entrypoint.sh"]
 # The --prod install above is a fresh one (doesn't reuse the build stage's node_modules), and

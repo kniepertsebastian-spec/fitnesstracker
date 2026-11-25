@@ -69,3 +69,39 @@
 		respond "{err.status_code} {err.status_text}"
 	}
 }
+
+# Kalorientracker (sibling PWA on its own subdomain, e.g. kcal.pwa-tree.de). Its own port, so the
+# Fitnesstracker block above stays exactly as it was: the shared cloudflared tunnel routes the
+# Kalorientracker hostname to http://fitnesstracker-caddy:8080. Both PWAs share one backend under
+# /api, same-origin each — the session carries over through the refresh cookie scoped to the parent
+# domain (COOKIE_DOMAIN).
+:8080 {
+	header {
+		# Same policy as the Fitnesstracker. Camera and microphone are this app's input methods
+		# (barcode/label scan, voice logging); Open Food Facts and AI calls go through the backend,
+		# so connect-src stays 'self'.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()"
+		-Server
+	}
+
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy backend:3000
+	}
+
+	# The PWA's static files come from the nutrition-frontend container, which sets the cache
+	# headers itself (immutable for /assets, no-cache for the shell and the service worker).
+	handle {
+		reverse_proxy nutrition-frontend:80
+	}
+
+	handle_errors {
+		header Cache-Control "no-store"
+		respond "{err.status_code} {err.status_text}"
+	}
+}

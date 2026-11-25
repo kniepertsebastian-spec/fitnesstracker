@@ -13,6 +13,7 @@ caddy_data/
 caddy_config/
 pgdata/
 backend/uploads/
+backend/media/
 context.md
 .backups/
 frontend/test-results/
