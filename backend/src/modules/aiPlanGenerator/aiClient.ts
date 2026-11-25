@@ -26,7 +26,7 @@ const PROVIDER_CONFIG: Record<AiProvider, ProviderConfig> = {
   },
   GEMINI: {
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-    defaultModel: "gemini-2.5-flash",
+    defaultModel: "gemini-3.5-flash-lite",
   },
 };
 

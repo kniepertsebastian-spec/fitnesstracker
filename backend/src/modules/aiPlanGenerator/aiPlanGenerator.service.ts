@@ -156,7 +156,7 @@ export async function callModel(
     try {
       const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: OUTGOING_TIMEOUT_MS } });
       const response = await ai.models.generateContent({
-        model: setting.model || "gemini-2.5-flash",
+        model: setting.model || "gemini-3.5-flash-lite",
         contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\nKontext:\n${context}` }] }],
         config: {
           temperature: 0.2,

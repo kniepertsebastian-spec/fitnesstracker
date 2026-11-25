@@ -77,7 +77,7 @@ ${ocrText.slice(0, 12000)}`;
     const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: OUTGOING_TIMEOUT_MS } });
     try {
       const response = await ai.models.generateContent({
-        model: setting.model || "gemini-2.5-flash",
+        model: setting.model || "gemini-3.5-flash-lite",
         contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${prompt}` }] }],
         config: { temperature: 0.2, responseMimeType: "application/json" },
       });
