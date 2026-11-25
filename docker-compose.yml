@@ -63,9 +63,9 @@ services:
       context: ${KALORIENTRACKER_DIR:-../kalorientracker}/worker
     environment:
       REDIS_URL: redis://redis:6379
-      MEDIA_DIR: /media
+      MEDIA_DIR: /data/media
     volumes:
-      - ./backend/media:/media
+      - ./backend/media:/data/media
     depends_on:
       redis:
         condition: service_healthy

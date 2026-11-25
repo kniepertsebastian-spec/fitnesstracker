@@ -99,10 +99,10 @@ services:
     restart: unless-stopped
     environment:
       REDIS_URL: redis://redis:6379
-      MEDIA_DIR: /media
+      MEDIA_DIR: /data/media
       MEDIA_TMP_TTL_HOURS: ${MEDIA_TMP_TTL_HOURS:-24}
     volumes:
-      - media:/media
+      - media:/data/media
     depends_on:
       redis:
         condition: service_healthy
