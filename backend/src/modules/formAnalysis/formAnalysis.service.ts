@@ -6,7 +6,7 @@ import { decryptSecret } from "../../lib/crypto.js";
 import { describeFetchError, fetchWithTimeout } from "../../lib/fetchWithTimeout.js";
 import { AiProviderError } from "../aiPlanGenerator/aiClient.js";
 
-const DEFAULT_VIDEO_MODEL = "gemini-2.5-flash";
+const DEFAULT_VIDEO_MODEL = "gemini-3.5-flash-lite";
 
 // Video uploads are inlined as base64 and Gemini needs longer to look at them than a chat reply.
 const VIDEO_TIMEOUT_MS = 120_000;

@@ -321,6 +321,27 @@ describe.skipIf(!hasTestDb)("nutrition (integration)", () => {
     expect((await get(a, "/api/nutrition/targets/today")).json().macros).toMatchObject({ fatG: 61, carbsG: 409 });
   });
 
+  it("reads weight trend and body water from the Fitnesstracker's measurements, per account", async () => {
+    const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+    await post(a, "/api/body-composition", { weightKg: 81.4, bodyWaterPercent: 55.2, measuredAt: day(9) });
+    await post(a, "/api/body-composition", { weightKg: 80.6, measuredAt: day(2) });
+    await post(a, "/api/body-composition", { weightKg: 81.3, bodyWaterPercent: 56.4, measuredAt: day(1) });
+
+    const res = await get(a, "/api/nutrition/body-trend?days=7");
+    expect(res.statusCode).toBe(200);
+    const trend = res.json();
+    expect(trend.source).toBe("fitnesstracker");
+    // 7 days: the measurement 9 days ago is outside, but counts for the week before.
+    expect(trend.points.map((p: { weightKg: number }) => p.weightKg)).toEqual([80.6, 81.3]);
+    expect(trend.avg7Kg).toBe(80.95);
+    expect(trend.avgPrev7Kg).toBe(81.4);
+    expect(trend.weeklyChangeKg).toBe(-0.45);
+    expect(trend.water).toMatchObject({ weightChangeKg: -0.1, waterChangePercentPoints: 1.2 });
+
+    expect((await get(b, "/api/nutrition/body-trend")).json()).toMatchObject({ points: [], latest: null, water: null });
+    expect((await get(a, "/api/nutrition/body-trend?days=3")).statusCode).toBe(400);
+  });
+
   it("syncs: pushes an offline batch idempotently and pulls deltas with tombstones", async () => {
     const since = new Date().toISOString();
     const foodId = randomUUID();

@@ -7,8 +7,8 @@ export const GEMINI_LIMITS_URL = "https://ai.google.dev/gemini-api/docs/rate-lim
 // Models worth entering for the free tier. Google changes the lineup and the quotas now and then, so
 // the card names no numbers and points at the current limits instead.
 export const GEMINI_MODEL_SUGGESTIONS: { id: string; note: string }[] = [
-  { id: "gemini-2.5-flash", note: "Standard dieser App — schnell, gut für Pläne, im kostenlosen Kontingent nutzbar" },
-  { id: "gemini-2.5-flash-lite", note: "noch sparsamer, wenn das Kontingent knapp wird" },
+  { id: "gemini-3.5-flash-lite", note: "Standard dieser App — schnell, günstig, kann Fotos, Audio und Video" },
+  { id: "gemini-3.8-flash", note: "gründlicher, wenn Trainingspläne oder Analysen zu knapp ausfallen" },
 ];
 
 // Model ids offered for each provider in the model field of the key card.
