@@ -4,6 +4,8 @@ import rateLimit from "@fastify/rate-limit";
 import { ZodError } from "zod";
 import { env } from "./config/env.js";
 import { toErrorResponse } from "./errors/errorResponse.js";
+import { createRedis } from "./lib/redis.js";
+import { memoryBudgetCounter, redisBudgetCounter, type BudgetCounter } from "./lib/aiBudget.js";
 import prismaPlugin from "./plugins/prisma.plugin.js";
 import cookiePlugin from "./plugins/cookie.plugin.js";
 import corsPlugin from "./plugins/cors.plugin.js";
@@ -40,6 +42,15 @@ import activityRoutes from "./modules/activity/activity.routes.js";
 import exerciseImageRoutes from "./modules/exerciseImages/exerciseImage.routes.js";
 import healthSyncRoutes, { healthSyncWebhookRoutes } from "./modules/healthSync/healthSync.routes.js";
 
+declare module "fastify" {
+  interface FastifyInstance {
+    /** Shared Redis connection, or null without REDIS_URL (in-memory fallbacks are used then). */
+    redis: import("ioredis").Redis | null;
+    /** Counter for the daily AI budgets (lib/aiBudget.ts): Redis when configured, else in-memory. */
+    aiBudgetCounter: BudgetCounter;
+  }
+}
+
 export function buildApp(options: { logger?: boolean } = {}) {
   const app = Fastify({
     logger: options.logger ?? (env.NODE_ENV === "development" ? { transport: { target: "pino-pretty" } } : true),
@@ -58,9 +69,18 @@ export function buildApp(options: { logger?: boolean } = {}) {
   app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
   // `global: false` — only routes that opt in via `config: { rateLimit }` (login/register and the
   // expensive routes, see lib/rateLimits.ts) are limited; every other route is unaffected.
-  // In-memory store is fine for a single backend instance; if that ever changes, this needs a
-  // shared store (e.g. Redis), same as the scheduler locks in lib/schedulerLock.ts.
-  app.register(rateLimit, { global: false });
+  // With REDIS_URL the counters live in Redis (shared with every instance, survive a restart);
+  // `skipOnError` keeps logins working while Redis is down. Without it: in-memory, as before.
+  const redis = env.REDIS_URL ? createRedis(env.REDIS_URL) : null;
+  if (redis) {
+    redis.on("error", (error) => app.log.warn({ err: error }, "redis connection error"));
+    app.addHook("onClose", async () => {
+      await redis.quit().catch(() => redis.disconnect());
+    });
+  }
+  app.decorate("redis", redis);
+  app.decorate("aiBudgetCounter", redis ? redisBudgetCounter(redis) : memoryBudgetCounter());
+  app.register(rateLimit, redis ? { global: false, redis, nameSpace: "ft-rate-limit-", skipOnError: true } : { global: false });
   app.register(authHooks);
   app.register(trainingPlanScheduler);
   app.register(supplementScheduler);

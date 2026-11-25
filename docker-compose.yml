@@ -1,5 +1,11 @@
 # Local development. The frontend runs on the host via `pnpm --filter frontend dev` (fast
 # HMR) and is NOT containerized here; it proxies /api to the backend container below.
+#
+# Kalorientracker services (Redis, BullMQ worker, PWA container) are opt-in, so the usual dev setup
+# stays as it was: `docker compose --profile nutrition up`. They are built from the kalorientracker
+# repository next to this one (KALORIENTRACKER_DIR). For HMR run its PWA on the host instead
+# (`npm run dev` in nutrition-frontend, port 5174, proxies /api to localhost:3000); set
+# REDIS_URL=redis://localhost:6379 in .env to let the backend use Redis.
 services:
   postgres:
     image: postgres:16.15-alpine
@@ -37,6 +43,39 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  redis:
+    image: redis:7.4-alpine
+    profiles: ["nutrition"]
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  worker:
+    profiles: ["nutrition"]
+    build:
+      context: ${KALORIENTRACKER_DIR:-../kalorientracker}/worker
+    environment:
+      REDIS_URL: redis://redis:6379
+      MEDIA_DIR: /media
+    volumes:
+      - ./backend/media:/media
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  nutrition-frontend:
+    profiles: ["nutrition"]
+    build:
+      context: ${KALORIENTRACKER_DIR:-../kalorientracker}/nutrition-frontend
+    ports:
+      - "127.0.0.1:8081:80"
 
 volumes:
   pgdata:

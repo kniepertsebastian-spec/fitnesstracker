@@ -5,7 +5,7 @@
 #
 # The database goes into `database-name` (default: the app's own database, which OVERWRITES it).
 # To rehearse a restore without touching live data, pass a new name: it is created if missing.
-# Uploads are only restored when the target is the app's own database.
+# Uploads and media are only restored when the target is the app's own database.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -19,7 +19,7 @@ live_db=$(compose exec -T postgres sh -c 'printf %s "$POSTGRES_DB"')
 db="${2:-$live_db}"
 
 if [ "$db" = "$live_db" ]; then
-  echo "This overwrites the live database '$db' and the uploads. Type the database name to continue:"
+  echo "This overwrites the live database '$db', the uploads and the media. Type the database name to continue:"
   read -r answer
   [ "$answer" = "$db" ] || { echo "Aborted."; exit 1; }
   compose stop backend
@@ -35,6 +35,10 @@ if [ "$db" = "$live_db" ]; then
   if [ -f "$src/uploads.tar.gz" ]; then
     echo "Restoring uploads..."
     compose run --rm --no-deps -T --entrypoint sh backend -c 'tar -xz -C /app/backend && chown -R node:node /app/backend/uploads' < "$src/uploads.tar.gz"
+  fi
+  if [ -f "$src/media.tar.gz" ]; then
+    echo "Restoring media..."
+    compose run --rm --no-deps -T --entrypoint sh backend -c 'tar -xz -C /app/backend && chown -R node:node /app/backend/media' < "$src/media.tar.gz"
   fi
   compose start backend
 fi

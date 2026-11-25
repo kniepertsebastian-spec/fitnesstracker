@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseEnv, parseTrustProxy } from "./env.js";
+import { parseCookieDomain, parseEnv, parseOriginList, parseTrustProxy } from "./env.js";
 
 const base = {
   DATABASE_URL: "postgresql://u:p@localhost:5432/db",
@@ -64,5 +64,30 @@ describe("parseEnv", () => {
     const parsed = parseEnv(base);
     expect(parsed.TRUST_PROXY).toBe(false);
     expect(parsed.HEAVY_RATE_LIMIT_PER_MINUTE).toBe(10);
+  });
+});
+
+describe("cookie SSO and CORS settings", () => {
+  it("normalizes COOKIE_DOMAIN and keeps it empty by default", () => {
+    expect(parseCookieDomain(" .PWA-Tree.de ")).toBe("pwa-tree.de");
+    expect(parseEnv(base).COOKIE_DOMAIN).toBe("");
+    expect(parseEnv({ ...base, COOKIE_DOMAIN: ".pwa-tree.de" }).COOKIE_DOMAIN).toBe("pwa-tree.de");
+  });
+
+  it("rejects a COOKIE_DOMAIN with a scheme, port or without a dot", () => {
+    for (const bad of ["https://pwa-tree.de", "pwa-tree.de:443", "localhost"]) {
+      expect(() => parseEnv({ ...base, COOKIE_DOMAIN: bad })).toThrow(/COOKIE_DOMAIN/);
+    }
+  });
+
+  it("parses CORS_EXTRA_ORIGINS as a list of origins", () => {
+    expect(parseOriginList(" https://kcal.pwa-tree.de/ , http://localhost:5174,")).toEqual(["https://kcal.pwa-tree.de", "http://localhost:5174"]);
+    expect(parseEnv(base).CORS_EXTRA_ORIGINS).toEqual([]);
+    expect(() => parseEnv({ ...base, CORS_EXTRA_ORIGINS: "kcal.pwa-tree.de" })).toThrow(/CORS_EXTRA_ORIGINS/);
+  });
+
+  it("accepts only redis:// URLs for REDIS_URL", () => {
+    expect(parseEnv({ ...base, REDIS_URL: "redis://redis:6379" }).REDIS_URL).toBe("redis://redis:6379");
+    expect(() => parseEnv({ ...base, REDIS_URL: "http://redis" })).toThrow(/REDIS_URL/);
   });
 });

@@ -25,6 +25,24 @@ export function parseTrustProxy(raw: string): TrustProxy {
     .filter(Boolean);
 }
 
+/**
+ * `COOKIE_DOMAIN` -> Domain-Attribut des Refresh-Cookies. Leer = host-only (bisheriges Verhalten).
+ * Gesetzt (z. B. `pwa-tree.de`), teilen sich alle Subdomains (Fitnesstracker, Kalorientracker) eine
+ * Sitzung. Ein führender Punkt ist erlaubt (`.pwa-tree.de`), wird aber entfernt — Browser behandeln
+ * beide Schreibweisen gleich, und `cookieDomainFor` vergleicht ohne ihn.
+ */
+export function parseCookieDomain(raw: string): string {
+  return raw.trim().toLowerCase().replace(/^\.+/, "");
+}
+
+/** Kommagetrennte Liste zusätzlicher Origins (z. B. die Kalorien-PWA im Dev-Betrieb). */
+export function parseOriginList(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((entry) => entry.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+}
+
 // Werte aus `.env.example`, die nie in Produktion landen dürfen: Wer die Datei unverändert kopiert,
 // hätte sonst ein öffentlich bekanntes JWT-Secret. Gilt nur mit NODE_ENV=production, damit lokale
 // Entwicklung und CI (Wegwerf-Werte) weiter starten.
@@ -52,6 +70,45 @@ const envSchema = z
     // with the setup token.
     OPERATOR_EMAIL: z.string().optional().default(""),
     FRONTEND_ORIGIN: z.string().url().default("http://localhost:5173"),
+    // Further origins allowed to call the API with credentials, comma-separated (e.g. the
+    // Kalorientracker dev server http://localhost:5174). In production both PWAs reach the API
+    // same-origin through Caddy, so this only matters for cross-origin setups.
+    CORS_EXTRA_ORIGINS: z
+      .string()
+      .optional()
+      .default("")
+      .transform(parseOriginList)
+      .refine((origins) => origins.every((origin) => /^https?:\/\/[^/\s]+$/.test(origin)), {
+        message: "CORS_EXTRA_ORIGINS must be a comma-separated list of origins like https://kcal.example.com",
+      }),
+    // Shared parent domain for the refresh cookie (cookie SSO across subdomains), e.g. pwa-tree.de.
+    // Empty = host-only cookie, as before. Only applied to requests whose host lies under it, so a
+    // request via localhost or another hostname still gets a working host-only cookie.
+    COOKIE_DOMAIN: z
+      .string()
+      .optional()
+      .default("")
+      .transform(parseCookieDomain)
+      .refine((val) => val === "" || /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(val), {
+        message: "COOKIE_DOMAIN must be a domain like pwa-tree.de (no scheme, no port)",
+      }),
+    // Redis (BullMQ queues, shared rate-limit store, AI budgets). Empty = in-memory rate limits and
+    // in-memory AI budgets, which is right for a single backend instance and for tests.
+    REDIS_URL: z
+      .string()
+      .optional()
+      .default("")
+      .refine((val) => val === "" || /^rediss?:\/\//.test(val), { message: "REDIS_URL must start with redis:// or rediss://" }),
+    // Media storage for the nutrition features (nutrition-label photos, cookbook pages, temporary
+    // videos). A volume in production, separate from UPLOADS_DIR; never stored in PostgreSQL.
+    MEDIA_DIR: z.string().min(1).default("./media"),
+    MEDIA_MAX_UPLOAD_MB: z.coerce.number().positive().max(100).default(10),
+    // Longest edge after downscaling; label and cookbook photos stay readable for OCR/AI at 2048 px.
+    MEDIA_MAX_IMAGE_EDGE_PX: z.coerce.number().int().min(256).max(8192).default(2048),
+    MEDIA_WEBP_QUALITY: z.coerce.number().int().min(1).max(100).default(80),
+    // Daily AI call budgets (Europe/Berlin calendar day), per user and across all users.
+    AI_DAILY_BUDGET_PER_USER: z.coerce.number().int().min(0).default(50),
+    AI_DAILY_BUDGET_GLOBAL: z.coerce.number().int().min(0).default(300),
     // Requests per minute and IP on /auth/login and /auth/register. Keep the default in production;
     // only the CI raises it, because every E2E scenario registers and logs in its own account from
     // the same IP and the suite outgrew five per minute.

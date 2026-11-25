@@ -4,7 +4,12 @@
 # `docker compose -f docker-compose.prod.yml up -d --build`. Caddy publishes nothing to the
 # host; it's only reachable from the shared `edge` network, where the `cloudflared` container
 # (managed separately, outside this repo — see README.md) routes
-# `${DOMAIN}` to it by container name.
+# `${DOMAIN}` to it by container name — and `${NUTRITION_DOMAIN}` (the Kalorientracker) to
+# `fitnesstracker-caddy:8080`.
+#
+# The Kalorientracker (github.com/kniepertsebastian-spec/kalorientracker) shares this backend,
+# database and login. Its PWA (`nutrition-frontend`) and the BullMQ `worker` are built from that
+# repository, checked out next to this one (KALORIENTRACKER_DIR, default ../kalorientracker).
 services:
   postgres:
     image: postgres:16.15-alpine
@@ -46,10 +51,18 @@ services:
       # CPU still can't run it, that failure now stays contained to the upload request instead of
       # crash-looping the entire backend on every boot.
       VIPS_NOVECTOR: "1"
+      # Cookie SSO: the refresh cookie is scoped to this parent domain (e.g. pwa-tree.de), so a login
+      # in one PWA also signs in the other. Empty = host-only cookie, as before.
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      REDIS_URL: redis://redis:6379
+      MEDIA_DIR: ./media
     volumes:
       # Progress-photo uploads live on the VPS filesystem (no cloud storage, see
       # ARCHITECTURE.md) and must survive container recreation, same as pgdata below.
       - uploads:/app/backend/uploads
+      # Nutrition photos, cookbook pages and temporary videos; shared with the worker, which
+      # sweeps the tmp/ folder (see backend/src/lib/media.ts).
+      - media:/app/backend/media
     # Ready once the API answers and can reach the database (/api/health runs SELECT 1). The long
     # start period covers `prisma generate` + migrations that run before the server boots.
     healthcheck:
@@ -61,6 +74,47 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Job queues (BullMQ), the shared rate-limit store and the daily AI budgets. AOF persistence so
+  # queued jobs survive a restart; `noeviction` because BullMQ must never lose keys to an eviction.
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # BullMQ worker of the Kalorientracker: AI jobs (Roadmap 04; yt-dlp for recipe videos is
+  # preinstalled) and the hourly cleanup of temporary media.
+  worker:
+    build:
+      context: ${KALORIENTRACKER_DIR:-../kalorientracker}/worker
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379
+      MEDIA_DIR: /media
+      MEDIA_TMP_TTL_HOURS: ${MEDIA_TMP_TTL_HOURS:-24}
+    volumes:
+      - media:/media
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # The Kalorientracker PWA: static build served by its own small Caddy, which sets the cache
+  # headers. Reached only through fitnesstracker-caddy (:8080), which adds the security headers and
+  # routes /api to the shared backend.
+  nutrition-frontend:
+    build:
+      context: ${KALORIENTRACKER_DIR:-../kalorientracker}/nutrition-frontend
+    restart: unless-stopped
+
 
   caddy:
     image: caddy:2.11-alpine
@@ -78,12 +132,15 @@ services:
       - edge
     depends_on:
       - backend
+      - nutrition-frontend
 
 volumes:
   pgdata:
   caddy_data:
   caddy_config:
   uploads:
+  media:
+  redisdata:
 
 networks:
   default:
