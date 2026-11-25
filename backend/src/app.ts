@@ -41,6 +41,12 @@ import cardioPlanRoutes from "./modules/cardioPlan/cardioPlan.routes.js";
 import activityRoutes from "./modules/activity/activity.routes.js";
 import exerciseImageRoutes from "./modules/exerciseImages/exerciseImage.routes.js";
 import healthSyncRoutes, { healthSyncWebhookRoutes } from "./modules/healthSync/healthSync.routes.js";
+import foodRoutes from "./modules/foods/food.routes.js";
+import recipeRoutes from "./modules/recipes/recipe.routes.js";
+import mealRoutes from "./modules/meals/meal.routes.js";
+import nutritionTargetRoutes from "./modules/nutritionTargets/nutritionTargets.routes.js";
+import nutritionSyncRoutes from "./modules/nutritionSync/nutritionSync.routes.js";
+import nutritionExportRoutes from "./modules/nutritionExport/nutritionExport.routes.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -123,6 +129,13 @@ export function buildApp(options: { logger?: boolean } = {}) {
   app.register(formAnalysisRoutes, { prefix: "/api" });
   app.register(stretchingRoutes, { prefix: "/api" });
   app.register(cardioPlanRoutes, { prefix: "/api" });
+  // Kalorientracker (kcal.pwa-tree.de): /api/nutrition/*
+  app.register(foodRoutes, { prefix: "/api" });
+  app.register(recipeRoutes, { prefix: "/api" });
+  app.register(mealRoutes, { prefix: "/api" });
+  app.register(nutritionTargetRoutes, { prefix: "/api" });
+  app.register(nutritionSyncRoutes, { prefix: "/api" });
+  app.register(nutritionExportRoutes, { prefix: "/api" });
   app.register(activityRoutes, { prefix: "/api" });
   app.register(healthSyncRoutes, { prefix: "/api" });
   app.register(healthSyncWebhookRoutes, { prefix: "/api" });

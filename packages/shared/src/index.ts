@@ -26,3 +26,4 @@ export * from "./scaleAnalysis.js";
 export * from "./phaseTemplates.js";
 export * from "./trainingTechniques.js";
 export * from "./bodyFat.js";
+export * from "./schemas/nutrition.schema.js";
