@@ -10,6 +10,7 @@ import { BodyAnalysisCard } from "../components/nutrition/BodyAnalysisCard";
 import { FatLossGoalCard } from "../components/nutrition/FatLossGoalCard";
 import { Disclosure } from "../components/ui";
 import { ProgressPhotosCard } from "../components/nutrition/ProgressPhotosCard";
+import { NUTRITION_APP_URL } from "../components/layout/NavMenu";
 
 const TABS = [
   { key: "rechner", label: "Rechner" },
@@ -28,7 +29,14 @@ export function NutritionPage() {
 
   return (
     <AppShell>
-      <h1 className="mb-4 text-h1 text-text lg:text-h1-lg">Ernährung</h1>
+      <h1 className="mb-1 text-h1 text-text lg:text-h1-lg">Ernährung</h1>
+      <p className="mb-4 text-small text-text-muted">
+        Mahlzeiten trägst du im{" "}
+        <a href={NUTRITION_APP_URL} className="inline-flex min-h-[44px] items-center font-medium text-accent-text">
+          Kalorientracker ↗
+        </a>{" "}
+        ein. Ziele und Phase kommen von hier.
+      </p>
 
       <PageTabs tabs={TABS} active={tab} onChange={(key) => setSearchParams({ tab: key })} />
 

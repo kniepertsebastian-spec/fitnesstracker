@@ -3,6 +3,9 @@ import { TRAINING_PHASE_LABELS, useTrainingPlan } from "../../hooks/useTrainingP
 import { phaseWeek } from "../../lib/phase";
 import { Badge, cn } from "../ui";
 
+// The Kalorientracker is a separate PWA on the same account (cookie SSO), so this is a plain link.
+export const NUTRITION_APP_URL = import.meta.env.VITE_NUTRITION_URL ?? "https://kcal.pwa-tree.de";
+
 export const NAV_ITEMS = [
   { label: "Dashboard", to: "/" },
   { label: "Daily", to: "/daily" },
@@ -16,7 +19,7 @@ export const NAV_ITEMS = [
 ] as const;
 
 // The nine entries in their fixed order; "Plan" carries the current phase as a badge. Shared by
-// the mobile menu sheet and the desktop sidebar.
+// the mobile menu sheet and the desktop sidebar. Below them, the switch to the Kalorientracker.
 export function NavMenu({ className }: { className?: string }) {
   const { data: plan } = useTrainingPlan();
   const { pathname } = useLocation();
@@ -61,6 +64,14 @@ export function NavMenu({ className }: { className?: string }) {
           }}
         </NavLink>
       ))}
+      <a
+        href={NUTRITION_APP_URL}
+        className="mt-2 flex min-h-[46px] items-center gap-3 rounded-sm border-t border-border px-3 pt-2 text-body font-medium text-text-muted transition-colors duration-150 hover:bg-surface-2 hover:text-text"
+      >
+        <span aria-hidden className="-ml-1 h-5 w-[3px] shrink-0" />
+        <span className="flex-1">Kalorientracker</span>
+        <span aria-hidden>↗</span>
+      </a>
     </nav>
   );
 }
