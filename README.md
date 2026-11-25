@@ -131,6 +131,35 @@ beiden letzten werden aus dem Kalorientracker-Repo gebaut, das neben diesem lieg
 - **KI-Budget:** `AI_DAILY_BUDGET_PER_USER` / `AI_DAILY_BUDGET_GLOBAL` begrenzen die KI-Aufrufe pro
   Tag (Europe/Berlin); ist Redis nicht erreichbar, wird kein KI-Aufruf freigegeben.
 
+### Lebensmitteldaten des Kalorientrackers
+
+Die Suche (`GET /api/nutrition/foods/search?q=`) fragt drei Schichten ab, eigene Lebensmittel zuerst:
+die eigenen, dann den BLS, dann den Open-Food-Facts-Cache. Barcodes, die noch nicht im Cache
+liegen, holt `GET /api/nutrition/foods/barcode/:code` live von Open Food Facts. Fehlende Werte
+bleiben `null` (unbekannt), nie 0.
+
+- **BLS 4.0 importieren** (einmalig und nach jeder neuen BLS-Version; ändert bestehende Einträge
+  an Ort und Stelle, Mahlzeiten behalten ihre Snapshots). Die Datei `BLS_4_0_Daten_2025_DE.xlsx`
+  gibt es beim Max Rubner-Institut (blsdb.de). Sie gehört nicht ins Repo.
+
+  ```bash
+  # Dev
+  pnpm --filter backend bls:import /pfad/zu/BLS_4_0_Daten_2025_DE.xlsx
+  # Prod (im laufenden Backend-Container, ~7 140 Lebensmittel, unter einer Minute)
+  docker cp BLS_4_0_Daten_2025_DE.xlsx fitnesstracker-backend-1:/tmp/bls.xlsx
+  docker exec fitnesstracker-backend-1 node dist/scripts/importBls.js /tmp/bls.xlsx
+  ```
+
+- **Quellen und Lizenzen** (die API liefert sie je Lebensmittel als `attribution` mit, die App
+  muss sie anzeigen):
+  - Max Rubner-Institut (2025): Bundeslebensmittelschlüssel (BLS), Version 4.0 – Deutsche
+    Nährstoffdatenbank. Karlsruhe. DOI: 10.25826/Data20251217-134202-0. Lizenz
+    [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Spuren und Werte unter der
+    Nachweisgrenze („TR“, „<LOD“, „<LOQ“) werden als 0 mit Markierung „geschätzt“ übernommen.
+  - [Open Food Facts](https://world.openfoodfacts.org), Lizenz
+    [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/). Abgefragt wird nur der Barcode,
+    mit dem User-Agent `Kalorientracker/1.0`, ohne Nutzerdaten.
+
 ### Backup und Restore
 
 Nicht aus Git wiederherstellbar sind die Datenbank (Volume `pgdata`, gemeinsam mit dem
@@ -183,6 +212,7 @@ scripts/restore.sh ~/fitnesstracker-backups/<Zeitstempel>
 | `pnpm --filter backend prisma:migrate` | Neue Migration erstellen/anwenden (Dev) |
 | `pnpm --filter backend prisma:deploy` | Migrationen anwenden (Prod) |
 | `pnpm --filter backend prisma:seed` | Beispiel-Übungen einspielen |
+| `pnpm --filter backend bls:import <datei.xlsx>` | BLS 4.0 in die Lebensmittel-Tabelle importieren (idempotent) |
 | `pnpm typecheck` | TypeScript-Check in allen Packages |
 | `pnpm build` | Backend + Frontend bauen |
 | `pnpm check:tracked` | Prüft, dass Git kein `node_modules/`, `dist/` oder `build/` verfolgt (läuft in der CI) |
